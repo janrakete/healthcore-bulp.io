@@ -3,7 +3,7 @@ Hi. Welcome to healthcore.dev! But what is healthcore.dev?
 
 healthcore.dev (or simply healthcore) is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses, or family members.
 
-The healthcore is the software core (obviously!) that **standardizes** the data from various devices, processes scenarios, and triggers actions. A standardized API allows interfaces such as apps to visualize device data.
+The healthcore is the software core (obviously!) that **standardizes** the data from various devices, processes scenarios, and triggers actions. A simple API allows interfaces such as apps to visualize device data.
 
 Healthcore can **run on any hardware** — a Raspberry Pi, a PC, or any other device running a Linux system or Windows. The choice is yours.
 
