@@ -1,350 +1,390 @@
-/*
-    ============================
-    HTTP - Bridge: HTTP <-> MQTT
-    ============================
-*/
-const AppConfig       = require("../config");
-const Common          = require("../common");
+/**
+ * =============================================================================================
+ * HTTP - Bridge: HTTP <-> MQTT
+ * ============================
+ */
+const appConfig       = require("../config");
+const common          = require("../common");
 
-const strBridgePrefix = "http"; 
+const BRIDGE_PREFIX = "http"; 
 
-/*
-  Load  converters for devices
-*/
+/**
+ * Load converters for devices
+ */
 const { Converters } = require("./converters.js");
-const ConvertersList = new Converters(); // create new object for converters
+const convertersList = new Converters(); // create new object for converters
 
-/*
-  Start bridge and server
-*/
+/**
+ * Starts the HTTP bridge and MQTT server.
+ * This function initializes an Express server, sets up CORS and body parsing middleware, and listens for incoming HTTP requests.
+ * It also connects to an MQTT broker and subscribes to specific topics for device management.
+ * @async
+ * @function startBridgeAndServer
+ * @description This function sets up the HTTP bridge.
+ */
+
 async function startBridgeAndServer() {
-  /*
-    ======================================
-    Server
-    ======================================
+  /**
+   * =============================================================================================
+   * Server
+   * ======
   */
-  const Express     = require("express");
-  const Cors        = require("cors");
-  const BodyParser  = require("body-parser");
+  const express     = require("express");
+  const cors        = require("cors");
+  const bodyParser  = require("body-parser");
 
-  const App = Express();
+  const app = express();
 
-  App.use(BodyParser.json());
+  app.use(bodyParser.json());
 
-  App.use(
-    Cors(),
-    BodyParser.urlencoded({
+  app.use(
+    cors(),
+    bodyParser.urlencoded({
       extended: true,
     })
   );
 
-  App.use(function (Error, Request, Response, Next) { // if request contains JSON and the JSON is invalid
-    if (Error instanceof SyntaxError && Error.status === 400 && "body" in Error) {
-      let Data = new Object();
-      Data.strStatus        = "error";
-      Data.strErrorMessage  = "JSON in request is invalid";
-      Response.json(Data);
+  app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
+    if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+      let data = {};
+      data.status        = "error";
+      data.error  = "JSON in request is invalid";
+      res.json(data);
     }
   });
 
-  const Router = require("express").Router();
-  App.use("/", Router);
+  const router = require("express").Router();
+  app.use("/", router);
 
-  const Server = require("http").createServer(App);
-  Server.listen(AppConfig.CONF_intPortBridgeHTTP, function () {
-    Common.logoShow(strBridgePrefix, AppConfig.CONF_intPortBridgeHTTP); // Show bulp logo
+  const server = require("http").createServer(app);
+  server.listen(appConfig.CONF_portBridgeHTTP, function () {
+    common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeHTTP); // show bulp logo
   });
 
-  /*
-    ======================================
-    MQTT client - subscribe to specific topics
-    ======================================
-  */
-  const MQTT       = require("mqtt");
-  const MQTTClient = MQTT.connect(AppConfig.CONF_strBrokerAddress, { clientId: strBridgePrefix }); // connect to broker ...
+  /**
+   * =============================================================================================
+   * MQTT client - subscribe to specific topics
+   * ==========================================
+   */
+  const mqtt       = require("mqtt");
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: BRIDGE_PREFIX }); // connect to broker ...
 
+  /**
+   * Connects the MQTT client and subscribes to HTTP-related topics.
+   * @function
+   * @description This function is called when the MQTT client successfully connects to the broker.
+   */
   function mqttConnect() {
-    MQTTClient.subscribe(strBridgePrefix + "/#", function (Error, arrGanted) { // ... and subscribe to HTTP topics
-      Common.conLog("MQTT: Subscribed to HTTP topics from broker", "yel"); 
-      if (Error) {
-        Common.conLog("MQTT: Error while subscribing:", "red");
-        Common.conLog(Error, "std", false);
+    mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to HTTP topics
+      common.conLog("MQTT: Subscribed to HTTP topics from broker", "yel"); 
+      if (error) {
+        common.conLog("MQTT: Error while subscribing:", "red");
+        common.conLog(error, "std", false);
       }
 
-      /*
-        If MQTT is started, request all registered devices from server
-      */
-      Common.conLog("HTTP: Bridge (= this web server) is online - request all registered HTTP devices from server", "yel");
-      let Message     = new Object();
-      Message.strBridge  = strBridgePrefix;
-      MQTTClient.publish("server/devices/list", JSON.stringify(Message)); // then request all registered HTTP devices from server via MQTT broker 
+      /**
+       * If MQTT is started, request all registered devices from server
+       */
+      common.conLog("HTTP: Bridge (= this web server) is online - request all registered HTTP devices from server", "yel");
+      let message     = {};
+      message.bridge  = BRIDGE_PREFIX;
+      mqttClient.publish("server/devices/list", JSON.stringify(message)); // then request all registered HTTP devices from server via MQTT broker 
     });
   }
-  MQTTClient.on("connect", mqttConnect);
+  mqttClient.on("connect", mqttConnect);
 
-  /*
-    ======================================
-    Helper functions
-    ======================================
+  /**
+   * =============================================================================================
+   * Helper functions
+   * ================
+   */
 
-    Checks, of device ID is in given array of devices
-  */
-  function DeviceSearchInArray(strDeviceID, arrDevices) {
-    let Device = new Object();  
+  /**
+   * Searches for a device by its ID within a given array of devices.
+   * @param {string} deviceID - The device ID to search for.
+   * @param {Object[]} devices - The array of known device objects.
+   * @returns {Object|undefined} The matching device object, or `undefined` if not found.
+   * @description This function iterates through the array of devices and returns the first device that matches the provided ID. If no matching device is found, it returns `undefined`.
+   */
+  function deviceSearchInArray(deviceID, devices) {
+    let device = {};  
 
-    const DevicesFound = arrDevices.find(Device => Device.strDeviceID === strDeviceID);
-    if (DevicesFound) { 
-      Device = DevicesFound; // if device is in array, get first device (because there should be only one device with this ID)
+    const deviceFound = devices.find(device => device.deviceID === deviceID);
+    if (deviceFound) { 
+      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
     }
     else {
-      Device = undefined; // if device is not in array, set device to undefined
+      device = undefined; // if device is not in array, set device to undefined
     }
-    return Device;
+    return device;
   }
 
-  /*
-    Bridge status - for saving all connected devices and devices registered at server 
-  */
-  class BridgeStatusClass {
+  /**
+   * Class representing the status of the HTTP bridge. Contains arrays for connected devices and registered devices at the server.
+   * @class
+   * @property {Object[]} devicesConnected - Array of currently connected HTTP devices.
+   * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
+   * @description This class is used to manage the status of the HTTP bridge, including connected devices and those registered at the server.
+   */
+  class BridgeStatus {
     constructor() {
-      this.arrDevicesRegisteredAtServer = new Array();
-      this.arrDevicesConnected          = new Array();
-      this.blnDevicesRegisteredConnect  = false; // not in use yet
+      this.devicesConnected          = [];
+      this.devicesRegisteredAtServer = [];
     }
   }
-  const BridgeStatus = new BridgeStatusClass(); // create new object for bridge status
+  const bridgeStatus = new BridgeStatus(); // create new object for bridge status
 
-  /*
-    ======================================
-    Events at web server
-    ======================================
+  /**
+   * =============================================================================================
+   * Events at web server
+   * ====================
+   */
 
-    If call is for deleting a device
-  */
-  Router.delete("/message", async function (Request, Response) {
-    const Payload       = Request.body;
-    let Message         = new Object(); // create new object for MQTT message
-    let Data            = new Object(); // create new object for HTTP response
+  /**
+   * If call is for deleting a device
+   * @param {Object} req - The HTTP request object containing the device ID and product name in the body.
+   * @param {Object} res - The HTTP response object used to send the response back to the client.  
+   * @description This function handles the deletion of a device by checking if it exists in the array of connected devices. If the device is found, it constructs a message and publishes it to the MQTT broker to remove the device. If the device is not found, it sends an error response.
+   * @returns {Object} - Returns a JSON response indicating the status of the operation, either "ok" or "error" with an appropriate message.
+   */
+  router.delete("/message", async function (req, res) {
+    const payload       = req.body;
+    let message         = {}; // create new object for MQTT message
+    let data            = {}; // create new object for HTTP response
 
     try {
-      if (Payload === undefined) { // if no payload is given, send error message
-        Data.strStatus        = "error";
-        Data.strErrorMessage  = "No payload given";
+      if (payload === undefined) { // if no payload is given, send error message
+        data.status = "error";
+        data.error  = "No payload given";
       }
       else { // if payload exists, check if device is in array of connected devices
-        const Device = DeviceSearchInArray(Payload.strDeviceID, BridgeStatus.arrDevicesConnected);  
+        const device = deviceSearchInArray(payload.deviceID, bridgeStatus.devicesConnected);  
         
-        if (Device) { // if device is in array of connected devices, build message and send it to MQTT broker
-          Common.conLog("HTTP: Device " + Payload.strDeviceID + " is connected - trying to remove", "yel");
+        if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
+          common.conLog("HTTP: Device " + payload.deviceID + " is connected - trying to remove", "yel");
 
-          Message.strProductName  = Payload.strProductName;
-          Message.strDeviceID     = Payload.strDeviceID;
-          Message.strBridge       = strBridgePrefix;
+          message.productName  = payload.productName;
+          message.deviceID     = payload.deviceID;
+          message.bridge       = BRIDGE_PREFIX;
 
-          Common.conLog("HTTP: Request for deleting device " + Message.strDeviceID, "yel", false);
+          common.conLog("HTTP: Request for deleting device " + message.deviceID, "yel", false);
 
-          MQTTClient.publish("server/device/remove", JSON.stringify(Message));
-          Data.strStatus = "ok";
+          mqttClient.publish("server/device/remove", JSON.stringify(message));
+          data.status = "ok";
         }
         else { // if device is not in array of connected devices, send error message
-          Common.conLog("HTTP: Device is not connected or registered at server", "red");
-          Data.strStatus        = "error";
-          Data.strErrorMessage  = "Device " + Payload.strDeviceID + " is not registered at server";
+          common.conLog("HTTP: Device is not connected or registered at server", "red");
+          data.status = "error";
+          data.error  = "Device " + payload.deviceID + " is not registered at server";
         }
       }
     }
-    catch (Error) {
-      Data.strStatus = "error";
-      Data.strError  = "Fatal error: " + (Error.stack).slice(0, 128);
+    catch (error) {
+      data.status = "error";
+      data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
       
-    Common.conLog("HTTP response: " + JSON.stringify(Data), "std", false);
-    Response.json(Data);
+    common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
+    res.json(data);
   });
 
-  /*
-    If call is for creating a device
+  /**
+   * If call is for creating a device
+   * @param {Object} req - The HTTP request object containing the device information in the body.
+   * @param {Object} res - The HTTP response object used to send the response back
+   * @description This function handles the creation of a device by checking if the payload is provided. If it is, it constructs a message with the device information and publishes it to the MQTT broker to create the device. If no payload is provided, it sends an error response.
+   * @returns {Object} - Returns a JSON response indicating the status of the operation.
   */
-  Router.put("/message", async function (Request, Response) {
-    const Payload       = Request.body;
-    let Message         = new Object(); // create new object for MQTT message
-    let Data            = new Object(); // create new object for HTTP response
+  router.put("/message", async function (req, res) {
+    const payload       = req.body;
+    let message         = {}; // create new object for MQTT message
+    let data            = {}; // create new object for HTTP response
 
     try {
-      if (Payload === undefined) { // if no payload is given, send error message
-        Data.strStatus        = "error";
-        Data.strErrorMessage  = "No payload given";
+      if (payload === undefined) { // if no payload is given, send error message
+        data.status  = "error";
+        data.error  = "No payload given";
       }
       else { // if payload exists, fill message and send it to MQTT broker
-        Message.strProductName  = Payload.strProductName;
-        Message.strDeviceID     = Payload.strDeviceID;
-        Message.strBridge       = strBridgePrefix;
+        message.productName  = payload.productName;
+        message.deviceID     = payload.deviceID;
+        message.bridge       = BRIDGE_PREFIX;
 
-        Common.conLog("HTTP: Request for creating a device " + Message.strDeviceID, "yel");
+        common.conLog("HTTP: Request for creating a device " + message.deviceID, "yel");
 
-        MQTTClient.publish("server/device/create", JSON.stringify(Message));
-        Data.strStatus        = "ok";
+        mqttClient.publish("server/device/create", JSON.stringify(message));
+        data.status = "ok";
       }
     }
-    catch (Error) {
-      Data.strStatus = "error";
-      Data.strError  = "Fatal error: " + (Error.stack).slice(0, 128);
+    catch (error) {
+      data.status = "error";
+      data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
       
-    Common.conLog("HTTP response: " + JSON.stringify(Data), "std", false);
-    Response.json(Data);
+    common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
+    res.json(data);
   });
 
-  /*
-    If call is for sending values of a device to the server
-  */
-  Router.post("/message", async function (Request, Response) {
-    const Payload       = Request.body;
-    let Message         = new Object(); // create new object for MQTT message
-    let Data            = new Object(); // create new object for HTTP response
+  /**
+   * If call is for sending values of a device to the server
+   * @param {Object} req - The HTTP request object containing the device information and values in the body.
+   * @param {Object} res - The HTTP response object used to send the response back
+   * @description This function handles the request to send values of a device. It checks if the payload is provided and if the device is connected. If both conditions are met, it constructs a message with the device information and values, then publishes it to the MQTT broker. If the device is not found or no payload is provided, it sends an error response.
+   * @returns {Object} - Returns a JSON response indicating the status of the operation, either "ok" or "error" with an appropriate message.
+   */
+  router.post("/message", async function (req, res) {
+    const payload       = req.body;
+    let message         = {}; // create new object for MQTT message
+    let data            = {}; // create new object for HTTP response
 
     try {
-      if (Payload === undefined) { // if no payload is given, send error message
-        Data.strStatus        = "error";
-        Data.strErrorMessage  = "No payload given";
+      if (payload === undefined) { // if no payload is given, send error message
+        data.status = "error";
+        data.error  = "No payload given";
       }
       else {// if payload exists, check if device is in array of connected devices
-        const Device = DeviceSearchInArray(Payload.strDeviceID, BridgeStatus.arrDevicesConnected);  
-        if (Device) { // if device is in array of connected devices, build message and send it to MQTT broker
-          Common.conLog("HTTP: Device " + Payload.strDeviceID + " is connected - trying to get and convert data", "yel");
+        const device = deviceSearchInArray(payload.deviceID, bridgeStatus.devicesConnected);  
+        if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
+          common.conLog("HTTP: Device " + payload.deviceID + " is connected - trying to get and convert data", "yel");
 
-          Message.strProductName  = Payload.strProductName;
-          Message.strDeviceID     = Payload.strDeviceID;
-          Message.strBridge       = strBridgePrefix;
-          Message.Values          = Payload.Values;
+          message.productName  = payload.productName;
+          message.deviceID     = payload.deviceID;
+          message.bridge       = BRIDGE_PREFIX;
+          message.values       = payload.values;
 
-          Common.conLog("HTTP: Request for sending values of device " + Message.strDeviceID, "yel", false);
+          common.conLog("HTTP: Request for sending values of device " + message.deviceID, "yel", false);
 
-          MQTTClient.publish("http/device/get", JSON.stringify(Message)); // ... publish to MQTT broker
-          Data.strStatus        = "ok";
+          mqttClient.publish("http/device/get", JSON.stringify(message)); // ... publish to MQTT broker
+          data.status = "ok";
         }
         else { // if device is not in array of connected devices, send error message
-          Common.conLog("HTTP: Device is not connected or registered at server", "red");
-          Data.strStatus        = "error";
-          Data.strErrorMessage  = "Device " + Payload.strDeviceID + " is not registered at server";
+          common.conLog("HTTP: Device is not connected or registered at server", "red");
+          data.status = "error";
+          data.error  = "Device " + payload.deviceID + " is not registered at server";
         }
       }
     }
-    catch (Error) {
-      Data.strStatus = "error";
-      Data.strError  = "Fatal error: " + (Error.stack).slice(0, 128);
+    catch (error) {
+      data.status = "error";
+      data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
       
-    Common.conLog("HTTP response: " + JSON.stringify(Data), "std", false);
-    Response.json(Data);
+    common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
+    res.json(data);
   });
 
 
-  /*
-    ======================================
-    MQTT: incoming messages handler
-    ======================================    
+  /**
+   * =============================================================================================
+   * MQTT: incoming messages handler
+   * ===============================    
   */
-  MQTTClient.on("message", async function (strTopic, strMessage) {
-    strTopic    = strTopic.toString();
-    strMessage  = strMessage.toString();
+  mqttClient.on("message", async function (topic, message) {
+    topic    = topic.toString();
+    message  = message.toString();
 
-    Common.conLog("MQTT: Getting incoming message from broker", "yel");
-    Common.conLog("Topic: " + strTopic, "std", false);
-    Common.conLog("Message: " + strMessage, "std", false);
+    common.conLog("MQTT: Getting incoming message from broker", "yel");
+    common.conLog("Topic: " + topic, "std", false);
+    common.conLog("Message: " + message, "std", false);
 
     try {
-      const Message = JSON.parse(strMessage); // parse message to JSON
+      message = JSON.parse(message); // parse message to JSON
 
-      switch (strTopic) {
+      switch (topic) {
         case "http/device/create":
-          MQTTDeviceCreate(Message);
+          mqttDeviceCreate(message);
           break;
         case "http/device/remove":
-          MQTTDeviceRemove(Message);
+          mqttDeviceRemove(message);
           break;
         case "http/device/get":
-          MQTTDeviceGet(Message);
+          mqttDeviceGet(message);
           break;
         case "http/devices/connect":
-          MQTTDeviceConnect(Message);
+          mqttDeviceConnect(message);
           break;
         default:
-          Common.conLog("HTTP: NOT found matching message handler for " + strTopic, "red");
+          common.conLog("HTTP: NOT found matching message handler for " + topic, "red");
       }
     }
-    catch (Error) { // if error while parsing message, log error
-      Common.conLog("MQTT: Error while parsing message:", "red");     
-      Common.conLog(Error, "std", false);
+    catch (error) { // if error while parsing message, log error
+      common.conLog("MQTT: Error while parsing message:", "red");     
+      common.conLog(error, "std", false);
     }  
   });
 
 
-  /*
-    If message is for adding devices (this message ist sent AFTER server created device)
-  */
-  function MQTTDeviceCreate(Data) {
+  /**
+   * If message is for adding devices (this message ist sent AFTER server created device)
+   */
+  function mqttDeviceCreate(data) {
     // TODO: zu arrays hinzufügen
-
   }
 
-  /*
-    If message is for removing devices (this message ist sent AFTER server removed device)
-  */
-  function MQTTDeviceRemove(Data) {
+  /**
+   * If message is for removing devices (this message ist sent AFTER server removed device)
+   */
+  function mqttDeviceRemove(data) {
     // TODO: aus arrays löschen
-
   }
 
-  /*
-    If message is for connecting to registered devices, add them list of connected devices
-  */
-  function MQTTDeviceConnect(Data) {
+  /**
+   * If message is for connecting to registered devices, add them list of connected devices
+   * @param {Object} data - The data object containing the devices to be connected.
+   * @description This function updates the bridge status with the devices that are connected. It also checks if a converter exists for each device and logs the status. It iterates through the devices and assigns the appropriate converter from the converters list.
+   */
+  function mqttDeviceConnect(data) {
     // because HTTP bridge is not a real bridge, connected devices are the same as registered devices
-    BridgeStatus.arrDevicesRegisteredAtServer   = Data.arrDevices; // save all devices registered at server in array
-    BridgeStatus.arrDevicesConnected            = Data.arrDevices; // save all devices connected in array 
+    bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
+    bridgeStatus.devicesConnected            = data.devices; // save all devices connected in array 
 
-    for (let Device of BridgeStatus.arrDevicesConnected) { // for each device in array of connected devices
-      Device.DeviceConverter = ConvertersList.find(Device.strProductName); // get converter for device from list of converters
+    for (let device of bridgeStatus.devicesConnected) { // for each device in array of connected devices
+      device.deviceConverter = convertersList.find(device.productName); // get converter for device from list of converters
 
-      if (Device.DeviceConverter === undefined) { 
-        Common.conLog("HTTP: No converter found for " + Device.strProductName, "red");
+      if (device.deviceConverter === undefined) { 
+        common.conLog("HTTP: No converter found for " + device.productName, "red");
       }
       else {
-        Common.conLog("HTTP: Converter found for " + Device.strProductName, "gre");
+        common.conLog("HTTP: Converter found for " + device.productName, "gre");
       }
     }
 
-    Common.conLog("HTTP: Connected to devices", "gre");
+    common.conLog("HTTP: Connected to devices", "gre");
   }
 
-  /*
-    If message is for getting properties and values of a connected device
-  */
-  function MQTTDeviceGet(Data) {
-    let Message                      = new Object();
-    Message.strDeviceID              = Data.strDeviceID;
-    Message.arrPropertiesAndValues   = new Array();
+  /**
+   * If message is for getting properties and values of a connected device
+   * @param {Object} data - The data object containing the device ID and values to be converted.
+   * @description This function retrieves the properties and values of a connected device, converts them using the device's converter, and publishes the results to the MQTT broker.
+   */
+  function mqttDeviceGet(data) {
+    let message                   = {};
+    message.deviceID              = data.deviceID;
+    message.propertiesAndValues   = [];
 
-    const Device = DeviceSearchInArray(Message.strDeviceID, BridgeStatus.arrDevicesConnected);  
-    if (Device) { // if device is in array of connected devices, convert values
-      for (const [strProperty, anyValue] of Object.entries(Data.Values)) { // for each value key in data      
-        let PropertyAndValue      = new Object();
-        PropertyAndValue[strProperty]  = Device.DeviceConverter.getConvertedValueForProperty(strProperty, anyValue);
-        Message.arrPropertiesAndValues.push(PropertyAndValue); // add property to array of properties for return
+    const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
+    if (device) { // if device is in array of connected devices, convert values
+      for (const [property, value] of Object.entries(data.values)) { // for each value key in data      
+        let propertyAndValue      = {};
+        propertyAndValue[property]  = device.deviceConverter.getConvertedValueForProperty(property, value);
+        message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
       }
     }
     else { // if device is not in array of connected devices, send error message
-      Common.conLog("HTTP: Device is not connected or registered at server", "red");
+      common.conLog("HTTP: Device is not connected or registered at server", "red");
     }
 
-    MQTTClient.publish("http/device/values", JSON.stringify(Message)); // ... publish to MQTT broker
+    mqttClient.publish("http/device/values", JSON.stringify(message)); // ... publish to MQTT broker
   }
 }
 
 startBridgeAndServer();
 
+/**
+ * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
+ * Logs a message indicating that the server is closed and exits the process.
+ */  
 process.on("SIGINT", function () {
-    Common.conLog("Server closed.", "mag", true);
-    process.exit(0);
+  common.conLog("Server closed.", "mag", true);
+  process.exit(0);
 });

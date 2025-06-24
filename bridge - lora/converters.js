@@ -2,7 +2,7 @@
  * =============================================================================================
  * Standard converter with basic functions for all devices
  * =======================================================
-*/
+ */
 class ConverterStandard {
     constructor() { 
         this.properties = {};            

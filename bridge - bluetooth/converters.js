@@ -2,7 +2,7 @@
  * =============================================================================================
  * Standard converter with basic functions for all devices
  * =======================================================
-*/
+ */
 
 /**
  * ConverterStandard class provides basic functionality for converting properties of Bluetooth devices that follow the standard UUIDs.
@@ -126,7 +126,7 @@ class ConverterBulpAZ123 extends ConverterStandard {
     }
 
     /**
-     * Converts a value for a specific property of the Bulp AZ-123 device.
+     * Converts a value for a specific property.
      * @param {Object} property - The property object containing metadata about the property.
      * @param {any} value - The value to convert.
      * @return {any|undefined} - The converted value if the property is readable, otherwise undefined.

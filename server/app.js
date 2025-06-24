@@ -71,8 +71,8 @@ async function startMySQLAndServer() {
       }
     });
 
-    const routesData  = require("./routes/data"); // import routes for data manipulation
-    app.use("/data", routesData);
+    //const routesData  = require("./routes/data"); // import routes for data manipulation
+    //app.use("/data", routesData);
     const routesMqtt  = require("./routes/mqtt"); // import routes for MQTT
     app.use("/mqtt", routesMqtt);
 

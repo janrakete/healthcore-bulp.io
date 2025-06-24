@@ -1,15 +1,15 @@
 ---------------------------------------------
 BLUETOOTH:
 bluetooth/device/set
-{"strDeviceID" : "dc:54:75:e9:ed:25", "arrProperties" : [{"led": "on"}, { "speaker": "on"}]}
+{"deviceID" : "dc:54:75:e9:ed:25", "properties" : [{"led": "on"}, { "speaker": "on"}]}
 
 ---------------------------------------------
 HTTP:
 http://localhost:9996/message
 {
-	"strDeviceID": "mn8z7koi",
-	"strProductName": "Bulp Web-Robo 321",
-    "Values" : {
+	"deviceID": "mn8z7koi",
+	"productName": "Bulp Web-Robo 321",
+    "values" : {
         "voltage": 100,
         "switch": 1
 
@@ -20,11 +20,11 @@ http://localhost:9996/message
 ZIGBEE
 zigbee/device/get
 
-{"strDeviceID" : "0xb43a31fffe572912", "arrProperties" : ["brightness"] }
+{"deviceID" : "0xb43a31fffe572912", "properties" : ["brightness"] }
 
 zigbee/device/set
 
-{"strDeviceID" : "0xb43a31fffe572912", "arrProperties" : [{"brightness": 100}] }
+{"deviceID" : "0xb43a31fffe572912", "properties" : [{"brightness": 100}] }
 
 zigbee/devices/scan"
 

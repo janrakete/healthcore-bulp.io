@@ -6,7 +6,7 @@
 
 const dotenv = require("dotenv");
 dotenv.config({path: "../.env"});
-dotenv.config({path: "../.env.local"});
+dotenv.config({path: "../.env.local", override: true});
 
 const appConfig = {
   CONF_portBroker          : process.env.CONF_portBroker,
