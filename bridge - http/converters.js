@@ -8,7 +8,6 @@ class ConverterStandard {
         this.properties = {};            
     }
 
-    
     /**
      * Retrieves a property by its name.
      * @param {string} name - The name of the property to retrieve.

@@ -256,13 +256,6 @@ async function startBridgeAndServer() {
    * MQTT: incoming messages handler
    * ===============================    
   */
-
-  /**
-   * Handles incoming MQTT messages from the broker. Parses the message and routes it to the appropriate handler based on the topic.
-   * @param {string} topic - The MQTT topic of the incoming message.
-   * @param {Buffer} message - The message payload received from the MQTT broker.
-   * @description This function listens for incoming MQTT messages and processes them based on their topic. It supports various topics related to Bluetooth device scanning, connection, disconnection, and property setting/getting.
-   */
   mqttClient.on("message", async function (topic, message) {
     topic    = topic.toString();
     message  = message.toString();
