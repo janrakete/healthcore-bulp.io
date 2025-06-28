@@ -1,101 +1,145 @@
-/*
-    ======================================
-    Standard converter with basic functions for all devices
-    ======================================
-*/
+/**
+ * =============================================================================================
+ * Standard converter with basic functions for all devices
+ * =======================================================
+ */
+
+/**
+ * ConverterStandard class provides basic functionality for converting properties of Zigbee devices that follow the standard clusters and attributes.
+ * It includes methods to retrieve properties by cluster or attribute name, and to convert values for standard properties.   
+ * @class ConverterStandard
+ * @description This class is designed to handle standard Zigbee properties, such as zclVersion, manufacturerName, and modelId, and provides a framework for extending functionality for specific devices by subclassing. 
+ */
 class ConverterStandard {
     constructor() { 
-        this.Properties = new Object();
+        this.properties = {};
     
-        this.Properties["genBasic"] = new Object();
-        this.Properties["genBasic"]["zclVersion"] = {
-            strName:        "zclVersion",
-            blnStandard:    true,
-            blnNotify:      false,
-            blnRead:        true,
-            blnWrite:       false,
-            anyValue:       0,
-            strValueType:   "Integer"
+        this.properties["genBasic"] = {};
+        this.properties["genBasic"]["zclVersion"] = {
+            name:        "zclVersion",
+            standard:    true,
+            notify:      false,
+            read:        true,
+            write:       false,
+            anyValue:    0,
+            valueType:   "Integer"
         };
 
-        this.Properties["genBasic"]["manufacturerName"] = {
-            strName:        "manufacturerName",
-            blnStandard:    true,            
-            blnNotify:      false,
-            blnRead:        true,
-            blnWrite:       false,
-            anyValue:       0,
-            strValueType:   "String"
+        this.properties["genBasic"]["manufacturerName"] = {
+            name:        "manufacturerName",
+            standard:    true,            
+            notify:      false,
+            read:        true,
+            write:       false,
+            anyValue:    0,
+            valueType:   "String"
         };
         
-        this.Properties["genBasic"]["modelId"] = {
-            strName:        "productName",
-            blnStandard:    true,            
-            blnNotify:      false,
-            blnRead:        true,
-            blnWrite:       false,
-            anyValue:       0,
-            strValueType:   "String"
+        this.properties["genBasic"]["modelId"] = {
+            name:        "productName",
+            standard:    true,            
+            notify:      false,
+            read:        true,
+            write:       false,
+            anyValue:    0,
+            valueType:   "String"
         };
     }
 
-    getPropertyByPropertyName(strName) {
-        for (const [strClusterName, Attributes] of Object.entries(this.Properties)) {
-            for (let [strAttributeName, Property] of Object.entries(Attributes)) {
-                if (Property.strName === strName) {
-                    Property.strCluster = strClusterName; // add cluster name to property
-                    Property.strAttribute = strAttributeName; // add attribute name to property
-                    return Property;
+    /**
+     * Get property by its name.
+     * @param {string} name - The name of the property to retrieve.
+     * @returns {Object|undefined} - The property object if found, otherwise undefined.
+     * @description This method iterates through the `properties` object and checks if any property's name matches the provided name. If found, it returns the property object; otherwise, it returns undefined
+     */
+    getPropertyByPropertyName(name) {
+        for (const [clusterName, attributes] of Object.entries(this.properties)) {
+            for (let [attributeName, property] of Object.entries(attributes)) {
+                if (property.name === name) {
+                    property.cluster    = clusterName; // add cluster name to property
+                    property.attribute  = attributeName; // add attribute name to property
+                    return property;
                 }
             }
         }
         return undefined;
     }
    
-    getPropertyByClusterName(strCluster) {   
-        if (this.Properties[strCluster] === undefined) {
+    /**
+     * Get property by cluster name.
+     * @param {string} cluster - The name of the cluster to retrieve properties from.
+     * @returns {Object|undefined} - The properties object for the cluster if found, otherwise undefined.
+     * @description This method checks if the properties for the specified cluster exist in the `properties` object. If they do, it returns the properties; otherwise, it returns undefined.
+     */
+    getPropertyByClusterName(cluster) {   
+        if (this.properties[cluster] === undefined) {
             return undefined;
         }   
         else {
-            return this.Properties[strCluster];
+            return this.properties[cluster];
         }
     }
 
-    getPropertyByAttributeName(strName) {
-        for (const [strClusterName, Attributes] of Object.entries(this.Properties)) {
-            for (const [strAttributeName, Property] of Object.entries(Attributes)) {
-                if (strAttributeName === strName) {
-                    return Property;
+    /**
+     * Get property by attribute name.
+     * @param {string} name - The name of the attribute to retrieve.
+     * @returns {Object|undefined} - The property object if found, otherwise undefined.
+     * @description This method iterates through the `properties` object and checks if any attribute's name matches the provided name. If found, it returns the property object; otherwise, it returns undefined.
+     */
+    getPropertyByAttributeName(name) {
+        for (const [clusterName, attributes] of Object.entries(this.properties)) {
+            for (const [attributeName, property] of Object.entries(attributes)) {
+                if (attributeName === name) {
+                    return property;
                 }
             }
         }
         return undefined;
     }
 
-    getClusterByPropertyName(strName) {
-        for (const [strCluster, Properties] of Object.entries(this.Properties)) {
-            for (const Property of Object.values(Properties)) {
-                if (Property.strName === strName) {
-                    return strCluster;
+    /**
+     * Get cluster by property name.
+     * @param {string} name - The name of the property to search for.
+     * @returns {string|undefined} - The name of the cluster if the property is found, otherwise undefined.
+     * @description This method iterates through the `properties` object and checks if any property's name matches the provided name. If found, it returns the cluster name; otherwise, it returns undefined.
+     */
+    getClusterByPropertyName(name) {
+        for (const [cluster, properties] of Object.entries(this.properties)) {
+            for (const property of Object.values(properties)) {
+                if (property.name === name) {
+                    return cluster;
                 }
             }
         }
         return undefined;
     }
 
-    getClusterAndAttributeByPropertyName(strName) {
-        for (const [strClusterName, Properties] of Object.entries(this.Properties)) {
-            for (const [strAttribute, Property] of Object.entries(Properties)) {
-                if (Property.strName === strName) {
-                    return { strCluster: strClusterName, strAttribute: strAttribute };
+    /**
+     * Get cluster and attribute by property name.
+     * @param {string} name - The name of the property to search for.
+     * @returns {Object|undefined} - An object containing the cluster and attribute names if the property is found, otherwise undefined.
+     * @description This method iterates through the `properties` object and checks if any property's name matches the provided name. If found, it returns an object with the cluster and attribute names; otherwise, it returns undefined.
+     */
+    getClusterAndAttributeByPropertyName(name) {
+        for (const [clusterName, properties] of Object.entries(this.properties)) {
+            for (const [attribute, property] of Object.entries(properties)) {
+                if (property.name === name) {
+                    return { cluster: clusterName, attribute: attribute };
                 }
             }
         }
         return undefined;
     }
 
-    getConvertedValueForPropertyStandard(Property, anyValue) {  
-        if (Property.blnRead === false) {
+    /**
+     * Converts a value for a standard property.
+     * @param {Object} property - The property object containing metadata about the property.
+     * @param {any} anyValue - The value to convert.
+     * @returns {any|undefined} - The converted value if the property is readable, otherwise undefined.
+     * @description This method checks if the property is readable. If it is, it converts the value based on the property's name. For the "device_name" property, it converts the value from a Buffer to a string. If the property is not readable or does not match any known properties, it returns undefined.
+     */
+    getConvertedValueForPropertyStandard(property, anyValue) {  
+        if (property.read === false) {
             return undefined;
         }   
         else {
@@ -104,36 +148,36 @@ class ConverterStandard {
     }    
 }
 
-/*
-    Converter for the SONOFF SNZB-01P
-*/
+/**
+ * Converter for the SONOFF SNZB-01P
+ */
 class Converter_SONOFFSNZB01P extends ConverterStandard{
     constructor() {
         super();
 
-        this.strPowerType = "battery";
+        this.powerType = "battery";
 
-        this.Properties["genOnOff"] = {
-            strName:        "button",
-            blnStandard:    false,
-            blnNotify:      true,
-            blnRead:        true,
-            blnWrite:       false,
-            anyValue:       ["pressed", "not_pressed", "long_pressed", "double_pressed"],
-            strValueType:   "Options"
+        this.properties["genOnOff"] = {
+            name:        "button",
+            standard:    false,
+            notify:      true,
+            read:        true,
+            write:       false,
+            anyValue:    ["pressed", "not_pressed", "long_pressed", "double_pressed"],
+            valueType:   "Options"
         };
     }
 
-    getConvertedValueForProperty(Property, anyValue, Data) {
-        if (Property.blnRead === false) {
+    getConvertedValueForProperty(property, anyValue, data) {
+        if (property.read === false) {
             return undefined;
         }   
         else {
-            if (Property.blnStandard === true) { // if standard property then use common converter
-                return (this.getConvertedValueForPropertyStandard(Property, anyValue));
+            if (property.standard === true) { // if standard property then use common converter
+                return (this.getConvertedValueForPropertyStandard(property, anyValue));
             }
             else {
-                if (Property.strName === "button") {
+                if (property.name === "button") {
                     if (anyValue === "commandToggle") {
                         return "pressed";
                     }
@@ -155,51 +199,51 @@ class Converter_SONOFFSNZB01P extends ConverterStandard{
     }
 }
 
-/*
-    Converter for the IKEA TRADFRI bulb E27 WW 806lm
-*/
+/**
+ * Converter for the IKEA TRADFRI bulb E27 WW 806lm
+ */
 class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard{
     constructor() {
         super();
 
-        this.strPowerType = "mains";
+        this.powerType = "mains";
 
-        this.Properties["genOnOff"] = new Object();
-        this.Properties["genOnOff"]["onOff"] = {
-            strName:        "state",
-            blnStandard:    false,
-            blnNotify:      false,
-            blnRead:        true,
-            blnWrite:       true,
-            anyValue:       ["on", "off"],
-            strValueType:   "Options"
+        this.properties["genOnOff"] = {};
+        this.properties["genOnOff"]["onOff"] = {
+            name:        "state",
+            standard:    false,
+            notify:      false,
+            read:        true,
+            write:       true,
+            anyValue:    ["on", "off"],
+            valueType:   "Options"
         };
 
-        this.Properties["genLevelCtrl"] = new Object();
-        this.Properties["genLevelCtrl"]["currentLevel"] = {
-            strName:        "brightness",
-            blnStandard:    false,
-            blnNotify:      false,
-            blnRead:        true,
-            blnWrite:       true,
-            anyValue:       0,
-            strValueType:   "Integer"
+        this.properties["genLevelCtrl"] = {};
+        this.properties["genLevelCtrl"]["currentLevel"] = {
+            name:        "brightness",
+            standard:    false,
+            notify:      false,
+            read:        true,
+            write:       true,
+            anyValue:    0,
+            valueType:   "Integer"
         };
     }
 
-    getConvertedValueForProperty(Property, anyValue) {
-        if (Property.blnRead === false) {
+    getConvertedValueForProperty(property, anyValue) {
+        if (property.read === false) {
             return undefined;
         }   
         else {
-            if (Property.blnStandard === true) { // if standard property then use common converter
-                return (this.getConvertedValueForPropertyStandard(Property, anyValue));
+            if (property.standard === true) { // if standard property then use common converter
+                return (this.getConvertedValueForPropertyStandard(property, anyValue));
             }
             else {
-                if (Property.strName === "brightness") {
+                if (property.name === "brightness") {
                     return anyValue;
                 }
-                else if (Property.strName === "state") {
+                else if (property.name === "state") {
                     if (anyValue === 1) {
                         return "on";
                     }
@@ -214,21 +258,21 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard{
         }
     }
 
-    setConvertedValueForProperty(Property, anyValue) {
-        if (Property.blnWrite === false) {
+    setConvertedValueForProperty(property, anyValue) {
+        if (property.write === false) {
             return undefined;
         }
         else {
-            let ValueConverted = {};
-            if (Property.strName === "brightness") {               
-                ValueConverted.strCommand = "moveToLevel";
-                ValueConverted.anyValue   = {"level" : anyValue, "transtime" : 0 };
-                return ValueConverted;
+            let valueConverted = {};
+            if (property.name === "brightness") {               
+                valueConverted.strCommand = "moveToLevel";
+                valueConverted.anyValue   = {"level" : anyValue, "transtime" : 0 };
+                return valueConverted;
             }
-            else if (Property.strName === "state") {
-                ValueConverted.strCommand = anyValue;
-                ValueConverted.anyValue   = {};
-                return ValueConverted;
+            else if (property.name === "state") {
+                valueConverted.strCommand = anyValue;
+                valueConverted.anyValue   = {};
+                return valueConverted;
             }
             else {
                 return undefined;
@@ -237,38 +281,38 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard{
     }
 }
 
-/*
-    Converter for the eWeLink MS01
-*/
+/**
+ * Converter for the eWeLink MS01
+ */
 class Converter_EWELINKMS01 extends ConverterStandard{
     constructor() {
         super();
 
-        this.strPowerType = "battery";
+        this.powerType = "battery";
 
-        this.Properties["ssIasZone"] = {
-            strName:        "motion",
-            blnStandard:    false,
-            blnNotify:      true,
-            blnRead:        true,
-            blnWrite:       false,
-            anyValue:       ["yes", "no"],
-            strValueType:   "Options"
+        this.properties["ssIasZone"] = {
+            name:        "motion",
+            standard:    false,
+            notify:      true,
+            read:        true,
+            write:       false,
+            anyValue:    ["yes", "no"],
+            valueType:   "Options"
         };
     }
 
-    getConvertedValueForProperty(Property, anyValue, Data) {
-        if (Property.blnRead === false) {
+    getConvertedValueForProperty(property, anyValue, data) {
+        if (property.read === false) {
             return undefined;
         }   
         else {
-            if (Property.blnStandard === true) { // if standard property then use common converter
-                return (this.getConvertedValueForPropertyStandard(Property, anyValue));
+            if (property.standard === true) { // if standard property then use common converter
+                return (this.getConvertedValueForPropertyStandard(property, anyValue));
             }
             else {
-                if (Property.strName === "motion") {
+                if (property.name === "motion") {
                     if (anyValue === "commandStatusChangeNotification") {
-                        if (Data.zonestatus === 1) {
+                        if (data.zonestatus === 1) {
                             return "yes"; 
                         }
                         else {
@@ -290,21 +334,31 @@ class Converter_EWELINKMS01 extends ConverterStandard{
 /* -> add more converters here */ 
 
 /*
-  ======================================
-  Converters list class
-  ======================================
+ * =============================================================================================
+ * Converters list class
+ * =====================
 */
+
+/**
+ * Converters class manages a collection of device converters. It allows finding a specific converter by product name and instantiating it.
+ * @class Converters
+ * @description This class is designed to manage different converters for various Bluetooth devices. Each converter is responsible for handling the specific properties and behaviors of a device.
+ */
 class Converters {
     constructor() {
-        this.mapConvertersList = new Map();
-        this.mapConvertersList.set("SNZB-01P", Converter_SONOFFSNZB01P);
-        this.mapConvertersList.set("TRADFRI bulb E27 WW 806lm", Converter_IKEATRADFRIBULBE27WW806LM);
-        this.mapConvertersList.set("MS01", Converter_EWELINKMS01);
+        this.converterMap = new Map();
+        this.converterMap.set("SNZB-01P", Converter_SONOFFSNZB01P);
+        this.converterMap.set("TRADFRI bulb E27 WW 806lm", Converter_IKEATRADFRIBULBE27WW806LM);
+        this.converterMap.set("MS01", Converter_EWELINKMS01);
         /* -> add more converters here */ 
-    } 
-    
-    find(strProductName) {
-        const ConverterClass = this.mapConvertersList.get(strProductName);
+    }
+    /** 
+     * Finds a converter by product name and returns an instance of it.
+     * @param {string} productName - The name of the product to find the converter for.
+     * @returns {ConverterStandard|undefined} An instance of the converter if found, otherwise undefined.
+     */
+    find(productName) {
+        const ConverterClass = this.converterMap.get(productName);
         if (!ConverterClass) {
             return undefined;
         } else {
