@@ -12,7 +12,7 @@ const BRIDGE_PREFIX = "zigbee";
 /**
  * Load  converters for devices
  */
-const { Converters } = require("./converters.js");
+const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**
@@ -165,11 +165,17 @@ async function startBridgeAndServer() {
    * Start ZigBee controller
    */
   async function zigBeeStart() {
-    await zigBee.start();
-    common.conLog("ZigBee: Bridge started", "gre");
-
-    let data       = {};
-    data.status = "online";
+    let data = {};
+    try {
+      await zigBee.start();
+      data.status = "online";
+      common.conLog("ZigBee: Bridge started", "gre");
+    }
+    catch (error) {
+      data.status = "offline";
+      common.conLog("ZigBee: Error while starting ZigBee controller:", "red");
+      common.conLog(error, "std", false);
+    }
     mqttClient.publish("zigbee/bridge/status", JSON.stringify(data)); // publish to MQTT broker
   }
   await zigBeeStart();

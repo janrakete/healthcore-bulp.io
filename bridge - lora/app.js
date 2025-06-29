@@ -12,7 +12,7 @@ const BRIDGE_PREFIX   = "lora";
 /**
  * Load  converters for devices
  */
-const { Converters } = require("./converters.js");
+const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**

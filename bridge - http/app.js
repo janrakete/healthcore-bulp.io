@@ -11,7 +11,7 @@ const BRIDGE_PREFIX = "http";
 /**
  * Load converters for devices
  */
-const { Converters } = require("./converters.js");
+const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**
@@ -46,8 +46,8 @@ async function startBridgeAndServer() {
 
   app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-      let data = {};
-      data.status        = "error";
+      let data    = {};
+      data.status = "error";
       data.error  = "JSON in request is invalid";
       res.json(data);
     }
