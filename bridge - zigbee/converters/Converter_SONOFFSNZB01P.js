@@ -24,13 +24,13 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
         };
     }
 
-    getConvertedValueForProperty(property, anyValue, data) {
+    get(property, anyValue, data) {
         if (property.read === false) {
             return undefined;
         }   
         else {
             if (property.standard === true) { // if standard property then use common converter
-                return (this.getConvertedValueForPropertyStandard(property, anyValue));
+                return (this.getStandard(property, anyValue));
             }
             else {
                 if (property.name === "button") {

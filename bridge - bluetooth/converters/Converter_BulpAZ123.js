@@ -57,13 +57,13 @@ class Converter_BulpAZ123 extends ConverterStandard {
      * @return {any|undefined} - The converted value if the property is readable, otherwise undefined.
      * @description This method checks if the property is readable. If it is, it converts the value based on the property's name.
      */
-    getConvertedValueForProperty(property, value) {
+    get(property, value) {
         if (property.read === false) {
             return undefined;
         }   
         else {
             if (property.standard === true) { // if standard property then use common converter
-                return this.getConvertedValueForPropertyStandard(property, value);
+                return this.getStandard(property, value);
             }
             else {
                 if (property.name === "rotary_switch") {
@@ -108,7 +108,7 @@ class Converter_BulpAZ123 extends ConverterStandard {
      * @return {Buffer|undefined} - The converted value as a Buffer if the property is writable, otherwise undefined.
      * @description This method checks if the property is writable. If it is, it converts the value based on the property's name. 
      */
-    setConvertedValueForProperty(property, value) {
+    set(property, value) {
         if (property.write === false) {
             return undefined;
         }

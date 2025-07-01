@@ -32,9 +32,9 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
      * @return {Array} - An array of objects containing the converted property values.
      * @description This method processes a string of property values, splits it into individual property-value pairs, and converts them based on the defined properties. It returns an array of objects where each object contains a property name and its converted value.
      */   
-    getConvertedValuesForProperties(values) {
-        let propertiesAndValues = [];
-        let propertiesAndValuesConverted = [];
+    get(values) {
+        let propertiesAndValues             = [];
+        let propertiesAndValuesConverted    = [];
 
         // split the input string into an array of property-value pairs
         propertiesAndValues.push({ "heartrate": values.substring(0, 1) });

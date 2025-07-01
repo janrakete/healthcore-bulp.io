@@ -286,18 +286,19 @@ async function startBridgeAndServer() {
     let message                   = {};
     message.deviceID              = data.deviceID;
     message.propertiesAndValues   = [];
+    message.bridge  = BRIDGE_PREFIX;
 
     const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
     if (device) { // if device is in array of connected devices, convert values
 
-      const propertiesAndValues    = device.DeviceConverter.getConvertedValuesForProperties(data.values);
+      const propertiesAndValues    = device.DeviceConverter.get(data.values);
       message.propertiesAndValues  = propertiesAndValues;
     }
     else { // if device is not in array of connected devices, send error message
       common.conLog("LoRa: Device is not connected or registered at server", "red");
     }
 
-    mqttClient.publish("lora/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
   }
 }
   

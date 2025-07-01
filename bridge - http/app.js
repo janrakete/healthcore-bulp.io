@@ -361,12 +361,13 @@ async function startBridgeAndServer() {
     let message                   = {};
     message.deviceID              = data.deviceID;
     message.propertiesAndValues   = [];
+    message.bridge                = BRIDGE_PREFIX;
 
     const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
     if (device) { // if device is in array of connected devices, convert values
       for (const [property, value] of Object.entries(data.values)) { // for each value key in data      
         let propertyAndValue      = {};
-        propertyAndValue[property]  = device.deviceConverter.getConvertedValueForProperty(property, value);
+        propertyAndValue[property]  = device.deviceConverter.get(property, value);
         message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
       }
     }
@@ -374,7 +375,7 @@ async function startBridgeAndServer() {
       common.conLog("HTTP: Device is not connected or registered at server", "red");
     }
 
-    mqttClient.publish("http/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
   }
 }
 

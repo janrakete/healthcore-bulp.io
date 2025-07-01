@@ -98,7 +98,7 @@ async function startMySQLAndServer() {
     * @description This function is called when the MQTT client successfully started.
     */
     function mqttConnect() {
-      mqttClient.subscribe("#", function (error, granted) { // ... and subscribe to all topics
+      mqttClient.subscribe("server/#", function (error, granted) { // ... and subscribe to all topics
       common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
       if (error) {
         common.conLog("MQTT: Error while subscribing:", "red");

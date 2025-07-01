@@ -2,11 +2,6 @@
  * =============================================================================================
  * Bluetooth - Bridge: Bluetooth <-> MQTT
  * ======================================
- * 
- * Main flows:
- * > Powered on and connect to registered devices:
- *   stateChange: Bluetooth state changes (ie.a. turned on) -> send bluetooth/bridge/status (= online) -> server/devices/list (request all registered devices froms server) -> server sends bluetooth/devices/connect with registeredConnect = true -> bluetooth/devices/scan (scans devices for 30 seconds) -> if device is discovered and registered, add to array devicesConnected
- * ======================================
  */
 
 const appConfig       = require("../config");
@@ -155,7 +150,7 @@ async function startBridgeAndServer() {
                 
                 delete data.deviceRaw; // remove device object from data, because stringify will not work with object
                 delete data.deviceConverter; // remove device converter from data, because stringify will not work with object
-                mqttClient.publish("bluetooth/device/disconnected", JSON.stringify(data)); // publish disconnected device to MQTT broker
+                mqttClient.publish("server/device/disconnected", JSON.stringify(data)); // publish disconnected device to MQTT broker
               });
 
               deviceRaw.discoverAllServicesAndCharacteristics(function (error, services) { // discover services and characteristics of device
@@ -187,12 +182,13 @@ async function startBridgeAndServer() {
                                   let message                         = {};
                                   message.deviceID                    = data.deviceID;
                                   message.properties                  = [];
+                                  message.bridge                      = BRIDGE_PREFIX;
                                  
                                   let propertyAndValue                = {};
-                                  propertyAndValue[property.name]  = data.deviceConverter.getConvertedValueForProperty(property, value); 
+                                  propertyAndValue[property.name]  = data.deviceConverter.get(property, value); 
                                   message.properties.push(propertyAndValue); // add property to array of properties for return
 
-                                  mqttClient.publish("bluetooth/device/values", JSON.stringify(message)); // ... publish to MQTT broker    
+                                  mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker    
                                 }); 
                               }
                             });
@@ -206,7 +202,7 @@ async function startBridgeAndServer() {
                   }
 
                   common.conLog("Bluetooth: Device connected: " + data.deviceID + " (" + data.nameLocal + ")", "gre");
-                  mqttClient.publish("bluetooth/device/connected", JSON.stringify(data)); // publish connected device to MQTT broker
+                  mqttClient.publish("server/device/connected", JSON.stringify(data)); // publish connected device to MQTT broker
 
                   data.deviceRaw = deviceRaw; // save device object for later use
                   bridgeStatus.devicesConnected.push(data); // add device to array of connected devices
@@ -224,7 +220,7 @@ async function startBridgeAndServer() {
       }
     }
     else {
-      mqttClient.publish("bluetooth/device/discovered", JSON.stringify(data)); // publish new discovered device to MQTT broker
+      mqttClient.publish("server/device/discovered", JSON.stringify(data)); // publish new discovered device to MQTT broker
     }
   });
 
@@ -239,16 +235,19 @@ async function startBridgeAndServer() {
   bluetooth.on("stateChange", function (state) {
     common.conLog("Bluetooth: State has been changed", "yel");
 
-    let message  = {};  
+    let message     = {};  
+    message.bridge  = BRIDGE_PREFIX;
+
     if (state == "poweredOn") { // only if Bluetooth is powered on ...
       message.status = "online"; // ... set status to online
+      mqttBridgeStatus(message);
     }
     else {
       bluetooth.stopScanning();    
       message.status                         = "offline";
       bridgeStatus.devicesRegisteredConnect  = false;
     }
-    mqttClient.publish("bluetooth/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
   /**
@@ -312,15 +311,16 @@ async function startBridgeAndServer() {
       bluetooth.startScanning();
 
       message.scanning                        = true;
+      message.bridge                          = BRIDGE_PREFIX;
       bridgeStatus.devicesRegisteredConnect   = data.registeredConnect;
 
-      mqttClient.publish("bluetooth/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
+      mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
       
       setTimeout(() => { // end scanning after duration
         message.scanning                         = false;
         bridgeStatus.devicesRegisteredConnect    = false; 
 
-        mqttClient.publish("bluetooth/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
+        mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
         bluetooth.removeAllListeners("discover");
         bluetooth.stopScanning();
       }, data.duration * 1000);
@@ -338,7 +338,7 @@ async function startBridgeAndServer() {
   function mqttBridgeStatus(data) {
     if (data.status === "online") { // if Bluetooth is online ... 
       let message         = {};
-      message.bridge  = BRIDGE_PREFIX;
+      message.bridge      = BRIDGE_PREFIX;
       common.conLog("Bluetooth: Bridge is online - request all registered bluetooth devices from server", "yel");
 
       mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... then request all registered Bluetooth devices from server via MQTT broker
@@ -356,7 +356,7 @@ async function startBridgeAndServer() {
 
     common.conLog("Bluetooth: Request to connect to devices", "yel");
     
-    let message                   = {};
+    let message                = {};
     message.duration           = 30;
     message.registeredConnect  = true;
     mqttClient.publish("bluetooth/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker    
@@ -382,7 +382,7 @@ async function startBridgeAndServer() {
         else {
           bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of devices registed at server
           common.conLog("Bluetooth: Device disconnected and removed: " + data.deviceID, "gre");
-          mqttClient.publish("bluetooth/device/removed", JSON.stringify(data)); // publish removed device to MQTT broker
+          mqttClient.publish("server/device/removed", JSON.stringify(data)); // publish removed device to MQTT broker
         }
       });
     }
@@ -437,7 +437,7 @@ async function startBridgeAndServer() {
 
                     const propertyFound  = data.properties.find(propertySearch => propertySearch.hasOwnProperty(property.name)); // get property from array of properties that should be set
                     const anyValue       = propertyFound[property.name]; // get value from property
-                    characteristic.write(device.deviceConverter.setConvertedValueForProperty(property, anyValue), false, function (error) {
+                    characteristic.write(device.deviceConverter.set(property, anyValue), false, function (error) {
                       if (error) {
                         common.conLog("Bluetooth: Error while writing characteristic:", "red");
                         common.conLog(error, "std", false);
@@ -510,7 +510,7 @@ async function startBridgeAndServer() {
                   }
                   else {
                     let propertyAndValue                = {};
-                    propertyAndValue[property.name]  = device.deviceConverter.getConvertedValueForProperty(property, value);
+                    propertyAndValue[property.name]     = device.deviceConverter.get(property, value);
                     message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
                     resolve();
                   }
@@ -529,7 +529,7 @@ async function startBridgeAndServer() {
       }
       
       await Promise.all(promises); // wait for all read operations to complete before publishing
-      mqttClient.publish("bluetooth/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+      mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");

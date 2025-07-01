@@ -33,7 +33,7 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
      * @return {any} - The converted value based on the property's type and read status.
      * @description This method checks if the property is readable. If it is, it converts the value based on the property's name. For the "voltage" property, it multiplies the value by 100. For the "switch" property, it converts numeric values to string representations of their states. If the property is not readable or does not match any known properties, it returns undefined.
      */
-    getConvertedValueForProperty(propertyName, value) {
+    get(propertyName, value) {
         const property = this.getPropertyByName(propertyName);
 
         if (property.read === false) {

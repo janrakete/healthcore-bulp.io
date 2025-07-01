@@ -1,0 +1,10 @@
+{
+    "vsmqtt.brokerProfiles": [
+        {
+            "name": "bulp.io",
+            "host": "mqtt://localhost",
+            "port": 9999,
+            "clientId": "vsmqtt_client_4cdf"
+        }
+    ]
+}

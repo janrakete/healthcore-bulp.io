@@ -203,6 +203,7 @@ async function startBridgeAndServer() {
     message.productName        = data.device.modelID;
     message.softwareBuildID    = data.device.softwareBuildID;
     message.type               = data.device.type;
+    message.bridge             = BRIDGE_PREFIX;
 
     if (message.interviewCompleted) { // ... and has been interviewed ...
       common.conLog("ZigBee: device has joined and been interviewed", "yel");
@@ -272,6 +273,7 @@ async function startBridgeAndServer() {
     message.deviceID     = data.device.ieeeAddr;
     message.productName  = data.device.modelID;
     message.properties   = [];
+    message.bridge       = BRIDGE_PREFIX;
     
     common.conLog("ZigBee: Device " + message.deviceID + " sends message", "yel");
 
@@ -284,7 +286,7 @@ async function startBridgeAndServer() {
       const property = deviceConverter.getPropertyByClusterName(data.cluster);
       if (property) {
         let propertyAndValue             = {};
-        propertyAndValue[property.name]  = deviceConverter.getConvertedValueForProperty(property, data.type, data.data); // get converted value for property
+        propertyAndValue[property.name]  = deviceConverter.get(property, data.type, data.data); // get converted value for property
         message.properties.push(propertyAndValue); // add property to array of properties for return
       }
       else {
@@ -296,7 +298,7 @@ async function startBridgeAndServer() {
       message.Message = "Device not supported";
     }
 
-    mqttClient.publish("zigbee/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
   /**
@@ -311,7 +313,7 @@ async function startBridgeAndServer() {
 
     let message      = {};
     message.scanning = data.permitted;
-    mqttClient.publish("zigbee/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
   /**
@@ -324,7 +326,7 @@ async function startBridgeAndServer() {
 
     let message    = {};
     message.status = "offline";
-    mqttClient.publish("zigbee/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
   /**
@@ -424,6 +426,8 @@ async function startBridgeAndServer() {
    */
   function mqttDeviceRemove(data) {
     common.conLog("ZigBee: Request for removing " + data.deviceID, "yel");
+    
+    data.bridge = BRIDGE_PREFIX;
 
     const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
@@ -434,7 +438,7 @@ async function startBridgeAndServer() {
       bridgeStatus.devicesConnected           = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected devices
       common.conLog("ZigBee: Device disconnected and removed: " + data.deviceID, "gre");
 
-      mqttClient.publish("zigbee/device/removed", JSON.stringify(data)); // publish removed device to MQTT broker
+      mqttClient.publish("server/device/removed", JSON.stringify(data)); // publish removed device to MQTT broker
     }
   }
 
@@ -450,46 +454,47 @@ async function startBridgeAndServer() {
     let message                   = {};
     message.deviceID              = data.deviceID;
     message.propertiesAndValues   = [];
+    message.bridge                = BRIDGE_PREFIX;
 
     if (device) { // if device is in array of connected devices, try do get desired values
       if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable and able to read values
-      common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
-      if (await deviceIsPingable(device)) {
+        common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
+        if (await deviceIsPingable(device)) {
 
-        if (!data.properties) { // if no properties are defined, then read all properties
-          data.properties = []; // create array for properties
-          for (const [clusterName, properties] of Object.entries(device.deviceConverter.properties)) { // for each cluster in converter
-            for (const [attributeName, property] of Object.entries(properties)) { // for each property in cluster
-              data.properties.push(property.name);
+          if (!data.properties) { // if no properties are defined, then read all properties
+            data.properties = []; // create array for properties
+            for (const [clusterName, properties] of Object.entries(device.deviceConverter.properties)) { // for each cluster in converter
+              for (const [attributeName, property] of Object.entries(properties)) { // for each property in cluster
+                data.properties.push(property.name);
+              }
             }
           }
-        }
 
-        if (data.properties) { // if properties are defined, then read these properties
-          for (const propertyName of data.properties) { // for each property in requested properties
-            const cluster = device.deviceConverter.getClusterAndAttributeByPropertyName(propertyName); // get cluster and attribute by property name from converter
-            
-            if (cluster === undefined) { // if cluster is not found, log error
-              common.conLog("ZigBee: No cluster found for property " + propertyName, "red");
+          if (data.properties) { // if properties are defined, then read these properties
+            for (const propertyName of data.properties) { // for each property in requested properties
+              const cluster = device.deviceConverter.getClusterAndAttributeByPropertyName(propertyName); // get cluster and attribute by property name from converter
+              
+              if (cluster === undefined) { // if cluster is not found, log error
+                common.conLog("ZigBee: No cluster found for property " + propertyName, "red");
+              }
+              else {
+                const attribute                 = await device.endpoint.read(cluster.cluster, [cluster.attribute]);
+                let propertyAndValue            = {};
+                propertyAndValue[propertyName]  = device.deviceConverter.get(device.deviceConverter.getPropertyByAttributeName(cluster.attribute), attribute[cluster.attribute]); // get converted value for property
+                message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
+              }
             }
-            else {
-              const attribute                 = await device.endpoint.read(cluster.cluster, [cluster.attribute]);
-              let propertyAndValue            = {};
-              propertyAndValue[propertyName]  = device.deviceConverter.getConvertedValueForProperty(device.deviceConverter.getPropertyByAttributeName(cluster.attribute), attribute[cluster.attribute]); // get converted value for property
-              message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
-            }
+            mqttClient.publish("zigbee/device/values", JSON.stringify(message)); // ... publish to MQTT broker
           }
-          mqttClient.publish("zigbee/device/values", JSON.stringify(message)); // ... publish to MQTT broker
         }
-      }
-      else {
-        common.conLog("... but " + device.deviceID + " was not pingable, so send empty values", "red", false);
-        mqttClient.publish("zigbee/device/values", JSON.stringify(message)); // ... publish to MQTT broker
-      }
+        else {
+          common.conLog("... but " + device.deviceID + " was not pingable, so send empty values", "red", false);
+          mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+        }
       }
       else {
         common.conLog("... but " + device.deviceID + " is not wired, so send empty values", "red", false);
-        mqttClient.publish("zigbee/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+        mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
       }
     }
   }  
@@ -521,7 +526,7 @@ async function startBridgeAndServer() {
               else {
                 if (property.write === true) { // if property is writable, then write value
                   common.conLog("ZigBee: Set value for " + propertyName + " to " + value, "gre", false);
-                  const valueConverted = device.deviceConverter.setConvertedValueForProperty(property, value);
+                  const valueConverted = device.deviceConverter.set(property, value);
                   await device.endpoint.command(property.cluster, valueConverted.command, valueConverted.anyValue,  { disableDefaultResponse: true });
                 }
                 else {

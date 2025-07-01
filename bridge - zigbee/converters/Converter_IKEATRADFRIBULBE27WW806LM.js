@@ -36,13 +36,13 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
         };
     }
 
-    getConvertedValueForProperty(property, anyValue) {
+    get(property, anyValue) {
         if (property.read === false) {
             return undefined;
         }   
         else {
             if (property.standard === true) { // if standard property then use common converter
-                return (this.getConvertedValueForPropertyStandard(property, anyValue));
+                return (this.getStandard(property, anyValue));
             }
             else {
                 if (property.name === "brightness") {
@@ -63,7 +63,7 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
         }
     }
 
-    setConvertedValueForProperty(property, anyValue) {
+    set(property, anyValue) {
         if (property.write === false) {
             return undefined;
         }

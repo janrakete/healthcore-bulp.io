@@ -63,7 +63,7 @@ class ConverterStandard {
      * @return {any|undefined} - The converted value if the property is readable, otherwise undefined.
      * @description This method checks if the property is readable. If it is, it converts the value based on the property's name. For the "device_name" property, it converts the value from a Buffer to a string. If the property is not readable or does not match any known properties, it returns undefined.
      */  
-    getConvertedValueForPropertyStandard(property, value) {  
+    getStandard(property, value) {  
         if (property.read === false) {
             return undefined;
         }   
