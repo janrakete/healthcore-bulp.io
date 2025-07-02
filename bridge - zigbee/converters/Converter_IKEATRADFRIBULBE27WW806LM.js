@@ -70,12 +70,12 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
         else {
             let valueConverted = {};
             if (property.name === "brightness") {               
-                valueConverted.strCommand = "moveToLevel";
+                valueConverted.command = "moveToLevel";
                 valueConverted.anyValue   = {"level" : anyValue, "transtime" : 0 };
                 return valueConverted;
             }
             else if (property.name === "state") {
-                valueConverted.strCommand = anyValue;
+                valueConverted.command = anyValue;
                 valueConverted.anyValue   = {};
                 return valueConverted;
             }

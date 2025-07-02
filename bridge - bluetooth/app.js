@@ -466,7 +466,7 @@ async function startBridgeAndServer() {
         await Promise.all(promises); // wait for all write operations to complete before publishing
   
         data.properties = data.properties.map(propertyWithValue => Object.keys(propertyWithValue)[0]); // get only keys of properties that were set
-        mqttDeviceGet(data); // ... and publish new values of device to MQTT broker 
+        mqttDeviceGet(data); // ... and get values of properties that were set
       }
       else { 
         common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");

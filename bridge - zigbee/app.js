@@ -166,6 +166,7 @@ async function startBridgeAndServer() {
    */
   async function zigBeeStart() {
     let data = {};
+    data.bridge = BRIDGE_PREFIX;
     try {
       await zigBee.start();
       data.status = "online";
@@ -176,7 +177,7 @@ async function startBridgeAndServer() {
       common.conLog("ZigBee: Error while starting ZigBee controller:", "red");
       common.conLog(error, "std", false);
     }
-    mqttClient.publish("zigbee/bridge/status", JSON.stringify(data)); // publish to MQTT broker
+    mqttClient.publish("server/bridge/status", JSON.stringify(data)); // publish to MQTT broker
   }
   await zigBeeStart();
 
@@ -259,6 +260,7 @@ async function startBridgeAndServer() {
   
     let message      = {};
     message.deviceID = deviceID;
+    message.bridge   = BRIDGE_PREFIX;
     mqttClient.publish("zigbee/device/announced", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
@@ -313,6 +315,7 @@ async function startBridgeAndServer() {
 
     let message      = {};
     message.scanning = data.permitted;
+    message.bridge   = BRIDGE_PREFIX;
     mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
@@ -326,6 +329,7 @@ async function startBridgeAndServer() {
 
     let message    = {};
     message.status = "offline";
+    message.bridge = BRIDGE_PREFIX;    
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
@@ -427,8 +431,7 @@ async function startBridgeAndServer() {
   function mqttDeviceRemove(data) {
     common.conLog("ZigBee: Request for removing " + data.deviceID, "yel");
     
-    data.bridge = BRIDGE_PREFIX;
-
+    data.bridge  = BRIDGE_PREFIX;
     const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
     if (device) { // if device is in array of connected devices, try do disconnect
@@ -484,7 +487,7 @@ async function startBridgeAndServer() {
                 message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
               }
             }
-            mqttClient.publish("zigbee/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+            mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
           }
         }
         else {

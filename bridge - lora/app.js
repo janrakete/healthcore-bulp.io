@@ -190,7 +190,7 @@ async function startBridgeAndServer() {
 
           common.conLog("LoRa: Request for sending values of device " + deviceID, "yel", false);
 
-          mqttClient.publish("lora/device/get", JSON.stringify(message)); // ... publish to MQTT broker
+          mqttDeviceGet(message); 
         }
         else { // if device is not in array of connected devices, send error message
           common.conLog("LoRa: Device is not connected or registered at server", "red");

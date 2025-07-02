@@ -254,7 +254,7 @@ async function startBridgeAndServer() {
 
           common.conLog("HTTP: Request for sending values of device " + message.deviceID, "yel", false);
 
-          mqttClient.publish("http/device/get", JSON.stringify(message)); // ... publish to MQTT broker
+          mqttDeviceGet(message);
           data.status = "ok";
         }
         else { // if device is not in array of connected devices, send error message
