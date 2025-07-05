@@ -19,13 +19,13 @@ Let’s democratize and de-monopolize the healthcare sector.
 
 -----------
 
-🏗️ [Architecure](#%EF%B8%8F-architecture)
-💻 Installation (software)
-🔧 Installation (hardware)
-📁 Folder structure
-📡 MQTT topics and messages
-🧩 Own converters
-🔌 API communication
+### 🏗️ [Architecure](#%EF%B8%8F-architecture)
+### 💻 [Installation (software)](#-installation-software)
+### 🔧 [Installation (hardware)](#-installation-hardware)
+### 📁 [Folder structure](#-folder-structure)
+### 📡 [MQTT topics and messages](#-mqtt-topics-and-messages)
+### 🧩 [Own converters](#-own-converters)
+### 🔌 [API communication](#-api-communication)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
