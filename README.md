@@ -1,9 +1,9 @@
 # healthcore.dev by bulp.io
 Hi.
 
-Welcome to healthcore.dev!
+Welcome to healthcore.dev❗️
 
-But wait: **what the hell is healthcore.dev**?
+But wait: **what the hell is healthcore.dev**❓
 
 healthcore.dev (or simply healthcore) is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members.
 
@@ -17,15 +17,15 @@ Let’s democratize and de-monopolize the healthcare sector.
 
 🤘HEALTHCORE!!!🤘
 
------------
+## 👉 Read more about ...
 
-### 🏗️ [Architecure](#%EF%B8%8F-architecture)
-### 💻 [Installation (software)](#-installation-software)
-### 🔧 [Installation (hardware)](#-installation-hardware)
-### 📁 [Folder structure](#-folder-structure)
-### 📡 [MQTT topics and messages](#-mqtt-topics-and-messages)
-### 🧩 [Own converters](#-own-converters)
-### 🔌 [API communication](#-api-communication)
+- 🏗️ [Architecture](#%EF%B8%8F-architecture)
+- 💻 [Installation (software)](#-installation-software)
+- 🔧 [Installation (hardware)](#-installation-hardware)
+- 📁 [Folder structure](#-folder-structure)
+- 📡 [MQTT topics and messages](#-mqtt-topics-and-messages)
+- 🧩 [Own converters](#-own-converters)
+- 🔌 [API communication](#-api-communication)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
