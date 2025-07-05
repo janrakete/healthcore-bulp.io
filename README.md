@@ -13,6 +13,21 @@ Healthcore can **run on any hardware** — a Raspberry Pi, a PC, or any other de
 
 Just imagine something like Home Assistant or OpenHAB, but specialized for healthcare. **That’s exactly what this is**.
 
+Let’s democratize and de-monopolize the healthcare sector.
+
+🤘HEALTHCORE!!!🤘
+
+-----------
+
+🏗️ Architecure
+💻 Installation (software)
+🔧 Installation (hardware)
+📁 Folder structure
+📡 MQTT topics and messages
+🧩 Own converters
+🔌 API communication
+
+## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
 ![alt text](architecture.png "bulp.io architecture")
 
@@ -20,15 +35,21 @@ In the middle — that’s the healthcore. The healthcore consists of several No
 - Bluetooth
 - ZigBee
 - Thread
-- LoRa(WAN)
+- LoRa P2P
 - HTTP
 
 And now the best part: you can **add your own devices to the healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
 
 On the left, you can see how various interfaces communicate bi-directionally with the healthcore via a standardized API and visualize the data, for example. Just **bring your own interface**.
 
-Stay tuned. More info and code V0.1 is coming soon.
+## 💻 Installation (software)
 
-Let’s democratize and de-monopolize the healthcare sector.
+## 🔧 Installation (hardware)
 
-🤘HEALTHCORE!!!🤘
+## 📁 Folder structure
+
+## 📡 MQTT topics and messages
+
+## 🧩 Own converters
+
+## 🔌 API communication
