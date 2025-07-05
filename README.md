@@ -19,7 +19,7 @@ Let’s democratize and de-monopolize the healthcare sector.
 
 -----------
 
-🏗️ Architecure
+🏗️ [Architecure](#%EF%B8%8F-architecture)
 💻 Installation (software)
 🔧 Installation (hardware)
 📁 Folder structure
