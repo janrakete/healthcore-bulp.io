@@ -104,35 +104,50 @@ node "bridge - http/app.js"
 - **Connections**  
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
-
-
 ## 🧩 Own converters
-1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MySensorX.js`).
+The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
+
+1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MyConverter.js`).
 2. **Extend** `ConverterStandard`:
 
-   ```js
-   const { ConverterStandard } = require("./ConverterStandard.js");
+   In `Converter_MyConverter.js`, import the base and declare your class:  
 
-   class Converter_MySensorX extends ConverterStandard {
-     static productName = "MySensor X";    // exactly match the device’s product name
+   ```js
+   const { ConverterStandard } = require("../ConverterStandard.js");
+
+   class Converter_MyConverter extends ConverterStandard {
+     // Must exactly match the `productName` advertised by the BLE peripheral
+     static productName = "My Converter";
+
      constructor() {
        super();
-       // define mapping:
+       // Map friendly names to BLE service & characteristic UUIDs
        this.properties = {
-         temperature: { uuid: "xxxx" },
-         humidity:    { uuid: "yyyy" }
+         temperature: { service: "181A", characteristic: "2A6E" },
+         humidity:    { service: "181A", characteristic: "2A6F" },
+         battery:     { service: "180F", characteristic: "2A19" }
        };
      }
-     // implement conversion if needed
-     get(property, rawValue) {
-       if (property.name === "temperature") {
-         return rawValue / 100; // example
+
+     /**
+      * Override `get` when raw values need custom conversion logic.
+      * @param {Object} propDescriptor  One of the entries from this.properties
+      * @param {Buffer}    rawBuffer     Raw data read from the characteristic
+      * @returns Parsed JavaScript value (number, string, etc.)
+      */
+     get(propDescriptor, rawBuffer) {
+       const uuid = propDescriptor.characteristic;
+       // Example: temperature is uint16 in hundredths of °C
+       if (uuid === "2A6E") {
+         // rawBuffer.readUInt16LE returns an integer; divide by 100 to get °C
+         return rawBuffer.readUInt16LE(0) / 100;
        }
-       return super.getStandard(property, rawValue);
+       // Fallback to standard conversions (e.g., battery, humidity)
+       return super.getStandard(propDescriptor, rawBuffer);
      }
    }
-   module.exports = { Converter_MySensorX };
-   ```
+
+   module.exports = { Converter_MyConverter };
 
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
