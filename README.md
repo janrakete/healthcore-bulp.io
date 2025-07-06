@@ -21,9 +21,8 @@ Let’s democratize and de-monopolize the healthcare sector.
 
 - 🏗️ [Architecture](#%EF%B8%8F-architecture)
 - 💻 [Installation (software)](#-installation-software)
-- 🔧 [Installation (hardware)](#-installation-hardware)
 - 📁 [Folder structure](#-folder-structure)
-- 📡 [MQTT topics and messages](#-mqtt-topics-and-messages)
+- 🔧 [Installation (hardware)](#-installation-hardware)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
 
@@ -46,13 +45,13 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 
 **Prerequisites**
 - Node.js (v22 or higher) and npm
-- MySQL or compatible; client tools for schema import
+- MySQL database; client tools for schema import
 
 **Project setup**
 1. Clone/download the repository and `cd` into its root.
-2. Copy `.env` and (optionally) create `.env.local` to override defaults; fill in:
-   - Database credentials: `CONF_dbHost`, `CONF_dbName`, `CONF_dbUser`, `CONF_dbPass`, `CONF_dbPort`
-   - Adapter paths: `CONF_zigBeeAdapterPort`, `CONF_loRaAdapterPath`, etc.
+2. Create `.env.local` to override defaults; fill in:
+   - MySQL database credentials: `CONF_dbHost`, `CONF_dbName`, `CONF_dbUser`, `CONF_dbPass`, `CONF_dbPort`
+   - Adapter paths: `CONF_zigBeeAdapterPort`, `CONF_zigBeeAdapterName`, `CONF_loRaAdapterPath`, 
 3. Install dependencies:
    ```bash
    npm install
@@ -67,38 +66,75 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 # MQTT broker
 node broker/app.js
 
+# Server
+node server/app.js
+
 # Bridges
 node "bridge - bluetooth/app.js"
 node "bridge - zigbee/app.js"
 node "bridge - lora/app.js"
 node "bridge - http/app.js"
 
-# Server
-node server/app.js
 ```
-
-## 🔧 Installation (hardware)
 
 ## 📁 Folder structure
 ```plaintext
-healthcore.dev/
 ├── broker/               # MQTT broker
 ├── server/               # Server
-│   ├── routes/           # Routes for communication  
-│   └── sse/
+│   ├── routes/           # Routes for communication Server ↔ Interface via API 
+│   └── sse/              # Routes for communication Server ↔ Interface via SSE (Server-Sent Events)
 ├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
-│   └── converters/
+│   └── converters/       # Common and own converters
 ├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
-│   └── converters/
+│   └── converters/       # Common and own converters
 ├── bridge - lora/        # LoRa ↔ MQTT bridge
-│   └── converters/
+│   └── converters/       # Common and own converters
 ├── bridge - http/        # HTTP ↔ MQTT bridge
-│   └── converters/
-└── test_devices/         # Example device firmware (Arduino .ino)
+│   └── converters/       # Common and own converters
+└── test_devices/         # Example device firmware (for Arduino)
 ```
 
-## 📡 MQTT topics and messages
+## 🔧 Installation (hardware)
+- **Host platform**  
+  - Raspberry Pi 4 or (or better) or any Linux/Windows PC with network access
+- **Adapters**  
+  - **Bluetooth**: Built-in BLE or USB dongle  
+  - **ZigBee**: USB coordinator (e.g. CC2531, ConBee II, Sonoff Zigbee 3.0 USB stick)  
+  - **LoRa**: USB or serial LoRa adapter (e.g. Dragino LA66 LoRaWAN USB Adapter)
+- **Connections**  
+  - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
+
+
 
 ## 🧩 Own converters
+1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MySensorX.js`).
+2. **Extend** `ConverterStandard`:
+
+   ```js
+   const { ConverterStandard } = require("./ConverterStandard.js");
+
+   class Converter_MySensorX extends ConverterStandard {
+     static productName = "MySensor X";    // exactly match the device’s product name
+     constructor() {
+       super();
+       // define mapping:
+       this.properties = {
+         temperature: { uuid: "xxxx" },
+         humidity:    { uuid: "yyyy" }
+       };
+     }
+     // implement conversion if needed
+     get(property, rawValue) {
+       if (property.name === "temperature") {
+         return rawValue / 100; // example
+       }
+       return super.getStandard(property, rawValue);
+     }
+   }
+   module.exports = { Converter_MySensorX };
+   ```
+
+3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
 ## 🔌 API communication
+Coming soon
