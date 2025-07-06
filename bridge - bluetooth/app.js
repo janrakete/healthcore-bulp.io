@@ -36,7 +36,7 @@ async function startBridgeAndServer() {
 
   const server = require("http").createServer(app);
   server.listen(appConfig.CONF_portBridgeBluetooth, function () {
-    common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeBluetooth); // show bulp logo
+    common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeBluetooth); // show logo
   });
 
   /**

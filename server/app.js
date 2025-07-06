@@ -81,7 +81,7 @@ async function startMySQLAndServer() {
      */
     const server = require("http").createServer(app);
     server.listen(appConfig.portServer, function () {
-      common.logoShow("Server",             appConfig.CONF_portServer); // show bulp logo
+      common.logoShow("Server",             appConfig.CONF_portServer); // show logo
       common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
       common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
     });

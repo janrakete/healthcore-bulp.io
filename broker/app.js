@@ -23,7 +23,7 @@ async function startBroker() {
     console.log(common);
 
     server.listen(appConfig.CONF_portBroker, function() {
-        common.logoShow("MQTT Broker", appConfig.CONF_portBroker); // show bulp logo
+        common.logoShow("MQTT Broker", appConfig.CONF_portBroker); // show logo
     });
     
     /**

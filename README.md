@@ -44,9 +44,58 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 
 ## 💻 Installation (software)
 
+**Prerequisites**
+- Node.js (v22 or higher) and npm
+- MySQL or compatible; client tools for schema import
+
+**Project setup**
+1. Clone/download the repository and `cd` into its root.
+2. Copy `.env` and (optionally) create `.env.local` to override defaults; fill in:
+   - Database credentials: `CONF_dbHost`, `CONF_dbName`, `CONF_dbUser`, `CONF_dbPass`, `CONF_dbPort`
+   - Adapter paths: `CONF_zigBeeAdapterPort`, `CONF_loRaAdapterPath`, etc.
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Import the database schema:
+   ```bash
+   mysql -u <user> -p <db_name> < healthcore_db.sql
+   ```
+
+**Start services** (each in its own terminal or managed via a process manager):
+```bash
+# MQTT broker
+node broker/app.js
+
+# Bridges
+node "bridge - bluetooth/app.js"
+node "bridge - zigbee/app.js"
+node "bridge - lora/app.js"
+node "bridge - http/app.js"
+
+# Server
+node server/app.js
+```
+
 ## 🔧 Installation (hardware)
 
 ## 📁 Folder structure
+```plaintext
+healthcore.dev/
+├── broker/               # MQTT broker
+├── server/               # Server
+│   ├── routes/           # Routes for communication  
+│   └── sse/
+├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
+│   └── converters/
+├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
+│   └── converters/
+├── bridge - lora/        # LoRa ↔ MQTT bridge
+│   └── converters/
+├── bridge - http/        # HTTP ↔ MQTT bridge
+│   └── converters/
+└── test_devices/         # Example device firmware (Arduino .ino)
+```
 
 ## 📡 MQTT topics and messages
 

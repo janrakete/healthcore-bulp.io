@@ -134,16 +134,18 @@ class Translations {
  */
 function logoShow(bridge, port) {
     console.clear();
-    conLog("=================================                    ", "mag", false);
-    conLog("   _         _          _                            ", "mag", false);
-    conLog("  | |_  _ _ | | ___    |_| ___                       ", "mag", false);
-    conLog("  | . || | || || . | _ | || . |                      ", "mag", false);
-    conLog("  |___||___||_||  _||_||_||___|                      ", "mag", false);
-    conLog("               |_|                                   ", "mag", false);
-    conLog("                                                     ", "mag", false);
-    conLog("  Bridge or Server: " + bridge                       , "mag", false);
-    conLog("  Port: " + port                                     , "mag", false);
-    conLog("=================================                    ", "mag", false);
+    conLog("================================================================     ", "mag", false);
+    conLog("   _   _ _____    _    _   _____ _   _  ____ ___  ____  _____        ", "mag", false);
+    conLog("  | | | | ____|  / \\  | | |_   _| | | |/ ___/ _ \\|  _ \\| ____|    ", "mag", false);
+    conLog("  | |_| |  _|   / _ \\ | |   | | | |_| | |  | | | | |_) |  _|        ", "mag", false);
+    conLog("  |  _  | |___ / ___ \\| |___| | |  _  | |__| |_| |  _ <| |___       ", "mag", false);
+    conLog("  |_| |_|_____/_/   \\_\\_____|_| |_| |_|\\____\\___/|_| \\_\\_____| ", "mag", false);
+    conLog("                                                                     ", "mag", false);
+    conLog("  by bulp.io					                                     ", "mag", false);
+    conLog("                                                                     ", "mag", false);
+    conLog("  Bridge or Server: " + bridge                                        , "mag", false);
+    conLog("  Port: " + port                                                      , "mag", false);
+    conLog("================================================================     ", "mag", false);
 }
 
 module.exports = { conLog, Translations, logoShow, pause };

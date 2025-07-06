@@ -35,7 +35,7 @@ async function startBridgeAndServer() {
 
   const server = require("http").createServer(app);
   server.listen(appConfig.CONF_portBridgeLoRa, function () {
-    common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeLoRa); // show bulp logo
+    common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeLoRa); // show logo
   });
 
   /**
