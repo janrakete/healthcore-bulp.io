@@ -146,7 +146,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
           // ...
       }
 
-      // Converts a raw value from the device into a higher-level representation, based on the property metadata.
+      // GET: Converts a raw value from the device into a higher-level representation, based on the property metadata.
       get(property, value) {
           if (property.read === false) {
             return undefined; // property is not readable, so return undefined
@@ -176,7 +176,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
           }
       }
 
-      // Converts a higher-level value into a format suitable for writing to the device, based on the property metadata.
+      // SET: Converts a higher-level value into a format suitable for writing to the device, based on the property metadata.
       set(property, value) {
           if (property.write === false) {
               return undefined; // if property is not writable, so return undefined
