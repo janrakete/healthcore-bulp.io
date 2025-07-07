@@ -113,41 +113,118 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
    In `Converter_MyConverter.js`, import the base and declare your class:  
 
    ```js
-   const { ConverterStandard } = require("../ConverterStandard.js");
+const { ConverterStandard } = require("./ConverterStandard.js");
 
-   class Converter_MyConverter extends ConverterStandard {
-     // Must exactly match the `productName` advertised by the BLE peripheral
-     static productName = "My Converter";
+class Converter_BulpAZ123 extends ConverterStandard {
+    static productName = "bulp-AZ-123";
 
-     constructor() {
-       super();
-       // Map friendly names to BLE service & characteristic UUIDs
-       this.properties = {
-         temperature: { service: "181A", characteristic: "2A6E" },
-         humidity:    { service: "181A", characteristic: "2A6F" },
-         battery:     { service: "180F", characteristic: "2A19" }
-       };
+    constructor() {
+        super();
+
+        this.powerType = "wire";
+
+        this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
+            name:        "rotary_switch",
+            notify:      true,
+            read:        true,
+            write:       false,
+            anyValue:    0,
+            valueType:   "Integer"
+        };
+
+        this.properties["19b10000e8f2537e4f6cd104768a1218"] = {
+            name:        "speaker",
+            notify:      false,
+            read:        true,
+            write:       true,
+            anyValue:    ["on", "off"],
+            valueType:   "Options"
+        };
+    }
+
+    get(property, value) {
+        if (property.read === false) {
+            return undefined;
+        }   
+        else {
+            if (property.standard === true) { // if standard property then use common converter
+                return this.getStandard(property, value);
+            }
+            else {
+                if (property.name === "rotary_switch") {
+                    const buf = Buffer.from(value);
+                    return buf[0];
+                }
+                else if (property.name === "button") {
+                    if (value[0] === 1) {
+                        return "pressed";
+                    }
+                    else {
+                        return "not_pressed";
+                    }   
+                }
+                else if (property.name === "speaker") {
+                    if (value[0] === 1) {
+                        return "on";
+                    }
+                    else {
+                        return "off";
+                    }   
+                }
+                else if (property.name === "led") {
+                    if (value[0] === 1) {
+                        return "on";
+                    }
+                    else {
+                        return "off";
+                    }   
+                }   
+                else {
+                    return undefined;
+                }
+            }
+        }
+    }
+
+    set(property, value) {
+        if (property.write === false) {
+            return undefined;
+        }
+        else {
+            if (property.name === "speaker") {
+                if (property.anyValue.includes(value)) {
+                    if (value === "on") {
+                        return Buffer.from([1]);
+                    }
+                    else {
+                        return Buffer.from([0]);
+                    }
+                }
+                else {
+                    return undefined;                    
+                }
+            }
+            else if (property.name === "led") {
+                if (property.anyValue.includes(value)) {
+                    if (value === "on") {
+                        return Buffer.from([1]);
+                    }
+                    else {
+                        return Buffer.from([0]);
+                    }                
+                }
+                else {
+                    return undefined;                    
+                }
+            }
+            else {
+                return undefined;
+            }     
+        }       
      }
+}
 
-     /**
-      * Override `get` when raw values need custom conversion logic.
-      * @param {Object} propDescriptor  One of the entries from this.properties
-      * @param {Buffer}    rawBuffer     Raw data read from the characteristic
-      * @returns Parsed JavaScript value (number, string, etc.)
-      */
-     get(propDescriptor, rawBuffer) {
-       const uuid = propDescriptor.characteristic;
-       // Example: temperature is uint16 in hundredths of °C
-       if (uuid === "2A6E") {
-         // rawBuffer.readUInt16LE returns an integer; divide by 100 to get °C
-         return rawBuffer.readUInt16LE(0) / 100;
-       }
-       // Fallback to standard conversions (e.g., battery, humidity)
-       return super.getStandard(propDescriptor, rawBuffer);
-     }
-   }
-
-   module.exports = { Converter_MyConverter };
+module.exports = { Converter_BulpAZ123 };
 
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
