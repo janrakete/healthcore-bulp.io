@@ -113,23 +113,25 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
    In `Converter_MyConverter.js`, import the base and declare your class:  
 
    ```js
-const { ConverterStandard } = require("./ConverterStandard.js");
+  const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BulpAZ123 extends ConverterStandard {
-    static productName = "bulp-AZ-123";
+  class Converter_BulpAZ123 extends ConverterStandard { // always extend "ConverterStandard"
+    static productName = "bulp-AZ-123"; // static property to identify the product name this converter is for
 
-    constructor() {
-        super();
+    constructor() { 
+        super(); // call the parent class constructor
 
-        this.powerType = "wire";
+        this.powerType = "wire"; // set the power type for this device ("wire" or "battery")
 
+        // Define the properties supported by this device, using their Bluetooth UUIDs as keys. Each property object contains metadata used for conversion and access control.
         this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
-            name:        "rotary_switch",
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    0,
-            valueType:   "Integer"
+            name:        "rotary_switch", // property name (easy to understand)
+            notify:      true, // notify healthcore if this value changes
+            read:        true, // read access
+            write:       false, // write access
+            anyValue:    0, // pre-defined value
+            standard:    false, // is this a standard value? (https://www.bluetooth.com/wp-content/uploads/Files/Specification/Assigned_Numbers.html)
+            valueType:   "Integer" // Integer or String or Options
         };
 
         this.properties["19b10000e8f2537e4f6cd104768a1218"] = {
@@ -140,28 +142,23 @@ class Converter_BulpAZ123 extends ConverterStandard {
             anyValue:    ["on", "off"],
             valueType:   "Options"
         };
+
+        // ...
     }
 
+    // Converts a raw value from the device into a higher-level representation, based on the property metadata.
     get(property, value) {
         if (property.read === false) {
-            return undefined;
+          return undefined; // property is not readable, so return undefined
         }   
         else {
-            if (property.standard === true) { // if standard property then use common converter
+            if (property.standard === true) { // if this is a standard property then use common converter
                 return this.getStandard(property, value);
             }
-            else {
+            else { // device-specific conversion logic
                 if (property.name === "rotary_switch") {
                     const buf = Buffer.from(value);
                     return buf[0];
-                }
-                else if (property.name === "button") {
-                    if (value[0] === 1) {
-                        return "pressed";
-                    }
-                    else {
-                        return "not_pressed";
-                    }   
                 }
                 else if (property.name === "speaker") {
                     if (value[0] === 1) {
@@ -171,24 +168,18 @@ class Converter_BulpAZ123 extends ConverterStandard {
                         return "off";
                     }   
                 }
-                else if (property.name === "led") {
-                    if (value[0] === 1) {
-                        return "on";
-                    }
-                    else {
-                        return "off";
-                    }   
-                }   
-                else {
+                // ...
+                else { // unknown property name
                     return undefined;
                 }
             }
         }
     }
 
+    // Converts a higher-level value into a format suitable for writing to the device, based on the property metadata.
     set(property, value) {
         if (property.write === false) {
-            return undefined;
+            return undefined; // if property is not writable, so return undefined
         }
         else {
             if (property.name === "speaker") {
@@ -201,30 +192,18 @@ class Converter_BulpAZ123 extends ConverterStandard {
                     }
                 }
                 else {
-                    return undefined;                    
+                    return undefined; // invalid value for this property, then return undefined                
                 }
             }
-            else if (property.name === "led") {
-                if (property.anyValue.includes(value)) {
-                    if (value === "on") {
-                        return Buffer.from([1]);
-                    }
-                    else {
-                        return Buffer.from([0]);
-                    }                
-                }
-                else {
-                    return undefined;                    
-                }
-            }
+            // ...
             else {
                 return undefined;
             }     
         }       
      }
-}
+  }
 
-module.exports = { Converter_BulpAZ123 };
+  module.exports = { Converter_BulpAZ123 };
 
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
