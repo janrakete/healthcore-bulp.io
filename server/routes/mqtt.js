@@ -6,7 +6,6 @@
 
 const AppConfig = require("../../config");
 const Router    = require("express").Router();
-const MQTT      = require("../sse/mqtt");
 
 /*
    Route for SSE, which informs about a new event 

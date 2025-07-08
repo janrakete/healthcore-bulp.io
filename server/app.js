@@ -58,16 +58,16 @@ async function startMySQLAndServer() {
     app.use(
       cors(),
       bodyParser.urlencoded({
-      extended: true,
+        extended: true,
       })
     );
 
     app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
       if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-      let data = {};
-      data.status        = "error";
-      data.errorMessage  = "JSON in request is invalid";
-      res.json(data);
+        let data = {};
+        data.status        = "error";
+        data.errorMessage  = "JSON in request is invalid";
+        res.json(data);
       }
     });
 
@@ -110,8 +110,6 @@ async function startMySQLAndServer() {
 
     global.mqttClient = mqttClient; // make MQTT client global
 
-    const mqttSSE = require("./sse/mqtt"); // import relevant SSE that are related to MQTT
-    
     /**
      * Process incoming MQTT messages
      * @function
@@ -132,13 +130,69 @@ async function startMySQLAndServer() {
         mysqlConnection.query("INSERT INTO mqtt_history (topic, message) VALUES (" + mysqlConnection.escape(topic.toString()) + "," + mysqlConnection.escape(message.toString()) + ")");
       }
       catch (error) {
-        common.conLog("MQTT: Error while inserting topic and message into history:", "red");
+        common.conLog("Server: Error while inserting topic and message into history:", "red");
         common.conLog(error, "std", false);
       }
-      mqttSSE.mqttProcessIncomingMessages(topic.toString(), message.toString()); // process incoming MQTT message
+      
+      try {
+        const data = JSON.parse(message); // parse message to JSON
+  
+        switch (topic) {
+          case "server/devices/list":
+            mqttDevicesList(data);
+            break;
+          case "server/device/create":
+            mqttDeviceCreate(data);
+            break;
+          case "server/device/remove":
+            mqttDeviceRemove(data);
+            break;
+          case "server/device/update":
+            mqttDeviceUpdate(data);
+            break;
+          default:
+            common.conLog("Server: NOT found matching message handler for " + topic, "red");
+        }
+      }
+      catch (error) { // if error while parsing message, log error
+        common.conLog("MQTT: Error while parsing message:", "red");     
+        common.conLog(error, "std", false);
+      } 
     });
 
-    // create Server Side Events channel
+    /**
+     * List devices based on the bridge
+     * @param {Object} data - The data object containing the bridge information.
+     * @description This function retrieves a list of devices associated with a specific bridge from the MySQL database and publishes the list to the MQTT topic for that bridge.
+     */
+    async function mqttDevicesList(data) {
+      let message = {};
+
+      if (data.bridge) {
+          const [results] = await mysqlConnection.query("SELECT * FROM devices WHERE bridge='" + data.bridge + "'");
+          message.devices = results;
+
+          mqttClient.publish(data.bridge + "/devices/connect", JSON.stringify(message));
+      } else {
+          Common.conLog("Server: type is missing in message for devices list", "red");
+      }
+    }    
+
+    /**
+     * Create a new device
+     * @param {Object} data - The data object containing the device information.
+     * @description This function creates a new device in the MySQL database and publishes a message to the MQTT topic for that device.
+     */
+    async function mqttDeviceCreate(data) {
+      let message = {};
+
+      if (data.bridge) {
+      }
+    }   
+
+    /**
+     * Create Server Side Events channel
+     */
     const sse         = require("better-sse"); 
     global.sse        = sse;
     global.sseChannel = global.sse.createChannel(); // make channel global
