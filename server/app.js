@@ -110,6 +110,34 @@ async function startMySQLAndServer() {
 
     global.mqttClient = mqttClient; // make MQTT client global
 
+    
+    /**
+     * =============================================================================================
+     * Helper functions
+     * ================
+     */
+
+    /**
+     *  Check if a device is registered in the database
+     * @param {string} strDeviceID - The device ID to check.
+     * @returns {boolean} - Returns true if the device is registered, false otherwise.
+     * @description This function checks if a device with the given ID is registered in the database
+     */
+    async function deviceCheckRegistered(deviceID) {
+        deviceID = deviceID.trim();
+
+        const [results] = await MySQLConnection.query("SELECT * FROM devices WHERE deviceID='" + mysqlConnection.escape(deviceID) + "' LIMIT 1");
+        if (results.length === 0) // could not find device 
+        {
+            Common.conLog("Check device ID: not found in database device with ID " + deviceID, "red");
+            return false;
+        }
+        else {
+            Common.conLog("Check device ID: found in database device with ID " + deviceID, "gre");
+            return true;
+        }
+    }
+    
     /**
      * Process incoming MQTT messages
      * @function
@@ -127,7 +155,9 @@ async function startMySQLAndServer() {
       }
 
       try {
-        mysqlConnection.query("INSERT INTO mqtt_history (topic, message) VALUES (" + mysqlConnection.escape(topic.toString()) + "," + mysqlConnection.escape(message.toString()) + ")");
+        mysqlConnection.query("INSERT INTO mqtt_history (topic, message) VALUES (" + 
+        mysqlConnection.escape(topic.toString()) + "," +
+        mysqlConnection.escape(message.toString()) + ")");
       }
       catch (error) {
         common.conLog("Server: Error while inserting topic and message into history:", "red");
@@ -169,12 +199,13 @@ async function startMySQLAndServer() {
       let message = {};
 
       if (data.bridge) {
-          const [results] = await mysqlConnection.query("SELECT * FROM devices WHERE bridge='" + data.bridge + "'");
+          const [results] = await mysqlConnection.query("SELECT * FROM devices WHERE bridge='" +
+                                  mysqlConnection.escape(data.bridge) + "'");
           message.devices = results;
 
           mqttClient.publish(data.bridge + "/devices/connect", JSON.stringify(message));
       } else {
-          Common.conLog("Server: type is missing in message for devices list", "red");
+          Common.conLog("Server: bridge is missing in message for devices list", "red");
       }
     }    
 
@@ -187,7 +218,50 @@ async function startMySQLAndServer() {
       let message = {};
 
       if (data.bridge) {
+        if (data.deviceID && data.vendorName && data.productName) {
+          if (deviceCheckRegistered(deviceID)) { // check if device is already registered
+            Common.conLog("Server: Device with ID " + data.deviceID + " is already registered", "red");
+            message.status      = "error";
+            message.deviceID    = data.deviceID;
+            message.bridge      = data.bridge;
+            message.status      = "error";
+            message.error       = "Device already registered";
+          }
+          else {
+            // insert device into database
+            await mysqlConnection.query("INSERT INTO devices (deviceID, bridge, vendorName, productName, description, properties, dateTimeAdded) VALUES (" + 
+                  mysqlConnection.escape(data.deviceID) + ", " + 
+                  mysqlConnection.escape(data.bridge) + ", " + 
+                  mysqlConnection.escape(data.vendorName) + ", " + 
+                  mysqlConnection.escape(data.productName) + ", " +
+                  mysqlConnection.escape(data.description) + ", " +
+                  mysqlConnection.escape(data.properties) + ", " + 
+                  NOW()
+                  + ")");
+
+            message.status    = "ok";
+            message.deviceID  = data.deviceID;
+            message.bridge    = data.bridge;
+            Common.conLog("Server: Created device with ID " + data.deviceID, "gre");
+          }
+        }
+        else {
+          Common.conLog("Server: bridge is missing in message for device creation", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.status      = "error";
+          message.error       = "Bridge missing";
+        }
       }
+      else {
+          Common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.status      = "error";
+          message.error       = "Bridge missing";        
+      }
+      
+      mqttClient.publish(data.bridge + "/device/create", JSON.stringify(message));
     }   
 
     /**
