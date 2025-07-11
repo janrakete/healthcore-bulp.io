@@ -33,7 +33,8 @@ const appConfig = {
   CONF_loRaAdapterBW       : process.env.CONF_loRaAdapterBW,
   CONF_loRaAdapterPOWER    : process.env.CONF_loRaAdapterPOWER,
   CONF_loRaAdapterCRC      : process.env.CONF_loRaAdapterCRC,
-  CONF_loRaAdapterRXMOD    : process.env.CONF_loRaAdapterRXMOD
+  CONF_loRaAdapterRXMOD    : process.env.CONF_loRaAdapterRXMOD,
+  CONF_portHealthcheck     : process.env.CONF_portHealthcheck
 };
 
 module.exports = appConfig;
