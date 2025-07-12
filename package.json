@@ -17,6 +17,7 @@
     "mqtt": "^5.13.1",
     "mysql2": "^3.14.1",
     "nodemon": "^3.1.10",
+    "react": "^19.1.0",
     "serialport": "^13.0.0",
     "sleep-promise": "^9.1.0",
     "uri-js": "^4.4.1",
