@@ -6,6 +6,8 @@
 const appConfig   = require("../config");
 const common      = require("../common");
 
+const moment      = require("moment");
+
 async function startCommander() {
   /**
    * Middleware
@@ -39,18 +41,16 @@ async function startCommander() {
   const logs          = {};
   const processes     = {};
   const services      = {
-      broker:         "node ../broker/app.js",
-      bluetooth:      "node '../bridge - bluetooth/app.js'",
-      zigbee:         "node '../bridge - zigbee/app.js'",
-      lora:           "node '../bridge - lora/app.js'",
-      http:           "node '../bridge - http/app.js'",
-      server:         "node ../server/app.js"
+      broker:         'node "../broker/app.js"',
+      server:         'node "../server/app.js"',
+      bluetooth:      'node "../bridge - bluetooth/app.js"',
+      zigbee:         'node "../bridge - zigbee/app.js"',
+      lora:           'node "../bridge - lora/app.js"',
+      http:           'node "../bridge - http/app.js"'
   };
 
-    // Initialize log arrays
-  Object.keys(services).forEach(svc => { logs[svc] = []; });
+  Object.keys(services).forEach(service => { logs[service] = []; });
 
-  // Helper to push logs with limit
   function appendLog(service, line) {
     const arr = logs[service];
     arr.push(line);
@@ -59,16 +59,14 @@ async function startCommander() {
     }
   }
 
-  // Status endpoint
   app.get("/api/status", (req, res) => {
     const status = {};
-    for (let svc in services) {
-      status[svc] = !!processes[svc];
+    for (let service in services) {
+      status[service] = !!processes[service];
     }
     res.json(status);
   });
 
-  // Start/stop endpoints
   app.post("/api/:service/:action", (req, res) => {
     const { service, action } = req.params;
     if (!services[service]) {
@@ -79,36 +77,35 @@ async function startCommander() {
         if (processes[service]) {
           return res.status(400).json({ error: "Already running" });
         }
-        const proc = spawn(services[service], { shell: true });
-        processes[service] = proc;
-        proc.stdout.on("data", chunk => appendLog(service, chunk.toString()));
-        proc.stderr.on("data", chunk => appendLog(service, chunk.toString()));
-        proc.on("exit", function () {
+        const process = spawn(services[service], { shell: true });
+        processes[service] = process;
+        process.stdout.on("data", chunk => appendLog(service, chunk.toString()));
+        process.stderr.on("data", chunk => appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m"));
+        process.on("exit", function () {
           delete processes[service];
-          appendLog(service, "[exited]");
+          appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[32mExited " + service + "\x1B[39m");
         });
-        return res.json({ status: 'started' });
+        return res.json({ status: "started" });
     }
     else if (action === "stop") {
-      const proc = processes[service];
-      if (!proc) {
+      const process = processes[service];
+      if (!process) {
         return res.status(400).json({ error: "Not running" });
       }
-      proc.kill();
+      process.kill();
       delete processes[service];
       return res.json({ status: "stopped" });
     }
     res.status(400).json({ error: "Invalid action" });
   });
 
-  // Logs endpoint
   app.get("/api/logs", (req, res) => {
     res.json(logs);
   });
 
   app.use(express.static(__dirname + "/monitor"));
   app.get("/", function (req, res) {
-    res.sendFile(__dirname + "/monitor/index.html");
+    res.sendFile(__dirname + "/monitor/monitor.html");
   });
 
   app.listen(appConfig.CONF_portHealthcheck);
@@ -123,4 +120,4 @@ startCommander();
 process.on("SIGINT", function () {
   common.conLog("Server closed.", "mag", true);
   process.exit(0);
-});
+}); 

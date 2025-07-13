@@ -1,0 +1,63 @@
+body, h1, button {
+    background-color: #311B92;
+    color: #FFFFFF;
+    font-family: monospace;
+    font-size: 14px
+}
+
+h1 {
+    text-align: center;
+    background-color: #FFFFFF;
+    color: #311B92;
+}
+
+button {
+    font-family: monospace;
+    background-color: #673ab7;
+    color: #FFFFFF;
+    border: solid 2px #FFFFFF;
+    padding: 10px 10px;
+    cursor: pointer;
+    box-shadow: 3px 3px;
+    width: 200px;
+    font-weight: 700;
+    margin-top: 10px;
+}
+
+.status_stopped {
+    color: #ffffff;
+    background-color: #ff5722;
+}
+
+.status_running {
+    color: #ffffff;
+    background-color: #4caf50;
+}
+
+button:active {
+    color: #673ab7;
+    background-color: #FFFFFF;
+    box-shadow: 1px 1px;
+    transform: translateY(2px);
+}
+
+#view {
+    display: flex;
+}
+
+#controls {
+    width: 250px;
+    padding-right: 10px;
+    text-align: center;
+}
+
+#logs {
+    background-color: #000000;
+    border: dashed 2px #AAAAAA;
+    width: 100%;
+    padding: 10px;
+    overflow-y: auto;
+    height: 90vh;
+    scrollbar-color: #311B92 #FFFFFF;
+}
+
