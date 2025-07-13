@@ -1,11 +1,10 @@
 /**
  * =============================================================================================
  * Healthcheck
- * ==============
+ * ===========
  */
 const appConfig   = require("../config");
 const common      = require("../common");
-
 
 async function startCommander() {
   /**
@@ -14,7 +13,7 @@ async function startCommander() {
   const express           = require("express");
   const cors              = require("cors");
   const bodyParser        = require("body-parser");
-  const { exec, spawn }   = require("child_process");
+  const { spawn }         = require("child_process");
 
   const app = express();
 
@@ -36,49 +35,81 @@ async function startCommander() {
     }
   });
 
-  const processes = {};
-  const services  = {
-      broker:         "node broker/app.js",
-      bluetooth:      "node 'bridge - bluetooth/app.js'",
-      zigbee:         "node 'bridge - zigbee/app.js'",
-      lora:           "node 'bridge - lora/app.js'",
-      http:           "node 'bridge - http/app.js'",
-      server:         "node server/app.js"
+  const MAX_LOG_LINES = 100;
+  const logs          = {};
+  const processes     = {};
+  const services      = {
+      broker:         "node ../broker/app.js",
+      bluetooth:      "node '../bridge - bluetooth/app.js'",
+      zigbee:         "node '../bridge - zigbee/app.js'",
+      lora:           "node '../bridge - lora/app.js'",
+      http:           "node '../bridge - http/app.js'",
+      server:         "node ../server/app.js"
   };
 
+    // Initialize log arrays
+  Object.keys(services).forEach(svc => { logs[svc] = []; });
+
+  // Helper to push logs with limit
+  function appendLog(service, line) {
+    const arr = logs[service];
+    arr.push(line);
+    if (arr.length > MAX_LOG_LINES) {
+      arr.shift();
+    }
+  }
+
+  // Status endpoint
   app.get("/api/status", (req, res) => {
-      const status = Object.keys(services).reduce((acc, key) => {
-          acc[key] = processes[key] ? true : false;
-          return acc;
-      }, {});
-      res.json(status);
+    const status = {};
+    for (let svc in services) {
+      status[svc] = !!processes[svc];
+    }
+    res.json(status);
   });
 
+  // Start/stop endpoints
   app.post("/api/:service/:action", (req, res) => {
-      const { service, action } = req.params;
-      if (!services[service]) {
-          return res.status(404).json({ error: "Unknown service" });
-      }
-      if (action === "start") {
-          if (processes[service])
-              return res.status(400).json({ error: 'Already running' });
-          const proc = spawn(services[service], { shell: true, stdio: "inherit" });
-          processes[service] = proc;
-          proc.on("exit", () => delete processes[service]);
-          return res.json({ status: "started" });
-      } else if (action === "stop") {
-          const proc = processes[service];
-          if (!proc)
-              return res.status(400).json({ error: "Not running" });
-          proc.kill();
+    const { service, action } = req.params;
+    if (!services[service]) {
+      return res.status(404).json({ error: "Unknown service" });
+    }
+   
+    if (action === "start") {
+        if (processes[service]) {
+          return res.status(400).json({ error: "Already running" });
+        }
+        const proc = spawn(services[service], { shell: true });
+        processes[service] = proc;
+        proc.stdout.on("data", chunk => appendLog(service, chunk.toString()));
+        proc.stderr.on("data", chunk => appendLog(service, chunk.toString()));
+        proc.on("exit", function () {
           delete processes[service];
-          return res.json({ status: "stopped" });
+          appendLog(service, "[exited]");
+        });
+        return res.json({ status: 'started' });
+    }
+    else if (action === "stop") {
+      const proc = processes[service];
+      if (!proc) {
+        return res.status(400).json({ error: "Not running" });
       }
-      res.status(400).json({ error: "Invalid action" });
-  });    
+      proc.kill();
+      delete processes[service];
+      return res.json({ status: "stopped" });
+    }
+    res.status(400).json({ error: "Invalid action" });
+  });
 
-  app.use(express.static("healthcheck"));
-  app.get("*", (req, res) => res.sendFile(__dirname + "/healthcheck/index.html"));
+  // Logs endpoint
+  app.get("/api/logs", (req, res) => {
+    res.json(logs);
+  });
+
+  app.use(express.static(__dirname + "/monitor"));
+  app.get("/", function (req, res) {
+    res.sendFile(__dirname + "/monitor/index.html");
+  });
 
   app.listen(appConfig.CONF_portHealthcheck);
 }
