@@ -59,5 +59,8 @@ button:active {
     overflow-y: auto;
     height: 90vh;
     scrollbar-color: #311B92 #FFFFFF;
+    display: block;
+    unicode-bidi: embed;
+    white-space: pre;
 }
 

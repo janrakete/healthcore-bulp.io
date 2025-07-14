@@ -37,9 +37,10 @@ async function update() {
     containerControls.appendChild(button);
     containerControls.appendChild(statusinfo);
     containerControls.appendChild(linebreak);    
+  }
 
-    const pre = document.createElement("pre");
-    const log = document.createElement("div");
+  for (let log of logs) {
+    const line  = document.createElement("div");
 
     const replacements = [
       { search: "\\x1B\\[35m", replace: "<span style='color: #311B92'>" },
@@ -50,20 +51,15 @@ async function update() {
       { search: "\\x1B\\[39m", replace: "</span>" },
     ];
 
-    logs[service] = logs[service].map(line => {
-      for (const { search, replace } of replacements) {
-        const regex = new RegExp(search, "g");
-        line = line.replace(regex, replace);
-      }
-      return line;
-    });
+    for (const { search, replace } of replacements) {
+      const regex = new RegExp(search, "g");
+      log = log.replace(regex, replace);
+    }
     
-    logs[service] = logs[service].filter(line => line.match(/^\[\d{2}:\d{2}:\d{2}\]/));
-    log.innerHTML = (logs[service] || []).join("");
-    
-    pre.appendChild(log);
-    containerLogs.appendChild(pre);
+    line.innerHTML = log;
+    containerLogs.appendChild(line);
   }
+ 
 }
 
 update();

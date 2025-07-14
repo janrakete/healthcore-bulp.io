@@ -37,8 +37,8 @@ async function startCommander() {
     }
   });
 
-  const MAX_LOG_LINES = 100;
-  const logs          = {};
+  const MAX_LOG_LINES = 200;
+  const logs          = [];
   const processes     = {};
   const services      = {
       broker:         'node "../broker/app.js"',
@@ -49,13 +49,14 @@ async function startCommander() {
       http:           'node "../bridge - http/app.js"'
   };
 
-  Object.keys(services).forEach(service => { logs[service] = []; });
-
-  function appendLog(service, line) {
-    const arr = logs[service];
-    arr.push(line);
-    if (arr.length > MAX_LOG_LINES) {
-      arr.shift();
+  function appendLog(service, log) {
+    
+    if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
+      logs.push(log);
+    }
+    
+    if (logs.length > MAX_LOG_LINES) {
+      logs.shift();
     }
   }
 
@@ -77,22 +78,29 @@ async function startCommander() {
         if (processes[service]) {
           return res.status(400).json({ error: "Already running" });
         }
-        const process = spawn(services[service], { shell: true });
-        processes[service] = process;
-        process.stdout.on("data", chunk => appendLog(service, chunk.toString()));
-        process.stderr.on("data", chunk => appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m"));
-        process.on("exit", function () {
+        const proc = spawn(services[service], { shell: true });
+        processes[service] = proc;
+        proc.stdout.on("data", chunk => appendLog(service, chunk.toString()));
+        proc.stderr.on("data", chunk => appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m"));
+        proc.on("exit", function () {
           delete processes[service];
           appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[32mExited " + service + "\x1B[39m");
         });
         return res.json({ status: "started" });
     }
     else if (action === "stop") {
-      const process = processes[service];
-      if (!process) {
+      const proc = processes[service];
+      if (!proc) {
         return res.status(400).json({ error: "Not running" });
       }
-      process.kill();
+
+      if (process.platform === "win32") {
+        spawn("taskkill", ["/pid", proc.pid.toString(), "/f", "/t"]);
+      }
+      else {
+        proc.kill("SIGINT");
+      }
+
       delete processes[service];
       return res.json({ status: "stopped" });
     }
