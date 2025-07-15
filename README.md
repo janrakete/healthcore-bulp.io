@@ -114,10 +114,9 @@ How to start healthcheck:
 node healthcheck/app.js
 ```
 
-Then open a browser und type: 
-localhost:9990
+Then open a browser und type:  
+_localhost:9990_  
 (9990 is the standard port, configured in .env)
-
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
@@ -219,7 +218,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
     }
 
     module.exports = { Converter_BulpAZ123 };
-
+    ```
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
 ## 🔌 API communication
