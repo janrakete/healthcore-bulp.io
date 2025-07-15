@@ -23,8 +23,10 @@ Let’s democratize and de-monopolize the healthcare sector.
 - 💻 [Installation (software)](#-installation-software)
 - 📁 [Folder structure](#-folder-structure)
 - 🔧 [Installation (hardware)](#-installation-hardware)
+- 📈 [Healthcheck - a monitor for healthcore](#-api-communication)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
+
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
@@ -103,6 +105,13 @@ node "bridge - http/app.js"
   - **LoRa**: USB or serial LoRa adapter (e.g. Dragino LA66 LoRaWAN USB Adapter)
 - **Connections**  
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
+
+## 📈 Healthcheck - a monitor for healthcore
+
+
+
+
+
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
