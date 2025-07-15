@@ -28,6 +28,18 @@ async function logsFetch() {
 }
 
 /**
+ * This function fetches the api calls, that can be used for the healthcore server.
+ * @async
+ * @function callsFetch
+ * @returns {Promise<Array>} A promise that resolves to an array of API calls.
+ * @description This function retrieves the API calls that can be used by the server.
+ */
+async function callsFetch() {
+  const res = await fetch("/api/calls");
+  return res.json();
+}
+
+/**
  * This function toggles the status of a service (start/stop) based on its current state.
  * @async
  * @function statusToggle
@@ -56,7 +68,6 @@ async function update() {
   const containerLogs       = document.getElementById("logs");
 
   containerControls.innerHTML = "";
-  containerLogs.innerHTML     = "";
 
   for (let service of Object.keys(status)) {
     const linebreak = document.createElement("br");
@@ -67,7 +78,7 @@ async function update() {
 
     const statusinfo = document.createElement("span");
     statusinfo.textContent = status[service] ? "Running" : "Stopped";
-    statusinfo.className = status[service] ? "status_running" : "status_stopped";
+    statusinfo.className = status[service] ? "status-running" : "status-stopped";
     containerControls.appendChild(button);
     containerControls.appendChild(statusinfo);
     containerControls.appendChild(linebreak);    
@@ -92,9 +103,48 @@ async function update() {
     
     line.innerHTML = log;
     containerLogs.appendChild(line);
+
+    // Scroll to the bottom of the logs container only if the last log is visible
+    if (containerLogs.scrollHeight - containerLogs.clientHeight <= containerLogs.scrollTop + line.offsetHeight) {
+      containerLogs.scrollTop = containerLogs.scrollHeight;
+    }
   }
- 
 }
+
+// function for getting the API calls, put them label as option into "calls-select". If the user selects one, payload will be displayed in the textarea "calls-payload". If user hits calls-button the url and payload will be sent to the server.
+async function callsFetchAndDisplay() {
+  const calls = await callsFetch();
+  const select = document.getElementById("calls-select");
+  const payloadTextarea = document.getElementById("calls-payload");
+  const button = document.getElementById("calls-button");
+
+  select.innerHTML = ""; // clear previous options
+
+  for (const call of calls) {
+    const option = document.createElement("option");
+    option.value = call.url;
+    option.textContent = call.label;
+    select.appendChild(option);
+  }
+
+  select.onchange = () => {
+    const selectedCall = calls.find(call => call.url === select.value);
+    payloadTextarea.value = JSON.stringify(selectedCall.payload, null, 2);
+  };
+
+  button.onclick = async () => {
+    const selectedUrl = select.value;
+    const payload = JSON.parse(payloadTextarea.value);
+    await fetch(selectedUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    update(); // refresh the UI after sending the request
+  };
+}
+
+callsFetchAndDisplay();
 
 update();
 setInterval(update, 2000); // update the UI every 2 seconds

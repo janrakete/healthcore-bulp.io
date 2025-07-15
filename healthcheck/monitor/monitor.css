@@ -25,12 +25,12 @@ button {
     margin-top: 10px;
 }
 
-.status_stopped {
+.status-stopped {
     color: #ffffff;
     background-color: #ff5722;
 }
 
-.status_running {
+.status-running {
     color: #ffffff;
     background-color: #4caf50;
 }
@@ -65,3 +65,9 @@ button:active {
     white-space: pre;
 }
 
+.panel-header {
+    padding-top: 20px;
+    color: #FFFFFF;
+    font-weight: bold;
+    text-align: center;
+}

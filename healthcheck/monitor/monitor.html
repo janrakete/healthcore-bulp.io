@@ -6,13 +6,26 @@
   <link rel="stylesheet" href="monitor.css"></link>
 </head>
 <body>
-  <h1>Healthcheck: Monitor for Healthcore</h1>
+  <h1>Healthcheck: A Monitor For Healthcore</h1>
   
   <div id="view">
-    <div id="controls">
+    <div id="panel">
+      <div class="panel-header">Controls</div>
+      <div id="controls"></div>
+      <div class="panel-header">Calls</div>
+      <div id="calls">
+        <select id="calls-bridge">
+        </select>
+        <br />
+        <select id="calls-select">
+        </select>
+        <br />
+        <textarea id="calls-payload" placeholder="Payload (JSON format)"></textarea>
+        <br /><br />
+        <button id="calls-button">Call API</button>
+      </div>    
     </div>
-    <div id="logs">
-    </div>
+    <div id="logs"></div>
   </div>
   
   <script src="monitor.js"></script>

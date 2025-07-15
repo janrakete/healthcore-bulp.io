@@ -13,10 +13,10 @@ const moment      = require("moment");
  * This server monitors the status of various services and allows starting/stopping them.
  * It provides a web interface to view the status and logs of these services.
  * @async
- * @function startCommander
+ * @function startHealtcheck
  * @description This function initializes an Express server, sets up routes for service status and logs.
  */
-async function startCommander() {
+async function startHealtcheck() {
   /**
    * Server
    */
@@ -46,7 +46,7 @@ async function startCommander() {
   });
 
   /**
-   * Variables and services
+   * Variables, services and calls
    */
   const logs          = [];
   const processes     = {};
@@ -59,6 +59,25 @@ async function startCommander() {
       http:           'node "../bridge - http/app.js"'
   };
 
+  const calls         = [
+    {
+      label: "Scan devices",
+      url:   "/api/bluetooth/scan",
+      payload: {
+        service: "bluetooth",
+        action: "scan"
+      }
+    },
+    {
+      label: "Delete device",
+      url:   "/api/bluetooth/delete",
+      payload: {
+        service: "bluetooth",
+        action: "scan"
+      }
+    }
+  ];
+
   /**
    * This function adds a log entry to the logs array, ensuring it does not exceed the maximum
    * @param {*} service 
@@ -67,11 +86,7 @@ async function startCommander() {
   function appendLog(service, log) {
     if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
       logs.push(log);
-    }
-    
-    if (logs.length > appConfig.CONF_healtcheckMaxLogLines) {
-      logs.shift();
-    }
+    } 
   }
 
   /**
@@ -153,6 +168,19 @@ async function startCommander() {
    */
   app.get("/api/logs", (req, res) => {
     res.json(logs);
+    logs.length = 0; // clear the logs after sending them to the client
+  });
+
+  /**
+   * This route returns the calls array, which contains predefined actions that can be performed on the server.
+   * @route GET /api/calls
+   * @param {Object} req - The request object
+   * @param {Object} res - The response object used to send the calls back to the client
+   * @returns {Array} calls - An array containing predefined actions that can be performed on the server
+   * @description This route returns the calls array, which contains objects with labels, URLs, and payloads for predefined actions. These actions can be used by the client to interact with the server, such as scanning devices or deleting devices.
+   */
+  app.get("/api/calls", (req, res) => {
+    res.json(calls);
   });
 
   /**
@@ -168,10 +196,15 @@ async function startCommander() {
     res.sendFile(__dirname + "/monitor/monitor.html");
   });
 
+  /**
+   * =============================================================================================
+   * Server
+   * ======
+   */
   app.listen(appConfig.CONF_portHealthcheck); // start the server on the configured port
 }
 
-startCommander();
+startHealtcheck();
 
 /**
  * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
