@@ -23,7 +23,7 @@ Let’s democratize and de-monopolize the healthcare sector.
 - 💻 [Installation (software)](#-installation-software)
 - 📁 [Folder structure](#-folder-structure)
 - 🔧 [Installation (hardware)](#-installation-hardware)
-- 📈 [Healthcheck - a monitor for healthcore](#-api-communication)
+- 📈 [Healthcheck - a monitor for healthcore](#-healthcheck---a-monitor-for-healthcore)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
 
@@ -107,10 +107,16 @@ node "bridge - http/app.js"
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
 ## 📈 Healthcheck - a monitor for healthcore
+Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. API calls can also be simulated. All outputs are displayed in a console.
 
+How to start healthcheck:
+```bash
+node healthcheck/app.js
+```
 
-
-
+Then open a browser und type: 
+localhost:9990
+(9990 is the standard port, configured in .env)
 
 
 ## 🧩 Own converters
