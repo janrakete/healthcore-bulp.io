@@ -111,14 +111,20 @@ async function update() {
   }
 }
 
-// function for getting the API calls, put them label as option into "calls-select". If the user selects one, payload will be displayed in the textarea "calls-payload". If user hits calls-button the url and payload will be sent to the server.
+/**
+ * This function fetches the API calls and displays them in a select dropdown. It also sets up an event listener to handle the selection of a call and its execution.
+ * @async
+ * @function callsFetchAndDisplay
+ * @returns {Promise<void>} A promise that resolves when the API calls have been fetched and displayed.
+ * @description This function retrieves the API calls from the server, populates a select dropdown with the available calls, and sets up an event listener to handle the selection of a call. When a call is selected, it updates a text area with the payload and sets up a button to execute the selected call.
+ */
 async function callsFetchAndDisplay() {
-  const calls = await callsFetch();
-  const select = document.getElementById("calls-select");
-  const payloadTextarea = document.getElementById("calls-payload");
-  const button = document.getElementById("calls-button");
+  const calls      = await callsFetch();
+  const select     = document.getElementById("calls-select");
+  const payload    = document.getElementById("calls-payload");
+  const button     = document.getElementById("calls-button");
 
-  select.innerHTML = ""; // clear previous options
+  select.innerHTML = "<option value=''>(select)</option>"; // clear previous options
 
   for (const call of calls) {
     const option = document.createElement("option");
@@ -127,20 +133,20 @@ async function callsFetchAndDisplay() {
     select.appendChild(option);
   }
 
-  select.onchange = () => {
-    const selectedCall = calls.find(call => call.url === select.value);
-    payloadTextarea.value = JSON.stringify(selectedCall.payload, null, 2);
+  select.onchange = function() {
+    const selectedCall    = calls.find(call => call.url === select.value);
+    payload.value         = JSON.stringify(selectedCall.payload, null, 2);
+    button.dataset.method = selectedCall.method;
   };
 
-  button.onclick = async () => {
-    const selectedUrl = select.value;
-    const payload = JSON.parse(payloadTextarea.value);
+  button.onclick = async function() {
+    const selectedUrl   = select.value;
+    const payloadValue  = JSON.parse(payload.value);
     await fetch(selectedUrl, {
-      method: "POST",
+      method: button.dataset.method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payloadValue)
     });
-    update(); // refresh the UI after sending the request
   };
 }
 

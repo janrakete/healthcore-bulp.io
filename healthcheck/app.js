@@ -61,19 +61,21 @@ async function startHealtcheck() {
 
   const calls         = [
     {
-      label: "Scan devices",
-      url:   "/api/bluetooth/scan",
+      label:  "Scan devices",
+      url:    "/api/bluetooth/scan",
+      method: "POST",
       payload: {
         service: "bluetooth",
         action: "scan"
       }
     },
     {
-      label: "Delete device",
-      url:   "/api/bluetooth/delete",
+      label:  "Delete device",
+      url:    "/api/bluetooth/delete",
+      method: "DELETE",
       payload: {
         service: "bluetooth",
-        action: "scan"
+        action: "delete"
       }
     }
   ];

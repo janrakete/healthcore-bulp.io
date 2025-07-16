@@ -5,6 +5,27 @@ body, h1, button {
     font-size: 14px
 }
 
+select {
+    background-color: #FFFFFF;
+    color: #311B92;
+    border: solid 2px #311B92;
+    padding: 5px;
+    font-family: monospace;
+    font-size: 14px;
+    width: 100%;
+}
+
+textarea {
+    background-color: #FFFFFF;
+    color: #311B92;
+    border: solid 2px #311B92;
+    padding: 5px;
+    font-family: monospace;
+    font-size: 14px;
+    width: 100%;
+    height: 140px;
+}
+
 h1 {
     text-align: center;
     background-color: #FFFFFF;
@@ -69,5 +90,9 @@ button:active {
     padding-top: 20px;
     color: #FFFFFF;
     font-weight: bold;
+    text-align: center;
+}
+
+#calls {
     text-align: center;
 }
