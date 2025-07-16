@@ -126,7 +126,7 @@ async function startMySQLAndServer() {
     async function deviceCheckRegistered(deviceID) {
         deviceID = deviceID.trim();
 
-        const [results] = await MySQLConnection.query("SELECT * FROM devices WHERE deviceID='" + mysqlConnection.escape(deviceID) + "' LIMIT 1");
+        const [results] = await MySQLConnection.query("SELECT * FROM devices WHERE deviceID=" + mysqlConnection.escape(deviceID) + " LIMIT 1");
         if (results.length === 0) // could not find device 
         {
             Common.conLog("Check device ID: not found in database device with ID " + deviceID, "red");
@@ -199,8 +199,8 @@ async function startMySQLAndServer() {
       let message = {};
 
       if (data.bridge) {
-          const [results] = await mysqlConnection.query("SELECT * FROM devices WHERE bridge='" +
-                                  mysqlConnection.escape(data.bridge) + "'");
+          const [results] = await mysqlConnection.query("SELECT * FROM devices WHERE bridge=" +
+                                  mysqlConnection.escape(data.bridge));
           message.devices = results;
 
           mqttClient.publish(data.bridge + "/devices/connect", JSON.stringify(message));
