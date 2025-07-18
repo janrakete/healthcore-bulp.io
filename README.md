@@ -93,7 +93,8 @@ node "bridge - http/app.js"
 │   └── converters/       # Common and own converters
 ├── bridge - http/        # HTTP ↔ MQTT bridge
 │   └── converters/       # Common and own converters
-└── test_devices/         # Example device firmware (for Arduino)
+├── test_devices/         # Example device firmware (for Arduino)
+└── healthcheck/          # Healthcheck (see below)
 ```
 
 ## 🔧 Installation (hardware)
@@ -116,7 +117,7 @@ node healthcheck/app.js
 
 Then open a browser und type:  
 _localhost:9990_  
-(9990 is the standard port, configured in .env)
+(9990 is the standard port and localhost the standard base URL, configured in .env)
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:

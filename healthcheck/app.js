@@ -48,9 +48,10 @@ async function startHealtcheck() {
   /**
    * Variables, services and calls
    */
-  const logs          = [];
-  const processes     = {};
-  const services      = {
+  const baseURLAndPort  = appConfig.CONF_baseURL + ":" + appConfig.CONF_portServer + "/";
+  const logs            = [];
+  const processes       = {};
+  const services        = {
       broker:         'node "../broker/app.js"',
       server:         'node "../server/app.js"',
       bluetooth:      'node "../bridge - bluetooth/app.js"',
@@ -61,21 +62,20 @@ async function startHealtcheck() {
 
   const calls         = [
     {
-      label:  "Scan devices",
-      url:    "/api/bluetooth/scan",
+      label:  "Scan devices (Bluetooth and ZigBee)",
+      url:    baseURLAndPort + "devices/scan",
       method: "POST",
       payload: {
-        service: "bluetooth",
-        action: "scan"
+        bridge: "XXX"
       }
     },
     {
       label:  "Delete device",
-      url:    "/api/bluetooth/delete",
+      url:    baseURLAndPort + "devices/delete",
       method: "DELETE",
       payload: {
-        service: "bluetooth",
-        action: "delete"
+        bridge: "XXX",
+        deviceID: "XXX"
       }
     }
   ];
@@ -94,7 +94,7 @@ async function startHealtcheck() {
   /**
    * =============================================================================================
    * Routes
-   * ======
+   * ====== 
    */
 
   /**
@@ -109,7 +109,7 @@ async function startHealtcheck() {
       status[service] = !!processes[service];
     }
     res.json(status);
-  });
+  }); 
 
   /**
    * This route allows starting or stopping a service. It checks the action parameter to determine whether to start or stop the service. If the service is already running, it returns an error for start requests. If the service is not running, it starts it and logs the output.
