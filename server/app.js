@@ -71,10 +71,13 @@ async function startMySQLAndServer() {
       }
     });
 
-    //const routesData  = require("./routes/data"); // import routes for data manipulation
-    //app.use("/data", routesData);
-    const routesMqtt  = require("./routes/mqtt"); // import routes for MQTT
-    app.use("/mqtt", routesMqtt);
+    const routesData = require("./routes/data"); // import routes for data manipulation
+    app.use("/data", routesData);
+    const routesDevices = require("./routes/devices"); // import routes for devices manipulation
+    app.use("/devices", routesDevices);
+
+    //const routesMqtt  = require("./routes/mqtt"); // import routes for MQTT
+    //app.use("/mqtt", routesMqtt);
 
     /**
      * Server
