@@ -1,7 +1,7 @@
 /**
  * =============================================================================================
- * Main file
- * =========
+ * Server - Main file
+ * ==================
  */
 const appConfig   = require("../config");
 const common      = require("../common");
@@ -110,9 +110,7 @@ async function startMySQLAndServer() {
       });
     }
     mqttClient.on("connect", mqttConnect);
-
     global.mqttClient = mqttClient; // make MQTT client global
-
     
     /**
      * =============================================================================================
@@ -153,20 +151,6 @@ async function startMySQLAndServer() {
       common.conLog("Topic: " + topic.toString(), "std", false);
       common.conLog("Message: " + message.toString(), "std", false);
 
-      if (message == "") {
-        message = "{}";
-      }
-
-      try {
-        mysqlConnection.query("INSERT INTO mqtt_history (topic, message) VALUES (" + 
-        mysqlConnection.escape(topic.toString()) + "," +
-        mysqlConnection.escape(message.toString()) + ")");
-      }
-      catch (error) {
-        common.conLog("Server: Error while inserting topic and message into history:", "red");
-        common.conLog(error, "std", false);
-      }
-      
       try {
         const data = JSON.parse(message); // parse message to JSON
   

@@ -148,4 +148,19 @@ function logoShow(bridge, port) {
     conLog("================================================================     ", "mag", false);
 }
 
-module.exports = { conLog, Translations, logoShow, pause };
+/**
+ * Generates a random hash string.
+ * @param {number} length - The length of the hash string to generate.
+ * @returns {string} - The generated hash string.
+ * @description This function creates a random alphanumeric string of the specified length, which can be used for unique identifiers or tokens.
+ */
+function randomHash(length = 16) {
+    const characters    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result          = "";
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
+module.exports = { conLog, Translations, logoShow, pause, randomHash };
