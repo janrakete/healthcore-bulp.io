@@ -28,9 +28,10 @@ router.post("/scan", async function (request, response) {
             data.status = "ok";
             const bridge = payload.bridge;
 
-            let message      = {};
-            message.duration = (payload.duration !== undefined) ? payload.duration : 30; // default duration is 30 seconds
+            let message         = {};
+            message.duration    = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
+            
             Common.conLog("Request for device scan forwarded via MQTT", "gre");
         }
         else {
@@ -51,4 +52,4 @@ router.post("/scan", async function (request, response) {
     return response.json(data);
 });
 
- module.exports = router;
+module.exports = router;
