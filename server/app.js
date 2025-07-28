@@ -64,7 +64,7 @@ async function startMySQLAndServer() {
 
     app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
       if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-        let data = {};
+        let data           = {};
         data.status        = "error";
         data.errorMessage  = "JSON in request is invalid";
         res.json(data);
@@ -75,7 +75,6 @@ async function startMySQLAndServer() {
     app.use("/data", routesData);
     const routesDevices = require("./routes/devices"); // import routes for devices manipulation
     app.use("/devices", routesDevices);
-
     //const routesMqtt  = require("./routes/mqtt"); // import routes for MQTT
     //app.use("/mqtt", routesMqtt);
 
@@ -83,7 +82,7 @@ async function startMySQLAndServer() {
      * Server
      */
     const server = require("http").createServer(app);
-    server.listen(appConfig.portServer, function () {
+    server.listen(appConfig.CONF_portServer, function () {
       common.logoShow("Server",             appConfig.CONF_portServer); // show logo
       common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
       common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
