@@ -220,7 +220,7 @@ async function startBridgeAndServer() {
       }
     }
     else {
-      mqttClient.publish("server/device/discovered", JSON.stringify(data)); // publish new discovered device to MQTT broker
+      mqttClient.publish("server/devices/discovered", JSON.stringify(data)); // publish new discovered device to MQTT broker
     }
   });
 
@@ -312,7 +312,8 @@ async function startBridgeAndServer() {
 
       message.scanning                        = true;
       message.bridge                          = BRIDGE_PREFIX;
-      bridgeStatus.devicesRegisteredConnect   = data.registeredConnect;
+      bridgeStatus.devicesRegisteredConnect   = (data.registeredConnect !== undefined) ? data.registeredConnect : false; // set flag for connecting to registered devices
+      message.duration                        = data.duration;
 
       mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
       

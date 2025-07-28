@@ -5,7 +5,6 @@
  */
 const appConfig     = require("../../config");
 const router        = require("express").Router();
-const mqttClient    = global.mqttClient;
 
 /**
  * POST request to scan for devices. This route is used to initiate a scan for devices connected to a specific bridge.
@@ -32,7 +31,7 @@ router.post("/scan", async function (request, response) {
             message.duration    = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
             
-            Common.conLog("Request for device scan forwarded via MQTT", "gre");
+            common.conLog("POST request for device scan forwarded via MQTT", "gre");
         }
         else {
             data.status = "error";
@@ -45,10 +44,47 @@ router.post("/scan", async function (request, response) {
     }
 
     if (data.status === "error") {
-        Common.conLog("POST request (scan): an error occured", "red");
-    }    
+        common.conLog("POST request for device scan: an error occured", "red");
+    }
 
-    Common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+    common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+    return response.json(data);
+});
+
+/**
+
+ */
+router.post("/scan/info", async function (request, response) {
+   const payload  = request.body;
+   let data       = {};
+
+    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
+        if (payload.bridge !== undefined) {
+            const duration      = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
+            const statement     = "SELECT * FROM mqtt_history WHERE topic=" + mysqlConnection.escape(payload.bridge + "/devices/discovered") +
+                               " AND dateTime >= NOW() - INTERVAL " + duration + " SECOND"; 
+            const result        = await MySQLConnection.query(statement);
+
+            console.log("Devices scan info: " + JSON.stringify(result));
+            
+            data.status = "ok";
+            common.conLog("POST request for device scan info", "gre");
+        }
+        else {
+            data.status = "error";
+            data.error  = "No bridge provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No payload provided";
+    }
+
+    if (data.status === "error") {
+        common.conLog("POST request for device scan info: an error occured", "red");
+    }
+
+    common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
     return response.json(data);
 });
 

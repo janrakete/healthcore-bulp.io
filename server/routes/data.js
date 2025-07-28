@@ -135,8 +135,8 @@ router.post("/:table", async function (request, response) {
          const statementBuild = await statementBuild(table, payload, "INSERT");
          if (statementBuild.status === "ok") {
             const statement = "INSERT INTO " + table + statementBuild.statement;
-            Common.conLog("POST Request: access table '" + table + "'", "gre");
-            Common.conLog("Execute statement: " + statement, "std", false);
+            common.conLog("POST Request: access table '" + table + "'", "gre");
+            common.conLog("Execute statement: " + statement, "std", false);
 
             const result = await MySQLConnection.query(statement);
             data.ID      = result[0].insertId; // return last insert id
@@ -157,10 +157,10 @@ router.post("/:table", async function (request, response) {
    }
 
    if (data.status === "error") {
-      Common.conLog("POST Request: an error occured", "red");
+      common.conLog("POST Request: an error occured", "red");
    }
 
-   Common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
+   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
    return response.json(data);
 });
 
@@ -184,8 +184,8 @@ router.get("/:table", async function (request, response) {
          const conditionBuild = await conditionBuild(table, payload);
          if (conditionBuild.status === "ok") {
             const statement = "SELECT * FROM " + table + conditionBuild.condition + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
-            Common.conLog("GET Request: access table '" + table + "'", "gre");
-            Common.conLog("Execute statement: " + statement, "std", false);
+            common.conLog("GET Request: access table '" + table + "'", "gre");
+            common.conLog("Execute statement: " + statement, "std", false);
 
             const [results]   = await MySQLConnection.query(statement);
             data.results      = results;
@@ -206,10 +206,10 @@ router.get("/:table", async function (request, response) {
    }
 
    if (data.status === "error") {
-      Common.conLog("GET Request: an error occured", "red");
+      common.conLog("GET Request: an error occured", "red");
    }
 
-   Common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
+   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
    return response.json(data);
 });
 
@@ -235,8 +235,8 @@ router.delete("/:table", async function (request, response) {
          if (conditionBuild.status === "ok") {
             if (conditionBuild.condition.trim() !== "") {
                const statement = "DELETE FROM " + table + conditionBuild.condition + " LIMIT 1";
-               Common.conLog("DELETE Request: access table '" + table + "'", "gre");
-               Common.conLog("Execute statement: " + statement, "std", false);
+               common.conLog("DELETE Request: access table '" + table + "'", "gre");
+               common.conLog("Execute statement: " + statement, "std", false);
       
                await MySQLConnection.query(statement);
             }
@@ -261,10 +261,10 @@ router.delete("/:table", async function (request, response) {
    }
 
    if (data.status === "error") {
-      Common.conLog("DELETE Request: an error occured", "red");
+      common.conLog("DELETE Request: an error occured", "red");
    }
 
-   Common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
+   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
    return response.json(data);
 });
 
@@ -294,8 +294,8 @@ router.patch("/:table", async function (request, response) {
                const statementBuild = await statementBuild(table, payload, "UPDATE");
                if (statementBuild.status === "ok") {
                   const statement = "UPDATE " + table + " SET " + statementBuild.statement + conditionBuild.condition + " LIMIT 1";
-                  Common.conLog("PATCH Request: access table '" + table + "'", "gre");
-                  Common.conLog("Execute statement: " + statement, "std", false);
+                  common.conLog("PATCH Request: access table '" + table + "'", "gre");
+                  common.conLog("Execute statement: " + statement, "std", false);
       
                   await MySQLConnection.query(statement);
                }
@@ -325,10 +325,10 @@ router.patch("/:table", async function (request, response) {
    }
 
    if (data.status === "error") {
-      Common.conLog("PATCH Request: an error occured", "red");
+      common.conLog("PATCH Request: an error occured", "red");
    }
 
-   Common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
+   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
    return response.json(data);
 });
 

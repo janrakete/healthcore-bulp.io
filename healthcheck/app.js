@@ -66,7 +66,17 @@ async function startHealtcheck() {
       url:    baseURLAndPort + "devices/scan",
       method: "POST",
       payload: {
-        bridge: "XXX"
+        bridge: "XXX",
+        duration: 40
+      }
+    },
+    {
+      label:  "Scan devices - get current info",
+      url:    baseURLAndPort + "devices/scan/info",
+      method: "POST",
+      payload: {
+        bridge: "XXX",
+        duration: 40
       }
     },
     {
