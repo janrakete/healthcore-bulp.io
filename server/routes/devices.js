@@ -61,12 +61,11 @@ router.post("/scan/info", async function (request, response) {
     if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
         if (payload.bridge !== undefined) {
             const duration      = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
-            const statement     = "SELECT * FROM mqtt_history WHERE topic=" + mysqlConnection.escape(payload.bridge + "/devices/discovered") +
+            const statement     = "SELECT * FROM mqtt_history WHERE topic=" + mysqlConnection.escape("server/devices/discovered") +
                                " AND dateTime >= NOW() - INTERVAL " + duration + " SECOND"; 
-            const result        = await MySQLConnection.query(statement);
+            const [results]      = await mysqlConnection.query(statement);
 
-            console.log("Devices scan info: " + JSON.stringify(result));
-            
+            data.devices = results.map(row => row.message);
             data.status = "ok";
             common.conLog("POST request for device scan info", "gre");
         }
