@@ -1,12 +1,12 @@
 /**
  * =============================================================================================
- * Converter for the Bulp AZ-123 device
+ * Converter for the bulp - Sensor BLE
  * ====================================
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BulpAZ123 extends ConverterStandard {
-    static productName = "bulp-AZ-123";
+class Converter_BulpSensorBLE extends ConverterStandard {
+    static productName = "bulp - Sensor BLE";
 
     constructor() {
         super();
@@ -102,7 +102,7 @@ class Converter_BulpAZ123 extends ConverterStandard {
     }
 
     /**
-     * Converts a value for a specific property of the Bulp AZ-123 device to a format suitable for writing.
+     * Converts a value for a specific property of the bulp - Sensor BLE device to a format suitable for writing.
      * @param {Object} property - The property object containing metadata about the property.
      * @param {any} value - The value to convert.
      * @return {Buffer|undefined} - The converted value as a Buffer if the property is writable, otherwise undefined.
@@ -146,4 +146,4 @@ class Converter_BulpAZ123 extends ConverterStandard {
      }
 }
 
-module.exports = { Converter_BulpAZ123 };
+module.exports = { Converter_BulpSensorBLE };
