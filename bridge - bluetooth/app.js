@@ -116,6 +116,8 @@ async function startBridgeAndServer() {
    * @description This function attempts to connect to a Bluetooth device, discovers its services and characteristics, and subscribes to notifications for properties defined in the device converter. It also handles disconnection events and publishes connection status to the MQTT broker.
    */
   function deviceConnectAndDiscover(device, deviceRaw) {
+    delete device.deviceRaw; // remove deviceRaw from device, because it cannot be stringified
+
     if (device.connectable === true) {
       deviceRaw.connect(function (error) { 
         if (error) {    
@@ -250,20 +252,23 @@ async function startBridgeAndServer() {
           common.conLog("... but is not registered at server", "std", false);
         }
       }
-      else {
-        if ((data.productName !== undefined) && (data.productName.trim() !== "")) { // if product name is defined and not empty, add product name to data
-          mqttClient.publish("server/devices/discovered", JSON.stringify(data)); // publish new discovered device to MQTT broker
+      else { // if message was not used to connect to registered devices, just save device in array of devices found via scan
+        const deviceIndex           = bridgeStatus.devicesFoundViaScan.findIndex(device => device.deviceID === data.deviceID);
+        const previouslyConnectable = deviceIndex !== -1 && bridgeStatus.devicesFoundViaScan[deviceIndex].connectable === true; // check if device was already found in previous scan and if it was connectable, because it can change during scan
 
-          data.deviceRaw = deviceRaw; // add raw device object to data for later use
+        const nowConnectable  = deviceRaw.connectable === true;
+        data.connectable      = nowConnectable || previouslyConnectable;
+        data.deviceRaw        = deviceRaw;
 
-          const deviceIndex = bridgeStatus.devicesFoundViaScan.findIndex(device => device.deviceID === data.deviceID); // overwrite device in array of devices found via scan, if device with same ID already exists
-          if (deviceIndex !== -1) {
-            bridgeStatus.devicesFoundViaScan[deviceIndex] = data; // update existing device
-          }
-          else {
-            bridgeStatus.devicesFoundViaScan.push(data); // add new device
-          }
+        if (deviceIndex !== -1) { // if device is already in array of devices found via scan, update it
+          bridgeStatus.devicesFoundViaScan[deviceIndex] = data;
+        } else { // if device is not in array of devices found via scan, add it
+          bridgeStatus.devicesFoundViaScan.push(data);
         }
+
+        const deviceWithoutRaw = { ...data }; // create a copy of the device object without the raw device object, because it cannot be stringified
+        delete deviceWithoutRaw.deviceRaw;
+        mqttClient.publish("server/devices/discovered", JSON.stringify(deviceWithoutRaw));
       }
     }
     else {
@@ -438,7 +443,7 @@ async function startBridgeAndServer() {
 
     if (device) { // if device is in array of devices found via scan, try do connect
       common.conLog("Bluetooth: Device " + device.deviceID + " (" + device.productName + ") found - trying to connect", "yel");
-      deviceConnectAndDiscover(device, device.deviceRaw);
+      deviceConnectAndDiscover(device, device.deviceRaw); // connect to device and discover services and characteristics
     }
     else {
       common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") not found in array of devices found via scan", "red");
