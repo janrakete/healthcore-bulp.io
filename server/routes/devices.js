@@ -71,10 +71,21 @@ router.post("/scan/info", async function (request, response) {
         if (payload.bridge !== undefined) {
             const duration      = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
             const statement     = "SELECT * FROM mqtt_history WHERE topic=" + mysqlConnection.escape("server/devices/discovered") +
-                               " AND dateTime >= NOW() - INTERVAL " + duration + " SECOND"; 
-            const [results]      = await mysqlConnection.query(statement);
+                               " AND dateTime >= NOW() - INTERVAL " + duration + " SECOND ORDER BY dateTime DESC"; 
+            const [results]      = await mysqlConnection.query(statement); // ... query the database for discovered devices
 
             data.devices = results.map(row => row.message);
+
+            // remove duplicates based on device ID, keep only the first occurrence
+            const uniqueDevices = {};
+            data.devices.forEach(device => {
+                if (device.deviceID && !uniqueDevices[device.deviceID]) {
+                    uniqueDevices[device.deviceID] = device;
+                }
+
+            });
+            data.devices = Object.values(uniqueDevices);
+
             data.status = "ok";
             common.conLog("POST request for device scan info", "gre");
         }
