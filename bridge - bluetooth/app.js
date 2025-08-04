@@ -198,6 +198,27 @@ async function startBridgeAndServer() {
   }
 
   /**
+   * Creates a fingerprint object from the Bluetooth device advertisement.
+   * @param {*} deviceRaw - The Bluetooth device object.
+   * @returns {Object} - The fingerprint object containing relevant advertisement data.
+   * @description This function extracts the local name, service UUIDs, manufacturer data, and TX power level from the Bluetooth peripheral advertisement and returns them in a structured object.
+   */
+  function fingerprintCreate(deviceRaw) {
+    const advertisement = deviceRaw.advertisement;
+
+    let fingerprint = JSON.stringify({
+      localName: advertisement.localName || "",
+      serviceUuids: (advertisement.serviceUuids || []).sort(),
+      manufacturerData: advertisement.manufacturerData?.toString("hex") || "",
+      txPowerLevel: advertisement.txPowerLevel ?? null
+    });
+
+    fingerprint = common.createHashFromString(fingerprint, "sha256", 64); // create hash from fingerprint and cut it to 64 characters
+    return fingerprint;
+  }
+
+
+  /**
    * Class representing the status of the Bluetooth bridge. Contains arrays for connected devices and registered devices at the server.
    * @class
    * @property {Object[]} devicesConnected - Array of currently connected Bluetooth devices.
@@ -232,7 +253,8 @@ async function startBridgeAndServer() {
    */
   bluetooth.on("discover", function (deviceRaw) {
     let data             = {};
-    data.deviceID        = deviceRaw.address;
+
+    data.deviceID        = (process.platform === "darwin") ? fingerprintCreate(deviceRaw) : deviceRaw.uuid; // if platform is macOS, create fingerprint from deviceRaw, otherwise use uuid
     data.productName     = deviceRaw.advertisement.localName; 
     data.rssi            = deviceRaw.rssi;
     data.connectable     = deviceRaw.connectable;

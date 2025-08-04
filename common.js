@@ -8,6 +8,7 @@ const util      = require("util");
 const colors    = require("colors");
 const moment    = require("moment");
 const sleep     = require("sleep-promise");
+const crypto    = require('crypto');
 
 /**
  * Console Log Function
@@ -163,4 +164,17 @@ function randomHash(length = 16) {
     return result;
 }
 
-module.exports = { conLog, Translations, logoShow, pause, randomHash };
+/**
+ * Creates a hash from a string using the specified algorithm and length.
+ * @param {string} input - The input string to hash.
+ * @param {string} algo - The hashing algorithm to use (default: "sha256").
+ * @param {number} length - The length of the hash to return (default: 64).
+ * @returns {string} The generated hash string.
+ * @description This function uses the Node.js crypto module to create a hash from the input string using the specified algorithm and returns a substring of the specified length. If the length is not specified, the full hash is returned.
+ */
+function createHashFromString(input, algo = "sha256", length = 64) {
+    const hash = crypto.createHash(algo).update(input).digest("hex");
+    return length ? hash.slice(0, length) : hash;
+}
+
+module.exports = { conLog, Translations, logoShow, pause, randomHash, createHashFromString };
