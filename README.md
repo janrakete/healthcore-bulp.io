@@ -47,20 +47,14 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 
 **Prerequisites**
 - Node.js (v22 or higher) and npm
-- MySQL database; client tools for schema import
 
 **Project setup**
 1. Clone/download the repository and `cd` into its root.
 2. Create `.env.local` to override defaults; fill in:
-   - MySQL database credentials: `CONF_dbHost`, `CONF_dbName`, `CONF_dbUser`, `CONF_dbPass`, `CONF_dbPort`
    - Adapter paths: `CONF_zigBeeAdapterPort`, `CONF_zigBeeAdapterName`, `CONF_loRaAdapterPath`, 
 3. Install dependencies:
    ```bash
    npm install
-   ```
-4. Import the database schema:
-   ```bash
-   mysql -u <user> -p <db_name> < healthcore_db.sql
    ```
 
 **Start services** (each in its own terminal or managed via a process manager):

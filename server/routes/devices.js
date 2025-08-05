@@ -70,9 +70,8 @@ router.post("/scan/info", async function (request, response) {
     if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
         if (payload.bridge !== undefined) {
             const duration      = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
-            const statement     = "SELECT * FROM mqtt_history WHERE topic=" + mysqlConnection.escape("server/devices/discovered") +
-                               " AND dateTime >= NOW() - INTERVAL " + duration + " SECOND ORDER BY dateTime DESC"; 
-            const [results]      = await mysqlConnection.query(statement); // ... query the database for discovered devices
+            const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND dateTime >= datetime('now', '-' || ? || ' seconds') ORDER BY dateTime DESC"; 
+            const results       = await database.all(statement, ["server/devices/discovered", duration]); // ... query the database for discovered devices
 
             data.devices = results.map(row => row.message);
 

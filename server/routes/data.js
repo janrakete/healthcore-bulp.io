@@ -4,8 +4,10 @@
  * ==========================
  */
 
-const appConfig     = require("../../config");
-const router        = require("express").Router();
+const appConfig       = require("../../config");
+const router          = require("express").Router();
+
+const sqlStringEscape = require("sqlstring");
 
 const tablesAllowed = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
 
@@ -22,8 +24,8 @@ const tablesAllowed = appConfig.CONF_tablesAllowedForAPI; // defines, which tabl
 async function statementBuild(table, payload, type="INSERT") {
    let response = {};
 
-   const [results]   = await MySQLConnection.query("SHOW COLUMNS FROM " + mysqlConnection.escape(table)); // build an array with all fields of the table
-   const columnsList = results.map(result => result.Field);
+   const results = await database.all("PRAGMA table_info(${table})"); // get all columns for the table
+   const columnsList = results.map(result => result.name);
 
    let dataList = [];
    
@@ -49,7 +51,7 @@ async function statementBuild(table, payload, type="INSERT") {
             let values = "";
             for (let data of dataList) {
                fields = fields + Object.keys(data)[0] + ", "
-               values = values + mysqlConnection.escape(data[Object.keys(data)[0]]) + ", ";
+               values = values + sqlStringEscape.escape((data[Object.keys(data)[0]]) + ", ";
             }
 
             fields = fields.substring(0, fields.length - 2);  // remove the last ", "
@@ -58,7 +60,7 @@ async function statementBuild(table, payload, type="INSERT") {
          }
          else { // build UPDATE statement
             for (let data of dataList) {
-               response.statement = response.statement + " " + Object.keys(data)[0] + "=" + mysqlConnection.escape(data[Object.keys(data)[0]]) + ", ";
+               response.statement = response.statement + " " + Object.keys(data)[0] + "=" + sqlStringEscape.escape(data[Object.keys(data)[0]]) + ", ";
             }
             response.statement = response.statement.substring(0, response.statement.length - 2);  // remove the last ", "
          }
@@ -83,7 +85,7 @@ async function statementBuild(table, payload, type="INSERT") {
 async function conditionBuild(table, payload) {
    let response = {};
 
-   const [results]  = await MySQLConnection.query("SHOW COLUMNS FROM " + mysqlConnection.escape(table)); // build an array with all fields of the table
+   const results = await database.all("PRAGMA table_info(${table})"); // get all columns for the table
    const columnsList = results.map(result => result.Field);
 
    response.condition = "";   
@@ -94,7 +96,7 @@ async function conditionBuild(table, payload) {
             if (response.condition === undefined) {
                response.condition = "";
             }
-            response.condition = response.condition + " " + key + "=" + mysqlConnection.escape(value) + " AND"; // ... build WHERE condition
+            response.condition = response.condition + " " + key + "=" + sqlStringEscape.escape(value) + " AND"; // ... build WHERE condition
          }
          else { // if key is not an existing table column
             response.condition = "";
@@ -138,8 +140,8 @@ router.post("/:table", async function (request, response) {
             common.conLog("POST Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + statement, "std", false);
 
-            const result = await MySQLConnection.query(statement);
-            data.ID      = result[0].insertId; // return last insert id
+            const result = await database.run(statement);
+            data.ID = result.lastID; // return last insert id
          }
          else {
             data.status = statementBuild.status;
@@ -187,8 +189,8 @@ router.get("/:table", async function (request, response) {
             common.conLog("GET Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + statement, "std", false);
 
-            const [results]   = await MySQLConnection.query(statement);
-            data.results      = results;
+            const results = await database.all(statement);
+            data.results = results;
          }
          else {
             data.status = conditionBuild.status;
@@ -238,7 +240,7 @@ router.delete("/:table", async function (request, response) {
                common.conLog("DELETE Request: access table '" + table + "'", "gre");
                common.conLog("Execute statement: " + statement, "std", false);
       
-               await MySQLConnection.query(statement);
+               await database.run(statement);
             }
             else { // if no condition is given, return error
                data.status = "error";
@@ -297,7 +299,7 @@ router.patch("/:table", async function (request, response) {
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
                   common.conLog("Execute statement: " + statement, "std", false);
       
-                  await MySQLConnection.query(statement);
+                  await database.run(statement);
                }
                else {
                   data.status = statementBuild.status;

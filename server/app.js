@@ -5,259 +5,238 @@
  */
 const appConfig   = require("../config");
 const common      = require("../common");
-
-global.common = common; // make Common functions global
+global.common     = common; // make Common functions global
 
 /**
- * MySQL
+ * SQLite
  */
-const mysql = require("mysql2/promise");
+const database  = require("better-sqlite3")(appConfig.CONF_databaseFilename);
+global.database = database; // make SQLite database global
 
 /**
- * Start MySQL and server
+ * Start SQLite and server
  * @async
- * @function startMySQLAndServer
- * @description This function establishes a MySQL connection, sets up the server with middleware, routes, and MQTT client, and starts the server.
+ * @function startDatabaseAndServer
+ * @description This function establishes a SQLite connection, sets up the server with middleware, routes, and MQTT client, and starts the server.
  */
-async function startMySQLAndServer() {
-  await mysql.createConnection({ // establish MySQL connection
-  host        : appConfig.CONF_dbHost,
-  user        : appConfig.CONF_dbUser,
-  password    : appConfig.CONF_dbPass,
-  database    : appConfig.CONF_dbName,
-  port        : appConfig.CONF_dbPort,
-  dateStrings : true
-  }).then(async function(mysqlConnection){
-   
-    global.mysqlConnection = mysqlConnection; // make MySQL connection global
+async function startDatabaseAndServer() {
+  /**
+   * Date and time
+   */
+  const moment  = require("moment");
+  global.moment = moment;   
 
-    /**
-     * Date and time
-     */
-    const moment = require("moment");
-    global.moment = moment;   
+  /**
+   * Translations
+   */
+  const translations = new common.Translations();
+  await translations.build();
+  global.translations = translations;
 
-    /**
-     * Translations
-     */
-    const translations = new common.Translations();
-    await translations.build();
-    global.translations = translations;
+  /**
+   * Middleware
+   */
+  const express     = require("express");
+  const cors        = require("cors");
+  const bodyParser  = require("body-parser");
 
-    /**
-     * Middleware
-     */
-    const express     = require("express");
-    const cors        = require("cors");
-    const bodyParser  = require("body-parser");
+  const app = express();
 
-    const app = express();
+  app.use(bodyParser.json());
 
-    app.use(bodyParser.json());
+  app.use(
+    cors(),
+    bodyParser.urlencoded({
+      extended: true,
+    })
+  );
 
-    app.use(
-      cors(),
-      bodyParser.urlencoded({
-        extended: true,
-      })
-    );
-
-    app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
-      if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-        let data           = {};
-        data.status        = "error";
-        data.errorMessage  = "JSON in request is invalid";
-        res.json(data);
-      }
-    });
-
-    const routesData = require("./routes/data"); // import routes for data manipulation
-    app.use("/data", routesData);
-    const routesDevices = require("./routes/devices"); // import routes for devices manipulation
-    app.use("/devices", routesDevices);
-
-    /**
-     * Server
-     */
-    const server = require("http").createServer(app);
-    server.listen(appConfig.CONF_portServer, function () {
-      common.logoShow("Server",             appConfig.CONF_portServer); // show logo
-      common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
-      common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
-    });
-
-    /**
-     * MQTT client
-     */
-    const mqtt       = require("mqtt");
-    const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: "server" }); // connect to broker ...
-
-   /**
-    * Connects the MQTT client and subscribes to all topics.
-    * @function
-    * @description This function is called when the MQTT client successfully started.
-    */
-    function mqttConnect() {
-      mqttClient.subscribe("server/#", function (error, granted) { // ... and subscribe to all topics
-      common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
-      if (error) {
-        common.conLog("MQTT: Error while subscribing:", "red");
-        common.conLog(error, "std", false);
-      }
-      });
+  app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
+    if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+      let data           = {};
+      data.status        = "error";
+      data.errorMessage  = "JSON in request is invalid";
+      res.json(data);
     }
-    mqttClient.on("connect", mqttConnect);
-    global.mqttClient = mqttClient; // make MQTT client global
-    
-    /**
-     * =============================================================================================
-     * Helper functions
-     * ================
-     */
+  });
 
-    /**
-     *  Check if a device is registered in the database
-     * @param {string} strDeviceID - The device ID to check.
-     * @returns {boolean} - Returns true if the device is registered, false otherwise.
-     * @description This function checks if a device with the given ID is registered in the database
-     */
-    async function deviceCheckRegistered(deviceID) {
-        deviceID = deviceID.trim();
+  const routesData = require("./routes/data"); // import routes for data manipulation
+  app.use("/data", routesData);
+  const routesDevices = require("./routes/devices"); // import routes for devices manipulation
+  app.use("/devices", routesDevices);
 
-        const [results] = await MySQLConnection.query("SELECT * FROM devices WHERE deviceID=" + mysqlConnection.escape(deviceID) + " LIMIT 1");
-        if (results.length === 0) // could not find device 
-        {
-            Common.conLog("Check device ID: not found in database device with ID " + deviceID, "red");
-            return false;
-        }
-        else {
-            Common.conLog("Check device ID: found in database device with ID " + deviceID, "gre");
-            return true;
-        }
+  /**
+   * Server
+   */
+  const server = require("http").createServer(app);
+  server.listen(appConfig.CONF_portServer, function () {
+    common.logoShow("Server",             appConfig.CONF_portServer); // show logo
+    common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
+    common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
+  });
+
+  /**
+   * MQTT client
+   */
+  const mqtt       = require("mqtt");
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: "server" }); // connect to broker ...
+
+  /**
+  * Connects the MQTT client and subscribes to all topics.
+  * @function
+  * @description This function is called when the MQTT client successfully started.
+  */
+  function mqttConnect() {
+    mqttClient.subscribe("server/#", function (error, granted) { // ... and subscribe to all topics
+    common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
+    if (error) {
+      common.conLog("MQTT: Error while subscribing:", "red");
+      common.conLog(error, "std", false);
     }
-    
-    /**
-     * Process incoming MQTT messages
-     * @function
-     * @param {string} topic - The topic of the incoming MQTT message
-     * @param {string} message - The message payload of the incoming MQTT message
-     * @description This function is called when a message is received from the MQTT broker.
-     */
-    mqttClient.on("message", function (topic, message) { // getting a message from MQTT broker
-      common.conLog("MQTT: Getting incoming message from broker", "yel");
-      common.conLog("Topic: " + topic.toString(), "std", false);
-      common.conLog("Message: " + message.toString(), "std", false);
-
-      try {
-        const data = JSON.parse(message); // parse message to JSON
+    });
+  }
+  mqttClient.on("connect", mqttConnect);
+  global.mqttClient = mqttClient; // make MQTT client global
   
-        switch (topic) {
-          case "server/devices/list":
-            mqttDevicesList(data);
-            break;
-          case "server/device/create":
-            mqttDeviceCreate(data);
-            break;
-          case "server/device/remove":
-            mqttDeviceRemove(data);
-            break;
-          case "server/device/update":
-            mqttDeviceUpdate(data);
-            break;
-          default:
-            common.conLog("Server: NOT found matching message handler for " + topic, "red");
-        }
-      }
-      catch (error) { // if error while parsing message, log error
-        common.conLog("MQTT: Error while parsing message:", "red");     
-        common.conLog(error, "std", false);
-      } 
-    });
+  /**
+   * =============================================================================================
+   * Helper functions
+   * ================
+   */
 
-    /**
-     * List devices based on the bridge
-     * @param {Object} data - The data object containing the bridge information.
-     * @description This function retrieves a list of devices associated with a specific bridge from the MySQL database and publishes the list to the MQTT topic for that bridge.
-     */
-    async function mqttDevicesList(data) {
-      let message = {};
+  /**
+   *  Check if a device is registered in the database
+   * @param {string} strDeviceID - The device ID to check.
+   * @returns {boolean} - Returns true if the device is registered, false otherwise.
+   * @description This function checks if a device with the given ID is registered in the database
+   */
+  async function deviceCheckRegistered(deviceID) {
+      deviceID = deviceID.trim();
 
-      if (data.bridge) {
-          const [results] = await mysqlConnection.query("SELECT * FROM devices WHERE bridge=" +
-                                  mysqlConnection.escape(data.bridge));
-          message.devices = results;
-
-          mqttClient.publish(data.bridge + "/devices/connect", JSON.stringify(message));
+      const result = database.prepare("SELECT * FROM devices WHERE deviceID = ? LIMIT 1").get(deviceID);
+      if (!result) { // could not find device
+          common.conLog("Check device ID: not found in database device with ID " + deviceID, "red");
+          return false;
       } else {
-          Common.conLog("Server: bridge is missing in message for devices list", "red");
+          common.conLog("Check device ID: found in database device with ID " + deviceID, "gre");
+          return true;
       }
-    }    
+  }
+  
+  /**
+   * Process incoming MQTT messages
+   * @function
+   * @param {string} topic - The topic of the incoming MQTT message
+   * @param {string} message - The message payload of the incoming MQTT message
+   * @description This function is called when a message is received from the MQTT broker.
+   */
+  mqttClient.on("message", function (topic, message) { // getting a message from MQTT broker
+    common.conLog("MQTT: Getting incoming message from broker", "yel");
+    common.conLog("Topic: " + topic.toString(), "std", false);
+    common.conLog("Message: " + message.toString(), "std", false);
 
-    /**
-     * Create a new device
-     * @param {Object} data - The data object containing the device information.
-     * @description This function creates a new device in the MySQL database and publishes a message to the MQTT topic for that device.
-     */
-    async function mqttDeviceCreate(data) {
-      let message = {};
+    try {
+      const data = JSON.parse(message); // parse message to JSON
 
-      if (data.bridge) {
-        if (data.deviceID && data.vendorName && data.productName) {
-          if (deviceCheckRegistered(deviceID)) { // check if device is already registered
-            Common.conLog("Server: Device with ID " + data.deviceID + " is already registered", "red");
-            message.status      = "error";
-            message.deviceID    = data.deviceID;
-            message.bridge      = data.bridge;
-            message.status      = "error";
-            message.error       = "Device already registered";
-          }
-          else {
-            // insert device into database
-            await mysqlConnection.query("INSERT INTO devices (deviceID, bridge, vendorName, productName, description, properties, dateTimeAdded) VALUES (" + 
-                  mysqlConnection.escape(data.deviceID) + ", " + 
-                  mysqlConnection.escape(data.bridge) + ", " + 
-                  mysqlConnection.escape(data.vendorName) + ", " + 
-                  mysqlConnection.escape(data.productName) + ", " +
-                  mysqlConnection.escape(data.description) + ", " +
-                  mysqlConnection.escape(data.properties) + ", " + 
-                  NOW()
-                  + ")");
+      switch (topic) {
+        case "server/devices/list":
+          mqttDevicesList(data);
+          break;
+        case "server/device/create":
+          mqttDeviceCreate(data);
+          break;
+        case "server/device/remove":
+          mqttDeviceRemove(data);
+          break;
+        case "server/device/update":
+          mqttDeviceUpdate(data);
+          break;
+        default:
+          common.conLog("Server: NOT found matching message handler for " + topic, "red");
+      }
+    }
+    catch (error) { // if error while parsing message, log error
+      common.conLog("MQTT: Error while parsing message:", "red");     
+      common.conLog(error, "std", false);
+    } 
+  });
 
-            message.status    = "ok";
-            message.deviceID  = data.deviceID;
-            message.bridge    = data.bridge;
-            Common.conLog("Server: Created device with ID " + data.deviceID, "gre");
-          }
-        }
-        else {
-          Common.conLog("Server: bridge is missing in message for device creation", "red");
+  /**
+   * List devices based on the bridge
+   * @param {Object} data - The data object containing the bridge information.
+   * @description This function retrieves a list of devices associated with a specific bridge from the database and publishes the list to the MQTT topic for that bridge.
+   */
+  async function mqttDevicesList(data) {
+    let message = {};
+
+    if (data.bridge) {
+      const results = database.prepare("SELECT * FROM devices WHERE bridge = ?").all(data.bridge);
+      message.devices = results;
+      mqttClient.publish(data.bridge + "/devices/connect", JSON.stringify(message));
+    }
+    else {
+      common.conLog("Server: bridge is missing in message for devices list", "red");
+    }
+  }    
+
+  /**
+   * Create a new device
+   * @param {Object} data - The data object containing the device information.
+   * @description This function creates a new device in the database and publishes a message to the MQTT topic for that device.
+   */
+  async function mqttDeviceCreate(data) {
+    let message = {};
+
+    if (data.bridge) {
+      if (data.deviceID && data.vendorName && data.productName) {
+        if (deviceCheckRegistered(deviceID)) { // check if device is already registered
+          Common.conLog("Server: Device with ID " + data.deviceID + " is already registered", "red");
           message.status      = "error";
           message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
           message.status      = "error";
-          message.error       = "Bridge missing";
+          message.error       = "Device already registered";
+        }
+        else {
+          // insert device into database
+          database.prepare("INSERT INTO devices (deviceID, bridge, vendorName, productName, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))").run(
+            data.deviceID, data.bridge, data.vendorName, data.productName, data.description || "", data.properties || "");
+
+          message.status    = "ok";
+          message.deviceID  = data.deviceID;
+          message.bridge    = data.bridge;
+          Common.conLog("Server: Created device with ID " + data.deviceID, "gre");
         }
       }
       else {
-          Common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
-          message.status      = "error";
-          message.deviceID    = data.deviceID;
-          message.status      = "error";
-          message.error       = "Bridge missing";        
+        Common.conLog("Server: bridge is missing in message for device creation", "red");
+        message.status      = "error";
+        message.deviceID    = data.deviceID;
+        message.status      = "error";
+        message.error       = "Bridge missing";
       }
-      
-      mqttClient.publish(data.bridge + "/device/create", JSON.stringify(message));
-    }   
+    }
+    else {
+        Common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
+        message.status      = "error";
+        message.deviceID    = data.deviceID;
+        message.status      = "error";
+        message.error       = "Bridge missing";        
+    }
+    
+    mqttClient.publish(data.bridge + "/device/create", JSON.stringify(message));
+  }   
 
-    /**
-     * Create Server Side Events channel
-     */
-    const sse         = require("better-sse"); 
-    global.sse        = sse;
-    global.sseChannel = global.sse.createChannel(); // make channel global
-  });
+  /**
+   * Create Server Side Events channel
+   */
+  const sse         = require("better-sse"); 
+  global.sse        = sse;
+  global.sseChannel = global.sse.createChannel(); // make channel global
+  
 }
 
-startMySQLAndServer();
+startDatabaseAndServer();
 
 /**
  * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.

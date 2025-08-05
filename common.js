@@ -98,9 +98,10 @@ class Translations {
      */
     async build() {
         const translations = [];
-        const [results]  = await mysqlConnection.query("SELECT * FROM translations");
 
-        for await (const result of results) { 
+        const results = await database.prepare("SELECT * FROM translations").all();
+
+        for (const result of results) {
             translations[result.translationID.toLowerCase()] = result;
         }
 
