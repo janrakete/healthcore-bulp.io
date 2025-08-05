@@ -36,7 +36,8 @@ const appConfig = {
   CONF_loRaAdapterRXMOD       : process.env.CONF_loRaAdapterRXMOD,
   CONF_portHealthcheck        : process.env.CONF_portHealthcheck,
   CONF_baseURL                : process.env.CONF_baseURL,
-  CONF_scanTimeDefaultSeconds : process.env.CONF_scanTimeDefaultSeconds
+  CONF_scanTimeDefaultSeconds : process.env.CONF_scanTimeDefaultSeconds,
+  CONF_databaseFilename       : process.env.CONF_databaseFilename
 };
 
 module.exports = appConfig;
