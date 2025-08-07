@@ -228,6 +228,125 @@ async function startDatabaseAndServer() {
   }   
 
   /**
+   * Remove a device
+   * @param {Object} data - The data object containing the device information.
+   * @description This function removes a device from the database and publishes a message to the MQTT topic for that device.
+   */
+  async function mqttDeviceRemove(data) {
+    let message = {};
+
+    if (data.bridge) {
+      if (data.deviceID) {
+        if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
+          // remove device from database
+          database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(
+            data.deviceID, data.bridge
+          );
+
+          message.status    = "ok";
+          message.deviceID  = data.deviceID;
+          message.bridge    = data.bridge;
+          Common.conLog("Server: Removed device with ID " + data.deviceID, "gre");
+        }
+        else {
+          Common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
+          message.error       = "Device not registered";
+        }
+      }
+      else {
+        Common.conLog("Server: Device ID is missing in message for device removal", "red");
+        message.status      = "error";
+        message.deviceID    = data.deviceID;
+        message.bridge      = data.bridge;
+        message.error       = "Device ID missing";
+      }
+    }
+    else {
+      Common.conLog("Server: Bridge is missing in message for device removal", "red");
+      message.status      = "error";
+      message.deviceID    = data.deviceID;
+      message.bridge      = data.bridge;
+      message.error       = "Bridge missing";
+    }
+
+    mqttClient.publish(data.bridge + "/device/remove", JSON.stringify(message));
+  }   
+
+  /**
+   * Update device information
+   * @param {Object} data - The data object containing the device information.
+   * @description This function updates the information of a device in the database and publishes a message to the MQTT topic for that device.
+   */
+  async function mqttDeviceUpdate(data) {
+    let message = {};
+
+    if (data.bridge) {
+      if (data.deviceID) {
+        if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
+          
+          // update only fields that are defined in "data"
+          const updateFields = [];
+          const updateValues = [];
+
+          if (data.vendorName) {
+            updateFields.push("vendorName = ?");
+            updateValues.push(data.vendorName);
+          }
+          if (data.productName) {
+            updateFields.push("productName = ?");
+            updateValues.push(data.productName);
+          }
+          if (data.description) {
+            updateFields.push("description = ?");
+            updateValues.push(data.description);
+          }
+          if (data.properties) {
+            updateFields.push("name = ?");
+            updateValues.push(data.name);
+          }
+          updateValues.push(data.deviceID);
+          updateValues.push(data.bridge);
+
+          database.prepare("UPDATE devices SET ${updateFields.join(', ')} WHERE deviceID = ? AND bridge = ?").run(
+            ...updateValues
+          );
+
+          message.status    = "ok";
+          message.deviceID  = data.deviceID;
+          message.bridge    = data.bridge;
+          Common.conLog("Server: Updated device with ID " + data.deviceID, "gre");
+        }
+        else {
+          Common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
+          message.error       = "Device not registered";
+        }
+      }
+      else {
+        Common.conLog("Server: Device ID is missing in message for device update", "red");
+        message.status      = "error";
+        message.deviceID    = data.deviceID;
+        message.bridge      = data.bridge;
+        message.error       = "Device ID missing";
+      }
+    }
+    else {
+      Common.conLog("Server: Bridge is missing in message for device update", "red");
+      message.status      = "error";
+      message.deviceID    = data.deviceID;
+      message.bridge      = data.bridge;
+      message.error       = "Bridge missing";
+    }
+
+    mqttClient.publish(data.bridge + "/device/update", JSON.stringify(message));
+  }
+
+  /**
    * Create Server Side Events channel
    */
   const sse         = require("better-sse"); 
