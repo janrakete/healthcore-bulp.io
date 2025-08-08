@@ -1,7 +1,8 @@
 # healthcore.dev by bulp.io
 
-Current status: 0% ████████████████▒▒▒▒▒▒▒▒▒ 100% (= first running version)
+▷ Current status: 0% ████████████████▒▒▒▒▒▒▒▒▒ 100% (= first running version)
 
+▽
 Hi.
 
 Welcome to healthcore.dev❗️
