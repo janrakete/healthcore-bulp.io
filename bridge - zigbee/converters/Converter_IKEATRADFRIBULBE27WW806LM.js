@@ -45,19 +45,13 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
                 return (this.getStandard(property, anyValue));
             }
             else {
-                if (property.name === "brightness") {
-                    return anyValue;
-                }
-                else if (property.name === "state") {
-                    if (anyValue === 1) {
-                        return "on";
-                    }
-                    else {
-                        return "off";
-                    }
-                }
-                else {
-                    return undefined;
+                switch (property.name) {
+                    case "brightness":
+                        return anyValue;
+                    case "state":
+                        return anyValue === 1 ? "on" : "off";
+                    default:
+                        return undefined;
                 }
             }
         }
@@ -69,19 +63,18 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
         }
         else {
             let valueConverted = {};
-            if (property.name === "brightness") {               
-                valueConverted.command = "moveToLevel";
-                valueConverted.anyValue   = {"level" : anyValue, "transtime" : 0 };
-                return valueConverted;
+            switch (property.name) {
+                case "brightness":
+                    valueConverted.command = "moveToLevel";
+                    valueConverted.anyValue = { "level": anyValue, "transtime": 0 };
+                    return valueConverted;
+                case "state":
+                    valueConverted.command = anyValue;
+                    valueConverted.anyValue = {};
+                    return valueConverted;
+                default:
+                    return undefined;
             }
-            else if (property.name === "state") {
-                valueConverted.command = anyValue;
-                valueConverted.anyValue   = {};
-                return valueConverted;
-            }
-            else {
-                return undefined;
-            } 
         }
     }
 }

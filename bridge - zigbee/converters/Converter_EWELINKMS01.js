@@ -33,21 +33,16 @@ class Converter_EWELINKMS01 extends ConverterStandard {
                 return (this.getStandard(property, anyValue));
             }
             else {
-                if (property.name === "motion") {
-                    if (anyValue === "commandStatusChangeNotification") {
-                        if (data.zonestatus === 1) {
-                            return "yes"; 
+                switch (property.name) {
+                    case "motion":
+                        switch (anyValue) {
+                            case "commandStatusChangeNotification":
+                                return data.zonestatus === 1 ? "yes" : "no";
+                            default:
+                                return "no";
                         }
-                        else {
-                            return "no";
-                        }
-                    }
-                    else {
-                        return "no";
-                    }
-                }
-                else {
-                    return undefined;
+                    default:
+                        return undefined;
                 }
             }
         }

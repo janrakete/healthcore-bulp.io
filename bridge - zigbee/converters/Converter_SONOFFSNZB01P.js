@@ -34,18 +34,16 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
             }
             else {
                 if (property.name === "button") {
-                    if (anyValue === "commandToggle") {
-                        return "pressed";
+                    switch (anyValue) {
+                        case "commandToggle":
+                            return "pressed";
+                        case "commandOff":
+                            return "long_pressed";
+                        case "commandOn":
+                            return "double_pressed";
+                        default:
+                            return "not_pressed";
                     }
-                    if (anyValue === "commandOff") {
-                        return "long_pressed";
-                    }
-                    if (anyValue === "commandOn") {
-                        return "double_pressed";
-                    }
-                    else {
-                        return "not_pressed";
-                    }   
                 }
                 else {
                     return undefined;
