@@ -264,9 +264,9 @@ async function startBridgeAndServer() {
     bridgeStatus.devicesConnected            = data.devices; // save all devices connected in array 
 
     for (let device of bridgeStatus.devicesConnected) { // for each device in array of connected devices
-      device.DeviceConverter = convertersList.find(device.productName); // get converter for device from list of converters
+      device.deviceConverter = convertersList.find(device.productName); // get converter for device from list of converters
 
-      if (device.DeviceConverter === undefined) { 
+      if (device.deviceConverter === undefined) {
         common.conLog("LoRa: No converter found for " + device.productName, "red");
       }
       else {
@@ -291,7 +291,7 @@ async function startBridgeAndServer() {
     const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
     if (device) { // if device is in array of connected devices, convert values
 
-      const propertiesAndValues    = device.DeviceConverter.get(data.values);
+      const propertiesAndValues    = device.deviceConverter.get(data.values);
       message.propertiesAndValues  = propertiesAndValues;
     }
     else { // if device is not in array of connected devices, send error message

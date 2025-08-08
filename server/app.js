@@ -189,8 +189,8 @@ async function startDatabaseAndServer() {
 
     if (data.bridge) {
       if (data.deviceID && data.vendorName && data.productName) {
-        if (deviceCheckRegistered(deviceID)) { // check if device is already registered
-          Common.conLog("Server: Device with ID " + data.deviceID + " is already registered", "red");
+        if (deviceCheckRegistered(data.deviceID)) { // check if device is already registered
+          common.conLog("Server: Device with ID " + data.deviceID + " is already registered", "red");
           message.status      = "error";
           message.deviceID    = data.deviceID;
           message.bridge      = data.bridge;
@@ -205,11 +205,11 @@ async function startDatabaseAndServer() {
           message.status    = "ok";
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
-          Common.conLog("Server: Created device with ID " + data.deviceID, "gre");
+          common.conLog("Server: Created device with ID " + data.deviceID, "gre");
         }
       }
       else {
-        Common.conLog("Server: bridge is missing in message for device creation", "red");
+        common.conLog("Server: bridge is missing in message for device creation", "red");
         message.status      = "error";
         message.deviceID    = data.deviceID;
         message.status      = "error";
@@ -217,7 +217,7 @@ async function startDatabaseAndServer() {
       }
     }
     else {
-        Common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
+        common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
         message.status      = "error";
         message.deviceID    = data.deviceID;
         message.status      = "error";
@@ -246,10 +246,10 @@ async function startDatabaseAndServer() {
           message.status    = "ok";
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
-          Common.conLog("Server: Removed device with ID " + data.deviceID, "gre");
+          common.conLog("Server: Removed device with ID " + data.deviceID, "gre");
         }
         else {
-          Common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
           message.status      = "error";
           message.deviceID    = data.deviceID;
           message.bridge      = data.bridge;
@@ -257,7 +257,7 @@ async function startDatabaseAndServer() {
         }
       }
       else {
-        Common.conLog("Server: Device ID is missing in message for device removal", "red");
+        common.conLog("Server: Device ID is missing in message for device removal", "red");
         message.status      = "error";
         message.deviceID    = data.deviceID;
         message.bridge      = data.bridge;
@@ -265,7 +265,7 @@ async function startDatabaseAndServer() {
       }
     }
     else {
-      Common.conLog("Server: Bridge is missing in message for device removal", "red");
+      common.conLog("Server: Bridge is missing in message for device removal", "red");
       message.status      = "error";
       message.deviceID    = data.deviceID;
       message.bridge      = data.bridge;
@@ -317,10 +317,10 @@ async function startDatabaseAndServer() {
           message.status    = "ok";
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
-          Common.conLog("Server: Updated device with ID " + data.deviceID, "gre");
+          common.conLog("Server: Updated device with ID " + data.deviceID, "gre");
         }
         else {
-          Common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
           message.status      = "error";
           message.deviceID    = data.deviceID;
           message.bridge      = data.bridge;
@@ -328,7 +328,7 @@ async function startDatabaseAndServer() {
         }
       }
       else {
-        Common.conLog("Server: Device ID is missing in message for device update", "red");
+        common.conLog("Server: Device ID is missing in message for device update", "red");
         message.status      = "error";
         message.deviceID    = data.deviceID;
         message.bridge      = data.bridge;
@@ -336,7 +336,7 @@ async function startDatabaseAndServer() {
       }
     }
     else {
-      Common.conLog("Server: Bridge is missing in message for device update", "red");
+      common.conLog("Server: Bridge is missing in message for device update", "red");
       message.status      = "error";
       message.deviceID    = data.deviceID;
       message.bridge      = data.bridge;

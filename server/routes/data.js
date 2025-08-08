@@ -51,7 +51,7 @@ async function statementBuild(table, payload, type="INSERT") {
             let values = "";
             for (let data of dataList) {
                fields = fields + Object.keys(data)[0] + ", "
-               values = values + sqlStringEscape.escape((data[Object.keys(data)[0]]) + ", ";
+               values = values + sqlStringEscape.escape(data[Object.keys(data)[0]]) + ", ";
             }
 
             fields = fields.substring(0, fields.length - 2);  // remove the last ", "
