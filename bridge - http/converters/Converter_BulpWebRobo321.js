@@ -40,22 +40,20 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
             return undefined;
         }   
         else {
-            if (property.name === "voltage") {
-                return (value * 100);
-            }
-            else if (property.name === "switch") {
-                if (value === 1) {
-                    return "tapped";
-                }
-                else if (value === 2) {
-                    return "long_tapped";
-                }
-                else {
-                    return "not_tapped";
-                }   
-            } 
-            else {
-                return undefined;
+            switch (property.name) {
+                case "voltage":
+                    return value * 100;
+                case "switch":
+                    switch (value) {
+                        case 1:
+                            return "tapped";
+                        case 2:
+                            return "long_tapped";
+                        default:
+                            return "not_tapped";
+                    }
+                default:
+                    return undefined;
             }
         }
     }

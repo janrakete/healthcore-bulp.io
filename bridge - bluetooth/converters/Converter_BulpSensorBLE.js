@@ -66,36 +66,18 @@ class Converter_BulpSensorBLE extends ConverterStandard {
                 return this.getStandard(property, value);
             }
             else {
-                if (property.name === "rotary_switch") {
-                    const buf = Buffer.from(value);
-                    return buf[0];
-                }
-                else if (property.name === "button") {
-                    if (value[0] === 1) {
-                        return "pressed";
-                    }
-                    else {
-                        return "not_pressed";
-                    }   
-                }
-                else if (property.name === "speaker") {
-                    if (value[0] === 1) {
-                        return "on";
-                    }
-                    else {
-                        return "off";
-                    }   
-                }
-                else if (property.name === "led") {
-                    if (value[0] === 1) {
-                        return "on";
-                    }
-                    else {
-                        return "off";
-                    }   
-                }   
-                else {
-                    return undefined;
+                switch (property.name) {
+                    case "rotary_switch":
+                        const buf = Buffer.from(value);
+                        return buf[0];
+                    case "button":
+                        return value[0] === 1 ? "pressed" : "not_pressed";
+                    case "speaker":
+                        return value[0] === 1 ? "on" : "off";
+                    case "led":
+                        return value[0] === 1 ? "on" : "off";
+                    default:
+                        return undefined;
                 }
             }
         }
@@ -113,35 +95,22 @@ class Converter_BulpSensorBLE extends ConverterStandard {
             return undefined;
         }
         else {
-            if (property.name === "speaker") {
-                if (property.anyValue.includes(value)) {
-                    if (value === "on") {
-                        return Buffer.from([1]);
+            switch (property.name) {
+                case "speaker":
+                    if (property.anyValue.includes(value)) {
+                        return Buffer.from([value === "on" ? 1 : 0]);
+                    } else {
+                        return undefined;
                     }
-                    else {
-                        return Buffer.from([0]);
+                case "led":
+                    if (property.anyValue.includes(value)) {
+                        return Buffer.from([value === "on" ? 1 : 0]);
+                    } else {
+                        return undefined;
                     }
-                }
-                else {
-                    return undefined;                    
-                }
+                default:
+                    return undefined;
             }
-            else if (property.name === "led") {
-                if (property.anyValue.includes(value)) {
-                    if (value === "on") {
-                        return Buffer.from([1]);
-                    }
-                    else {
-                        return Buffer.from([0]);
-                    }                
-                }
-                else {
-                    return undefined;                    
-                }
-            }
-            else {
-                return undefined;
-            }     
         }       
      }
 }

@@ -52,22 +52,25 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
             else {
                 let propertyAndValueConverted = {};
 
-                if (property.name === "heartrate") {
-                    propertyAndValueConverted[property.name] = value * 1000;
-                }
-                else if (property.name === "color") {
-                    if (value === 1) {
-                        propertyAndValueConverted[property.name] = "red";
-                    }
-                    else if (value === 2) {
-                        propertyAndValueConverted[property.name] = "green";
-                    }
-                    else {
-                        propertyAndValueConverted[property.name] = "yellow";
-                    }   
-                } 
-                else {
-                    break;
+                switch (property.name) {
+                    case "heartrate":
+                        propertyAndValueConverted[property.name] = value * 1000;
+                        break;
+                    case "color":
+                        switch (value) {
+                            case 1:
+                                propertyAndValueConverted[property.name] = "red";
+                                break;
+                            case 2:
+                                propertyAndValueConverted[property.name] = "green";
+                                break;
+                            default:
+                                propertyAndValueConverted[property.name] = "yellow";
+                                break;
+                        }
+                        break;
+                    default:
+                        break;
                 }
                 propertiesAndValuesConverted.push(propertyAndValueConverted);
             }
