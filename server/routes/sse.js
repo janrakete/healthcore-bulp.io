@@ -36,8 +36,8 @@ Router.get("/events_to_clients", async function (Request, Response) {
             }
 
             let strStatement = "SELECT * FROM mqtt_events WHERE strCommand='" + strCommand + "' " + strCondition + " ORDER BY strDateTime DESC LIMIT " + intLimit;
-            Common.conLog("GET request from client: access table 'mqtt_events'", "gre");
-            Common.conLog("Execute statement: " + strStatement, "std", false);
+            common.conLog("GET request from client: access table 'mqtt_events'", "gre");
+            common.conLog("Execute statement: " + strStatement, "std", false);
 
             const [arrResults]   = await MySQLConnection.query(strStatement);
             Data.arrResults      = arrResults;
@@ -53,10 +53,10 @@ Router.get("/events_to_clients", async function (Request, Response) {
     }
  
     if (Data.strStatus == "error") {
-       Common.conLog("Request from client for table 'mqtt_to_clients': an error occured", "red");
+       common.conLog("Request from client for table 'mqtt_to_clients': an error occured", "red");
     }
  
-    Common.conLog("HTTP response: " + JSON.stringify(Data), "std", false);
+    common.conLog("HTTP response: " + JSON.stringify(Data), "std", false);
     Response.json(Data);
 });
 
