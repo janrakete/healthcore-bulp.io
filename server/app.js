@@ -172,7 +172,13 @@ async function startDatabaseAndServer() {
     if (data.bridge) {
       const results = database.prepare("SELECT * FROM devices WHERE bridge = ?").all(data.bridge);
       message.devices = results;
-      mqttClient.publish(data.bridge + "/devices/connect", JSON.stringify(message));
+
+      if (data.forceReconnect === true)  { // if forceReconnect is true, publish to reconnect topic
+        mqttClient.publish(data.bridge + "/devices/reconnect", JSON.stringify(message));
+      }
+      else {
+        mqttClient.publish(data.bridge + "/devices/list", JSON.stringify(message));
+      }
     }
     else {
       common.conLog("Server: bridge is missing in message for devices list", "red");
@@ -291,18 +297,6 @@ async function startDatabaseAndServer() {
           const updateFields = [];
           const updateValues = [];
 
-          if (data.vendorName) {
-            updateFields.push("vendorName = ?");
-            updateValues.push(data.vendorName);
-          }
-          if (data.productName) {
-            updateFields.push("productName = ?");
-            updateValues.push(data.productName);
-          }
-          if (data.description) {
-            updateFields.push("description = ?");
-            updateValues.push(data.description);
-          }
           if (data.properties) {
             updateFields.push("name = ?");
             updateValues.push(data.name);
