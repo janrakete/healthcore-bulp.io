@@ -199,7 +199,7 @@ async function startBridgeAndServer() {
 
   /**
    * Creates a fingerprint object from the Bluetooth device advertisement.
-   * @param {*} deviceRaw - The Bluetooth device object.
+   * @param {Object} deviceRaw - The Bluetooth device object.
    * @returns {Object} - The fingerprint object containing relevant advertisement data.
    * @description This function extracts the local name, service UUIDs, manufacturer data, and TX power level from the Bluetooth peripheral advertisement and returns them in a structured object.
    */
@@ -223,15 +223,15 @@ async function startBridgeAndServer() {
    * @class
    * @property {Object[]} devicesConnected - Array of currently connected Bluetooth devices.
    * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
-   * @property {boolean} devicesRegisteredConnect - Flag indicating if the bridge is set to connect to registered devices.
+   * @property {boolean} devicesRegisteredReconnect - Flag indicating if the bridge is set to connect to registered devices.
    * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
   class BridgeStatusClass {
     constructor() {
-      this.devicesConnected          = [];
-      this.devicesRegisteredAtServer = [];
-      this.devicesFoundViaScan       = [];
-      this.devicesRegisteredConnect  = false;
+      this.devicesConnected              = []; // Array of currently connected Bluetooth devices
+      this.devicesRegisteredAtServer     = []; // Array of devices registered at the server
+      this.devicesFoundViaScan           = []; // Array of devices found via scanning
+      this.devicesRegisteredReconnect    = false; // Flag indicating if the bridge is set to reconnect to registered devices
     }
   }
   const bridgeStatus = new BridgeStatusClass(); // create new object for bridge status
@@ -263,7 +263,7 @@ async function startBridgeAndServer() {
     if (((data.deviceID !== undefined) && (data.deviceID.trim() !== "")) && ((data.productName !== undefined) && (data.productName.trim() !== ""))) {
       common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") discovered", "yel");
 
-      if (bridgeStatus.devicesRegisteredConnect === true) { // if message also was used to connect to registered devices
+      if (bridgeStatus.devicesRegisteredReconnect === true) { // if message also was used to connect to registered devices
         const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesRegisteredAtServer);
 
         if (device) { // if device is in array of devices registered at server, connect to it
@@ -318,8 +318,11 @@ async function startBridgeAndServer() {
     }
     else {
       bluetooth.stopScanning();    
-      message.status                         = "offline";
-      bridgeStatus.devicesRegisteredConnect  = false;
+      message.status                            = "offline";
+      bridgeStatus.devicesRegisteredReconnect   = false;
+      bridgeStatus.devicesConnected             = [];
+      bridgeStatus.devicesRegisteredAtServer    = [];
+      bridgeStatus.devicesFoundViaScan          = [];
     }
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
@@ -347,8 +350,8 @@ async function startBridgeAndServer() {
         case "bluetooth/bridge/status":
           mqttBridgeStatus(data);
           break;
-        case "bluetooth/devices/connect": // this message is used to connect to ALL registered devices
-          mqttDevicesConnect(data);
+        case "bluetooth/devices/reconnect": // this message is used to connect to ALL registered devices
+          mqttDevicesReconnect(data);
           break;
         case "bluetooth/device/connect": // this message is used to connect to ONE specific device
           mqttDeviceConnect(data);
@@ -364,6 +367,12 @@ async function startBridgeAndServer() {
           break;
         case "bluetooth/device/get":
           mqttDeviceGet(data);
+          break;
+        case "bluetooth/device/update":
+          mqttDeviceUpdate(data);
+          break;
+        case "bluetooth/devices/list":
+          mqttDevicesList(data);
           break;
         default:
           common.conLog("Bluetooth: NOT found matching message handler for " + topic, "red");
@@ -390,16 +399,16 @@ async function startBridgeAndServer() {
 
       bridgeStatus.devicesFoundViaScan = []; // reset array of devices found via scan
 
-      message.scanning                        = true;
-      message.bridge                          = BRIDGE_PREFIX;
-      bridgeStatus.devicesRegisteredConnect   = (data.registeredConnect !== undefined) ? data.registeredConnect : false; // set flag for connecting to registered devices
-      message.duration                        = data.duration;
+      message.scanning                          = true;
+      message.bridge                            = BRIDGE_PREFIX;
+      bridgeStatus.devicesRegisteredReconnect   = (data.registeredReconnect !== undefined) ? data.registeredReconnect : false; // set flag for connecting to registered devices
+      message.duration                          = data.duration;
 
       mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
       
       setTimeout(() => { // end scanning after duration
         message.scanning                         = false;
-        bridgeStatus.devicesRegisteredConnect    = false; 
+        bridgeStatus.devicesRegisteredReconnect  = false; 
 
         mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
         bluetooth.stopScanning();
@@ -417,29 +426,51 @@ async function startBridgeAndServer() {
    */
   function mqttBridgeStatus(data) {
     if (data.status === "online") { // if Bluetooth is online ... 
-      let message         = {};
-      message.bridge      = BRIDGE_PREFIX;
+      let message              = {};
+      message.bridge           = BRIDGE_PREFIX;
+      message.forceReconnect   = true;
+
       common.conLog("Bluetooth: Bridge is online - request all registered bluetooth devices from server", "yel");
 
       mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... then request all registered Bluetooth devices from server via MQTT broker
     }
   }
 
+  
   /**
-   * If message is for connecting to registered devices, start scanning for devices
+   * Sets the list of devices registered at the server based on the provided data.
+   * @param {Object} data 
+   * @description This function updates the list of devices registered at the server.
+   */
+  function mqttDevicesList(data) {
+    bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
+  }
+
+  /**
+   * Updates the information of a registered device.
+   * @param {Object} data 
+   * @description This function updates the information of a registered device.
+   */
+  function mqttDeviceUpdate(data) {
+    common.conLog("Bluetooth: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
+  }
+
+  /**
+   * If message is for reconnecting to registered devices, start scanning for devices
    * @param {Object} data - The data object containing the devices to connect to.
    * @description This function handles the request to connect to registered devices by scanning for them and publishing
    */
-  function mqttDevicesConnect(data) {
+  function mqttDevicesReconnect(data) {
     bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
     bridgeStatus.devicesConnected            = []; // reset array of connected devices
+    bridgeStatus.devicesFoundViaScan         = []; // reset array of devices found via scan
 
     common.conLog("Bluetooth: Request to connect to devices", "yel");
     
-    let message                = {};
-    message.duration           = 30;
-    message.registeredConnect  = true;
-    //mqttClient.publish("bluetooth/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker    
+    let message                   = {};
+    message.duration              = 30;
+    message.registeredReconnect   = true;
+    mqttClient.publish("bluetooth/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
   }
 
   /**
