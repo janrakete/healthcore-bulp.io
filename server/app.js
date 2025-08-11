@@ -76,6 +76,29 @@ async function startDatabaseAndServer() {
   });
 
   /**
+   * Anomaly detection
+   */
+  const anomalyAlgorithm = require("isolation-forest");
+
+  function anomalyCheck(values) {
+
+    values = [
+      { "key": "key1", "value": 234 },
+      { "key": "key2", "value": 4352 },
+      { "key": "key3", "value": 535 }
+    ];
+
+    // loop through values, fetch for every key history data from database
+    for (const { key } of values) {
+      const history = database.prepare("SELECT * FROM history WHERE key = ? ORDER BY timestamp DESC LIMIT 100").all(key);
+      common.conLog(`Fetched history for ${key}:`, "gre");
+      common.conLog(history, "std", false);
+    }
+
+
+  }
+
+  /**
    * MQTT client
    */
   const mqtt       = require("mqtt");
@@ -150,6 +173,9 @@ async function startDatabaseAndServer() {
           break;
         case "server/device/update":
           mqttDeviceUpdate(data);
+          break;
+        case "server/device/values":
+          mqttDeviceValues(data);
           break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
@@ -280,6 +306,50 @@ async function startDatabaseAndServer() {
 
     mqttClient.publish(data.bridge + "/device/remove", JSON.stringify(message));
   }   
+
+  /**
+   * Fetch device values
+   * @param {Object} data - The data object containing the device information.
+   * @description This function fetches the current values of a device.
+   */
+  async function mqttDeviceValues(data) {
+    if (data.bridge) {
+      if (data.deviceID) {
+        if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
+          message.status    = "ok";
+          message.deviceID  = data.deviceID;
+          message.bridge    = data.bridge;
+          message.values    = data.values || undefined;
+          common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
+
+          if (data.values !== undefined) {
+            anomalyCheck(data.values); // 
+          }
+        }
+        else {
+          common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
+          message.error       = "Device not registered";
+        }
+      }
+      else {
+        common.conLog("Server: Device ID is missing in message for device values", "red");
+        message.status      = "error";
+        message.deviceID    = data.deviceID;
+        message.bridge      = data.bridge;
+        message.error       = "Device ID missing";
+      }
+    }
+    else {
+      common.conLog("Server: Bridge is missing in message for device values", "red");
+      message.status      = "error";
+      message.deviceID    = data.deviceID;
+      message.bridge      = data.bridge;
+      message.error       = "Bridge missing";
+    }
+  }
 
   /**
    * Update device information
