@@ -54,18 +54,18 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
 
                 switch (property.name) {
                     case "heartrate":
-                        propertyAndValueConverted[property.name] = value * 1000;
+                        propertyAndValueConverted[property.name] = {"value": value * 1000, "valueAsNumeric": value * 1000};
                         break;
                     case "color":
                         switch (value) {
                             case 1:
-                                propertyAndValueConverted[property.name] = "red";
+                                propertyAndValueConverted[property.name] = {"value": "red", "valueAsNumeric": 1};
                                 break;
                             case 2:
-                                propertyAndValueConverted[property.name] = "green";
+                                propertyAndValueConverted[property.name] = {"value": "green", "valueAsNumeric": 2};
                                 break;
                             default:
-                                propertyAndValueConverted[property.name] = "yellow";
+                                propertyAndValueConverted[property.name] = {"value": "yellow", "valueAsNumeric": 3};
                                 break;
                         }
                         break;

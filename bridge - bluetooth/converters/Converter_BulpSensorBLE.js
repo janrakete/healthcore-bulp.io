@@ -69,13 +69,13 @@ class Converter_BulpSensorBLE extends ConverterStandard {
                 switch (property.name) {
                     case "rotary_switch":
                         const buf = Buffer.from(value);
-                        return buf[0];
+                        return {"value": buf[0], "valueAsNumeric": buf[0]};
                     case "button":
-                        return value[0] === 1 ? "pressed" : "not_pressed";
+                        return value[0] === 1 ? {"value": "pressed", "valueAsNumeric": 1} : {"value": "not_pressed", "valueAsNumeric": 0};
                     case "speaker":
-                        return value[0] === 1 ? "on" : "off";
+                        return value[0] === 1 ? {"value": "on", "valueAsNumeric": 1} : {"value": "off", "valueAsNumeric": 0};
                     case "led":
-                        return value[0] === 1 ? "on" : "off";
+                        return value[0] === 1 ? {"value": "on", "valueAsNumeric": 1} : {"value": "off", "valueAsNumeric": 0};
                     default:
                         return undefined;
                 }

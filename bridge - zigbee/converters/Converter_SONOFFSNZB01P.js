@@ -36,13 +36,13 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
                 if (property.name === "button") {
                     switch (anyValue) {
                         case "commandToggle":
-                            return "pressed";
+                            return {"value": "pressed", "valueAsNumeric": 1};
                         case "commandOff":
-                            return "long_pressed";
+                            return {"value": "long_pressed", "valueAsNumeric": 2};
                         case "commandOn":
-                            return "double_pressed";
+                            return {"value": "double_pressed", "valueAsNumeric": 3};
                         default:
-                            return "not_pressed";
+                            return {"value": "not_pressed", "valueAsNumeric": 0};
                     }
                 }
                 else {

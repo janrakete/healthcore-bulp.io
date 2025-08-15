@@ -42,15 +42,15 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
         else {
             switch (property.name) {
                 case "voltage":
-                    return value * 100;
+                    return {"value": value * 100, "valueAsNumeric": value * 100};
                 case "switch":
                     switch (value) {
                         case 1:
-                            return "tapped";
+                            return {"value": "tapped", "valueAsNumeric": 1};
                         case 2:
-                            return "long_tapped";
+                            return {"value": "long_tapped", "valueAsNumeric": 2};
                         default:
-                            return "not_tapped";
+                            return {"value": "not_tapped", "valueAsNumeric": 0};
                     }
                 default:
                     return undefined;
