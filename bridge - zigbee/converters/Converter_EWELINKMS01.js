@@ -37,9 +37,9 @@ class Converter_EWELINKMS01 extends ConverterStandard {
                     case "motion":
                         switch (anyValue) {
                             case "commandStatusChangeNotification":
-                                return data.zonestatus === 1 ? "yes" : "no";
+                                return data.zonestatus === 1 ? {"value": "yes", "valueAsNumeric": 1} : {"value": "no", "valueAsNumeric": 0};
                             default:
-                                return "no";
+                                return {"value" : "no", "valueAsNumeric": 0};
                         }
                     default:
                         return undefined;

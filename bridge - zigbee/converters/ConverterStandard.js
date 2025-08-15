@@ -143,7 +143,12 @@ class ConverterStandard {
             return undefined;
         }   
         else {
-            return anyValue;
+            if (property.valueType === "String") {
+                return { "value": anyValue, "valueAsNumeric": undefined };
+            }
+            else {
+                return { "value": anyValue, "valueAsNumeric": anyValue };
+            }
         }
     }    
 }

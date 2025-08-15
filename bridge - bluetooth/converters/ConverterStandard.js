@@ -70,7 +70,7 @@ class ConverterStandard {
         else {
             if (property.name === "device_name") {
                 const buf = Buffer.from(value);
-                return buf.toString();
+                return { "value": buf.toString(), "valueAsNumeric": undefined };
             }
             else {
                 return undefined;

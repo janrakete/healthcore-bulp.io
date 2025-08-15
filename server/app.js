@@ -81,21 +81,10 @@ async function startDatabaseAndServer() {
   const anomalyAlgorithm = require("isolation-forest");
 
   function anomalyCheck(values) {
-
-    values = [
-      { "key": "key1", "value": 234 },
-      { "key": "key2", "value": 4352 },
-      { "key": "key3", "value": 535 }
-    ];
-
-    // loop through values, fetch for every key history data from database
-    for (const { key } of values) {
-      const history = database.prepare("SELECT * FROM history WHERE key = ? ORDER BY timestamp DESC LIMIT 100").all(key);
-      common.conLog(`Fetched history for ${key}:`, "gre");
-      common.conLog(history, "std", false);
-    }
-
-
+    const model = new anomalyAlgorithm();
+    model.fit(values);
+    const anomalies = model.predict(values);
+    return anomalies;
   }
 
   /**
@@ -322,8 +311,8 @@ async function startDatabaseAndServer() {
           message.values    = data.values || undefined;
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
 
-          if (data.values !== undefined) {
-            anomalyCheck(data.values); // 
+          if (data.values !== undefined) { // Check for anomalies in the fetched values
+            anomalyCheck(data.values);
           }
         }
         else {

@@ -28,7 +28,44 @@ async function startDatabaseAndServer() {
     server.listen(appConfig.CONF_portBroker, function() {
         common.logoShow("MQTT Broker", appConfig.CONF_portBroker); // show logo
     });
-    
+
+    /**
+     * =============================================================================================
+     * Helper functions
+     * ================
+     */
+
+    /**
+     * Extract time features from a date object.
+     * @param {Date} date
+     * @returns {Object} An object containing the extracted time features.
+     * @description This function extracts various time-related features from a given date object.
+     */
+    function timeFeaturesExtract(date) {
+    if (!(date instanceof Date))
+        date = new Date(date);
+
+        const dateTimeAsNumeric = date.getTime();
+        const weekday           = date.getDay();
+        const weekdaySin        = Math.sin((2 * Math.PI * weekday) / 7);
+        const weekdayCos        = Math.cos((2 * Math.PI * weekday) / 7);
+        const hour              = date.getHours();
+        const hourSin           = Math.sin((2 * Math.PI * hour) / 24);
+        const hourCos           = Math.cos((2 * Math.PI * hour) / 24);
+        const month             = date.getMonth() + 1;
+
+        return {
+            dateTimeAsNumeric,
+            weekday,
+            weekdaySin,
+            weekdayCos,
+            hour,
+            hourSin,
+            hourCos,
+            month
+        };
+    }
+
     /**
      * Event handlers for the MQTT broker. These handlers log various events such as client connections, disconnections, subscriptions, and message publications to the console.
      * @event client - Triggered when a new client connects to the broker.
@@ -60,9 +97,18 @@ async function startDatabaseAndServer() {
 
             try {
                 database.prepare("INSERT INTO mqtt_history (topic, message) VALUES (?, ?)").run(topic, message);
+                if (topic === "server/device/values") { // if topic is for device values, then insert values also into mqtt_devices_values to use for anomaly detection
+                    const data          = JSON.parse(message);
+                    const timeFeatures  = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
+                    for (const property of data.properties) { // iterate over each property
+                        database.prepare("INSERT INTO mqtt_devices_values (deviceID, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+                            data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, Object.keys(property)[0], property[Object.keys(property)[0]].value, property[Object.keys(property)[0]].valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
+                    }
+                    common.conLog("Broker: MQTT device values inserted into database", "gre");
+                }
             }
             catch (error) {
-                common.conLog("Server: Error while inserting topic and message into history:", "red");
+                common.conLog("Broker: Error while inserting topic and message into history or values:", "red");
                 common.conLog(error, "std", false);
             }
         }

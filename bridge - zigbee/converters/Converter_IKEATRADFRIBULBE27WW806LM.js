@@ -47,9 +47,9 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
             else {
                 switch (property.name) {
                     case "brightness":
-                        return anyValue;
+                        return {"value": anyValue, "valueAsNumeric": anyValue};
                     case "state":
-                        return anyValue === 1 ? "on" : "off";
+                        return anyValue === 1 ? {"value": "on", "valueAsNumeric": 1} : {"value": "off", "valueAsNumeric": 0};
                     default:
                         return undefined;
                 }
