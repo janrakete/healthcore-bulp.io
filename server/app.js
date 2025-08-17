@@ -78,13 +78,42 @@ async function startDatabaseAndServer() {
   /**
    * Anomaly detection
    */
-  const anomalyAlgorithm = require("isolation-forest");
+  const { IsolationForest } = require("isolation-forest");
+  const anomalyModel    = new IsolationForest();
 
-  function anomalyCheck(values) {
-    const model = new anomalyAlgorithm();
-    model.fit(values);
-    const anomalies = model.predict(values);
-    return anomalies;
+  /**
+   * Anomaly detection
+   * @param {Object} data
+   * @description This function checks for anomalies in the data properties using the Isolation Forest algorithm.
+   */
+  function anomalyCheck(data) {
+    const propertyKeys  = data.properties.map(property => Object.keys(property)[0]); // prepare all queries in one go to reduce database calls
+    const queries       = propertyKeys.map(property => database.prepare("SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?").all(data.deviceID, data.bridge, property, appConfig.CONF_anomalyDetectionHistorySize));
+
+    queries.forEach((results, index) => { // fit and predict in batch
+      if (!results || results.length === 0) {
+        return;
+      }
+
+      const values = results.map(result => result.valueAsNumeric);
+      anomalyModel.fit(values.map(value => [value]));
+      const scores = anomalyModel.scores();
+
+      console.log(scores);
+
+      const lastScore = scores[scores.length - 1]; // only check the last value for anomaly (most recent)
+      if (lastScore > appConfig.CONF_anomalyDetectionThreshold) {
+        common.conLog("Server: Anomaly detected for property " + propertyKeys[index] + " with score " + lastScore, "gre");
+
+        let message       = {};
+        message.deviceID  = data.deviceID;
+        message.bridge    = data.bridge;
+        message.property  = propertyKeys[index];
+        message.score     = lastScore;
+
+        mqttClient.publish("server/device/anomaly", JSON.stringify(message));
+      }
+    });
   }
 
   /**
@@ -302,6 +331,7 @@ async function startDatabaseAndServer() {
    * @description This function fetches the current values of a device.
    */
   async function mqttDeviceValues(data) {
+    let message = {};    
     if (data.bridge) {
       if (data.deviceID) {
         if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
@@ -310,9 +340,11 @@ async function startDatabaseAndServer() {
           message.bridge    = data.bridge;
           message.values    = data.values || undefined;
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
-
-          if (data.values !== undefined) { // Check for anomalies in the fetched values
-            anomalyCheck(data.values);
+          
+          if (appConfig.CONF_anomalyDetectionActive) {
+            if (data.properties !== undefined) { // Check for anomalies in the fetched values
+              anomalyCheck(data);
+            }
           }
         }
         else {
