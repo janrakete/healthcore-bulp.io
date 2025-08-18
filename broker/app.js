@@ -86,22 +86,29 @@ async function startDatabaseAndServer() {
         common.conLog("Broker: Client '" + client.id + "' subscribed to topics: " + subscriptions.map(sub => sub.topic).join(", "), "yel"); 
     });
 
-    aedes.on("publish", function (packet, client) {
-        if (client) {
-            const topic = packet.topic.toString();
-            const message = packet.payload.toString();
+    aedes.on("publish", function (packet, client) { 
+        if (client) {        
+            const topic     = packet.topic.toString();
+            const message   = packet.payload.toString();
 
             common.conLog("Broker: MQTT message from client '" + client.id + "':", "yel"); 
             common.conLog("Topic: " + topic, "std", false);
-            common.conLog("Message: " + message, "std", false);
+            common.conLog("Message: " + message, "std", false);        
+        }
+    });
+
+    aedes.authorizePublish = async function (client, packet, callback) { // execute SQL statements before MQTT messages are published
+        if (client) {
+            const topic     = packet.topic.toString();
+            const message   = packet.payload.toString();
 
             try {
-                database.prepare("INSERT INTO mqtt_history (topic, message) VALUES (?, ?)").run(topic, message);
+                await database.prepare("INSERT INTO mqtt_history (topic, message) VALUES (?, ?)").run(topic, message);
                 if (topic === "server/device/values") { // if topic is for device values, then insert values also into mqtt_devices_values to use for anomaly detection
                     const data          = JSON.parse(message);
                     const timeFeatures  = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
                     for (const property of data.properties) { // iterate over each property
-                        database.prepare("INSERT INTO mqtt_devices_values (deviceID, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+                        await database.prepare("INSERT INTO mqtt_devices_values (deviceID, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
                             data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, Object.keys(property)[0], property[Object.keys(property)[0]].value, property[Object.keys(property)[0]].valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
                     }
                     common.conLog("Broker: MQTT device values inserted into database", "gre");
@@ -112,7 +119,8 @@ async function startDatabaseAndServer() {
                 common.conLog(error, "std", false);
             }
         }
-    });
+        callback(null, true);
+    };
 }
 
 startDatabaseAndServer();
