@@ -14,6 +14,11 @@ const database  = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 global.database = database; // make SQLite database global
 
 /**
+ * Cron jobs
+ */
+const cronJobs = require("node-cron");
+
+/**
  * Start SQLite and server
  * @async
  * @function startDatabaseAndServer
@@ -79,38 +84,63 @@ async function startDatabaseAndServer() {
    * Anomaly detection
    */
   const { IsolationForest } = require("isolation-forest");
-  const anomalyModel    = new IsolationForest();
+  const anomalyModels       = new Map(); 
+
+  /**
+   * Retrieves the anomaly detection model for a specific device and property.
+   * @param {String} deviceID
+   * @param {String} property
+   * @returns {IsolationForest} - The anomaly detection model for the specified device and property.
+   * @description This function retrieves the anomaly detection model for a specific device and property.
+   */
+  function getAnomalyModel(deviceID, property) {
+    const key = deviceID + "_" + property;
+    if (!anomalyModels.has(key)) {
+      anomalyModels.set(key, new IsolationForest());
+    }
+    return anomalyModels.get(key);
+  }
 
   /**
    * Anomaly detection
    * @param {Object} data
    * @description This function checks for anomalies in the data properties using the Isolation Forest algorithm.
    */
-  function anomalyCheck(data) {
-    const propertyKeys  = data.properties.map(property => Object.keys(property)[0]); // prepare all queries in one go to reduce database calls
-    const queries       = propertyKeys.map(property => database.prepare("SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?").all(data.deviceID, data.bridge, property, appConfig.CONF_anomalyDetectionHistorySize));
+  function anomalyCheck(data) { // TODO: convert to cron job
+    const propertyKeys = data.properties.map(property => Object.keys(property)[0]);
+    propertyKeys.forEach((property, index) => {
+      const results = database.prepare(
+        "SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+      ).all(data.deviceID, data.bridge, property, appConfig.CONF_anomalyDetectionHistorySize);
 
-    queries.forEach((results, index) => { // fit and predict in batch
       if (!results || results.length === 0) {
         return;
       }
 
       const values = results.map(result => result.valueAsNumeric);
-      anomalyModel.fit(values.map(value => [value]));
-      const scores = anomalyModel.scores();
+      const model  = getAnomalyModel(data.deviceID, property);
 
-      console.log(scores);
+      if (values.length < 2) { // Not enough data points to detect anomalies
+        return;
+      }
 
-      const lastScore = scores[scores.length - 1]; // only check the last value for anomaly (most recent)
-      if (lastScore > appConfig.CONF_anomalyDetectionThreshold) {
-        common.conLog("Server: Anomaly detected for property " + propertyKeys[index] + " with score " + lastScore, "gre");
+      model.fit(values.slice(1).map(value => [value]));
+      const scores      = model.scores([values[0]]);
+      const latestScore = scores[0];
 
-        let message       = {};
-        message.deviceID  = data.deviceID;
-        message.bridge    = data.bridge;
-        message.property  = propertyKeys[index];
-        message.score     = lastScore;
+      //console.log("Trainingsdaten:\n" + values.slice(1).join(", "));      
+      //console.log("Aktueller Wert:\n" + values[0]);
+      //console.log("Scores für alle Werte:\n" + scores.join(", "));
+      //console.log("Score für neuesten Wert:\n" + latestScore);
+      //console.log("Anomalie-Detektionsschwelle:\n" + appConfig.CONF_anomalyDetectionThreshold);
 
+      if (latestScore > appConfig.CONF_anomalyDetectionThreshold) {
+        common.conLog("Server: Anomaly detected for property " + property + " with score " + latestScore, "gre");
+        let message         = {};
+        message.deviceID    = data.deviceID;
+        message.bridge      = data.bridge;
+        message.property    = property;
+        message.score       = latestScore;
         mqttClient.publish("server/device/anomaly", JSON.stringify(message));
       }
     });
