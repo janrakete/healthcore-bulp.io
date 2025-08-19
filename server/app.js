@@ -84,22 +84,6 @@ async function startDatabaseAndServer() {
    * Anomaly detection
    */
   const { IsolationForest } = require("isolation-forest");
-  const anomalyModels       = new Map(); 
-
-  /**
-   * Retrieves the anomaly detection model for a specific device and property.
-   * @param {String} deviceID
-   * @param {String} property
-   * @returns {IsolationForest} - The anomaly detection model for the specified device and property.
-   * @description This function retrieves the anomaly detection model for a specific device and property.
-   */
-  function getAnomalyModel(deviceID, property) {
-    const key = deviceID + "_" + property;
-    if (!anomalyModels.has(key)) {
-      anomalyModels.set(key, new IsolationForest());
-    }
-    return anomalyModels.get(key);
-  }
 
   /**
    * Anomaly detection
@@ -118,21 +102,15 @@ async function startDatabaseAndServer() {
       }
 
       const values = results.map(result => result.valueAsNumeric);
-      const model  = getAnomalyModel(data.deviceID, property);
-
       if (values.length < 2) { // Not enough data points to detect anomalies
         return;
       }
 
-      model.fit(values.slice(1).map(value => [value]));
-      const scores      = model.scores([values[0]]);
-      const latestScore = scores[0];
+      const model = new IsolationForest();
+      model.fit(values.slice(1).map(value => [value])); 
 
-      //console.log("Trainingsdaten:\n" + values.slice(1).join(", "));      
-      //console.log("Aktueller Wert:\n" + values[0]);
-      //console.log("Scores für alle Werte:\n" + scores.join(", "));
-      //console.log("Score für neuesten Wert:\n" + latestScore);
-      //console.log("Anomalie-Detektionsschwelle:\n" + appConfig.CONF_anomalyDetectionThreshold);
+      const trainingScores = model.scores();
+      const latestScore    = model.predict([[values[0]]])[0];
 
       if (latestScore > appConfig.CONF_anomalyDetectionThreshold) {
         common.conLog("Server: Anomaly detected for property " + property + " with score " + latestScore, "gre");
