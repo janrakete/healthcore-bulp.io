@@ -97,20 +97,16 @@ async function startDatabaseAndServer() {
         "SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
       ).all(data.deviceID, data.bridge, property, appConfig.CONF_anomalyDetectionHistorySize);
 
-      if (!results || results.length === 0) {
+      if (!results || results.length < 2) {
         return;
       }
 
-      const values = results.map(result => result.valueAsNumeric);
-      if (values.length < 2) { // Not enough data points to detect anomalies
-        return;
-      }
-
+      const values = results.map(result => { return { [property]: result.valueAsNumeric }} );
       const model = new IsolationForest();
-      model.fit(values.slice(1).map(value => [value])); 
 
+      model.fit(values.slice(1));
       const trainingScores = model.scores();
-      const latestScore    = model.predict([[values[0]]])[0];
+      const latestScore    = model.predict([{ [property]: values[0][property] }])[0];
 
       if (latestScore > appConfig.CONF_anomalyDetectionThreshold) {
         common.conLog("Server: Anomaly detected for property " + property + " with score " + latestScore, "gre");
