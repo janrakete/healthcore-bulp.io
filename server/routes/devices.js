@@ -29,6 +29,7 @@ router.post("/scan", async function (request, response) {
 
             let message         = {};
             message.duration    = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
+            message.messageID   = common.randomHash();
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
             
             common.conLog("POST request for device scan forwarded via MQTT", "gre");

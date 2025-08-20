@@ -94,7 +94,7 @@ async function startDatabaseAndServer() {
     const propertyKeys = data.properties.map(property => Object.keys(property)[0]);
     propertyKeys.forEach((property, index) => { // iterate over each property
       const results = database.prepare( // prepare SQL query to get historical data
-        "SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+        "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
       ).all(data.deviceID, data.bridge, property, appConfig.CONF_anomalyDetectionHistorySize);
 
       if (!results || results.length < 2) { // not enough data for anomaly detection

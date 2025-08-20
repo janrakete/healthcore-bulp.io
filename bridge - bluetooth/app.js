@@ -15,7 +15,6 @@ const BRIDGE_PREFIX   = "bluetooth";
 const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
 
-
 /**
  * Starts the Bluetooth bridge and MQTT server.
  * Initializes the HTTP server, MQTT client, Bluetooth adapter listeners, 
@@ -206,12 +205,13 @@ async function startBridgeAndServer() {
   function fingerprintCreate(deviceRaw) {
     const advertisement = deviceRaw.advertisement;
 
-    let fingerprint = JSON.stringify({
-      localName: advertisement.localName || "",
-      serviceUuids: (advertisement.serviceUuids || []).sort(),
-      manufacturerData: advertisement.manufacturerData?.toString("hex") || "",
-      txPowerLevel: advertisement.txPowerLevel ?? null
-    });
+    let data              = {};
+    data.localName        = advertisement.localName || "";
+    data.serviceUuids     = (advertisement.serviceUuids || []).sort();
+    data.manufacturerData = advertisement.manufacturerData?.toString("hex") || "";
+    data.txPowerLevel     = advertisement.txPowerLevel ?? null;
+
+    let fingerprint = JSON.stringify(data);
 
     fingerprint = common.createHashFromString(fingerprint, "sha256", 64); // create hash from fingerprint and cut it to 64 characters
     return fingerprint;
@@ -223,7 +223,9 @@ async function startBridgeAndServer() {
    * @class
    * @property {Object[]} devicesConnected - Array of currently connected Bluetooth devices.
    * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
+   * @property {Object[]} devicesFoundViaScan - Array of devices found via scanning.
    * @property {boolean} devicesRegisteredReconnect - Flag indicating if the bridge is set to connect to registered devices.
+   * @property {number|null} deviceScanMessageID - ID of MQTT message if scanning is initiated.
    * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
   class BridgeStatusClass {
@@ -232,6 +234,7 @@ async function startBridgeAndServer() {
       this.devicesRegisteredAtServer     = []; // Array of devices registered at the server
       this.devicesFoundViaScan           = []; // Array of devices found via scanning
       this.devicesRegisteredReconnect    = false; // Flag indicating if the bridge is set to reconnect to registered devices
+      this.deviceScanMessageID           = null; // ID of MQTT message if scanning is initiated
     }
   }
   const bridgeStatus = new BridgeStatusClass(); // create new object for bridge status
@@ -284,7 +287,8 @@ async function startBridgeAndServer() {
 
         if (deviceIndex !== -1) { // if device is already in array of devices found via scan, update it
           bridgeStatus.devicesFoundViaScan[deviceIndex] = data;
-        } else { // if device is not in array of devices found via scan, add it
+        } 
+        else { // if device is not in array of devices found via scan, add it
           bridgeStatus.devicesFoundViaScan.push(data);
         }
 
@@ -435,7 +439,6 @@ async function startBridgeAndServer() {
       mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... then request all registered Bluetooth devices from server via MQTT broker
     }
   }
-
   
   /**
    * Sets the list of devices registered at the server based on the provided data.
