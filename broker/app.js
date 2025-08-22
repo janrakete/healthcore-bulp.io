@@ -12,12 +12,12 @@ const common    = require("../common");
 const database = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 
 /**
- * Starts the SQLite connection and initializes the MQTT broker server.
+ * Starts and initializes the MQTT broker server.
  * @async
- * @function startDatabaseAndServer
- * @description This function establishes a SQLite connection and initializes the MQTT broker server.
+ * @function startServer
+ * @description This function initializes the MQTT broker server.
  */
-async function startDatabaseAndServer() {
+async function startServer() {
     /**
      * Initialize the MQTT broker and the server
      */
@@ -101,9 +101,10 @@ async function startDatabaseAndServer() {
         if (client) {
             const topic     = packet.topic.toString();
             const message   = packet.payload.toString();
+            const callID    = JSON.parse(message).callID !== undefined ? JSON.parse(message).callID : null;
 
             try {
-                await database.prepare("INSERT INTO mqtt_history (topic, message, messageID) VALUES (?, ?, ?)").run(topic, message, message.messageID !== undefined ? message.messageID : null);
+                await database.prepare("INSERT INTO mqtt_history (topic, message, callID) VALUES (?, ?, ?)").run(topic, message, callID);
                 if (topic === "server/device/values") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for anomaly detection
                     const data          = JSON.parse(message);
                     const timeFeatures  = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
@@ -123,7 +124,7 @@ async function startDatabaseAndServer() {
     };
 }
 
-startDatabaseAndServer();
+startServer();
 
 /**
  * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.

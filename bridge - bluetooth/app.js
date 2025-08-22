@@ -225,7 +225,7 @@ async function startBridgeAndServer() {
    * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
    * @property {Object[]} devicesFoundViaScan - Array of devices found via scanning.
    * @property {boolean} devicesRegisteredReconnect - Flag indicating if the bridge is set to connect to registered devices.
-   * @property {number|null} deviceScanMessageID - ID of MQTT message if scanning is initiated.
+   * @property {number|null} deviceScanCallID - ID of call if scanning is initiated.
    * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
   class BridgeStatusClass {
@@ -234,7 +234,7 @@ async function startBridgeAndServer() {
       this.devicesRegisteredAtServer     = []; // Array of devices registered at the server
       this.devicesFoundViaScan           = []; // Array of devices found via scanning
       this.devicesRegisteredReconnect    = false; // Flag indicating if the bridge is set to reconnect to registered devices
-      this.deviceScanMessageID           = null; // ID of MQTT message if scanning is initiated
+      this.deviceScanCallID           = undefined; // ID of call if scanning is initiated
     }
   }
   const bridgeStatus = new BridgeStatusClass(); // create new object for bridge status
@@ -294,6 +294,8 @@ async function startBridgeAndServer() {
 
         const deviceWithoutRaw = { ...data }; // create a copy of the device object without the raw device object, because it cannot be stringified
         delete deviceWithoutRaw.deviceRaw;
+
+        deviceWithoutRaw.callID = bridgeStatus.deviceScanCallID; // add call ID to device object
         mqttClient.publish("server/devices/discovered", JSON.stringify(deviceWithoutRaw));
       }
     }
@@ -327,6 +329,7 @@ async function startBridgeAndServer() {
       bridgeStatus.devicesConnected             = [];
       bridgeStatus.devicesRegisteredAtServer    = [];
       bridgeStatus.devicesFoundViaScan          = [];
+      bridgeStatus.deviceScanCallID             = undefined;
     }
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
@@ -401,12 +404,14 @@ async function startBridgeAndServer() {
       bluetooth.stopScanning();
       bluetooth.startScanning([], true);
 
-      bridgeStatus.devicesFoundViaScan = []; // reset array of devices found via scan
+      bridgeStatus.devicesFoundViaScan  = []; // reset array of devices found via scan
+      bridgeStatus.deviceScanCallID     = data.callID;
 
       message.scanning                          = true;
       message.bridge                            = BRIDGE_PREFIX;
       bridgeStatus.devicesRegisteredReconnect   = (data.registeredReconnect !== undefined) ? data.registeredReconnect : false; // set flag for connecting to registered devices
       message.duration                          = data.duration;
+      message.callID                            = data.callID; // add call ID to message
 
       mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
       
@@ -416,6 +421,7 @@ async function startBridgeAndServer() {
 
         mqttClient.publish("server/devices/scan/status", JSON.stringify(message)); // ... publish to MQTT broker
         bluetooth.stopScanning();
+        bridgeStatus.deviceScanCallID = undefined;
       }, data.duration * 1000);
     }
     else {

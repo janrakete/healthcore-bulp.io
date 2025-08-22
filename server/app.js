@@ -19,12 +19,12 @@ global.database = database; // make SQLite database global
 const cronJobs = require("node-cron");
 
 /**
- * Start SQLite and server
+ * Start server
  * @async
- * @function startDatabaseAndServer
+ * @function startServer
  * @description This function establishes a SQLite connection, sets up the server with middleware, routes, and MQTT client, and starts the server.
  */
-async function startDatabaseAndServer() {
+async function startServer() {
   /**
    * Date and time
    */
@@ -443,7 +443,7 @@ async function startDatabaseAndServer() {
   
 }
 
-startDatabaseAndServer();
+startServer();
 
 /**
  * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
