@@ -6,10 +6,9 @@
 
 const appConfig       = require("../../config");
 const router          = require("express").Router();
-
 const sqlStringEscape = require("sqlstring");
 
-const tablesAllowed = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
+const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
 
 /**
  * This function builds an SQL statement for INSERT or UPDATE operations based on the provided payload.
@@ -85,8 +84,10 @@ async function statementBuild(table, payload, type="INSERT") {
 async function conditionBuild(table, payload) {
    let response = {};
 
-   const results = await database.all("PRAGMA table_info(${table})"); // get all columns for the table
-   const columnsList = results.map(result => result.Field);
+   const results = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   console.log(results);
+
+   const columnsList = results.map(result => result.name);
 
    response.condition = "";   
    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
@@ -183,18 +184,19 @@ router.get("/:table", async function (request, response) {
       try {
          data.status = "ok";
 
-         const conditionBuild = await conditionBuild(table, payload);
-         if (conditionBuild.status === "ok") {
-            const statement = "SELECT * FROM " + table + conditionBuild.condition + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
+         const condition = await conditionBuild(table, payload);
+         if (condition.status === "ok") {
+            const statement = "SELECT * FROM " + table + condition.condition + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
             common.conLog("GET Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + statement, "std", false);
 
-            const results = await database.all(statement);
+            const results = await database.prepare(statement).all();
             data.results = results;
+
          }
          else {
-            data.status = conditionBuild.status;
-            data.error  = conditionBuild.error;
+            data.status = condition.status;
+            data.error  = condition.error;
          }
       }
       catch (Error) {

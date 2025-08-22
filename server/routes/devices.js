@@ -29,7 +29,10 @@ router.post("/scan", async function (request, response) {
 
             let message         = {};
             message.duration    = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
-            message.messageID   = common.randomHash();
+            message.callID      = common.randomHash(); // create a unique call ID to identify the scan request
+
+            data.callID        = message.callID; // return the call ID in the response
+
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
             
             common.conLog("POST request for device scan forwarded via MQTT", "gre");
@@ -70,24 +73,29 @@ router.post("/scan/info", async function (request, response) {
 
     if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
         if (payload.bridge !== undefined) {
-            const duration      = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
-            const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND dateTime >= datetime('now', '-' || ? || ' seconds') ORDER BY dateTime DESC"; 
-            const results       = await database.all(statement, ["server/devices/discovered", duration]); // ... query the database for discovered devices
+            if (payload.callID !== undefined) {
+                const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
+                const results       = await database.prepare(statement).all("server/devices/discovered", payload.callID); // ... query the database for discovered devices
 
-            data.devices = results.map(row => row.message);
+                data.devices = results.map(row => JSON.parse(row.message));
 
-            // remove duplicates based on device ID, keep only the first occurrence
-            const uniqueDevices = {};
-            data.devices.forEach(device => {
-                if (device.deviceID && !uniqueDevices[device.deviceID]) {
-                    uniqueDevices[device.deviceID] = device;
-                }
+                // remove duplicates based on device ID, keep only the first occurrence
+                const uniqueDevices = {};
+                data.devices.forEach(device => {
+                    if (device.deviceID && !uniqueDevices[device.deviceID]) {
+                        uniqueDevices[device.deviceID] = device;
+                    }
+                });
 
-            });
-            data.devices = Object.values(uniqueDevices);
+                data.devices = Object.values(uniqueDevices);
 
-            data.status = "ok";
-            common.conLog("POST request for device scan info", "gre");
+                data.status = "ok";
+                common.conLog("POST request for device scan info", "gre");
+            }
+            else {
+                data.status = "error";
+                data.error  = "No call ID provided";
+            }
         }
         else {
             data.status = "error";

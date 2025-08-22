@@ -36,7 +36,9 @@ const appConfig = {
   CONF_databaseFilename                  : process.env.CONF_databaseFilename,
   CONF_anomalyDetectionThreshold         : parseFloat(process.env.CONF_anomalyDetectionThreshold),
   CONF_anomalyDetectionHistorySize       : parseInt(process.env.CONF_anomalyDetectionHistorySize),
-  CONF_anomalyDetectionActive            : process.env.CONF_anomalyDetectionActive
+  CONF_anomalyDetectionActive            : process.env.CONF_anomalyDetectionActive,
+  CONF_tablesAllowedForAPI               : process.env.CONF_tablesAllowedForAPI,
+  CONF_tablesMaxEntriesReturned          : parseInt(process.env.CONF_tablesMaxEntriesReturned)  
 };
 
 module.exports = appConfig;
