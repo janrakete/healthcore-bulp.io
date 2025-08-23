@@ -23,7 +23,7 @@ const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which ta
 async function statementBuild(table, payload, type="INSERT") {
    let response = {};
 
-   const results = await database.all("PRAGMA table_info(${table})"); // get all columns for the table
+   const results = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
 
    let dataList = [];
@@ -85,8 +85,6 @@ async function conditionBuild(table, payload) {
    let response = {};
 
    const results = await database.pragma("table_info('" + table + "')"); // get all columns for the table
-   console.log(results);
-
    const columnsList = results.map(result => result.name);
 
    response.condition = "";   
@@ -135,18 +133,18 @@ router.post("/:table", async function (request, response) {
       try {
          data.status = "ok";
 
-         const statementBuild = await statementBuild(table, payload, "INSERT");
-         if (statementBuild.status === "ok") {
-            const statement = "INSERT INTO " + table + statementBuild.statement;
+         const statement = await statementBuild(table, payload, "INSERT");
+         if (statement.status === "ok") {
+            statement.statement = "INSERT INTO " + table + statement.statement;
             common.conLog("POST Request: access table '" + table + "'", "gre");
-            common.conLog("Execute statement: " + statement, "std", false);
+            common.conLog("Execute statement: " + statement.statement, "std", false);
 
-            const result = await database.run(statement);
-            data.ID = result.lastID; // return last insert id
+            const result = await database.prepare(statement.statement).run();
+            data.ID = result.lastInsertRowid; // return last insert id
          }
          else {
-            data.status = statementBuild.status;
-            data.error  = statementBuild.error;
+            data.status = statement.status;
+            data.error  = statement.error;
          }
       }
       catch (Error) {
@@ -235,14 +233,14 @@ router.delete("/:table", async function (request, response) {
       try {
          data.status = "ok";
 
-         const conditionBuild = await conditionBuild(table, payload);
-         if (conditionBuild.status === "ok") {
-            if (conditionBuild.condition.trim() !== "") {
-               const statement = "DELETE FROM " + table + conditionBuild.condition + " LIMIT 1";
+         const condition = await conditionBuild(table, payload);
+         if (condition.status === "ok") {
+            if (condition.condition.trim() !== "") {
+               const statement = "DELETE FROM " + table + condition.condition + " LIMIT 1";
                common.conLog("DELETE Request: access table '" + table + "'", "gre");
                common.conLog("Execute statement: " + statement, "std", false);
       
-               await database.run(statement);
+               await database.prepare(statement).run();
             }
             else { // if no condition is given, return error
                data.status = "error";
@@ -250,8 +248,8 @@ router.delete("/:table", async function (request, response) {
             }
          }
          else {
-            data.status = conditionBuild.status;
-            data.error  = conditionBuild.error;
+            data.status = condition.status;
+            data.error  = condition.error;
          }
       }
       catch (Error) {
@@ -291,21 +289,21 @@ router.patch("/:table", async function (request, response) {
       try {
          data.status = "ok";
 
-         const conditionBuild = await conditionBuild(table, query);
-         if (conditionBuild.status === "ok") {
-            if (conditionBuild.condition.trim() !== "") {
+         const condition = await conditionBuild(table, query);
+         if (condition.status === "ok") {
+            if (condition.condition.trim() !== "") {
 
-               const statementBuild = await statementBuild(table, payload, "UPDATE");
-               if (statementBuild.status === "ok") {
-                  const statement = "UPDATE " + table + " SET " + statementBuild.statement + conditionBuild.condition + " LIMIT 1";
+               const statement = await statementBuild(table, payload, "UPDATE");
+               if (statement.status === "ok") {
+                  statement.statement = "UPDATE " + table + " SET " + statement.statement + condition.condition + " LIMIT 1";
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
-                  common.conLog("Execute statement: " + statement, "std", false);
-      
-                  await database.run(statement);
+                  common.conLog("Execute statement: " + statement.statement, "std", false);
+
+                  await database.prepare(statement.statement).run();
                }
                else {
-                  data.status = statementBuild.status;
-                  data.error  = statementBuild.error;
+                  data.status = statement.status;
+                  data.error  = statement.error;
                }
             }
             else {
@@ -314,8 +312,8 @@ router.patch("/:table", async function (request, response) {
             }
          }
          else {
-            data.status = conditionBuild.status;
-            data.error  = conditionBuild.error;
+            data.status = condition.status;
+            data.error  = condition.error;
          }
       }
       catch (Error) {
