@@ -38,7 +38,8 @@ const appConfig = {
   CONF_anomalyDetectionHistorySize       : parseInt(process.env.CONF_anomalyDetectionHistorySize),
   CONF_anomalyDetectionActive            : process.env.CONF_anomalyDetectionActive,
   CONF_tablesAllowedForAPI               : process.env.CONF_tablesAllowedForAPI,
-  CONF_tablesMaxEntriesReturned          : parseInt(process.env.CONF_tablesMaxEntriesReturned)  
+  CONF_tablesMaxEntriesReturned          : parseInt(process.env.CONF_tablesMaxEntriesReturned),
+  CONF_apiCallTimeoutMilliseconds        : parseInt(process.env.CONF_apiCallTimeoutMilliseconds)
 };
 
 module.exports = appConfig;
