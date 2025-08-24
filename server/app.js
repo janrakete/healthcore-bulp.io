@@ -140,8 +140,9 @@ async function startServer() {
     });
   }
   mqttClient.on("connect", mqttConnect);
-  global.mqttClient = mqttClient; // make MQTT client global
-  
+  global.mqttClient           = mqttClient; // make MQTT client global
+  global.mqttPendingResponses = {}; // store pending MQTT responses (used for API calls, that wait for an MQTT response)
+
   /**
    * =============================================================================================
    * Helper functions
@@ -181,6 +182,11 @@ async function startServer() {
 
     try {
       const data = JSON.parse(message); // parse message to JSON
+
+      if (data.callID && mqttPendingResponses[data.callID]) { // check if callID is present and if there's a matching pending response through an API call
+        mqttPendingResponses[data.callID](data);
+        delete mqttPendingResponses[data.callID];
+      }
 
       switch (topic) {
         case "server/devices/list":
