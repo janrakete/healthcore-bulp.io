@@ -91,8 +91,8 @@ router.post("/scan", async function (request, response) {
 });
 
 /**
- * POST request to get scan info for devices. This route retrieves information about devices discovered during a scan.
- * @route POST /devices/scan/info
+ * GET request to get scan info for devices. This route retrieves information about devices discovered during a scan.
+ * @route GET /devices/scan/info
  * @param {Object} request - The request object containing the payload with bridge information and optional duration for the scan.
  * @param {Object} response - The response object to send back the scan information.
  * @returns {Object} - Returns a JSON object with the status and list of discovered devices.
@@ -125,7 +125,7 @@ router.get("/scan/info", async function (request, response) {
                 data.devices = Object.values(uniqueDevices);
 
                 data.status = "ok";
-                common.conLog("POST request for device scan info", "gre");
+                common.conLog("GET request for device scan info", "gre");
             }
             else {
                 data.status = "error";
@@ -143,7 +143,7 @@ router.get("/scan/info", async function (request, response) {
     }
 
     if (data.status === "error") {
-        common.conLog("POST request for device scan info: an error occured", "red");
+        common.conLog("GET request for device scan info: an error occured", "red");
     }
 
     common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
@@ -217,12 +217,67 @@ router.post("/connect", async function (request, response) {
     }  
 });
 
+
+/**
+ * POST request to disconnect a device
+ * @route POST /devices/disconnect
+ * @param {Object} request - The request object containing the payload with device information.
+ * @param {Object} response - The response object to send back the disconnection status.
+ * @returns {Object} - Returns a JSON object with the status of the disconnection attempt.
+ * @description This route expects a JSON payload in the request body with the following structure:
+ * {
+ *   "bridge": "bluetooth",
+ *   "deviceID": "12345"
+ * }
+ */
+router.post("/disconnect", async function (request, response) {
+    const payload  = request.body;
+    let data       = {};
+    let message    = {};
+
+    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
+        if (payload.bridge !== undefined) {
+            const bridge = payload.bridge.trim();
+
+            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+                message.deviceID    = payload.deviceID.trim();
+                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+
+                data.callID         = message.callID; // return the call ID also in the response
+
+                mqttClient.publish(bridge + "/device/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
+                common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
+
+                mqttPendingResponsesHandler(data, response);
+            }
+            else {
+                data.status = "error";
+                data.error  = "No ID provided";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No bridge provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No payload provided";
+    }
+
+    if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
+        common.conLog("POST request for device disconnect: an error occured", "red");
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.json(data);
+    }
+});
+
 /**
  * DELETE request to remove a device
  * @route DELETE /devices
  * @param {Object} request - The request object containing the payload with device information.
  * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with the status of the connection attempt.
+ * @returns {Object} - Returns a JSON object with the status of the removal attempt.
  * @description This route expects a JSON payload in the request body with the following structure:
  * {
  *   "bridge": "bluetooth",
@@ -247,7 +302,7 @@ router.delete("/", async function (request, response) {
                 mqttClient.publish(bridge + "/device/remove", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").run(message.deviceID, bridge);
+                //await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").run(message.deviceID, bridge);
 
                 mqttPendingResponsesHandler(data, response);
             }
@@ -278,7 +333,7 @@ router.delete("/", async function (request, response) {
  * @route PATCH /devices
  * @param {Object} request - The request object containing the payload with device information.
  * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with the status of the connection attempt.
+ * @returns {Object} - Returns a JSON object with the status of the patch attempt.
  * @description This route expects a JSON payload in the request body with the following structure:
  * {
  *   "name": "New device name",
@@ -338,5 +393,107 @@ router.patch("/", async function (request, response) {
         return response.json(data);
     }
 });
+
+/**
+ * GET request for retrieving current device values
+ * @route GET /devices/values
+ * @param {Object} request - The request object containing the payload with device information.
+ * @param {Object} response - The response object to send back the connection status.
+ * @returns {Object} - Returns a JSON object with current device values.
+ * @description This route retrieves the current values of a connected device.
+ */
+router.get("/values", async function (request, response) {
+    const payload  = request.body;
+    let data       = {};
+    let message    = {};
+
+    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
+        if (payload.bridge !== undefined) {
+            const bridge = payload.bridge.trim();
+
+            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+                message.deviceID    = payload.deviceID.trim();
+                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+
+                data.callID         = message.callID; // return the call ID also in the response
+
+                mqttClient.publish(bridge + "/device/get", JSON.stringify(message)); // ... publish to MQTT broker
+                common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+
+                mqttPendingResponsesHandler(data, response);
+            }
+            else {
+                data.status = "error";
+                data.error  = "No ID provided";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No bridge provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No payload provided";
+    }
+
+    if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
+        common.conLog("GET request for device values: an error occured", "red");
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.json(data);
+    }
+});
+
+/**
+ * POST request for setting current device values
+ * @route POST /devices/values
+ * @param {Object} request - The request object containing the payload with device information.
+ * @param {Object} response - The response object to send back the connection status.
+ * @returns {Object} - Returns a JSON object with current device values.
+ * @description This route sets the current values of a connected device.
+ */
+router.post("/values", async function (request, response) {
+    const payload  = request.body;
+    let data       = {};
+    let message    = {};
+
+    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
+        if (payload.bridge !== undefined) {
+            const bridge = payload.bridge.trim();
+
+            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+                message.deviceID    = payload.deviceID.trim();
+                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+                message.properties  = payload.properties;
+
+                data.callID         = message.callID; // return the call ID also in the response
+
+                mqttClient.publish(bridge + "/device/set", JSON.stringify(message)); // ... publish to MQTT broker
+                common.conLog("POST request for setting device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+
+                mqttPendingResponsesHandler(data, response);
+            }
+            else {
+                data.status = "error";
+                data.error  = "No ID provided";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No bridge provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No payload provided";
+    }
+
+    if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
+        common.conLog("POST request for setting device values: an error occured", "red");
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.json(data);
+    }
+});
+
 
 module.exports = router;

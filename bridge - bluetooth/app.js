@@ -464,6 +464,7 @@ async function startBridgeAndServer() {
    */
   function mqttDeviceUpdate(data) {
     common.conLog("Bluetooth: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
+    mqttClient.publish("server/device/updated", JSON.stringify(data)); // publish updated device to MQTT broker
   }
 
   /**
@@ -558,6 +559,8 @@ async function startBridgeAndServer() {
           common.conLog(error, "std", false);
         }
       });
+
+      mqttClient.publish("server/device/disconnected", JSON.stringify(data)); // publish disconnected device to MQTT broker
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
@@ -643,6 +646,7 @@ async function startBridgeAndServer() {
     if (device) { // if device is in array of connected devices, try do get desired values
       let message                      = {};
       message.deviceID                 = data.deviceID;
+      message.callID                   = data.callID;
       message.propertiesAndValues      = [];
 
       const services    = device.deviceRaw.services; // get services of device
