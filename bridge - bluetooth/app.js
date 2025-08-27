@@ -132,7 +132,7 @@ async function startBridgeAndServer() {
 
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
             delete device.deviceConverter; // remove device converter from device, because stringify will not work with object
-            mqttClient.publish("server/device/disconnected", JSON.stringify(device)); // publish disconnected device to MQTT broker
+            mqttClient.publish("server/devices/disconnected", JSON.stringify(device)); // publish disconnected device to MQTT broker
           });
 
           deviceRaw.discoverAllServicesAndCharacteristics(function (error, services) { // discover services and characteristics of device
@@ -170,7 +170,7 @@ async function startBridgeAndServer() {
                               propertyAndValue[property.name]  = device.deviceConverter.get(property, value); 
                               message.properties.push(propertyAndValue); // add property to array of properties for return
 
-                              mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker    
+                              mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker    
                             }); 
                           }
                         });
@@ -184,7 +184,7 @@ async function startBridgeAndServer() {
               }
 
               common.conLog("Bluetooth: Device connected: " + device.deviceID + " (" + device.productName + ")", "gre");
-              mqttClient.publish("server/device/connected", JSON.stringify(device)); // publish connected device to MQTT broker
+              mqttClient.publish("server/devices/connected", JSON.stringify(device)); // publish connected device to MQTT broker
 
               device.deviceRaw = deviceRaw; // save device object for later use
               bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
@@ -362,23 +362,23 @@ async function startBridgeAndServer() {
         case "bluetooth/devices/reconnect": // this message is used to connect to ALL registered devices
           mqttDevicesReconnect(data);
           break;
-        case "bluetooth/device/connect": // this message is used to connect to ONE specific device
-          mqttDeviceConnect(data);
+        case "bluetooth/devices/connect": // this message is used to connect to ONE specific device
+          mqttDevicesConnect(data);
           break;
-        case "bluetooth/device/remove":
-          mqttDeviceRemove(data);
+        case "bluetooth/devices/remove":
+          mqttDevicesRemove(data);
           break;
-        case "bluetooth/device/disconnect":
-          mqttDeviceDisconnect(data);
+        case "bluetooth/devices/disconnect":
+          mqttDevicesDisconnect(data);
           break;
-        case "bluetooth/device/set":
-          mqttDeviceSet(data);
+        case "bluetooth/devices/set":
+          mqttDevicesSet(data);
           break;
-        case "bluetooth/device/get":
-          mqttDeviceGet(data);
+        case "bluetooth/devices/get":
+          mqttDevicesGet(data);
           break;
-        case "bluetooth/device/update":
-          mqttDeviceUpdate(data);
+        case "bluetooth/devices/update":
+          mqttDevicesUpdate(data);
           break;
         case "bluetooth/devices/list":
           mqttDevicesList(data);
@@ -462,9 +462,9 @@ async function startBridgeAndServer() {
    * @param {Object} data 
    * @description This function updates the information of a registered device.
    */
-  function mqttDeviceUpdate(data) {
+  function mqttDevicesUpdate(data) {
     common.conLog("Bluetooth: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
-    mqttClient.publish("server/device/updated", JSON.stringify(data)); // publish updated device to MQTT broker
+    mqttClient.publish("server/devices/updated", JSON.stringify(data)); // publish updated device to MQTT broker
   }
 
   /**
@@ -490,7 +490,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID or product name to connect to.
    * @description This function handles the request to connect to a single Bluetooth device by searching for it in the list of devices found via scan.
    */
-  function mqttDeviceConnect(data) {
+  function mqttDevicesConnect(data) {
     common.conLog("Bluetooth: Request for connecting to single device " + data.deviceID + " (" + data.productName + ")", "yel");
 
     let device = {}; // create empty device object
@@ -521,7 +521,7 @@ async function startBridgeAndServer() {
    * @description This function handles the request to remove a connected device by disconnecting it and removing it from the list of connected devices.
    * If the device is successfully disconnected, it publishes a message to the MQTT broker indicating that the device has been removed.
    */  
-  function mqttDeviceRemove(data) {
+  function mqttDevicesRemove(data) {
     common.conLog("Bluetooth: Request for removing " + data.deviceID, "yel");
 
     const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
@@ -536,7 +536,7 @@ async function startBridgeAndServer() {
           bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of devices registed at server
           common.conLog("Bluetooth: Device disconnected and removed: " + data.deviceID, "gre");
           
-          mqttClient.publish("server/device/removed", JSON.stringify(data)); // publish removed device to MQTT broker
+          mqttClient.publish("server/devices/removed", JSON.stringify(data)); // publish removed device to MQTT broker
         }
       });
     }
@@ -547,7 +547,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID to disconnect.
    * @description This function handles the request to disconnect a connected device by searching for it in the list of connected devices.
    */
-  function mqttDeviceDisconnect(data) {
+  function mqttDevicesDisconnect(data) {
     common.conLog("Bluetooth: Request for disconnecting " + data.deviceID, "yel");
   
     const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
@@ -560,7 +560,7 @@ async function startBridgeAndServer() {
         }
       });
 
-      mqttClient.publish("server/device/disconnected", JSON.stringify(data)); // publish disconnected device to MQTT broker
+      mqttClient.publish("server/devices/disconnected", JSON.stringify(data)); // publish disconnected device to MQTT broker
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
@@ -572,7 +572,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID and properties to set.
    * @description This function handles the request to set values for properties of a connected Bluetooth device.
    */
-  async function mqttDeviceSet(data) {
+  async function mqttDevicesSet(data) {
     common.conLog("Bluetooth: Request for setting values of " + data.deviceID, "yel");
 
     if (data.properties) {
@@ -622,7 +622,7 @@ async function startBridgeAndServer() {
         await Promise.all(promises); // wait for all write operations to complete before publishing
   
         data.properties = data.properties.map(propertyWithValue => Object.keys(propertyWithValue)[0]); // get only keys of properties that were set
-        mqttDeviceGet(data); // ... and get values of properties that were set
+        mqttDevicesGet(data); // ... and get values of properties that were set
       }
       else { 
         common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
@@ -638,7 +638,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID and properties to get.
    * @description This function handles the request to get properties and values of a connected Bluetooth device.
    */
-  async function mqttDeviceGet(data) {
+  async function mqttDevicesGet(data) {
     common.conLog("Bluetooth: Request for getting properties and values of " + data.deviceID, "yel");
   
     const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
@@ -686,7 +686,7 @@ async function startBridgeAndServer() {
       }
       
       await Promise.all(promises); // wait for all read operations to complete before publishing
-      mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+      mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");

@@ -178,7 +178,7 @@ router.post("/connect", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/connect", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 mqttPendingResponsesHandler(data, response);
@@ -190,7 +190,7 @@ router.post("/connect", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/connect", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for device connect via product name " + message.productName + " forwarded via MQTT", "gre");
 
                 mqttPendingResponsesHandler(data, response);                
@@ -216,7 +216,6 @@ router.post("/connect", async function (request, response) {
         return response.json(data);
     }  
 });
-
 
 /**
  * POST request to disconnect a device
@@ -245,7 +244,7 @@ router.post("/disconnect", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 mqttPendingResponsesHandler(data, response);
@@ -299,7 +298,7 @@ router.delete("/", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/remove", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 //await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").run(message.deviceID, bridge);
@@ -356,7 +355,7 @@ router.patch("/", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/update", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/update", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 // build update payload for database
@@ -417,7 +416,7 @@ router.get("/values", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/get", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/get", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 mqttPendingResponsesHandler(data, response);
@@ -468,7 +467,7 @@ router.post("/values", async function (request, response) {
 
                 data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/device/set", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/set", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for setting device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 mqttPendingResponsesHandler(data, response);
