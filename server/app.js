@@ -69,6 +69,8 @@ async function startServer() {
   app.use("/data", routesData);
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
   app.use("/devices", routesDevices);
+  const routesSSE = require("./routes/sse"); // import routes for server side events
+  app.use("/sse", routesSSE);
 
   /**
    * Server
@@ -114,7 +116,7 @@ async function startServer() {
         message.bridge      = data.bridge;
         message.property    = property;
         message.score       = latestScore;
-        mqttClient.publish("server/device/anomaly", JSON.stringify(message));
+        mqttClient.publish("server/devices/anomaly", JSON.stringify(message));
       }
     });
   }
@@ -192,17 +194,17 @@ async function startServer() {
         case "server/devices/list":
           mqttDevicesList(data);
           break;
-        case "server/device/create":
-          mqttDeviceCreate(data);
+        case "server/devices/create":
+          mqttDevicesCreate(data);
           break;
-        case "server/device/remove":
-          mqttDeviceRemove(data);
+        case "server/devices/remove":
+          mqttDevicesRemove(data);
           break;
-        case "server/device/update":
-          mqttDeviceUpdate(data);
+        case "server/devices/update":
+          mqttDevicesUpdate(data);
           break;
-        case "server/device/values":
-          mqttDeviceValues(data);
+        case "server/devices/values":
+          mqttDevicesValues(data);
           break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
@@ -243,7 +245,7 @@ async function startServer() {
    * @param {Object} data - The data object containing the device information.
    * @description This function creates a new device in the database and publishes a message to the MQTT topic for that device.
    */
-  async function mqttDeviceCreate(data) {
+  async function mqttDevicesCreate(data) {
     let message = {};
 
     if (data.bridge) {
@@ -268,22 +270,19 @@ async function startServer() {
         }
       }
       else {
-        common.conLog("Server: bridge is missing in message for device creation", "red");
-        message.status      = "error";
-        message.deviceID    = data.deviceID;
-        message.status      = "error";
-        message.error       = "Bridge missing";
-      }
-    }
-    else {
         common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
         message.status      = "error";
         message.deviceID    = data.deviceID;
+        message.error       = "Device ID or product name or vendor name is missing";
+      }
+    }
+    else {
+        common.conLog("Server: bridge is missing in message for device creation", "red");
         message.status      = "error";
         message.error       = "Bridge missing";        
     }
     
-    mqttClient.publish(data.bridge + "/device/create", JSON.stringify(message));
+    mqttClient.publish(data.bridge + "/devices/create", JSON.stringify(message));
   }   
 
   /**
@@ -291,7 +290,7 @@ async function startServer() {
    * @param {Object} data - The data object containing the device information.
    * @description This function removes a device from the database and publishes a message to the MQTT topic for that device.
    */
-  async function mqttDeviceRemove(data) {
+  async function mqttDevicesRemove(data) {
     let message = {};
 
     if (data.bridge) {
@@ -318,7 +317,6 @@ async function startServer() {
       else {
         common.conLog("Server: Device ID is missing in message for device removal", "red");
         message.status      = "error";
-        message.deviceID    = data.deviceID;
         message.bridge      = data.bridge;
         message.error       = "Device ID missing";
       }
@@ -326,12 +324,10 @@ async function startServer() {
     else {
       common.conLog("Server: Bridge is missing in message for device removal", "red");
       message.status      = "error";
-      message.deviceID    = data.deviceID;
-      message.bridge      = data.bridge;
       message.error       = "Bridge missing";
     }
 
-    mqttClient.publish(data.bridge + "/device/remove", JSON.stringify(message));
+    mqttClient.publish(data.bridge + "/devices/remove", JSON.stringify(message));
   }   
 
   /**
@@ -339,7 +335,7 @@ async function startServer() {
    * @param {Object} data - The data object containing the device information.
    * @description This function fetches the current values of a device.
    */
-  async function mqttDeviceValues(data) {
+  async function mqttDevicesValues(data) {
     let message = {};    
     if (data.bridge) {
       if (data.deviceID) {
@@ -349,6 +345,8 @@ async function startServer() {
           message.bridge    = data.bridge;
           message.values    = data.values || undefined;
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
+
+          sseChannel.broadcast(JSON.stringify(data), "value"); // broadcast values to all clients, that are connect via SSE
           
           if (appConfig.CONF_anomalyDetectionActive) {
             if (data.properties !== undefined) { // Check for anomalies in the fetched values
@@ -367,7 +365,6 @@ async function startServer() {
       else {
         common.conLog("Server: Device ID is missing in message for device values", "red");
         message.status      = "error";
-        message.deviceID    = data.deviceID;
         message.bridge      = data.bridge;
         message.error       = "Device ID missing";
       }
@@ -375,8 +372,6 @@ async function startServer() {
     else {
       common.conLog("Server: Bridge is missing in message for device values", "red");
       message.status      = "error";
-      message.deviceID    = data.deviceID;
-      message.bridge      = data.bridge;
       message.error       = "Bridge missing";
     }
   }
@@ -386,7 +381,7 @@ async function startServer() {
    * @param {Object} data - The data object containing the device information.
    * @description This function updates the information of a device in the database and publishes a message to the MQTT topic for that device.
    */
-  async function mqttDeviceUpdate(data) {
+  async function mqttDevicesUpdate(data) {
     let message = {};
 
     if (data.bridge) {
@@ -424,7 +419,6 @@ async function startServer() {
       else {
         common.conLog("Server: Device ID is missing in message for device update", "red");
         message.status      = "error";
-        message.deviceID    = data.deviceID;
         message.bridge      = data.bridge;
         message.error       = "Device ID missing";
       }
@@ -432,12 +426,10 @@ async function startServer() {
     else {
       common.conLog("Server: Bridge is missing in message for device update", "red");
       message.status      = "error";
-      message.deviceID    = data.deviceID;
-      message.bridge      = data.bridge;
       message.error       = "Bridge missing";
     }
 
-    mqttClient.publish(data.bridge + "/device/update", JSON.stringify(message));
+    mqttClient.publish(data.bridge + "/devices/update", JSON.stringify(message));
   }
 
   /**
@@ -445,7 +437,7 @@ async function startServer() {
    */
   const sse         = require("better-sse"); 
   global.sse        = sse;
-  global.sseChannel = global.sse.createChannel(); // make channel global
+  global.sseChannel = sse.createChannel(); // make channel global
   
 }
 

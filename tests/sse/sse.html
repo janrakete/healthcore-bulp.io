@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Example</title>
+</head>
+<body>
+    <h1>Server-Sent Events</h1>
+    <ul id="events"></ul>
+
+    <script>
+        // Initialize the EventSource, listening for server updates
+        const eventSource = new EventSource('http://localhost:9998/sse/events');
+        
+        // Listen for messages from the server
+        eventSource.onmessage = function(event) {
+            const newElement = document.createElement("li");
+            newElement.textContent = event.data;
+            document.getElementById("events").appendChild(newElement);
+        };
+
+        // Log connection error
+        eventSource.onerror = function(event) {
+            console.log('Error occurred:', event);
+        };
+    </script>
+</body>
+</html>
