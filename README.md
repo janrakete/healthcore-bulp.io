@@ -73,8 +73,13 @@ node "bridge - bluetooth/app.js"
 node "bridge - zigbee/app.js"
 node "bridge - lora/app.js"
 node "bridge - http/app.js"
-
 ```
+
+If you want to use it for production, just run
+```bash
+production-start.sh
+```
+production-start uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the "./logs" folder.
 
 ## 📁 Folder structure
 ```plaintext
