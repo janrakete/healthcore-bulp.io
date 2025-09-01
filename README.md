@@ -1,6 +1,6 @@
 # healthcore.dev by bulp.io
 
-▷ **Current status:** 0% ███████████████████████▒▒▒▒▒▒▒▒ 100% (= first running version)
+▷ **Current status:** 0% ████████████████████████▒▒▒▒▒▒ 100% (= first running version)
 
 Hi.
 
@@ -59,6 +59,10 @@ On the left, you can see how various interfaces communicate bi-directionally wit
    ```bash
    npm install
    ```
+4. Installing process manager for production
+    ```bash
+    npm install pm2 -g
+   ```
 
 **Start services** (each in its own terminal or managed via a process manager):
 ```bash
@@ -77,9 +81,9 @@ node "bridge - http/app.js"
 
 If you want to use it for production, just run
 ```bash
-production-start.sh
+.\production-start.sh
 ```
-production-start uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the "./logs" folder.
+production-start uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
 ## 📁 Folder structure
 ```plaintext
