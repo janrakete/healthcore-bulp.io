@@ -59,7 +59,7 @@ On the left, you can see how various interfaces communicate bi-directionally wit
    ```bash
    npm install
    ```
-4. Installing process manager for production
+4. Installing process manager for production:
     ```bash
     npm install pm2 -g
    ```
@@ -229,4 +229,4 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
 ## 🔌 API communication
-Coming soon
+Coming soon.

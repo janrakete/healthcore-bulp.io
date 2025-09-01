@@ -8,7 +8,7 @@ if [ -f .env ]; then
 fi
 
 # -------------------------------
-# 2️⃣ Check or install pm2-logrotate 
+# 2️⃣ Check or install pm2-logrotate / Check or install pm2-windows-startup (only on Windows)
 # -------------------------------
 pm2 module:list | grep pm2-logrotate > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -16,6 +16,17 @@ if [ $? -ne 0 ]; then
   pm2 install pm2-logrotate
 else
   echo "pm2-logrotate is already installed."
+fi
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+  pm2 module:list | grep pm2-windows-startup > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "pm2-windows-startup not found, installing ..."
+    npm install pm2-windows-startup -g
+    pm2-startup install    
+  else
+    echo "pm2-windows-startup is already installed."
+  fi
 fi
 
 # -------------------------------
@@ -26,7 +37,7 @@ mkdir -p logs
 # -------------------------------
 # 4️⃣ Start PM2 Ecosystem
 # -------------------------------
-pm2 start production.config.js --env production
+pm2 start production.config.js
 
 # -------------------------------
 # 5️⃣ Save all processes for autostart on boot
