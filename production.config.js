@@ -10,8 +10,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeBluetooth
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./bridge - bluetooth",
+      error_file: "../logs/bridge - bluetooth - errors.log",
+      out_file: "../logs/bridge - bluetooth - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
@@ -24,8 +25,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeHTTP
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./bridge - http",
+      error_file: "../logs/bridge - http - errors.log",
+      out_file: "../logs/bridge - http - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
@@ -38,8 +40,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeLoRa
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./bridge - lora",
+      error_file: "../logs/bridge - lora - errors.log",
+      out_file: "../logs/bridge - lora - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
@@ -52,8 +55,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeThread
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./bridge - thread",
+      error_file: "../logs/bridge - thread - errors.log",
+      out_file: "../logs/bridge - thread - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },       
     {
@@ -66,8 +70,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeZigbBee
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./bridge - zigbee",
+      error_file: "../logs/bridge - zigbee - errors.log",
+      out_file: "../logs/bridge - zigbee - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },    
     {
@@ -80,8 +85,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portServer
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./server",
+      error_file: "../logs/server - errors.log",
+      out_file: "../logs/server - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },   
     {
@@ -94,8 +100,9 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBroker
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
+      cwd: "./broker",
+      error_file: "../logs/broker - errors.log",
+      out_file: "../logs/broker - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
@@ -108,9 +115,10 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portHealthcheck
       },
-      error_file: "./logs/errors.log",
-      out_file: "./logs/output.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss"      
+      cwd: "./healthcheck",
+      error_file: "../logs/healthcheck - errors.log",
+      out_file: "../logs/healthcheck - output.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss"
     }
   ]
 };
