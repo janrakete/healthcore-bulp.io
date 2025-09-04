@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "bridge - bluetooth",
-      script: "./bridge - bluetooth/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -17,7 +17,7 @@ module.exports = {
     },
     {
       name: "bridge - http",
-      script: "./bridge - http/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -32,7 +32,7 @@ module.exports = {
     },
     {
       name: "bridge - lora",
-      script: "./bridge - lora/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -47,7 +47,7 @@ module.exports = {
     },
     {
       name: "bridge - thread",
-      script: "./bridge - thread/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -62,7 +62,7 @@ module.exports = {
     },       
     {
       name: "bridge - zigbee",
-      script: "./bridge - zigbee/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -77,7 +77,7 @@ module.exports = {
     },    
     {
       name: "server",
-      script: "./server/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -92,7 +92,7 @@ module.exports = {
     },   
     {
       name: "broker",
-      script: "./broker/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -107,7 +107,7 @@ module.exports = {
     },
     {
       name: "healthcheck",
-      script: "./healthcheck/app.js",
+      script: "app.js",
       instances: 1,
       autorestart: true,
       watch: false,
