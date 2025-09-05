@@ -227,7 +227,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
 ## 🔌 API communication
-Healthcore provides a comprehensive API that allows you to get and set all data and devices in a s. Here is a complete example of connecting to a ZigBee device.
+Healthcore provides a comprehensive API that allows you to control all data and devices in a standardized way. Here is a complete example of connecting to a ZigBee device.
 
 You can explore all APIs using Swagger:
 ```bash
@@ -235,6 +235,7 @@ http://localhost:9998/api-docs/
 ```
 (9998 is the standard server port and localhost the standard base URL, configured in .env)
 
+**Example for ZigBee:**
 ```js
 Example coming soon.
 ```
