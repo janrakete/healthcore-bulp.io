@@ -7,10 +7,13 @@ export PATH="./node_modules/.bin:$PATH"
 echo "🔧 Checking PM2 installation..."
 if ! command -v pm2 > /dev/null 2>&1; then
   echo "pm2 not found, installing locally..."
-  npm install pm2
+  npm install -g pm2
 else
   echo "pm2 is already installed."
 fi
+
+echo "🚫 Killing existing PM2 processes..."
+pm2 kill || true
 
 echo "📁 Loading environment variables..."
 if [ -f .env ]; then
@@ -49,13 +52,7 @@ echo "📂 Creating logs directory..."
 mkdir -p logs
 
 echo "🚀 Starting services..."
-if pm2 describe "server" > /dev/null 2>&1; then
-  echo "Services already running, reloading ..."
-  pm2 reload production.config.js
-else
-  echo "Starting services ..."
-  pm2 start production.config.js
-fi
+pm2 start production.config.js
 
 echo "💾 Saving PM2 process list..."
 pm2 save
