@@ -95,7 +95,7 @@ production-start.sh uses the process manager, so that a service is restarted if 
 │   └── converters/       # Common and own converters
 ├── bridge - http/        # HTTP ↔ MQTT bridge
 │   └── converters/       # Common and own converters
-├── test_devices/         # Example device firmware (for Arduino)
+├── tests/                # Example device firmware (for Arduino) and other testing scripts
 └── healthcheck/          # Healthcheck (see below)
 ```
 
@@ -119,7 +119,7 @@ node healthcheck/app.js
 
 Then open a browser und type:  
 _localhost:9990_  
-(9990 is the standard port and localhost the standard base URL, configured in .env)
+(9990 is the standard port healthcheck and localhost the standard base URL, configured in .env)
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
@@ -225,4 +225,12 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
 ## 🔌 API communication
-Coming soon.
+Healthcore provides a comprehensive API that allows you to get and set all data and devices in a s. Here is a complete example of connecting to a ZigBee device.
+
+You can explore all APIs using Swagger:
+_localhost:9998/api-docs/_
+(9998 is the standard server port and localhost the standard base URL, configured in .env)
+
+```js
+Example coming soon.
+```
