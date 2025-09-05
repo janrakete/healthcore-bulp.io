@@ -118,7 +118,9 @@ node healthcheck/app.js
 ```
 
 Then open a browser und type:  
-_localhost:9990_  
+```bash
+http://localhost:9990
+```
 (9990 is the standard port healthcheck and localhost the standard base URL, configured in .env)
 
 ## 🧩 Own converters
@@ -228,7 +230,9 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
 Healthcore provides a comprehensive API that allows you to get and set all data and devices in a s. Here is a complete example of connecting to a ZigBee device.
 
 You can explore all APIs using Swagger:
-_localhost:9998/api-docs/_
+```bash
+http://localhost:9998/api-docs/
+```
 (9998 is the standard server port and localhost the standard base URL, configured in .env)
 
 ```js
