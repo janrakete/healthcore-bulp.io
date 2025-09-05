@@ -163,6 +163,16 @@ router.get("/scan/info", async function (request, response) {
  *   "bridge": "bluetooth" // must be provided to specify the bridge
  * }
  */
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get all users
+ *     responses:
+ *       200:
+ *         description: A list of users
+ */
+
 router.post("/connect", async function (request, response) {
     const payload  = request.body;
     let data       = {};
