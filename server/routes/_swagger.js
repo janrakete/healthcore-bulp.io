@@ -8,12 +8,11 @@ const swaggerJsdoc    = require("swagger-jsdoc");
 const swaggerUi       = require("swagger-ui-express");
 
 const options = {
-  failOnErrors: true,
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Healthcore API",
-      description: "Auto-generated Swagger doc from JSDoc comments",
+      title: "Healthcore REST API🤘",
+      description: "This file is an auto-generated swagger doc from JSDoc comments.",
     },
   },
   apis: ["./routes/data.js", "./routes/devices.js"]
