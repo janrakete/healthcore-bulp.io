@@ -22,6 +22,8 @@
     "serialport": "^13.0.0",
     "sleep-promise": "^9.1.0",
     "sqlstring": "^2.3.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uri-js": "^4.4.1",
     "util": "^0.12.5",
     "zigbee-herdsman": "^4.2.0"

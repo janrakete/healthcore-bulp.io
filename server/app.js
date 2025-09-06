@@ -73,6 +73,12 @@ async function startServer() {
   app.use("/sse", routesSSE);
 
   /**
+   * Swagger
+   */
+  const swaggerDocs = require("./routes/_swagger");
+  swaggerDocs(app);
+
+  /**
    * Server
    */
   const server = require("http").createServer(app);

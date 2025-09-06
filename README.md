@@ -59,10 +59,6 @@ On the left, you can see how various interfaces communicate bi-directionally wit
    ```bash
    npm install
    ```
-4. Installing process manager for production:
-    ```bash
-    npm install pm2 -g
-   ```
 
 **Start services** (each in its own terminal or managed via a process manager):
 ```bash
@@ -83,7 +79,7 @@ If you want to use it for production, just run
 ```bash
 .\production-start.sh
 ```
-production-start uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
+production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
 ## 📁 Folder structure
 ```plaintext
@@ -99,7 +95,7 @@ production-start uses the process manager, so that a service is restarted if it 
 │   └── converters/       # Common and own converters
 ├── bridge - http/        # HTTP ↔ MQTT bridge
 │   └── converters/       # Common and own converters
-├── test_devices/         # Example device firmware (for Arduino)
+├── tests/                # Example device firmware (for Arduino) and other testing scripts
 └── healthcheck/          # Healthcheck (see below)
 ```
 
@@ -122,8 +118,10 @@ node healthcheck/app.js
 ```
 
 Then open a browser und type:  
-_localhost:9990_  
-(9990 is the standard port and localhost the standard base URL, configured in .env)
+```bash
+http://localhost:9990
+```
+(9990 is the standard port healthcheck and localhost the standard base URL, configured in .env)
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
@@ -229,4 +227,15 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
 ## 🔌 API communication
-Coming soon.
+Healthcore provides a comprehensive API that allows you to control all data and devices in a standardized way. Here is a complete example of connecting to a ZigBee device.
+
+You can explore all APIs using Swagger:
+```bash
+http://localhost:9998/api-docs/
+```
+(9998 is the standard server port and localhost the standard base URL, configured in .env)
+
+**Example for ZigBee:**
+```js
+Example coming soon.
+```
