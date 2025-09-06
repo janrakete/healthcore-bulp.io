@@ -117,12 +117,45 @@ async function conditionBuild(table, payload) {
 }
 
 /**
- * Insert a new database entry or entries. If successful, it returns the last inserted ID.
- * @route POST /:table*
- * @param {string} table - The name of the table to insert data into.
- * @param {object} payload - The JSON payload containing the data to be inserted.
- * @returns {object} - An object containing the status of the operation, any error messages, and the last inserted ID if successful.
- * @description This route allows clients to insert new entries into a specified table. It checks if the table name is allowed, builds an SQL INSERT statement based on the provided payload, and executes it. If successful, it returns the last inserted ID.
+ * @swagger
+ *   /data/{table}:
+ *     post:
+ *       summary: Inserting data into a table
+ *       description: This endpoint allows you to insert data into a specified table. Standard allowed tables are defined in the .env file (CONF_tablesAllowedForAPI). Allowed tables are "devices","individuals","rooms","rules","users","sos","settings".
+ *       parameters:
+ *          - in: path
+ *            name: table
+ *            required: true
+ *            description: The name of the table to insert data into.
+ *            schema:
+ *              type: string
+ *          - in: body
+ *            name: body
+ *            required: true
+ *            description: The data to insert into the table. The allowed keys depend on the table structure, that you can find out by using the GET method on the same table.
+ *           schema:
+ *             type: object
+ *             additionalProperties: true
+ *      responses:
+ *          200:
+ *            description: Successfully inserted data into the table.
+ *            schema:
+ *              type: object
+ *              properties:
+ *                status:
+ *                  type: string
+ *              example: "ok"
+ *                ID:
+ *              type: integer
+ *              example: 1
+ *           error:
+ *             type: string
+ *             example: "Error message"
+ *     400:
+ *       description: Bad request. The request was invalid or cannot be served. An error message will be returned in the response body.
+ *      500:
+ *       description: Internal server error. An error message will be returned in the response body.
+ *
  */
 router.post("/:table", async function (request, response) {
    const table    = request.params.table;
