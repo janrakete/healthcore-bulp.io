@@ -7,3 +7,4 @@
 *.log
 *.tmp*
 devices.db
+healthcore_database.db
