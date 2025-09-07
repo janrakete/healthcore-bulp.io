@@ -131,6 +131,7 @@ async function conditionBuild(table, payload) {
  *           description: The name of the table to insert data into.
  *           schema:
  *             type: string
+ *             example: sos
  *       requestBody:
  *         required: true
  *         content:
@@ -228,13 +229,18 @@ router.post("/:table", async function (request, response) {
  *           description: The name of the table to retrieve data from.
  *           schema:
  *             type: string
+ *             example: sos
  *         - in: query
- *           name: ID
+ *           name: Query parameters
  *           required: false
- *           description: The ID of the entry to retrieve.
+ *           description: Optional query parameters to filter the results. Keys must match the column names of the specified table. You can find out the column names by using the GET method on the same table without any query parameters. Only exact matches are supported (e.g., ?ID=2). 
  *           schema:
- *             type: integer
- *             example: 2
+ *             type: object
+ *             example: { "sosID": 2 }
+ *             additionalProperties:
+ *               type: string
+ *           style: form
+ *           explode: true
  *       responses:
  *         "200":
  *           description: Successfully retrieved data from the table. Returns an array of entries matching the query parameters.
@@ -312,18 +318,61 @@ router.get("/:table", async function (request, response) {
    }
 });
 
-
 /**
- * Delete database entry or entries
- * @route DELETE /:table*
- * @param {string} table - The name of the table to delete data from.
- * @param {object} query - The query parameters containing conditions for the deletion.
- * @returns {object} - An object containing the status of the operation, any error messages and a confirmation message if successful.
- * @description This route allows clients to delete entries from a specified table based on conditions provided in the query parameters. It checks if the table name is allowed, builds a WHERE condition based on the query parameters, and executes a DELETE statement. If successful, it returns a confirmation message.
+ * @swagger
+ *   /data/{table}:
+ *     delete:
+ *       summary: Deleting data from a table
+ *       description: This endpoint allows you to delete data from a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
+ *       tags:
+ *         - Data manipulation (standard allowed tables are "devices","individuals","rooms","rules","users","sos","settings")
+ *       parameters:
+ *         - in: path
+ *           name: table
+ *           required: true
+ *           description: The name of the table to delete data from.
+ *           schema:
+ *             type: string
+ *             example: sos
+ *         - in: query
+ *           name: Query parameters
+ *           required: true
+ *           description: Query parameters to filter the entries. Keys must match the column names of the specified table. You can find out the column names by using the GET method on the same table without any query parameters. Only exact matches are supported (e.g., ?ID=2). 
+ *           schema:
+ *             type: object
+ *             example: { "sosID": 2 }
+ *             additionalProperties:
+ *               type: string
+ *           style: form
+ *           explode: true
+ *       responses:
+ *         "200":
+ *           description: Successfully deleted data from the table.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object 
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.delete("/:table", async function (request, response) {
    const table    = request.params.table;
-   const payload  = request.body;
+   const payload  = request.query;
    let data       = {};
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
@@ -373,13 +422,65 @@ router.delete("/:table", async function (request, response) {
 });
 
 /**
- * Update database entry or entries
- * @route PATCH /:table*
- * @param {string} table - The name of the table to update data in.
- * @param {object} body - The JSON payload containing the data to be updated. 
- * @param {object} query - The query parameters containing conditions for the update.
- * @returns {object} - An object containing the status of the operation, any error messages and a confirmation message if successful.
- * @description This route allows clients to update entries in a specified table based on conditions provided in the query parameters. It checks if the table name is allowed, builds a WHERE condition based on the query parameters, constructs an SQL UPDATE statement from the provided body, and executes it. If successful, it returns a confirmation message.
+ * @swagger
+ *   /data/{table}:
+ *     patch:
+ *       summary: Update data in a table
+ *       description: This endpoint allows you to update data in a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
+ *       tags:
+ *        - Data manipulation (standard allowed tables are "devices","individuals","rooms","rules","users","sos","settings")
+ *       parameters:
+ *         - in: path
+ *           name: table
+ *           required: true
+ *           description: The name of the table to update data in.
+ *           schema:
+ *             type: string
+ *             example: sos
+ *         - in: query
+ *           name: Query parameters
+ *           required: true
+ *           description: Query parameters to filter the entries. Keys must match the column names of the specified table. You can find out the column names by using the GET method on the same table without any query parameters. Only exact matches are supported (e.g., ?ID=2). 
+ *           schema:
+ *             type: object
+ *             example: { "sosID": 2 }
+ *             additionalProperties:
+ *               type: string
+ *           style: form
+ *           explode: true
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example: { "name": "New name", "number": 9876543210 }
+ *               additionalProperties:
+ *                 type: string
+ *       responses:
+ *         "200":
+ *           description: Successfully updated data in the table.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.patch("/:table", async function (request, response) {
    const table    = request.params.table;
