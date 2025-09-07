@@ -27,7 +27,7 @@ function mqttPendingResponsesHandler(data, response) {
 
         common.conLog("Waited for MQTT response, but timed out", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(400).json(data);
     }, appConfig.CONF_apiCallTimeoutMilliseconds);
 
     mqttPendingResponses[data.callID] = (message) => {
@@ -37,21 +37,60 @@ function mqttPendingResponsesHandler(data, response) {
         clearTimeout(responseTimeout);
         common.conLog("Received MQTT respons in time", "gre");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(200).json(data);
     };
 }
 
 /**
- * POST request to scan for devices. This route is used to initiate a scan for devices connected to a specific bridge.
- * @route POST /devices/scan
- * @param {Object} request - The request object containing the payload with bridge information and optional duration for the scan.
- * @param {Object} response - The response object to send back the status of the scan
- * @returns {Object} - Returns a JSON object with the status of the scan request.
- * @description This route expects a JSON payload in the request body with the following structure:
- * {
- *   "bridge": "bluetooth",
- *   "duration": 30 // optional, default is 30 seconds
- * }
+ * @swagger
+ *   /devices/scan:
+ *     post:
+ *       summary: Scan for devices
+ *       description: This endpoint allows you to initiate a scan for devices connected to a specific bridge.
+ *       tags:
+ *        - Devices
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bridge:
+ *                   type: string
+ *                   description: The bridge to scan for devices.
+ *                   example: "bluetooth"
+ *                 duration:
+ *                   type: integer
+ *                   description: The duration of the scan in seconds.
+ *                   example: 30
+ *       responses:
+ *         "200":
+ *           description: Successfully initiated device scan.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   callID:
+ *                     type: string
+ *                     example: "In58F8lxhMEe6a4G"
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.post("/scan", async function (request, response) {
    const payload  = request.body;
@@ -87,54 +126,108 @@ router.post("/scan", async function (request, response) {
     }
 
     common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-    return response.json(data);
+
+    if (data.status === "ok") {
+        return response.status(200).json(data);
+    } else {
+        return response.status(400).json(data);
+    }
 });
 
 /**
- * GET request to get scan info for devices. This route retrieves information about devices discovered during a scan.
- * @route GET /devices/scan/info
- * @param {Object} request - The request object containing the payload with bridge information and optional duration for the scan.
- * @param {Object} response - The response object to send back the scan information.
- * @returns {Object} - Returns a JSON object with the status and list of discovered devices.
- * @description This route expects a JSON payload in the request body with the following structure:
- * {
- *   "bridge": "bluetooth",
- *   "duration": 30 // optional, default is 30 seconds
- * }
+ * @swagger
+ *   /devices/scan/info:
+ *     post:
+ *       summary: Get information about scanned devices
+ *       description: This endpoint allows you to retrieve information about devices that were discovered during a scan.
+ *       tags:
+ *         - Devices
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 callID:
+ *                   type: string
+ *                   description: The unique call ID.
+ *                   example: "In58F8lxhMEe6a4G"
+ *       responses:
+ *         "200":
+ *           description: Successfully retrieved device scan information.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   devices:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         deviceID:
+ *                           type: string
+ *                           example: "12345"
+ *                         productName:
+ *                           type: string
+ *                           example: "Product XYZ"
+ *                         bridge:
+ *                           type: string
+ *                           example: "bluetooth"
+ *                         rssi:
+ *                           type: integer
+ *                           example: -60
+ *                         connectable:
+ *                           type: boolean
+ *                           example: true
+ *                         callID: 
+ *                           type: string
+ *                           example: "In58F8lxhMEe6a4G"
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "No call ID provided"
  */
-router.get("/scan/info", async function (request, response) {
+router.post("/scan/info", async function (request, response) {
    const payload  = request.body;
    let data       = {};
 
     if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
-        if (payload.bridge !== undefined) {
-            if (payload.callID !== undefined) {
-                const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
-                const results       = await database.prepare(statement).all("server/devices/discovered", payload.callID); // ... query the database for discovered devices
+        if (payload.callID !== undefined) {
+            const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
+            const results       = await database.prepare(statement).all("server/devices/discovered", payload.callID); // ... query the database for discovered devices
 
-                data.devices = results.map(row => JSON.parse(row.message));
+            data.devices = results.map(row => JSON.parse(row.message));
 
-                // remove duplicates based on device ID, keep only the first occurrence
-                const uniqueDevices = {};
-                data.devices.forEach(device => {
-                    if (device.deviceID && !uniqueDevices[device.deviceID]) {
-                        uniqueDevices[device.deviceID] = device;
-                    }
-                });
+            // remove duplicates based on device ID, keep only the first occurrence
+            const uniqueDevices = {};
+            data.devices.forEach(device => {
+                if (device.deviceID && !uniqueDevices[device.deviceID]) {
+                    uniqueDevices[device.deviceID] = device;
+                }
+            });
 
-                data.devices = Object.values(uniqueDevices);
+            data.devices = Object.values(uniqueDevices);
 
-                data.status = "ok";
-                common.conLog("GET request for device scan info", "gre");
-            }
-            else {
-                data.status = "error";
-                data.error  = "No call ID provided";
-            }
+            data.status = "ok";
+            common.conLog("POST request for device scan info", "gre");
         }
         else {
             data.status = "error";
-            data.error  = "No bridge provided";
+            data.error  = "No call ID provided";
         }
     }
     else {
@@ -143,11 +236,16 @@ router.get("/scan/info", async function (request, response) {
     }
 
     if (data.status === "error") {
-        common.conLog("GET request for device scan info: an error occured", "red");
+        common.conLog("POST request for device scan info: an error occured", "red");
     }
 
     common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-    return response.json(data);
+
+    if (data.status === "ok") {
+        return response.status(200).json(data);
+    } else {
+        return response.status(400).json(data);
+    }
 });
 
 /**
@@ -213,8 +311,8 @@ router.post("/connect", async function (request, response) {
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("POST request for device connect: an error occured", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
-    }  
+        return response.status(400).json(data);
+    }
 });
 
 /**
@@ -267,7 +365,7 @@ router.post("/disconnect", async function (request, response) {
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("POST request for device disconnect: an error occured", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(400).json(data);
     }
 });
 
@@ -323,7 +421,7 @@ router.delete("/", async function (request, response) {
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("DELETE request for device remove: an error occured", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(400).json(data);
     }
 });
 
@@ -389,7 +487,7 @@ router.patch("/", async function (request, response) {
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("PATCH request for device update: an error occured", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(400).json(data);
     }
 });
 
@@ -439,7 +537,7 @@ router.get("/values", async function (request, response) {
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("GET request for device values: an error occured", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(400).json(data);
     }
 });
 
@@ -490,7 +588,7 @@ router.post("/values", async function (request, response) {
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("POST request for setting device values: an error occured", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.json(data);
+        return response.status(400).json(data);
     }
 });
 
