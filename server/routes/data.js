@@ -121,41 +121,51 @@ async function conditionBuild(table, payload) {
  *   /data/{table}:
  *     post:
  *       summary: Inserting data into a table
- *       description: This endpoint allows you to insert data into a specified table. Standard allowed tables are defined in the .env file (CONF_tablesAllowedForAPI). Allowed tables are "devices","individuals","rooms","rules","users","sos","settings".
+ *       description: This endpoint allows you to insert data into a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI). 
+ *       tags:
+ *        - Data manipulation (standard allowed tables are "devices","individuals","rooms","rules","users","sos","settings")
  *       parameters:
- *          - in: path
- *            name: table
- *            required: true
- *            description: The name of the table to insert data into.
- *            schema:
- *              type: string
- *          - in: body
- *            name: body
- *            required: true
- *            description: The data to insert into the table. The allowed keys depend on the table structure, that you can find out by using the GET method on the same table.
+ *         - in: path
+ *           name: table
+ *           required: true
+ *           description: The name of the table to insert data into.
  *           schema:
- *             type: object
- *             additionalProperties: true
- *      responses:
- *          200:
- *            description: Successfully inserted data into the table.
- *            schema:
- *              type: object
- *              properties:
- *                status:
- *                  type: string
- *              example: "ok"
- *                ID:
- *              type: integer
- *              example: 1
- *           error:
  *             type: string
- *             example: "Error message"
- *     400:
- *       description: Bad request. The request was invalid or cannot be served. An error message will be returned in the response body.
- *      500:
- *       description: Internal server error. An error message will be returned in the response body.
- *
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: The data to insert into the table. Keys must match the column names of the specified table. You can find out the column names by using the GET method on the same table.
+ *               example: { "name": "New SOS contact", "number": 12345678 }
+ *       responses:
+ *         "200":
+ *           description: Successfully inserted data into the table. Returns the ID of the newly inserted entry.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   ID:
+ *                     type: integer
+ *                     example: 78
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.post("/:table", async function (request, response) {
    const table    = request.params.table;
@@ -195,20 +205,69 @@ router.post("/:table", async function (request, response) {
    }
 
    common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-   return response.json(data);
+
+   if (data.status === "ok") {
+      return response.status(200).json(data);
+   } else {
+      return response.status(400).json(data);
+   }
 });
 
 /**
- * Retrieve database entries based on conditions.
- * @route GET /:table*
- * @param {string} table - The name of the table to retrieve data from.
- * @param {object} query - The query parameters containing conditions for the retrieval.
- * @returns {object} - An object containing the status of the operation, any error messages, and the retrieved results if successful.
- * @description This route allows clients to retrieve entries from a specified table based on conditions provided in the query parameters. It checks if the table name is allowed, builds a WHERE condition based on the query parameters, and executes a SELECT statement. If successful, it returns the retrieved results.
+ * @swagger
+ *   /data/{table}:
+ *     get:
+ *       summary: Retrieving data from a table
+ *       description: This endpoint allows you to retrieve data from a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
+ *       tags:
+ *        - Data manipulation (standard allowed tables are "devices","individuals","rooms","rules","users","sos","settings")
+ *       parameters:
+ *         - in: path
+ *           name: table
+ *           required: true
+ *           description: The name of the table to retrieve data from.
+ *           schema:
+ *             type: string
+ *         - in: query
+ *           name: ID
+ *           required: false
+ *           description: The ID of the entry to retrieve.
+ *           schema:
+ *             type: integer
+ *             example: 2
+ *       responses:
+ *         "200":
+ *           description: Successfully retrieved data from the table. Returns an array of entries matching the query parameters.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   results:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       description: An entry from the table.
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.get("/:table", async function (request, response) {
    const table    = request.params.table;
-   const payload  = request.body;
+   const payload  = request.query; // GET values are for condition
    let data       = {};
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
@@ -245,7 +304,12 @@ router.get("/:table", async function (request, response) {
    }
 
    common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-   return response.json(data);
+
+   if (data.status === "ok") {
+      return response.status(200).json(data);
+   } else {
+      return response.status(400).json(data);
+   }
 });
 
 
@@ -300,7 +364,12 @@ router.delete("/:table", async function (request, response) {
    }
 
    common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-   return response.json(data);
+
+   if (data.status === "ok") {
+      return response.status(200).json(data);
+   } else {
+      return response.status(400).json(data);
+   }
 });
 
 /**
@@ -364,7 +433,12 @@ router.patch("/:table", async function (request, response) {
    }
 
    common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-   return response.json(data);
+   
+   if (data.status === "ok") {
+      return response.status(200).json(data);
+   } else {
+      return response.status(400).json(data);
+   }
 });
 
  module.exports = router;
