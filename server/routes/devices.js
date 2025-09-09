@@ -249,17 +249,56 @@ router.post("/scan/info", async function (request, response) {
 });
 
 /**
- * POST request to connect a device. This route is used to connect a device by its ID or name.
- * @route POST /devices/connect
- * @param {Object} request - The request object containing the payload with device information.
- * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with the status of the connection attempt.
- * @description This route expects a JSON payload in the request body with the following structure:
- * {
- *   "deviceID": "12345",  // optional, either deviceID or name must be provided
- *   "name": "My device"   // optional, either deviceID or name must be provided
- *   "bridge": "bluetooth" // must be provided to specify the bridge
- * }
+ * @swagger
+ *   /devices/connect:
+ *     post:
+ *       summary: Connect a device via ID or product name
+ *       description: This endpoint allows you to connect a device using its ID OR product name.
+ *       tags:
+ *         - Devices
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 deviceID:
+ *                   type: string
+ *                   example: "12345"
+ *                 productName:
+ *                   type: string
+ *                   example: "My Device"
+ *                 bridge:
+ *                   type: string
+ *                   example: "bluetooth"
+ *       responses:
+ *         "200":
+ *           description: Successfully initiated device connection.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   callID:
+ *                     type: string
+ *                     example: "In58F8lxhMEe6a4G"
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.post("/connect", async function (request, response) {
     const payload  = request.body;
@@ -316,16 +355,53 @@ router.post("/connect", async function (request, response) {
 });
 
 /**
- * POST request to disconnect a device
- * @route POST /devices/disconnect
- * @param {Object} request - The request object containing the payload with device information.
- * @param {Object} response - The response object to send back the disconnection status.
- * @returns {Object} - Returns a JSON object with the status of the disconnection attempt.
- * @description This route expects a JSON payload in the request body with the following structure:
- * {
- *   "bridge": "bluetooth",
- *   "deviceID": "12345"
- * }
+ * @swagger
+ *   /devices/disconnect:
+ *     post:
+ *       summary: Disconnect a device
+ *       description: This endpoint allows you to disconnect a device using its ID.
+ *       tags:
+ *         - Devices
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bridge:
+ *                   type: string
+ *                   example: "bluetooth"
+ *                 deviceID:
+ *                   type: string
+ *                   example: "12345"
+ *       responses:
+ *         "200":
+ *           description: Device disconnected successfully
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   callID:
+ *                     type: string
+ *                     example: "In58F8lxhMEe6a4G"
+ *         "400":
+ *           description: Bad request. The request was invalid or cannot be served.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "Error message"
  */
 router.post("/disconnect", async function (request, response) {
     const payload  = request.body;
@@ -370,16 +446,53 @@ router.post("/disconnect", async function (request, response) {
 });
 
 /**
- * DELETE request to remove a device
- * @route DELETE /devices
- * @param {Object} request - The request object containing the payload with device information.
- * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with the status of the removal attempt.
- * @description This route expects a JSON payload in the request body with the following structure:
- * {
- *   "bridge": "bluetooth",
- *   "deviceID": "12345"
- * }
+ * @swagger
+ *  /devices:
+ *    delete:
+ *      summary: Remove a device
+ *      description: This endpoint removes a device from the system.
+ *      tags:
+ *        - Devices
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                bridge:
+ *                  type: string
+ *                  example: "bluetooth"
+ *                deviceID:
+ *                  type: string
+ *                  example: "12345"
+ *      responses:
+ *        "200":
+ *          description: Device removed successfully
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "ok"
+ *                  callID:
+ *                    type: string
+ *                    example: "In58F8lxhMEe6a4G"
+ *        "400":
+ *          description: Bad request. The request was invalid or cannot be served.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "error"
+ *                  error:
+ *                    type: string
+ *                    example: "Error message"
  */
 router.delete("/", async function (request, response) {
     const payload  = request.body;
@@ -426,17 +539,59 @@ router.delete("/", async function (request, response) {
 });
 
 /**
- * PATCH request for updating a devices information
- * @route PATCH /devices
- * @param {Object} request - The request object containing the payload with device information.
- * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with the status of the patch attempt.
- * @description This route expects a JSON payload in the request body with the following structure:
- * {
- *   "name": "New device name",
- *   "description": "New description",
- *   ...
- * }
+ * @swagger
+ *  /devices:
+ *    patch:
+ *      summary: Update a device
+ *      description: This endpoint updates the information of a device. You can update the name, description, or other properties of the device (you can get all properties with a GET request on table "devices", see "Data manipulation").
+ *      tags:
+ *        - Devices
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                deviceID:
+ *                  type: string
+ *                  example: "12345"
+ *                bridge:
+ *                  type: string
+ *                  example: "bluetooth"
+ *                name:
+ *                  type: string
+ *                  example: "New Device Name"
+ *                description:
+ *                  type: string
+ *                  example: "New Device Description"
+ *      responses:
+ *        "200":
+ *          description: Device updated successfully
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "ok"
+ *                  callID:
+ *                    type: string
+ *                    example: "In58F8lxhMEe6a4G"
+ *        "400":
+ *          description: Bad request. The request was invalid or cannot be served.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "error"
+ *                  error:
+ *                    type: string
+ *                    example: "Error message"
  */
 router.patch("/", async function (request, response) {
     const payload  = request.body;
@@ -492,15 +647,70 @@ router.patch("/", async function (request, response) {
 });
 
 /**
- * GET request for retrieving current device values
- * @route GET /devices/values
- * @param {Object} request - The request object containing the payload with device information.
- * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with current device values.
- * @description This route retrieves the current values of a connected device.
+ * @swagger
+ * /devices/values:
+ *   get:
+ *     summary: Get current device values
+ *     description: This endpoint retrieves the current values of a connected device.
+ *     tags:
+ *       - Devices
+ *     parameters:
+ *       - in: query
+ *         name: bridge
+ *         schema:
+ *           type: string
+ *         example: "bluetooth"
+ *         required: true
+ *         description: The bridge to which the device is connected.
+ *       - in: query
+ *         name: deviceID
+ *         schema:
+ *           type: string
+ *         example: "12345"
+ *         required: true
+ *         description: The ID of the device to retrieve values for.
+ *     responses:
+ *       "200":
+ *         description: Successfully retrieved device values.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 callID:
+ *                   type: string
+ *                   example: "In58F8lxhMEe6a4G"
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     bridge:
+ *                       type: string
+ *                     deviceID:
+ *                       type: string
+ *                     values:
+ *                       type: object
+ *                       additionalProperties:
+ *                         type: string
+ *                       example: {"temperature": "22.5", "humidity": "45"}
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
  */
 router.get("/values", async function (request, response) {
-    const payload  = request.body;
+    const payload  = request.query;
     let data       = {};
     let message    = {};
 
@@ -542,12 +752,58 @@ router.get("/values", async function (request, response) {
 });
 
 /**
- * POST request for setting current device values
- * @route POST /devices/values
- * @param {Object} request - The request object containing the payload with device information.
- * @param {Object} response - The response object to send back the connection status.
- * @returns {Object} - Returns a JSON object with current device values.
- * @description This route sets the current values of a connected device.
+ * @swagger
+ * /devices/values:
+ *   post:
+ *     summary: Set device values
+ *     description: This endpoint sets new values for a connected device.
+ *     tags:
+ *       - Devices
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bridge:
+ *                 type: string
+ *                 example: "bluetooth"
+ *               deviceID:
+ *                 type: string
+ *                 example: "12345"
+ *               properties:
+ *                 type: object
+ *                 additionalProperties:
+ *                   type: string
+ *                 example: {"property1": "value1", "property2": "value2"}
+ *     responses:
+ *       "200":
+ *         description: Successfully set device values.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 callID:
+ *                   type: string
+ *                   example: "In58F8lxhMEe6a4G"
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
  */
 router.post("/values", async function (request, response) {
     const payload  = request.body;
