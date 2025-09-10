@@ -250,28 +250,27 @@ router.post("/scan/info", async function (request, response) {
 
 /**
  * @swagger
- *   /devices/connect:
+ *   /devices/{bridge}/{deviceID}/connect:
  *     post:
- *       summary: Connect a device via ID or product name
- *       description: This endpoint allows you to connect a device using its ID OR product name.
+ *       summary: Connect a device via ID
+ *       description: This endpoint allows you to connect a device using its ID.
  *       tags:
  *         - Devices
- *       requestBody:
- *         required: true
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 deviceID:
- *                   type: string
- *                   example: "12345"
- *                 productName:
- *                   type: string
- *                   example: "My Device"
- *                 bridge:
- *                   type: string
- *                   example: "bluetooth"
+ *       parameters:
+ *         - in: path
+ *           name: bridge
+ *           required: true
+ *           description: The name of the bridge.
+ *           schema:
+ *             type: string
+ *             example: bluetooth
+ *         - in: path
+ *           name: deviceID
+ *           required: true
+ *           description: The ID of the device.
+ *           schema:
+ *             type: string
+ *             example: 12345
  *       responses:
  *         "200":
  *           description: Successfully initiated device connection.
@@ -300,52 +299,50 @@ router.post("/scan/info", async function (request, response) {
  *                     type: string
  *                     example: "Error message"
  */
-router.post("/connect", async function (request, response) {
-    const payload  = request.body;
+router.post("/:bridge/:deviceID/connect", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+
     let data       = {};
     let message    = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
-        if (payload.bridge !== undefined) {
-            const bridge = payload.bridge.trim();
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+            message.deviceID    = payload.deviceID.trim();
+            message.callID      = common.randomHash(); // create a unique call ID to identify the request
 
-                data.callID         = message.callID; // return the call ID also in the response
+            data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
+            common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(data, response);
-            }
-            else if ((payload.productName !== undefined) && (payload.productName.trim() !== "")) { // else if productName is provided
-                data.status         = "ok";
-                message.productName = payload.productName.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
-
-                data.callID         = message.callID; // return the call ID also in the response
-
-                mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for device connect via product name " + message.productName + " forwarded via MQTT", "gre");
-
-                mqttPendingResponsesHandler(data, response);                
-            }
-            else {
-                data.status = "error";
-                data.error  = "No ID or product name provided";
-            }
+            mqttPendingResponsesHandler(data, response);
         }
+        /*else if ((payload.productName !== undefined) && (payload.productName.trim() !== "")) { // else if productName is provided
+            data.status         = "ok";
+            message.productName = payload.productName.trim();
+            message.callID      = common.randomHash(); // create a unique call ID to identify the request
+
+            data.callID         = message.callID; // return the call ID also in the response
+
+            mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
+            common.conLog("POST request for device connect via product name " + message.productName + " forwarded via MQTT", "gre");
+
+            mqttPendingResponsesHandler(data, response);                
+        }*/
         else {
             data.status = "error";
-            data.error  = "No bridge provided";
+            data.error  = "No ID or product name provided";
         }
     }
     else {
         data.status = "error";
-        data.error  = "No payload provided";
+        data.error  = "No bridge provided";
     }
+
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("POST request for device connect: an error occured", "red");
@@ -356,25 +353,27 @@ router.post("/connect", async function (request, response) {
 
 /**
  * @swagger
- *   /devices/disconnect:
+ *   /devices/{bridge}/{deviceID}/disconnect:
  *     post:
  *       summary: Disconnect a device
  *       description: This endpoint allows you to disconnect a device using its ID.
  *       tags:
  *         - Devices
- *       requestBody:
- *         required: true
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 bridge:
- *                   type: string
- *                   example: "bluetooth"
- *                 deviceID:
- *                   type: string
- *                   example: "12345"
+ *       parameters:
+ *         - in: path
+ *           name: bridge
+ *           required: true
+ *           description: The name of the bridge.
+ *           schema:
+ *             type: string
+ *             example: bluetooth
+ *         - in: path
+ *           name: deviceID
+ *           required: true
+ *           description: The ID of the device.
+ *           schema:
+ *             type: string
+ *             example: 12345
  *       responses:
  *         "200":
  *           description: Device disconnected successfully
@@ -403,39 +402,36 @@ router.post("/connect", async function (request, response) {
  *                     type: string
  *                     example: "Error message"
  */
-router.post("/disconnect", async function (request, response) {
-    const payload  = request.body;
+router.post("/:bridge/:deviceID/disconnect", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+
     let data       = {};
     let message    = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
-        if (payload.bridge !== undefined) {
-            const bridge = payload.bridge.trim();
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+            message.deviceID    = payload.deviceID.trim();
+            message.callID      = common.randomHash(); // create a unique call ID to identify the request
 
-                data.callID         = message.callID; // return the call ID also in the response
+            data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
+            common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(data, response);
-            }
-            else {
-                data.status = "error";
-                data.error  = "No ID provided";
-            }
+            mqttPendingResponsesHandler(data, response);
         }
         else {
             data.status = "error";
-            data.error  = "No bridge provided";
+            data.error  = "No ID provided";
         }
     }
     else {
         data.status = "error";
-        data.error  = "No payload provided";
+        data.error  = "No bridge provided";
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
@@ -447,25 +443,27 @@ router.post("/disconnect", async function (request, response) {
 
 /**
  * @swagger
- *  /devices:
+ *  /devices/{bridge}/{deviceID}:
  *    delete:
  *      summary: Remove a device
  *      description: This endpoint removes a device from the system.
  *      tags:
  *        - Devices
- *      requestBody:
- *        required: true
- *        content:
- *          application/json:
- *            schema:
- *              type: object
- *              properties:
- *                bridge:
- *                  type: string
- *                  example: "bluetooth"
- *                deviceID:
- *                  type: string
- *                  example: "12345"
+ *      parameters:
+ *        - in: path
+ *          name: bridge
+ *          required: true
+ *          description: The name of the bridge.
+ *          schema:
+ *            type: string
+ *            example: bluetooth
+ *        - in: path
+ *          name: deviceID
+ *          required: true
+ *          description: The ID of the device.
+ *          schema:
+ *            type: string
+ *            example: 12345
  *      responses:
  *        "200":
  *          description: Device removed successfully
@@ -494,41 +492,38 @@ router.post("/disconnect", async function (request, response) {
  *                    type: string
  *                    example: "Error message"
  */
-router.delete("/", async function (request, response) {
-    const payload  = request.body;
+router.delete("/:bridge/:deviceID", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    
     let data       = {};
     let message    = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
-        if (payload.bridge !== undefined) {
-            const bridge = payload.bridge.trim();
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+            message.deviceID    = payload.deviceID.trim();
+            message.callID      = common.randomHash(); // create a unique call ID to identify the request
 
-                data.callID         = message.callID; // return the call ID also in the response
+            data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
+            common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                //await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").run(message.deviceID, bridge);
+            //await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").run(message.deviceID, bridge);
 
-                mqttPendingResponsesHandler(data, response);
-            }
-            else {
-                data.status = "error";
-                data.error  = "No ID provided";
-            }
+            mqttPendingResponsesHandler(data, response);
         }
         else {
             data.status = "error";
-            data.error  = "No bridge provided";
+            data.error  = "No ID provided";
         }
     }
     else {
         data.status = "error";
-        data.error  = "No payload provided";
+        data.error  = "No bridge provided";
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
@@ -540,12 +535,27 @@ router.delete("/", async function (request, response) {
 
 /**
  * @swagger
- *  /devices:
+ *  /devices/{bridge}/{deviceID}:
  *    patch:
  *      summary: Update a device
  *      description: This endpoint updates the information of a device. You can update the name, description, or other properties of the device (you can get all properties with a GET request on table "devices", see "Data manipulation").
  *      tags:
  *        - Devices
+ *      parameters:
+ *        - in: path
+ *          name: bridge
+ *          required: true
+ *          description: The name of the bridge.
+ *          schema:
+ *            type: string
+ *            example: bluetooth
+ *        - in: path
+ *          name: deviceID
+ *          required: true
+ *          description: The ID of the device.
+ *          schema:
+ *            type: string
+ *            example: 12345
  *      requestBody:
  *        required: true
  *        content:
@@ -553,12 +563,6 @@ router.delete("/", async function (request, response) {
  *            schema:
  *              type: object
  *              properties:
- *                deviceID:
- *                  type: string
- *                  example: "12345"
- *                bridge:
- *                  type: string
- *                  example: "bluetooth"
  *                name:
  *                  type: string
  *                  example: "New Device Name"
@@ -593,12 +597,16 @@ router.delete("/", async function (request, response) {
  *                    type: string
  *                    example: "Error message"
  */
-router.patch("/", async function (request, response) {
-    const payload  = request.body;
+router.patch("/:bridge/:deviceID", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    payload.body         = request.body;
+
     let data       = {};
     let message    = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
+    if ((payload.body !== undefined) && (Object.keys(payload.body).length > 0)) {
         if (payload.bridge !== undefined) {
             const bridge = payload.bridge.trim();
 
@@ -612,13 +620,9 @@ router.patch("/", async function (request, response) {
                 common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
                 // build update payload for database
-                delete payload.callID;
-                delete payload.bridge;
-                delete payload.deviceID;
-
-                const fields        = Object.keys(payload);
+                const fields        = Object.keys(payload.body);
                 const placeholders  = fields.map(field => field + " = ?").join(", ");
-                const values        = Object.values(payload);
+                const values        = Object.values(payload.body);
 
                 await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(values, message.deviceID, bridge);
 
@@ -648,27 +652,27 @@ router.patch("/", async function (request, response) {
 
 /**
  * @swagger
- * /devices/values:
+ * /devices/{bridge}/{deviceID}/values:
  *   get:
  *     summary: Get current device values
  *     description: This endpoint retrieves the current values of a connected device.
  *     tags:
  *       - Devices
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: bridge
+ *         required: true
+ *         description: The name of the bridge.
  *         schema:
  *           type: string
- *         example: "bluetooth"
- *         required: true
- *         description: The bridge to which the device is connected.
- *       - in: query
+ *           example: bluetooth
+ *       - in: path
  *         name: deviceID
+ *         required: true
+ *         description: The ID of the device.
  *         schema:
  *           type: string
- *         example: "12345"
- *         required: true
- *         description: The ID of the device to retrieve values for.
+ *           example: 12345
  *     responses:
  *       "200":
  *         description: Successfully retrieved device values.
@@ -688,13 +692,15 @@ router.patch("/", async function (request, response) {
  *                   properties:
  *                     bridge:
  *                       type: string
+ *                       example: "bluetooth"
  *                     deviceID:
  *                       type: string
- *                     values:
+ *                       example: "12345"
+ *                     propertiesAndValues:
  *                       type: object
  *                       additionalProperties:
  *                         type: string
- *                       example: {"temperature": "22.5", "humidity": "45"}
+ *                       example: [{ "rotary_switch": { "value": 4, "valueAsNumeric": 4 }}, {"button": { "value": "pressed", "valueAsNumeric": 1 }}]
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -709,40 +715,38 @@ router.patch("/", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.get("/values", async function (request, response) {
-    const payload  = request.query;
+router.get("/:bridge/:deviceID/values", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+
     let data       = {};
     let message    = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
-        if (payload.bridge !== undefined) {
-            const bridge = payload.bridge.trim();
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+            message.deviceID    = payload.deviceID.trim();
+            message.callID      = common.randomHash(); // create a unique call ID to identify the request
 
-                data.callID         = message.callID; // return the call ID also in the response
+            data.callID         = message.callID; // return the call ID also in the response
 
-                mqttClient.publish(bridge + "/devices/get", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            mqttClient.publish(bridge + "/devices/get", JSON.stringify(message)); // ... publish to MQTT broker
+            common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(data, response);
-            }
-            else {
-                data.status = "error";
-                data.error  = "No ID provided";
-            }
+            mqttPendingResponsesHandler(data, response);
         }
         else {
             data.status = "error";
-            data.error  = "No bridge provided";
+            data.error  = "No ID provided";
         }
     }
     else {
         data.status = "error";
-        data.error  = "No payload provided";
+        data.error  = "No bridge provided";
     }
+
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         common.conLog("GET request for device values: an error occured", "red");
@@ -753,30 +757,34 @@ router.get("/values", async function (request, response) {
 
 /**
  * @swagger
- * /devices/values:
+ * /devices/{bridge}/{deviceID}/values:
  *   post:
  *     summary: Set device values
  *     description: This endpoint sets new values for a connected device.
  *     tags:
  *       - Devices
+ *     parameters:
+ *       - in: path
+ *         name: bridge
+ *         required: true
+ *         description: The name of the bridge.
+ *         schema:
+ *           type: string
+ *           example: bluetooth
+ *       - in: path
+ *         name: deviceID
+ *         required: true
+ *         description: The ID of the device.
+ *         schema:
+ *           type: string
+ *           example: 12345
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             properties:
- *               bridge:
- *                 type: string
- *                 example: "bluetooth"
- *               deviceID:
- *                 type: string
- *                 example: "12345"
- *               properties:
- *                 type: object
- *                 additionalProperties:
- *                   type: string
- *                 example: {"property1": "value1", "property2": "value2"}
+ *             example: [{"light": "middle", "speaker": "on"}]
  *     responses:
  *       "200":
  *         description: Successfully set device values.
@@ -805,19 +813,23 @@ router.get("/values", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.post("/values", async function (request, response) {
-    const payload  = request.body;
+router.post("/:bridge/:deviceID/values", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    payload.body         = request.body;
+
     let data       = {};
     let message    = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
+    if ((payload.body !== undefined) && (Object.keys(payload.body).length > 0)) {
         if (payload.bridge !== undefined) {
             const bridge = payload.bridge.trim();
 
             if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
                 message.deviceID    = payload.deviceID.trim();
                 message.callID      = common.randomHash(); // create a unique call ID to identify the request
-                message.properties  = payload.properties;
+                message.properties  = payload.body;
 
                 data.callID         = message.callID; // return the call ID also in the response
 
