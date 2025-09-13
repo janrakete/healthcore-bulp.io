@@ -166,12 +166,12 @@ async function startServer() {
   async function deviceCheckRegistered(deviceID) {
       deviceID = deviceID.trim();
 
-      const result = database.prepare("SELECT * FROM devices WHERE deviceID = ? LIMIT 1").get(deviceID);
+      const result = await database.prepare("SELECT * FROM devices WHERE deviceID = ? LIMIT 1").get(deviceID);
       if (!result) { // could not find device
-          common.conLog("Check device ID: not found in database device with ID " + deviceID, "red");
+          common.conLog("Server: Check device ID: not found in database device with ID " + deviceID, "red");
           return false;
       } else {
-          common.conLog("Check device ID: found in database device with ID " + deviceID, "gre");
+          common.conLog("Server: Check device ID: found in database device with ID " + deviceID, "gre");
           return true;
       }
   }
@@ -231,7 +231,7 @@ async function startServer() {
     let message = {};
 
     if (data.bridge) {
-      const results = database.prepare("SELECT * FROM devices WHERE bridge = ?").all(data.bridge);
+      const results = await database.prepare("SELECT * FROM devices WHERE bridge = ?").all(data.bridge);
       message.devices = results;
 
       if (data.forceReconnect === true)  { // if forceReconnect is true, publish to reconnect topic
@@ -255,8 +255,8 @@ async function startServer() {
     let message = {};
 
     if (data.bridge) {
-      if (data.deviceID && data.vendorName && data.productName) {
-        if (deviceCheckRegistered(data.deviceID)) { // check if device is already registered
+      if (data.deviceID && data.productName) {
+        if (await deviceCheckRegistered(data.deviceID)) { // check if device is already registered
           common.conLog("Server: Device with ID " + data.deviceID + " is already registered", "red");
           message.status      = "error";
           message.deviceID    = data.deviceID;
@@ -265,21 +265,21 @@ async function startServer() {
           message.error       = "Device already registered";
         }
         else {
-          // insert device into database
-          database.prepare("INSERT INTO devices (deviceID, bridge, vendorName, productName, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))").run(
-            data.deviceID, data.bridge, data.vendorName, data.productName, data.description || "", data.properties || "");
+          await database.prepare("INSERT INTO devices (deviceID, bridge, powerType, productName, name, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))").run(
+            data.deviceID, data.bridge, data.powerType, data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
           common.conLog("Server: Created device with ID " + data.deviceID, "gre");
+          mqttDevicesList({ bridge: data.bridge }); // publish updated device list to bridge
         }
       }
       else {
-        common.conLog("Server: Device ID or product name or vendor name is missing in message for device creation", "red");
+        common.conLog("Server: Device ID or product name is missing in message for device creation", "red");
         message.status      = "error";
         message.deviceID    = data.deviceID;
-        message.error       = "Device ID or product name or vendor name is missing";
+        message.error       = "Device ID or product name is missing";
       }
     }
     else {
@@ -301,9 +301,9 @@ async function startServer() {
 
     if (data.bridge) {
       if (data.deviceID) {
-        if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
+        if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
           // remove device from database
-          database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(
+          await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(
             data.deviceID, data.bridge
           );
 
@@ -345,7 +345,7 @@ async function startServer() {
     let message = {};    
     if (data.bridge) {
       if (data.deviceID) {
-        if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
+        if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
           message.status    = "ok";
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
@@ -392,22 +392,14 @@ async function startServer() {
 
     if (data.bridge) {
       if (data.deviceID) {
-        if (deviceCheckRegistered(data.deviceID)) { // check if device is registered
+        if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
           
-          // update only fields that are defined in "data"
-          const updateFields = [];
-          const updateValues = [];
 
-          if (data.properties) {
-            updateFields.push("name = ?");
-            updateValues.push(data.name);
-          }
-          updateValues.push(data.deviceID);
-          updateValues.push(data.bridge);
+          const fields        = Object.keys(data.update);
+          const placeholders  = fields.map(field => field + " = ?").join(", ");
+          const values        = Object.values(data.update);
 
-          database.prepare("UPDATE devices SET ${updateFields.join(', ')} WHERE deviceID = ? AND bridge = ?").run(
-            ...updateValues
-          );
+          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(values, data.deviceID, data.bridge);
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
