@@ -30,12 +30,12 @@ function mqttPendingResponsesHandler(data, response) {
         return response.status(400).json(data);
     }, appConfig.CONF_apiCallTimeoutMilliseconds);
 
-    mqttPendingResponses[data.callID] = (message) => {
-        data.status         = "ok";
-        data.data        = message;
+    mqttPendingResponses[data.callID] = async (message) => {
+        data.status = "ok";
+        data.data   = message;
 
         clearTimeout(responseTimeout);
-        common.conLog("Received MQTT respons in time", "gre");
+        common.conLog("Received MQTT response in time", "gre");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
         return response.status(200).json(data);
     };
@@ -104,6 +104,7 @@ router.post("/scan", async function (request, response) {
             let message         = {};
             message.duration    = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge      = bridge;
 
             data.callID         = message.callID; // return the call ID in the response
 
@@ -271,6 +272,17 @@ router.post("/scan/info", async function (request, response) {
  *           schema:
  *             type: string
  *             example: 12345
+ *       requestBody:
+ *         required: false
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 addDeviceToServer:
+ *                   type: boolean
+ *                   description: Whether to add the device to the database if it is not already present.
+ *                   example: true
  *       responses:
  *         "200":
  *           description: Successfully initiated device connection.
@@ -303,6 +315,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
     payload.deviceID     = request.params.deviceID;
+    payload.body         = request.body;
 
     let data       = {};
     let message    = {};
@@ -311,10 +324,12 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
         const bridge = payload.bridge.trim();
 
         if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            message.deviceID    = payload.deviceID.trim();
-            message.callID      = common.randomHash(); // create a unique call ID to identify the request
+            message.deviceID            = payload.deviceID.trim();
+            message.callID              = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge              = bridge;
+            message.addDeviceToServer   = payload.body?.addDeviceToServer === true;
 
-            data.callID         = message.callID; // return the call ID also in the response
+            data.callID = message.callID; // return the call ID also in the response
 
             mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
@@ -416,6 +431,7 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
         if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
             message.deviceID    = payload.deviceID.trim();
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge      = bridge;
 
             data.callID         = message.callID; // return the call ID also in the response
 
@@ -506,13 +522,12 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
         if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
             message.deviceID    = payload.deviceID.trim();
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge      = bridge;
 
             data.callID         = message.callID; // return the call ID also in the response
 
             mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
-
-            //await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").run(message.deviceID, bridge);
 
             mqttPendingResponsesHandler(data, response);
         }
@@ -613,18 +628,13 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
             if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
                 message.deviceID    = payload.deviceID.trim();
                 message.callID      = common.randomHash(); // create a unique call ID to identify the request
+                message.bridge      = bridge;
+                message.updates     = payload.body;
 
                 data.callID         = message.callID; // return the call ID also in the response
 
                 mqttClient.publish(bridge + "/devices/update", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
-
-                // build update payload for database
-                const fields        = Object.keys(payload.body);
-                const placeholders  = fields.map(field => field + " = ?").join(", ");
-                const values        = Object.values(payload.body);
-
-                await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(values, message.deviceID, bridge);
 
                 mqttPendingResponsesHandler(data, response);
             }
@@ -729,6 +739,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
         if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
             message.deviceID    = payload.deviceID.trim();
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge      = bridge;
 
             data.callID         = message.callID; // return the call ID also in the response
 
@@ -830,6 +841,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
                 message.deviceID    = payload.deviceID.trim();
                 message.callID      = common.randomHash(); // create a unique call ID to identify the request
                 message.properties  = payload.body;
+                message.bridge      = bridge;
 
                 data.callID         = message.callID; // return the call ID also in the response
 

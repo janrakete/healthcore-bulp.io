@@ -114,7 +114,7 @@ async function startBridgeAndServer() {
    * @param {Object} deviceRaw - The raw Bluetooth device object.
    * @description This function attempts to connect to a Bluetooth device, discovers its services and characteristics, and subscribes to notifications for properties defined in the device converter. It also handles disconnection events and publishes connection status to the MQTT broker.
    */
-  function deviceConnectAndDiscover(device, deviceRaw, callID = "") {
+  function deviceConnectAndDiscover(device, deviceRaw, callID = "", addDeviceToServer = false) {
     delete device.deviceRaw; // remove deviceRaw from device, because it cannot be stringified
 
     device.callID = callID; // add callID to device if provided
@@ -132,7 +132,7 @@ async function startBridgeAndServer() {
 
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
             delete device.deviceConverter; // remove device converter from device, because stringify will not work with object
-            mqttClient.publish("server/devices/disconnected", JSON.stringify(device)); // publish disconnected device to MQTT broker
+            mqttClient.publish("server/devices/disconnect", JSON.stringify(device)); // publish disconnected device to MQTT broker
           });
 
           deviceRaw.discoverAllServicesAndCharacteristics(function (error, services) { // discover services and characteristics of device
@@ -184,7 +184,21 @@ async function startBridgeAndServer() {
               }
 
               common.conLog("Bluetooth: Device connected: " + device.deviceID + " (" + device.productName + ")", "gre");
-              mqttClient.publish("server/devices/connected", JSON.stringify(device)); // publish connected device to MQTT broker
+              mqttClient.publish("server/devices/connect", JSON.stringify(device)); // publish connected device to MQTT broker
+
+              if (addDeviceToServer === true) { // if device should be added to server (only if it was connected via mqtt message with addDeviceToServer flag)
+                  let message         = {};
+                  message.deviceID    = device.deviceID;
+                  message.bridge      = device.bridge || "";
+                  message.powerType   = device.deviceConverter.powerType || "";
+                  message.productName = device.productName || "";
+                  message.properties  = device.deviceConverter.properties || "";
+                  message.name        = device.name || "";
+                  message.description = device.description || "";
+
+                  mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
+                  common.conLog("Try to add device " + message.deviceID + " to server", "yel");
+              }                 
 
               device.deviceRaw = deviceRaw; // save device object for later use
               bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
@@ -298,7 +312,7 @@ async function startBridgeAndServer() {
         delete deviceWithoutRaw.deviceRaw;
 
         deviceWithoutRaw.callID = bridgeStatus.deviceScanCallID; // add call ID to device object
-        mqttClient.publish("server/devices/discovered", JSON.stringify(deviceWithoutRaw));
+        mqttClient.publish("server/devices/discover", JSON.stringify(deviceWithoutRaw));
       }
     }
     else {
@@ -362,7 +376,7 @@ async function startBridgeAndServer() {
         case "bluetooth/devices/reconnect": // this message is used to connect to ALL registered devices
           mqttDevicesReconnect(data);
           break;
-        case "bluetooth/devices/connect": // this message is used to connect to ONE specific device
+        case "bluetooth/devices/connect": // this message is used to connect to ONE specific device (and maybe also to registered devices if flag is set)
           mqttDevicesConnect(data);
           break;
         case "bluetooth/devices/remove":
@@ -464,7 +478,7 @@ async function startBridgeAndServer() {
    */
   function mqttDevicesUpdate(data) {
     common.conLog("Bluetooth: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
-    mqttClient.publish("server/devices/updated", JSON.stringify(data)); // publish updated device to MQTT broker
+    mqttClient.publish("server/devices/update", JSON.stringify(data)); // publish updated device to MQTT broker
   }
 
   /**
@@ -508,7 +522,7 @@ async function startBridgeAndServer() {
 
     if (device) { // if device is in array of devices found via scan, try do connect
       common.conLog("Bluetooth: Device " + device.deviceID + " (" + device.productName + ") found - trying to connect", "yel");
-      deviceConnectAndDiscover(device, device.deviceRaw, data.callID); // connect to device and discover services and characteristics
+      deviceConnectAndDiscover(device, device.deviceRaw, data.callID, data.addDeviceToServer); // connect to device and discover services and characteristics
     }
     else {
       common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") not found in array of devices found via scan", "red");
@@ -536,7 +550,7 @@ async function startBridgeAndServer() {
           bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of devices registed at server
           common.conLog("Bluetooth: Device disconnected and removed: " + data.deviceID, "gre");
           
-          mqttClient.publish("server/devices/removed", JSON.stringify(data)); // publish removed device to MQTT broker
+          mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
         }
       });
     }
@@ -560,7 +574,7 @@ async function startBridgeAndServer() {
         }
       });
 
-      mqttClient.publish("server/devices/disconnected", JSON.stringify(data)); // publish disconnected device to MQTT broker
+      mqttClient.publish("server/devices/disconnect", JSON.stringify(data)); // publish disconnected device to MQTT broker
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
