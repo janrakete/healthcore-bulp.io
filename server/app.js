@@ -393,11 +393,16 @@ async function startServer() {
     if (data.bridge) {
       if (data.deviceID) {
         if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
+          // delete non-updatable fields
+          delete data.updates.deviceID;
+          delete data.updates.bridge;
+          delete data.updates.powerType;
+          delete data.updates.properties;
+          delete data.updates.productName;
           
-
-          const fields        = Object.keys(data.update);
+          const fields        = Object.keys(data.updates);
           const placeholders  = fields.map(field => field + " = ?").join(", ");
-          const values        = Object.values(data.update);
+          const values        = Object.values(data.updates);
 
           await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(values, data.deviceID, data.bridge);
 
@@ -426,8 +431,6 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
-
-    mqttClient.publish(data.bridge + "/devices/update", JSON.stringify(message));
   }
 
   /**
