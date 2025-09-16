@@ -34,7 +34,7 @@ async function startBridgeAndServer() {
   const app     = express();
 
   const server = require("http").createServer(app);
-    server.listen(appConfig.CONF_portBridgeZigBee, function () {
+  server.listen(appConfig.CONF_portBridgeZigBee, function () {
     common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeZigBee); // show logo
   });
 
@@ -351,19 +351,25 @@ async function startBridgeAndServer() {
 
       switch (topic) {
         case "zigbee/devices/scan":
-          mqttDeviceScan(data);
+          mqttDevicesScan(data);
           break;
         case "zigbee/devices/connect":
-          mqttDeviceConnect(data);
+          mqttDevicesConnect(data);
           break;
-        case "zigbee/device/remove":
-          mqttDeviceRemove(data);
+        case "zigbee/devices/remove":
+          mqttDevicesRemove(data);
           break;
-        case "zigbee/device/set":
-          mqttDeviceSet(data);
+        case "zigbee/devices/set":
+          mqttDevicesSet(data);
           break;
-        case "zigbee/device/get":
-          mqttDeviceGet(data);
+        case "zigbee/devices/get":
+          mqttDevicesGet(data);
+          break;
+        case "bluetooth/devices/update":
+          mqttDevicesUpdate(data);
+          break;
+        case "bluetooth/devices/list":
+          mqttDevicesList(data);
           break;
         default:
           common.conLog("ZigBee: NOT found matching message handler for " + topic, "red");
@@ -380,7 +386,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the duration for which joining is permitted.
    * @description This function is called when a message is received on the "zigbee/devices/scan" topic. It allows the ZigBee bridge to permit joining of devices for a specified duration.
    */
-  function mqttDeviceScan(data) {
+  function mqttDevicesScan(data) {
     let message = {};
     common.conLog("ZigBee: Joining possible for " + data.duration + " seconds", "yel");
     zigBee.permitJoin(data.duration);
@@ -388,11 +394,30 @@ async function startBridgeAndServer() {
   }
 
   /**
+   * Sets the list of devices registered at the server based on the provided data.
+   * @param {Object} data 
+   * @description This function updates the list of devices registered at the server.
+   */
+  function mqttDevicesList(data) {
+    bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
+  }
+
+  /**
+   * Updates the information of a registered device.
+   * @param {Object} data 
+   * @description This function updates the information of a registered device.
+   */
+  function mqttDevicesUpdate(data) {
+    common.conLog("Bluetooth: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
+    mqttClient.publish("server/devices/update", JSON.stringify(data)); // publish updated device to MQTT broker
+  }
+
+  /**
    * If message is for connecting to registered devices, then try to connect to each device
    * @param {Object} data - The data object containing an array of devices to connect to.
    * @description This function is called when a message is received on the "zigbee/devices/connect" topic. It iterates through the array of devices provided in the message and attempts to connect to each device. If the device is mains-powered, it checks if the device is pingable before adding it to the list of connected devices.
    */
-  async function mqttDeviceConnect(data) {
+  async function mqttDevicesConnect(data) {
     bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
 
     for (let device of bridgeStatus.devicesRegisteredAtServer) {
@@ -428,7 +453,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID to remove.
    * @description This function is called when a message is received on the "zigbee/device/remove" topic. It searches for the device in the array of connected devices and attempts to remove it from the network and database. 
    */
-  function mqttDeviceRemove(data) {
+  function mqttDevicesRemove(data) {
     common.conLog("ZigBee: Request for removing " + data.deviceID, "yel");
     
     data.bridge  = BRIDGE_PREFIX;
@@ -441,7 +466,7 @@ async function startBridgeAndServer() {
       bridgeStatus.devicesConnected           = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected devices
       common.conLog("ZigBee: Device disconnected and removed: " + data.deviceID, "gre");
 
-      mqttClient.publish("server/device/removed", JSON.stringify(data)); // publish removed device to MQTT broker
+      mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
     }
   }
 
@@ -450,7 +475,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID and properties to get.
    * @description This function is called when a message is received on the "zigbee/device/get" topic. It attempts to read the specified properties of a connected ZigBee device and publishes the values to the MQTT broker.
    */
-  async function mqttDeviceGet(data) {
+  async function mqttDevicesGet(data) {
     common.conLog("ZigBee: Request for getting properties and values of " + data.deviceID, "yel");
     const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
@@ -458,6 +483,7 @@ async function startBridgeAndServer() {
     message.deviceID              = data.deviceID;
     message.propertiesAndValues   = [];
     message.bridge                = BRIDGE_PREFIX;
+    message.callID                = data.callID;
 
     if (device) { // if device is in array of connected devices, try do get desired values
       if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable and able to read values
@@ -487,17 +513,17 @@ async function startBridgeAndServer() {
                 message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
               }
             }
-            mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+            mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker
           }
         }
         else {
           common.conLog("... but " + device.deviceID + " was not pingable, so send empty values", "red", false);
-          mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+          mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker
         }
       }
       else {
         common.conLog("... but " + device.deviceID + " is not wired, so send empty values", "red", false);
-        mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+        mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker
       }
     }
   }  
@@ -507,7 +533,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID and properties to set.
    * @description This function is called when a message is received on the "zigbee/device/set" topic. It attempts to set the specified properties of a connected ZigBee device.
    */
-  async function mqttDeviceSet(data) {
+  async function mqttDevicesSet(data) {
     common.conLog("ZigBee: Request for setting values of " + data.deviceID, "yel");
 
     if (data.properties) {
@@ -531,6 +557,7 @@ async function startBridgeAndServer() {
                   common.conLog("ZigBee: Set value for " + propertyName + " to " + value, "gre", false);
                   const valueConverted = device.deviceConverter.set(property, value);
                   await device.endpoint.command(property.cluster, valueConverted.command, valueConverted.anyValue,  { disableDefaultResponse: true });
+                  mqttDevicesGet(data); // get new value after setting it
                 }
                 else {
                   common.conLog("ZigBee: Property " + propertyName + " is not writable", "red", false);

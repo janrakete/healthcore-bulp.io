@@ -397,6 +397,10 @@ async function startBridgeAndServer() {
         case "bluetooth/devices/list":
           mqttDevicesList(data);
           break;
+        case "bluetooth/devices/list/all":
+          mqttDevicesListAll(data);
+          break;
+
         default:
           common.conLog("Bluetooth: NOT found matching message handler for " + topic, "red");
       }
@@ -469,6 +473,28 @@ async function startBridgeAndServer() {
    */
   function mqttDevicesList(data) {
     bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
+  }
+
+  /**
+   * Gets the list of devices registered and connected at the server based on the provided data.
+   * @param {Object} data 
+   * @description This function updates the list of devices registered at the server.
+   */
+  function mqttDevicesListAll(data) {
+    let message                   = {};
+    message.bridge                = BRIDGE_PREFIX;
+    message.callID                = data.callID;
+
+    message.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer; 
+    message.devicesConnected           = bridgeStatus.devicesConnected;
+    message.devicesConnected = message.devicesConnected.map(device => { // delete deviceRaw and deviceConverter from devicesConnected, because they cannot be stringified
+      const deviceCopy = { ...device };
+      delete deviceCopy.deviceRaw;
+      delete deviceCopy.deviceConverter;
+      return deviceCopy;
+    });
+
+    mqttClient.publish("server/devices/list/all", JSON.stringify(message)); // ... publish to MQTT broker
   }
 
   /**

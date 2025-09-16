@@ -138,22 +138,19 @@ router.post("/scan", async function (request, response) {
 /**
  * @swagger
  *   /devices/scan/info:
- *     post:
+ *     get:
  *       summary: Get information about scanned devices
  *       description: This endpoint allows you to retrieve information about devices that were discovered during a scan.
  *       tags:
  *         - Devices
- *       requestBody:
- *         required: true
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 callID:
- *                   type: string
- *                   description: The unique call ID.
- *                   example: "In58F8lxhMEe6a4G"
+ *       parameters:
+ *         - in: query
+ *           name: callID
+ *           required: true
+ *           description: The unique call ID.
+ *           schema:
+ *             type: string
+ *             example: "In58F8lxhMEe6a4G"
  *       responses:
  *         "200":
  *           description: Successfully retrieved device scan information.
@@ -202,42 +199,38 @@ router.post("/scan", async function (request, response) {
  *                     type: string
  *                     example: "No call ID provided"
  */
-router.post("/scan/info", async function (request, response) {
-   const payload  = request.body;
-   let data       = {};
+router.get("/scan/info", async function (request, response) {
+    const payload  = {};
+    payload.callID = request.query.callID;
+    let data       = {};
 
-    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
-        if (payload.callID !== undefined) {
-            const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
-            const results       = await database.prepare(statement).all("server/devices/discovered", payload.callID); // ... query the database for discovered devices
+    if (payload.callID !== undefined) {
+        const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
+        const results       = await database.prepare(statement).all("server/devices/discover", payload.callID); // ... query the database for discovered devices
 
-            data.devices = results.map(row => JSON.parse(row.message));
+        data.devices = results.map(row => JSON.parse(row.message));
 
-            // remove duplicates based on device ID, keep only the first occurrence
-            const uniqueDevices = {};
-            data.devices.forEach(device => {
-                if (device.deviceID && !uniqueDevices[device.deviceID]) {
-                    uniqueDevices[device.deviceID] = device;
-                }
-            });
+        // remove duplicates based on device ID, keep only the first occurrence
+        const uniqueDevices = {};
+        data.devices.forEach(device => {
+            if (device.deviceID && !uniqueDevices[device.deviceID]) {
+                uniqueDevices[device.deviceID] = device;
+            }
+        });
 
-            data.devices = Object.values(uniqueDevices);
+        data.devices = Object.values(uniqueDevices);
 
-            data.status = "ok";
-            common.conLog("POST request for device scan info", "gre");
-        }
-        else {
-            data.status = "error";
-            data.error  = "No call ID provided";
-        }
+        data.status = "ok";
+        common.conLog("POST request for device scan info", "gre");
     }
     else {
         data.status = "error";
-        data.error  = "No payload provided";
+        data.error  = "No call ID provided";
     }
 
+
     if (data.status === "error") {
-        common.conLog("POST request for device scan info: an error occured", "red");
+        common.conLog("GET request for device scan info: an error occured", "red");
     }
 
     common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
@@ -872,5 +865,114 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
     }
 });
 
+/**
+ * @swagger
+ * /devices/{bridge}/list/all:
+ *   get:
+ *     summary: Get all devices (registered and connected) of a bridge
+ *     description: This endpoint retrieves all devices registered and connected to a specific bridge.
+ *     tags:
+ *       - Devices
+ *     parameters:
+ *       - in: path
+ *         name: bridge
+ *         required: true
+ *         description: The name of the bridge.
+ *         schema:
+ *           type: string
+ *           example: bluetooth
+ *     responses:
+ *       "200":
+ *         description: Successfully retrieved device list.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 callID:
+ *                   type: string
+ *                   example: "In58F8lxhMEe6a4G"
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     bridge:
+ *                       type: string
+ *                       example: "bluetooth"
+ *                     devicesRegisteredAtServer:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           deviceID:
+ *                             type: string
+ *                             example: "12345"
+ *                           bridge:
+ *                             type: string
+ *                             example: "bluetooth"
+ *                           powerType:
+ *                             type: string
+ *                             example: "wire"
+ *                     devicesConnected:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           deviceID:
+ *                             type: string
+ *                             example: "54321"
+ *                           bridge:
+ *                             type: string
+ *                             example: "bluetooth"
+ *                           powerType:
+ *                             type: string
+ *                             example: "battery"
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
+ */
+router.get("/:bridge/list/all", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+
+    let data             = {};
+    let message          = {};
+
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
+
+        message.callID      = common.randomHash(); // create a unique call ID to identify the request
+        message.bridge      = bridge;
+
+        data.callID         = message.callID; // return the call ID also in the response
+
+        mqttClient.publish(bridge + "/devices/list/all", JSON.stringify(message)); // ... publish to MQTT broker
+        common.conLog("GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
+
+        mqttPendingResponsesHandler(data, response);
+    }
+    else {
+        data.status = "error";
+        data.error = "No bridge provided";
+    }
+ 
+    if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
+        common.conLog("GET request for registered and connected device list: an error occured", "red");
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.status(400).json(data);
+    }
+});
 
 module.exports = router;

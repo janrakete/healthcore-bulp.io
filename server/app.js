@@ -71,7 +71,9 @@ async function startServer() {
   app.use("/devices", routesDevices);
   const routesSSE = require("./routes/sse"); // import routes for server side events
   app.use("/sse", routesSSE);
-
+  const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
+  app.use("/scenarios", routesScenarios);
+  
   /**
    * Swagger
    */
