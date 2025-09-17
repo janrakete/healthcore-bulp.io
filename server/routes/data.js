@@ -190,9 +190,9 @@ router.post("/:table", async function (request, response) {
             data.error  = statement.error;
          }
       }
-      catch (Error) {
+      catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (Error.stack).slice(0, 128);
+         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
       }
    }
    else {
@@ -208,7 +208,8 @@ router.post("/:table", async function (request, response) {
 
    if (data.status === "ok") {
       return response.status(200).json(data);
-   } else {
+   }
+   else {
       return response.status(400).json(data);
    }
 });
@@ -294,9 +295,9 @@ router.get("/:table", async function (request, response) {
             data.error  = condition.error;
          }
       }
-      catch (Error) {
+      catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (Error.stack).slice(0, 128);
+         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
       }
    }
    else {
@@ -312,7 +313,8 @@ router.get("/:table", async function (request, response) {
 
    if (data.status === "ok") {
       return response.status(200).json(data);
-   } else {
+   }
+   else {
       return response.status(400).json(data);
    }
 });
@@ -397,9 +399,9 @@ router.delete("/:table", async function (request, response) {
             data.error  = condition.error;
          }
       }
-      catch (Error) {
+      catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (Error.stack).slice(0, 128);
+         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
       }
    }
    else {
@@ -415,7 +417,8 @@ router.delete("/:table", async function (request, response) {
 
    if (data.status === "ok") {
       return response.status(200).json(data);
-   } else {
+   }
+   else {
       return response.status(400).json(data);
    }
 });
@@ -518,9 +521,9 @@ router.patch("/:table", async function (request, response) {
             data.error  = condition.error;
          }
       }
-      catch (Error) {
+      catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (Error.stack).slice(0, 128);
+         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
       }
    }
    else {
@@ -536,7 +539,8 @@ router.patch("/:table", async function (request, response) {
    
    if (data.status === "ok") {
       return response.status(200).json(data);
-   } else {
+   }
+   else {
       return response.status(400).json(data);
    }
 });
