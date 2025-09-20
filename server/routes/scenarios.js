@@ -229,10 +229,12 @@ router.post("/", async function (request, response) {
                     return scenarioID;
                 });
 
-                data.ID = transaction(); // commit transaction
-               
-                common.conLog("POST Request: access table 'scenarios'", "gre");
-                common.conLog("Execute statement: " + statement, "std", false);
+                data.ID = await transaction(); // commit transaction
+
+                common.conLog("POST Request: insert into table 'scenarios'", "gre");
+                common.conLog("Execute statement: " + insertScenario.sql, "std", false);
+                common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
+                common.conLog("Execute statement: " + insertAction.sql, "std", false);
             }
             else {
                 data.status = "error";
@@ -277,125 +279,165 @@ router.post("/", async function (request, response) {
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Updated Scenario Name"
+ *               description:
+ *                 type: string
+ *                 example: "Updated description"
+ *               enabled:
+ *                 type: boolean
+ *                 example: true
+ *               priority:
+ *                 type: integer
+ *                 example: 1
+ *               triggers:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     deviceID:
+ *                       type: string
+ *                     bridge:
+ *                       type: string
+ *                     property:
+ *                       type: string
+ *                     operator:
+ *                       type: string 
+ *                       enum: ["equals", "greater", "less", "between", "contains"]
+ *                     value:
+ *                       type: string
+ *                     valueType:
+ *                       type: string
+ *                       enum: ["string", "number", "boolean"]
+ *               actions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     deviceID:
+ *                       type: string
+ *                     bridge:
+ *                       type: string
+ *                     property:
+ *                       type: string
+ *                     value:
+ *                       type: string
+ *                     valueType:
+ *                       type: string
+ *                       enum: ["string", "number", "boolean"]
+ *                     delay:
+ *                       type: integer
+ *                       example: 1000
+ *     responses:
+ *       "200":
+ *         description: Successfully updated scenario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 ID:
+ *                   type: integer
+ *                   example: 1
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
  */
 router.put("/:scenarioID", async function (request, response) {
   const scenarioID = parseInt(request.params.scenarioID);
   const payload    = request.body;
+  let data         = {};
 
-    try {
-      const result = await database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
-      if (result) {
-        data.status = "ok";
+  try {
+    const result = await database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
+    if (result) {
+      data.status = "ok";
 
-
-
-
-const transaction = database.transaction(async () => {
-      // Update scenario
-      if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined) {
-        await database.prepare(`
-          UPDATE scenarios 
-          SET name = COALESCE(?, name),
-              description = COALESCE(?, description),
-              enabled = COALESCE(?, enabled),
-              priority = COALESCE(?, priority),
-              dateTimeModified = datetime('now')
-          WHERE scenarioID = ?
-        `).run(
-          payload.name || null,
-          payload.description !== undefined ? payload.description : null,
-          payload.enabled !== undefined ? payload.enabled : null,
-          payload.priority !== undefined ? payload.priority : null,
-          scenarioID
-        );
-      }
-
-      // Update triggers if provided
-      if (payload.triggers) {
-        // Delete existing triggers
-        await database.prepare("DELETE FROM scenario_triggers WHERE scenarioID = ?").run(scenarioID);
-
-        // Insert new triggers
-        const insertTrigger = database.prepare(`
-          INSERT INTO scenario_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        for (const trigger of payload.triggers) {
-          await insertTrigger.run(
-            scenarioID,
-            trigger.deviceID,
-            trigger.bridge,
-            trigger.property,
-            trigger.operator || "equals",
-            typeof trigger.value === 'object' ? JSON.stringify(trigger.value) : trigger.value,
-            trigger.valueType || "string"
+      const transaction = database.transaction(async () => {
+        // Update scenario
+        if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined) {
+          await database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
+            payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.priority !== undefined ? payload.priority : null, scenarioID
           );
+          common.conLog("PUT Request: access table 'scenarios'", "gre");
         }
-      }
 
-      // Update actions if provided
-      if (payload.actions) {
-        // Delete existing actions
-        await database.prepare("DELETE FROM scenario_actions WHERE scenarioID = ?").run(scenarioID);
+        // Update triggers if provided
+        if (payload.triggers) {
+          // Delete existing triggers
+          await database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID);
 
-        // Insert new actions
-        const insertAction = await database.prepare(`
-          INSERT INTO scenario_actions (scenarioID, deviceID, bridge, property, value, valueType, delay)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
+          // Insert new triggers
+          const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
-        for (const action of payload.actions) {
-          await insertAction.run(
-            scenarioID,
-            action.deviceID,
-            action.bridge,
-            action.property,
-            typeof action.value === 'object' ? JSON.stringify(action.value) : action.value,
-            action.valueType || "string",
-            action.delay || 0
-          );
+          for (const trigger of payload.triggers) {
+            await insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "string");
+          }
+          common.conLog("PUT Request: access table 'scenarios'", "gre");
+          common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
         }
-      }
-    });
 
+        // Update actions if provided
+        if (payload.actions) {
+          // Delete existing actions
+          await database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID);
 
+          // Insert new actions
+          const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
+          for (const action of payload.actions) {
+            await insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "string", action.delay || 0);
+          }
+          common.conLog("PUT Request: access table 'scenarios'", "gre");
+          common.conLog("Execute statement: " + insertAction.sql, "std", false);
+        }
+      });
 
-
-
-
-        transaction();
-      }
-      else {
-        data.status = "error";
-        data.error  = "Scenario not found";
-      }
-    }
-    catch (error) {
-        data.status = "error";
-        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
-    }
-    
-    if (data.status === "error") {
-        common.conLog("PUT Request: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
+      await transaction();
     }
     else {
-        return response.status(400).json(data);
+      data.status = "error";
+      data.error  = "Scenario not found";
     }
+  }
+  catch (error) {
+    data.status = "error";
+    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+  }
 
+  if (data.status === "error") {
+      common.conLog("PUT Request: an error occured", "red");
+  }
 
+  common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
 
-
-    
-
-
+  if (data.status === "ok") {
+      return response.status(200).json(data);
+  }
+  else {
+      return response.status(400).json(data);
+  }
 });
 
 /**
@@ -415,27 +457,36 @@ const transaction = database.transaction(async () => {
  */
 router.delete("/:scenarioID", async function (request, response) {
   const scenarioID = parseInt(request.params.scenarioID);
+  let data         = {};
 
   try {
-    const result = database.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(scenarioID);
+    const result = await database.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(scenarioID);
 
     if (result.changes === 0) {
-      return response.status(404).json({
-        status: "error",
-        error: "Scenario not found"
-      });
+      data.status = "error";
+      data.error  = "Scenario not found";
     }
+    else {
+      data.status = "ok";
+      common.conLog("DELETE Request: scenario '" + scenarioID + "' deleted successfully", "gre");
+    }
+  }
+  catch (error) {
+    data.status = "error";
+    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+  }
 
-    response.json({
-      status: "ok",
-      message: "Scenario deleted successfully"
-    });
+  if (data.status === "error") {
+    common.conLog("DELETE Request: an error occured", "red");
+  }
 
-  } catch (error) {
-    response.status(500).json({
-      status: "error",
-      error: error.message
-    });
+  common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);
+
+  if (data.status === "ok") {
+      return response.status(200).json(data);
+  }
+  else {
+      return response.status(400).json(data);
   }
 });
 
@@ -453,81 +504,69 @@ router.delete("/:scenarioID", async function (request, response) {
  *         required: true
  *         schema:
  *           type: integer
+ *     responses:
+ *       "200":
+ *         description: Successfully toggled scenario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 state:
+ *                   type: boolean
+ *                   example: true
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
  */
 router.post("/:scenarioID/toggle", async function (request, response) {
   const scenarioID = parseInt(request.params.scenarioID);
+  let data         = {};
 
   try {
     const scenario = database.prepare("SELECT enabled FROM scenarios WHERE scenarioID = ?").get(scenarioID);
-    
-    if (!scenario) {
-      return response.status(404).json({
-        status: "error",
-        error: "Scenario not found"
-      });
+
+    if (scenario !== undefined) {
+      data.status    = "ok";
+      const newState = !scenario.enabled;
+      database.prepare("UPDATE scenarios SET enabled = ? WHERE scenarioID = ?").run(newState, scenarioID);
+      common.conLog("POST (toggle) Request: scenario '" + scenarioID + "' toggled successfully", "gre");
+      data.state = newState;
     }
-
-    const newState = !scenario.enabled;
-    
-    database.prepare(`
-      UPDATE scenarios 
-      SET enabled = ?, dateTimeModified = datetime('now') 
-      WHERE scenarioID = ?
-    `).run(newState, scenarioID);
-
-    response.json({
-      status: "ok",
-      enabled: newState,
-      message: `Scenario ${newState ? 'enabled' : 'disabled'} successfully`
-    });
-
-  } catch (error) {
-    response.status(500).json({
-      status: "error",
-      error: error.message
-    });
+    else {
+      data.status = "error";
+      data.error  = "Scenario not found";
+    }
   }
-});
+  catch (error) {
+    data.status = "error";
+    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+  }
+ 
+  if (data.status === "error") {
+    common.conLog("POST (toggle) Request: an error occured", "red");
+  }
 
-/**
- * @swagger
- * /scenarios/executions:
- *   get:
- *     summary: Get scenario execution history
- *     description: Retrieve the execution history of scenarios
- *     tags:
- *       - Scenarios
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 100
- */
-router.get("/executions", async function (request, response) {
-  try {
-    const limit = parseInt(request.query.limit) || 100;
-    
-    const executions = database.prepare(`
-      SELECT 
-        se.*,
-        s.name as scenarioName
-      FROM scenario_executions se
-      JOIN scenarios s ON se.scenarioID = s.scenarioID
-      ORDER BY se.executedAt DESC
-      LIMIT ?
-    `).all(limit);
+  common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);
 
-    response.json({
-      status: "ok",
-      executions: executions
-    });
-
-  } catch (error) {
-    response.status(500).json({
-      status: "error",
-      error: error.message
-    });
+  if (data.status === "ok") {
+      return response.status(200).json(data);
+  }
+  else {
+      return response.status(400).json(data);
   }
 });
 
