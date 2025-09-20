@@ -158,9 +158,9 @@ router.get("/", async function (request, response) {
  *                 status:
  *                   type: string
  *                   example: "ok"
- *                ID:
- *                  type: integer
- *                  example: 1
+ *                 ID:
+ *                   type: integer
+ *                   example: 1
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -191,7 +191,7 @@ router.post("/", async function (request, response) {
 
                 const transaction = database.transaction(async () => {
                     // insert scenario
-                    const result = await insertScenario.run(
+                    const result = insertScenario.run(
                         payload.name,
                         payload.description || "",
                         payload.enabled !== false,
@@ -202,7 +202,7 @@ router.post("/", async function (request, response) {
 
                     // insert triggers
                     for (const trigger of payload.triggers) {
-                        await insertTrigger.run(
+                        insertTrigger.run(
                         scenarioID,
                         trigger.deviceID,
                         trigger.bridge,
@@ -215,7 +215,7 @@ router.post("/", async function (request, response) {
 
                     // insert actions
                     for (const action of payload.actions) {
-                        await insertAction.run(
+                        insertAction.run(
                         scenarioID,
                         action.deviceID,
                         action.bridge,
