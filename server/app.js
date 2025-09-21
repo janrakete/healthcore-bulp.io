@@ -91,43 +91,16 @@ async function startServer() {
   });
 
   /**
-   * Anomaly detection
+   * Scenario Engine
    */
-  const { IsolationForest } = require("isolation-forest");
+  const ScenarioEngine = require("./libs/ScenarioEngine");
+  const scenarios      = new ScenarioEngine();
 
   /**
    * Anomaly detection
-   * @param {Object} data
-   * @description This function checks for anomalies in the data properties using the Isolation Forest algorithm.
    */
-  function anomalyCheck(data) { // TODO: convert to cron job
-    const propertyKeys = data.properties.map(property => Object.keys(property)[0]);
-    propertyKeys.forEach((property, index) => { // iterate over each property
-      const results = database.prepare( // prepare SQL query to get historical data
-        "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
-      ).all(data.deviceID, data.bridge, property, appConfig.CONF_anomalyDetectionHistorySize);
-
-      if (!results || results.length < 2) { // not enough data for anomaly detection
-        return;
-      }
-
-      const values = results.map(result => { return { [property]: result.valueAsNumeric }} ); // map results to values  
-      const model = new IsolationForest();
-
-      model.fit(values.slice(1)); // Cut first entry of data, because if it is already in dataset then it will not be considered as anomaly
-      const trainingScores = model.scores();
-      const latestScore    = model.predict([{ [property]: values[0][property] }])[0]; // get score of latest entry
-      if (latestScore > appConfig.CONF_anomalyDetectionThreshold) {
-        common.conLog("Server: Anomaly detected for property " + property + " with score " + latestScore, "gre");
-        let message         = {};
-        message.deviceID    = data.deviceID;
-        message.bridge      = data.bridge;
-        message.property    = property;
-        message.score       = latestScore;
-        mqttClient.publish("server/devices/anomaly", JSON.stringify(message));
-      }
-    });
-  }
+  const AnomalyEngine = require("./libs/AnomalyEngine");
+  const anomalies     = new AnomalyEngine();
 
   /**
    * MQTT client
@@ -353,14 +326,26 @@ async function startServer() {
           message.bridge    = data.bridge;
           message.values    = data.values || undefined;
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
+          common.conLog("Values: " + JSON.stringify(message.values), "std", false);
 
           sseChannel.broadcast(JSON.stringify(data), "value"); // broadcast values to all clients, that are connect via SSE
-          
+
           if (appConfig.CONF_anomalyDetectionActive) {
             if (data.properties !== undefined) { // Check for anomalies in the fetched values
-              anomalyCheck(data);
+              anomalies.check(data);
             }
           }
+
+          Object.keys(message.values).forEach(property => { // evaluate scenarios for each property
+            const propertyData = message.values[property];
+            scenarios.evaluateScenarios({
+              deviceID: message.deviceID,
+              bridge: message.bridge,
+              property: property,
+              value: propertyData.value,
+              valueType: propertyData.valueType || "string"
+            });
+          });
         }
         else {
           common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
