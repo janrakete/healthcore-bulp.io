@@ -174,13 +174,14 @@ router.post("/:table", async function (request, response) {
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
-         data.status = "ok";
 
          const statement = await statementBuild(table, payload, "INSERT");
          if (statement.status === "ok") {
             statement.statement = "INSERT INTO " + table + statement.statement;
             common.conLog("POST Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + statement.statement, "std", false);
+
+            data.status = "ok";
 
             const result = await database.prepare(statement.statement).run();
             data.ID = result.lastInsertRowid; // return last insert id
@@ -378,8 +379,6 @@ router.delete("/:table", async function (request, response) {
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
-         data.status = "ok";
-
          const condition = await conditionBuild(table, payload);
          if (condition.status === "ok") {
             if (condition.condition.trim() !== "") {
@@ -387,7 +386,16 @@ router.delete("/:table", async function (request, response) {
                common.conLog("DELETE Request: access table '" + table + "'", "gre");
                common.conLog("Execute statement: " + statement, "std", false);
       
-               await database.prepare(statement).run();
+               const result = await database.prepare(statement).run();
+
+               if (result.changes === 0) {
+                  data.status = "error";
+                  data.error  ="Entry not found";
+               }
+               else {
+                  data.status = "ok";
+                  common.conLog("DELETE Request: entry deleted successfully", "gre");
+               }
             }
             else { // if no condition is given, return error
                data.status = "error";
@@ -492,7 +500,6 @@ router.patch("/:table", async function (request, response) {
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
-         data.status = "ok";
 
          const condition = await conditionBuild(table, query);
          if (condition.status === "ok") {
@@ -503,6 +510,8 @@ router.patch("/:table", async function (request, response) {
                   statement.statement = "UPDATE " + table + " SET " + statement.statement + condition.condition + " LIMIT 1";
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
                   common.conLog("Execute statement: " + statement.statement, "std", false);
+
+                  data.status = "ok";
 
                   await database.prepare(statement.statement).run();
                }

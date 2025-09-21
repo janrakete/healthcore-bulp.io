@@ -51,6 +51,10 @@ router.get("/", async function (request, response) {
         const statement = "SELECT * FROM scenarios ORDER BY priority DESC, name ASC LIMIT ?"; 
         const results   = await database.prepare(statement).all(appConfig.CONF_tablesMaxEntriesReturned);
 
+        for (const result of results) {         //convert 0/1 to false/true
+          result.enabled = result.enabled === 1;
+        }
+
         common.conLog("GET Request: access table 'scenarios'", "gre");
         common.conLog("Execute statement: " + statement, "std", false);
 
@@ -118,18 +122,23 @@ router.get("/", async function (request, response) {
  *                   properties:
  *                     deviceID:
  *                       type: string
+ *                       example: "12345"
  *                     bridge:
  *                       type: string
+ *                       example: "bluetooth"
  *                     property:
  *                       type: string
+ *                       example: "heartrate"
  *                     operator:
  *                       type: string
  *                       enum: ["equals", "greater", "less", "between", "contains"]
  *                     value:
  *                       type: string
+ *                       example: "100"
  *                     valueType:
  *                       type: string
  *                       enum: ["string", "number", "boolean"]
+ *                       example: "number"
  *               actions:
  *                 type: array
  *                 items:
@@ -137,16 +146,22 @@ router.get("/", async function (request, response) {
  *                   properties:
  *                     deviceID:
  *                       type: string
+ *                       example: "12345"
  *                     bridge:
  *                       type: string
+ *                       example: "bluetooth"
  *                     property:
  *                       type: string
+ *                       example: "led"
  *                     value:
  *                       type: string
+ *                       example: "on"
  *                     valueType:
  *                       type: string
+ *                       enum: ["string", "number", "boolean"]
  *                     delay:
  *                       type: integer
+ *                       example: 300
  *     responses:
  *       "200":
  *         description: Successfully retrieved scenarios
@@ -194,7 +209,7 @@ router.post("/", async function (request, response) {
                     const result = insertScenario.run(
                         payload.name,
                         payload.description || "",
-                        payload.enabled !== false ? 1 : 0,
+                        payload.enabled === true ? 1 : 0,
                         payload.priority || 0
                     );
 
@@ -305,17 +320,21 @@ router.post("/", async function (request, response) {
  *                   properties:
  *                     deviceID:
  *                       type: string
+ *                       example: "12345"
  *                     bridge:
  *                       type: string
+ *                       example: "bluetooth"
  *                     property:
  *                       type: string
+ *                       example: "heartrate"
  *                     operator:
  *                       type: string 
  *                       enum: ["equals", "greater", "less", "between", "contains"]
  *                     value:
  *                       type: string
+ *                       example: "100"
  *                     valueType:
- *                       type: string
+ *                       type: integer
  *                       enum: ["string", "number", "boolean"]
  *               actions:
  *                 type: array
@@ -324,12 +343,16 @@ router.post("/", async function (request, response) {
  *                   properties:
  *                     deviceID:
  *                       type: string
+ *                       example: "12345"
  *                     bridge:
  *                       type: string
+ *                       example: "bluetooth"
  *                     property:
  *                       type: string
+ *                       example: "led"
  *                     value:
  *                       type: string
+ *                       example: "on"
  *                     valueType:
  *                       type: string
  *                       enum: ["string", "number", "boolean"]
@@ -347,9 +370,6 @@ router.post("/", async function (request, response) {
  *                 status:
  *                   type: string
  *                   example: "ok"
- *                 ID:
- *                   type: integer
- *                   example: 1
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -374,10 +394,14 @@ router.put("/:scenarioID", async function (request, response) {
     if (result) {
       data.status = "ok";
 
-      const transaction = database.transaction(async () => {
+      const transaction = database.transaction(() => {
         // Update scenario
         if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined) {
-          await database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
+          if (payload.enabled !== undefined) { // convert boolean to 0/1
+            payload.enabled = payload.enabled === true ? 1 : 0;
+          }
+          
+          database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
             payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.priority !== undefined ? payload.priority : null, scenarioID
           );
           common.conLog("PUT Request: access table 'scenarios'", "gre");
@@ -386,13 +410,13 @@ router.put("/:scenarioID", async function (request, response) {
         // Update triggers if provided
         if (payload.triggers) {
           // Delete existing triggers
-          await database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID);
+          database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID);
 
           // Insert new triggers
           const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
           for (const trigger of payload.triggers) {
-            await insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "string");
+            insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "string");
           }
           common.conLog("PUT Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
@@ -401,20 +425,20 @@ router.put("/:scenarioID", async function (request, response) {
         // Update actions if provided
         if (payload.actions) {
           // Delete existing actions
-          await database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID);
+          database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID);
 
           // Insert new actions
           const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
           for (const action of payload.actions) {
-            await insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "string", action.delay || 0);
+            insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "string", action.delay || 0);
           }
           common.conLog("PUT Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);
         }
       });
 
-      await transaction();
+      transaction();
     }
     else {
       data.status = "error";
@@ -568,8 +592,7 @@ router.post("/:scenarioID/toggle", async function (request, response) {
       const newState = scenario.enabled === 1 ? 0 : 1;
       database.prepare("UPDATE scenarios SET enabled = ? WHERE scenarioID = ?").run(newState, scenarioID);
       common.conLog("POST (toggle) Request: scenario '" + scenarioID + "' toggled successfully", "gre");
-      
-      data.state = newState;
+      data.state = newState === 1 ? true : false;
     }
     else {
       data.status = "error";
