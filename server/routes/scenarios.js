@@ -160,7 +160,7 @@ router.get("/", async function (request, response) {
  *                   example: "ok"
  *                 ID:
  *                   type: integer
- *                   example: 1
+ *                   example: 42
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -189,12 +189,12 @@ router.post("/", async function (request, response) {
                 const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
-                const transaction = database.transaction(async () => {
+                const transaction = database.transaction(() => {
                     // insert scenario
                     const result = insertScenario.run(
                         payload.name,
                         payload.description || "",
-                        payload.enabled !== false,
+                        payload.enabled !== false ? 1 : 0,
                         payload.priority || 0
                     );
 
@@ -229,7 +229,7 @@ router.post("/", async function (request, response) {
                     return scenarioID;
                 });
 
-                data.ID = await transaction(); // commit transaction
+                data.ID = transaction(); // commit transaction
 
                 common.conLog("POST Request: insert into table 'scenarios'", "gre");
                 common.conLog("Execute statement: " + insertScenario.sql, "std", false);
@@ -454,6 +454,30 @@ router.put("/:scenarioID", async function (request, response) {
  *         required: true
  *         schema:
  *           type: integer
+ *     responses:
+ *       "200":
+ *         description: Successfully updated scenario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
  */
 router.delete("/:scenarioID", async function (request, response) {
   const scenarioID = parseInt(request.params.scenarioID);
@@ -516,8 +540,8 @@ router.delete("/:scenarioID", async function (request, response) {
  *                   type: string
  *                   example: "ok"
  *                 state:
- *                   type: boolean
- *                   example: true
+ *                   type: integer
+ *                   example: 1
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -541,9 +565,10 @@ router.post("/:scenarioID/toggle", async function (request, response) {
 
     if (scenario !== undefined) {
       data.status    = "ok";
-      const newState = !scenario.enabled;
+      const newState = scenario.enabled === 1 ? 0 : 1;
       database.prepare("UPDATE scenarios SET enabled = ? WHERE scenarioID = ?").run(newState, scenarioID);
       common.conLog("POST (toggle) Request: scenario '" + scenarioID + "' toggled successfully", "gre");
+      
       data.state = newState;
     }
     else {
