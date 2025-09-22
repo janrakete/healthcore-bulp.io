@@ -13,15 +13,16 @@ class ScenarioEngine {
 
   /**
    * Evaluates all active scenarios when a device value changes
-   * @param {Object} device - { deviceID, bridge, property, value, valueType }
+   * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
    */
-  async evaluateScenarios(device) {
+  async evaluateScenarios(deviceData) {
+
     try {
       // Get all enabled scenarios with triggers that match this device/property
-      const scenarios = this.database.prepare("SELECT DISTINCT s.*, st.triggerID, st.operator, st.value AS triggerValue, st.valueType AS triggerValueType FROM scenarios AS s JOIN scenarios_triggers AS st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.deviceID = ? AND st.bridge = ?  AND st.property = ? ORDER BY s.priority DESC").all(device.deviceID, device.bridge, device.property);
+      const scenarios = database.prepare("SELECT DISTINCT s.*, st.triggerID, st.operator, st.value AS triggerValue, st.valueType AS triggerValueType FROM scenarios AS s JOIN scenarios_triggers AS st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.deviceID = ? AND st.bridge = ?  AND st.property = ? ORDER BY s.priority DESC").all(deviceData.deviceID, deviceData.bridge, deviceData.property);
 
       for (const scenario of scenarios) {
-        await this.evaluateScenario(scenario, device);
+        await this.evaluateScenario(scenario, deviceData);
       }
     }
     catch (error) {
@@ -32,12 +33,12 @@ class ScenarioEngine {
   /**
    * Evaluates a single scenario
    * @param {Object} scenario - Scenario details from DB
-   * @param {Object} device - { deviceID, bridge, property, value, valueType }
+   * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
    */
-  async evaluateScenario(scenario, device) {
+  async evaluateScenario(scenario, deviceData) {
     try {
       // Check cooldown to prevent rapid re-execution
-      const cooldownKey     = scenario.scenarioID + "-" + device.deviceID + "-" + device.property;
+      const cooldownKey     = scenario.scenarioID + "-" + deviceData.deviceID + "-" + deviceData.property;
       const lastExecution   = this.executionCooldowns.get(cooldownKey);
       const now             = Date.now();
       
@@ -46,7 +47,7 @@ class ScenarioEngine {
       }
 
       // Get all triggers for this scenario
-      const triggers = this.database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID);
+      const triggers = database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID);
 
       // Check if ALL triggers are satisfied
       let allTriggersSatisfied = true;
@@ -64,7 +65,6 @@ class ScenarioEngine {
         await this.executeScenario(scenario, deviceData);
         this.executionCooldowns.set(cooldownKey, now);
       }
-
     }
     catch (error) {
       common.conLog("Scenario Engine: Error evaluating scenario " + scenario.scenarioID + ": " + error.message, "red");
@@ -74,13 +74,13 @@ class ScenarioEngine {
   /**
    * Evaluates a single trigger condition
    * @param {Object} trigger - Trigger details from DB
-   * @param {Object} device - { deviceID, bridge, property, value, valueType }
+   * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
    * @returns {boolean} - Whether the trigger condition is satisfied
    */
-  async evaluateTrigger(trigger, device) {
+  async evaluateTrigger(trigger, deviceData) {
     // if this trigger is for the current device/property, use the incoming value
-    if (trigger.deviceID === device.deviceID && trigger.bridge === device.bridge &&  trigger.property === device.property) {
-      return this.compareValues(device.value, trigger.operator, trigger.value, trigger.valueType);
+    if (trigger.deviceID === deviceData.deviceID && trigger.bridge === deviceData.bridge &&  trigger.property === deviceData.property) {
+      return this.compareValues(deviceData.value, trigger.operator, trigger.value, trigger.valueType);
     }
 
     // For other triggers, get the current value from the database
@@ -97,7 +97,7 @@ class ScenarioEngine {
    * @param {any} actualValue - Current device value
    * @param {string} operator - Comparison operator (equals, greater, less, between, contains)
    * @param {any} expectedValue - Value to compare against
-   * @param {string} valueType - Type of the values (string, number, boolean)
+   * @param {string} valueType - Type of the values (String, Integer, Boolean)
    * @returns {boolean} - Result of the comparison
    */
   compareValues(actualValue, operator, expectedValue, valueType) {
@@ -110,11 +110,11 @@ class ScenarioEngine {
         case "equals":
           return actual === expected;
         case "greater":
-          return valueType === "number" ? actual > expected : false;
+          return valueType === "Integer" ? actual > expected : false;
         case "less":
-          return valueType === "number" ? actual < expected : false;
+          return valueType === "Integer" ? actual < expected : false;
         case "between":
-          if (valueType === "number" && Array.isArray(expected) && expected.length === 2) {
+          if (valueType === "Integer" && Array.isArray(expected) && expected.length === 2) {
             return actual >= expected[0] && actual <= expected[1];
           }
           return false;
@@ -133,16 +133,16 @@ class ScenarioEngine {
   /**
    * Converts value to the specified type
    * @param {any} value - Value to convert
-   * @param {string} valueType - Target type (string, number, boolean)
+   * @param {string} valueType - Target type (String, Integer, Boolean)
    * @returns {any} - Converted value
    */
   convertValue(value, valueType) {
     switch (valueType) {
-      case "number":
-        return Number(value);
-      case "boolean":
+      case "Integer":
+        return parseInt(value);
+      case "Boolean":
         return Boolean(value === true || value === "true" || value === "1");
-      case "string":
+      case "String":
       default:
         return String(value);
     }
@@ -173,17 +173,17 @@ class ScenarioEngine {
   async executeScenario(scenario, triggerData) {
     try {
       // Get all actions for this scenario
-      const actions = this.database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID);
+      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID);
 
       // Log execution
-      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run(
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run(
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 1
       );
 
       // Execute actions with delays
       for (const action of actions) {
         setTimeout(() => {
-          this.executeAction(action, scenario);
+          this.executeAction(action);
         }, action.delay);
       }
 
@@ -201,20 +201,16 @@ class ScenarioEngine {
   /**
    * Executes a single action
    * @param {Object} action - Action details from DB
-   * @param {Object} scenario - Scenario details from DB
    */
-  async executeAction(action, scenario) {
+  async executeAction(action) {
     try {
         const message = {};
-        message.deviceID     = action.deviceID;
-        message.property     = action.property;
-        message.value        = this.convertValue(action.value, action.valueType);
-        message.valueType    = action.valueType;
-        message.source       = "scenario";
-        message.scenarioID   = scenario.scenarioID;
-        message.scenarioName = scenario.name;
+        message.deviceID                    = action.deviceID;
+        message.bridge                      = action.bridge;
+        message.properties                  = {};
+        message.properties[action.property] = this.convertValue(action.value, action.valueType);
 
-        const topic = action.bridge + "/device/set";
+        const topic = action.bridge + "/devices/set";
         mqttClient.publish(topic, JSON.stringify(message));
 
         common.conLog("Scenario Engine: Executed action - Set " + action.deviceID + "/" + action.property + " = " + action.value, "yel");

@@ -163,12 +163,9 @@ async function startBridgeAndServer() {
                             characteristic.on("data", function (value) { // if value is received from device, log it
                               let message                         = {};
                               message.deviceID                    = device.deviceID;
-                              message.properties                  = [];
+                              message.properties                  = {}; // create empty array for properties
                               message.bridge                      = BRIDGE_PREFIX;
-                            
-                              let propertyAndValue                = {};
-                              propertyAndValue[property.name]  = device.deviceConverter.get(property, value); 
-                              message.properties.push(propertyAndValue); // add property to array of properties for return
+                              message.properties[property.name]   = device.deviceConverter.get(property, value);
 
                               mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker    
                             }); 
@@ -626,13 +623,12 @@ async function startBridgeAndServer() {
           for (const characteristic of service.characteristics) { // for each characteristic of service
             const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
             if (property !== undefined) { 
-              if (data.properties.some(propertySearch => Object.keys(propertySearch).includes(property.name))) { // if property is in properties, that should be set
+              if (data.properties.hasOwnProperty(property.name)) { // if property is in properties, that should be set
                 if (property.write === true) { // if property is writable 
                   common.conLog("Bluetooth: Writing characteristic " + characteristic.uuid + " (" + property.name + ")", "yel");
                   const writePromise = new Promise(function (resolve, reject) { // create a promise for writing the characteristic value
 
-                    const propertyFound  = data.properties.find(propertySearch => propertySearch.hasOwnProperty(property.name)); // get property from array of properties that should be set
-                    const anyValue       = propertyFound[property.name]; // get value from property
+                    const anyValue       = data.properties[property.name]; // get value from property
                     characteristic.write(device.deviceConverter.set(property, anyValue), false, function (error) {
                       if (error) {
                         common.conLog("Bluetooth: Error while writing characteristic:", "red");
@@ -661,8 +657,7 @@ async function startBridgeAndServer() {
         }
         await Promise.all(promises); // wait for all write operations to complete before publishing
   
-        data.properties = data.properties.map(propertyWithValue => Object.keys(propertyWithValue)[0]); // get only keys of properties that were set
-        mqttDevicesGet(data); // ... and get values of properties that were set
+        data.properties = Object.keys(data.properties); // get only keys of properties that were set
       }
       else { 
         common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
