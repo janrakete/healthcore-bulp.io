@@ -137,8 +137,8 @@ router.get("/", async function (request, response) {
  *                       example: "100"
  *                     valueType:
  *                       type: string
- *                       enum: ["string", "number", "boolean"]
- *                       example: "number"
+ *                       enum: ["String", "Integer", "Boolean"]
+ *                       example: "Integer"
  *               actions:
  *                 type: array
  *                 items:
@@ -158,7 +158,7 @@ router.get("/", async function (request, response) {
  *                       example: "on"
  *                     valueType:
  *                       type: string
- *                       enum: ["string", "number", "boolean"]
+ *                       enum: ["String", "Integer", "Boolean"]
  *                     delay:
  *                       type: integer
  *                       example: 300
@@ -224,7 +224,7 @@ router.post("/", async function (request, response) {
                         trigger.property,
                         trigger.operator || "equals",
                         typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value,
-                        trigger.valueType || "string"
+                        trigger.valueType || "String"
                         );
                     }
 
@@ -236,7 +236,7 @@ router.post("/", async function (request, response) {
                         action.bridge,
                         action.property,
                         typeof action.value === "object" ? JSON.stringify(action.value) : action.value,
-                        action.valueType || "string",
+                        action.valueType || "String",
                         action.delay || 0
                         );
                     }
@@ -335,7 +335,7 @@ router.post("/", async function (request, response) {
  *                       example: "100"
  *                     valueType:
  *                       type: integer
- *                       enum: ["string", "number", "boolean"]
+ *                       enum: ["String", "Integer", "Boolean"]
  *               actions:
  *                 type: array
  *                 items:
@@ -355,7 +355,7 @@ router.post("/", async function (request, response) {
  *                       example: "on"
  *                     valueType:
  *                       type: string
- *                       enum: ["string", "number", "boolean"]
+ *                       enum: ["String", "Integer", "Boolean"]
  *                     delay:
  *                       type: integer
  *                       example: 1000
@@ -416,7 +416,7 @@ router.put("/:scenarioID", async function (request, response) {
           const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
           for (const trigger of payload.triggers) {
-            insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "string");
+            insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "String");
           }
           common.conLog("PUT Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
@@ -431,7 +431,7 @@ router.put("/:scenarioID", async function (request, response) {
           const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
           for (const action of payload.actions) {
-            insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "string", action.delay || 0);
+            insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "String", action.delay || 0);
           }
           common.conLog("PUT Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);

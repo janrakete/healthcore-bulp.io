@@ -19,7 +19,7 @@ class AnomalyEngine {
    * @description This function checks for anomalies in the data properties using the Isolation Forest algorithm.
    */
   check(data) { // TODO: convert to cron job
-    const propertyKeys = data.properties.map(property => Object.keys(property)[0]);
+    const propertyKeys = Object.keys(data.properties);
     propertyKeys.forEach((property, index) => { // iterate over each property
       const results = database.prepare( // prepare SQL query to get historical data
         "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"

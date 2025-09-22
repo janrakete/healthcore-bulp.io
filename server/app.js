@@ -321,31 +321,43 @@ async function startServer() {
     if (data.bridge) {
       if (data.deviceID) {
         if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
-          message.status    = "ok";
-          message.deviceID  = data.deviceID;
-          message.bridge    = data.bridge;
-          message.values    = data.values || undefined;
+          message.status     = "ok";
+          message.deviceID   = data.deviceID;
+          message.bridge     = data.bridge;
+          message.properties = data.properties;
+
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
-          common.conLog("Values: " + JSON.stringify(message.values), "std", false);
 
-          sseChannel.broadcast(JSON.stringify(data), "value"); // broadcast values to all clients, that are connect via SSE
+          /**
+           * Broadcast new values to all SSE clients
+           */
+          sseChannel.broadcast(JSON.stringify(data), "value");
 
+          /**
+           * Check for anomalies in the fetched values
+           */
           if (appConfig.CONF_anomalyDetectionActive) {
             if (data.properties !== undefined) { // Check for anomalies in the fetched values
               anomalies.check(data);
             }
           }
 
-          Object.keys(message.values).forEach(property => { // evaluate scenarios for each property
-            const propertyData = message.values[property];
-            scenarios.evaluateScenarios({
-              deviceID: message.deviceID,
-              bridge: message.bridge,
-              property: property,
-              value: propertyData.value,
-              valueType: propertyData.valueType || "string"
+          /**
+           * Evaluate scenarios based on the fetched values
+           */
+          if (data.properties) {
+            Object.keys(data.properties).forEach((property) => {
+              const propertyData = data.properties[property];
+              
+              scenarios.evaluateScenarios({
+                deviceID: data.deviceID,
+                bridge: data.bridge,
+                property: property,
+                value: propertyData.value,
+                valueType: propertyData.valueType || "string"
+              });
             });
-          });
+          }            
         }
         else {
           common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
