@@ -28,18 +28,6 @@ async function logsFetch() {
 }
 
 /**
- * This function fetches the api calls, that can be used for the healthcore server.
- * @async
- * @function callsFetch
- * @returns {Promise<Array>} A promise that resolves to an array of API calls.
- * @description This function retrieves the API calls that can be used by the server.
- */
-async function callsFetch() {
-  const res = await fetch("/api/calls");
-  return res.json();
-}
-
-/**
  * This function toggles the status of a service (start/stop) based on its current state.
  * @async
  * @function statusToggle
@@ -111,46 +99,9 @@ async function update() {
   }
 }
 
-/**
- * This function fetches the API calls and displays them in a select dropdown. It also sets up an event listener to handle the selection of a call and its execution.
- * @async
- * @function callsFetchAndDisplay
- * @returns {Promise<void>} A promise that resolves when the API calls have been fetched and displayed.
- * @description This function retrieves the API calls from the server, populates a select dropdown with the available calls, and sets up an event listener to handle the selection of a call. When a call is selected, it updates a text area with the payload and sets up a button to execute the selected call.
- */
-async function callsFetchAndDisplay() {
-  const calls      = await callsFetch();
-  const select     = document.getElementById("calls-select");
-  const payload    = document.getElementById("calls-payload");
-  const button     = document.getElementById("calls-button");
-
-  select.innerHTML = "<option value=''>(select)</option>"; // clear previous options
-
-  for (const call of calls) {
-    const option = document.createElement("option");
-    option.value = call.url;
-    option.textContent = call.label;
-    select.appendChild(option);
-  }
-
-  select.onchange = function() {
-    const selectedCall    = calls.find(call => call.url === select.value);
-    payload.value         = JSON.stringify(selectedCall.payload, null, 2);
-    button.dataset.method = selectedCall.method;
-  };
-
-  button.onclick = async function() {
-    const selectedUrl   = select.value;
-    const payloadValue  = JSON.parse(payload.value);
-    await fetch(selectedUrl, {
-      method: button.dataset.method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payloadValue)
-    });
-  };
-}
-
-callsFetchAndDisplay();
+document.getElementById("calls-button").onclick = function() {
+  window.open("http://localhost:9998/api-docs/", "_blank");
+};
 
 update();
 setInterval(update, 2000); // update the UI every 2 seconds
