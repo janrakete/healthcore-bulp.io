@@ -184,8 +184,8 @@ async function startServer() {
         case "server/devices/update":
           mqttDevicesUpdate(data);
           break;
-        case "server/devices/values":
-          mqttDevicesValues(data);
+        case "server/devices/values/get":
+          mqttDevicesValuesGet(data);
           break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
@@ -316,7 +316,7 @@ async function startServer() {
    * @param {Object} data - The data object containing the device information.
    * @description This function fetches the current values of a device.
    */
-  async function mqttDevicesValues(data) {
+  async function mqttDevicesValuesGet(data) {
     let message = {};    
     if (data.bridge) {
       if (data.deviceID) {

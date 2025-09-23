@@ -60,36 +60,6 @@ async function startHealtcheck() {
       http:           'node "../bridge - http/app.js"'
   };
 
-  const calls         = [
-    {
-      label:  "Scan devices (Bluetooth and ZigBee)",
-      url:    baseURLAndPort + "devices/scan",
-      method: "POST",
-      payload: {
-        bridge: "XXX",
-        duration: 40
-      }
-    },
-    {
-      label:  "Scan devices - get current info",
-      url:    baseURLAndPort + "devices/scan/info",
-      method: "POST",
-      payload: {
-        bridge: "XXX",
-        duration: 40
-      }
-    },
-    {
-      label:  "Delete device",
-      url:    baseURLAndPort + "devices/delete",
-      method: "DELETE",
-      payload: {
-        bridge: "XXX",
-        deviceID: "XXX"
-      }
-    }
-  ];
-
   /**
    * This function adds a log entry to the logs array, ensuring it does not exceed the maximum
    * @param {*} service 
@@ -181,18 +151,6 @@ async function startHealtcheck() {
   app.get("/api/logs", (req, res) => {
     res.json(logs);
     logs.length = 0; // clear the logs after sending them to the client
-  });
-
-  /**
-   * This route returns the calls array, which contains predefined actions that can be performed on the server.
-   * @route GET /api/calls
-   * @param {Object} req - The request object
-   * @param {Object} res - The response object used to send the calls back to the client
-   * @returns {Array} calls - An array containing predefined actions that can be performed on the server
-   * @description This route returns the calls array, which contains objects with labels, URLs, and payloads for predefined actions. These actions can be used by the client to interact with the server, such as scanning devices or deleting devices.
-   */
-  app.get("/api/calls", (req, res) => {
-    res.json(calls);
   });
 
   /**

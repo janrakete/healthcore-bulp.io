@@ -382,11 +382,11 @@ async function startBridgeAndServer() {
         case "bluetooth/devices/disconnect":
           mqttDevicesDisconnect(data);
           break;
-        case "bluetooth/devices/set":
-          mqttDevicesSet(data);
+        case "bluetooth/devices/values/set":
+          mqttDevicesValuesSet(data);
           break;
-        case "bluetooth/devices/get":
-          mqttDevicesGet(data);
+        case "bluetooth/devices/values/get":
+          mqttDevicesValuesGet(data);
           break;
         case "bluetooth/devices/update":
           mqttDevicesUpdate(data);
@@ -609,7 +609,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID and properties to set.
    * @description This function handles the request to set values for properties of a connected Bluetooth device.
    */
-  async function mqttDevicesSet(data) {
+  async function mqttDevicesValuesSet(data) {
     common.conLog("Bluetooth: Request for setting values of " + data.deviceID, "yel");
 
     if (data.properties) {
@@ -673,7 +673,7 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object containing the device ID and properties to get.
    * @description This function handles the request to get properties and values of a connected Bluetooth device.
    */
-  async function mqttDevicesGet(data) {
+  async function mqttDevicesValuesGet(data) {
     common.conLog("Bluetooth: Request for getting properties and values of " + data.deviceID, "yel");
   
     const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices

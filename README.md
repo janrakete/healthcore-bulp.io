@@ -110,7 +110,7 @@ production-start.sh uses the process manager, so that a service is restarted if 
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
 ## 📈 Healthcheck - a monitor for healthcore
-Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. API calls can also be simulated. All outputs are displayed in a console.
+Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. All outputs are displayed in a console.
 
 How to start healthcheck:
 ```bash
