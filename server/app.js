@@ -262,8 +262,6 @@ async function startServer() {
         message.status      = "error";
         message.error       = "Bridge missing";        
     }
-    
-    mqttClient.publish(data.bridge + "/devices/create", JSON.stringify(message));
   }   
 
   /**
@@ -307,8 +305,6 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
-
-    mqttClient.publish(data.bridge + "/devices/remove", JSON.stringify(message));
   }   
 
   /**
@@ -337,7 +333,7 @@ async function startServer() {
            * Check for anomalies in the fetched values
            */
           if (appConfig.CONF_anomalyDetectionActive) {
-            if (data.properties !== undefined) { // Check for anomalies in the fetched values
+            if (data.values !== undefined) { // Check for anomalies in the fetched values
               anomalies.check(data);
             }
           }
@@ -345,16 +341,16 @@ async function startServer() {
           /**
            * Evaluate scenarios based on the fetched values
            */
-          if (data.properties) {
-            Object.keys(data.properties).forEach((property) => {
-              const propertyData = data.properties[property];
-              
+          if (data.values !== undefined) { // Evaluate scenarios based on the fetched values
+            Object.keys(data.values).forEach((property) => {
+              const valueData = data.values[property];
+
               scenarios.evaluateScenarios({
                 deviceID: data.deviceID,
                 bridge: data.bridge,
                 property: property,
-                value: propertyData.value,
-                valueType: propertyData.valueType || "string"
+                value: valueData.value,
+                valueType: valueData.valueType || "string"
               });
             });
           }            

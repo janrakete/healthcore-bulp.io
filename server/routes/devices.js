@@ -19,9 +19,11 @@ const router        = require("express").Router();
  * @returns {void}
  * @description This function handles pending MQTT responses by setting a timeout for the response and storing the callback in a map.
  */
-function mqttPendingResponsesHandler(data, response) {
+function mqttPendingResponsesHandler(callID, response) {
+    const data = {};
+    
     const responseTimeout = setTimeout(() => {
-        delete mqttPendingResponses[data.callID];
+        delete mqttPendingResponses[callID];
         data.status = "error";
         data.error  = "No response from broker in " + appConfig.CONF_apiCallTimeoutMilliseconds + "ms";
 
@@ -30,7 +32,7 @@ function mqttPendingResponsesHandler(data, response) {
         return response.status(400).json(data);
     }, appConfig.CONF_apiCallTimeoutMilliseconds);
 
-    mqttPendingResponses[data.callID] = async (message) => {
+    mqttPendingResponses[callID] = async (message) => {
         data.status = "ok";
         data.data   = message;
 
@@ -75,9 +77,12 @@ function mqttPendingResponsesHandler(data, response) {
  *                   status:
  *                     type: string
  *                     example: "ok"
- *                   callID:
- *                     type: string
- *                     example: "In58F8lxhMEe6a4G"
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       callID:
+ *                         type: string
+ *                         example: "In58F8lxhMEe6a4G"
  *         "400":
  *           description: Bad request. The request was invalid or cannot be served.
  *           content:
@@ -106,7 +111,8 @@ router.post("/scan", async function (request, response) {
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
 
-            data.callID         = message.callID; // return the call ID in the response
+            data.data = {};
+            data.data.callID         = message.callID; // return the call ID in the response
 
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
             
@@ -162,29 +168,32 @@ router.post("/scan", async function (request, response) {
  *                   status:
  *                     type: string
  *                     example: "ok"
- *                   devices:
- *                     type: array
- *                     items:
- *                       type: object
- *                       properties:
- *                         deviceID:
- *                           type: string
- *                           example: "12345"
- *                         productName:
- *                           type: string
- *                           example: "Product XYZ"
- *                         bridge:
- *                           type: string
- *                           example: "bluetooth"
- *                         rssi:
- *                           type: integer
- *                           example: -60
- *                         connectable:
- *                           type: boolean
- *                           example: true
- *                         callID: 
- *                           type: string
- *                           example: "In58F8lxhMEe6a4G"
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       callID:
+ *                         type: string
+ *                         example: "In58F8lxhMEe6a4G"
+ *                       devices:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             deviceID:
+ *                               type: string
+ *                               example: "12345"
+ *                             productName:
+ *                               type: string
+ *                               example: "Product XYZ"
+ *                             bridge:
+ *                               type: string
+ *                               example: "bluetooth"
+ *                             rssi:
+ *                               type: integer
+ *                               example: -60
+ *                             connectable:
+ *                               type: boolean
+ *                               example: true
  *         "400":
  *           description: Bad request. The request was invalid or cannot be served.
  *           content:
@@ -208,17 +217,20 @@ router.get("/scan/info", async function (request, response) {
         const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
         const results       = await database.prepare(statement).all("server/devices/discover", payload.callID); // ... query the database for discovered devices
 
-        data.devices = results.map(row => JSON.parse(row.message));
+        const devices       = results.map(row => JSON.parse(row.message));
 
-        // remove duplicates based on device ID, keep only the first occurrence
+        // remove duplicates based on device ID, keep only the first occurrence and remove callID from the device info
         const uniqueDevices = {};
-        data.devices.forEach(device => {
+        devices.forEach(device => {
+            delete device.callID;
             if (device.deviceID && !uniqueDevices[device.deviceID]) {
                 uniqueDevices[device.deviceID] = device;
             }
         });
-
-        data.devices = Object.values(uniqueDevices);
+        
+        data.data           = {};
+        data.data.devices   = Object.values(uniqueDevices);
+        data.data.callID    = payload.callID;
 
         data.status = "ok";
         common.conLog("POST request for device scan info", "gre");
@@ -287,9 +299,21 @@ router.get("/scan/info", async function (request, response) {
  *                   status:
  *                     type: string
  *                     example: "ok"
- *                   callID:
- *                     type: string
- *                     example: "In58F8lxhMEe6a4G"
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       callID:
+ *                         type: string
+ *                         example: "In58F8lxhMEe6a4G"
+ *                       deviceID:
+ *                         type: string
+ *                         example: "12345"
+ *                       productName:
+ *                         type: string
+ *                         example: "Product XYZ"
+ *                       bridge:
+ *                         type: string
+ *                         example: "bluetooth"
  *         "400":
  *           description: Bad request. The request was invalid or cannot be served.
  *           content:
@@ -322,12 +346,10 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
             message.bridge              = bridge;
             message.addDeviceToServer   = payload.body?.addDeviceToServer === true;
 
-            data.callID = message.callID; // return the call ID also in the response
-
             mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(data, response);
+            mqttPendingResponsesHandler(message.callID, response);
         }
         /*else if ((payload.productName !== undefined) && (payload.productName.trim() !== "")) { // else if productName is provided
             data.status         = "ok";
@@ -393,9 +415,18 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  *                   status:
  *                     type: string
  *                     example: "ok"
- *                   callID:
- *                     type: string
- *                     example: "In58F8lxhMEe6a4G"
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       deviceID:
+ *                         type: string
+ *                         example: "12345"
+ *                       bridge:
+ *                         type: string
+ *                         example: "bluetooth"
+ *                       callID:
+ *                         type: string
+ *                         example: "In58F8lxhMEe6a4G"
  *         "400":
  *           description: Bad request. The request was invalid or cannot be served.
  *           content:
@@ -426,12 +457,10 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
 
-            data.callID         = message.callID; // return the call ID also in the response
-
             mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(data, response);
+            mqttPendingResponsesHandler(message.callID, response);
         }
         else {
             data.status = "error";
@@ -484,9 +513,18 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
  *                  status:
  *                    type: string
  *                    example: "ok"
- *                  callID:
- *                    type: string
- *                    example: "In58F8lxhMEe6a4G"
+ *                  data:
+ *                    type: object
+ *                    properties:
+ *                      deviceID:
+ *                        type: string
+ *                        example: "12345"
+ *                      bridge:
+ *                        type: string
+ *                        example: "bluetooth"
+ *                      callID:
+ *                        type: string
+ *                        example: "In58F8lxhMEe6a4G"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -517,12 +555,10 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
 
-            data.callID         = message.callID; // return the call ID also in the response
-
             mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(data, response);
+            mqttPendingResponsesHandler(message.callID, response);
         }
         else {
             data.status = "error";
@@ -588,9 +624,27 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
  *                  status:
  *                    type: string
  *                    example: "ok"
- *                  callID:
- *                    type: string
- *                    example: "In58F8lxhMEe6a4G"
+ *                  data:
+ *                    type: object
+ *                    properties:
+ *                      deviceID:
+ *                        type: string
+ *                        example: "12345"
+ *                      bridge:
+ *                        type: string
+ *                        example: "bluetooth"
+ *                      callID:
+ *                        type: string
+ *                        example: "In58F8lxhMEe6a4G"
+ *                      updates:
+ *                        type: object
+ *                        properties:
+ *                          name:
+ *                            type: string
+ *                            example: "New Device Name"
+ *                          description:
+ *                            type: string
+ *                            example: "New Device Description"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -624,12 +678,10 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
                 message.bridge      = bridge;
                 message.updates     = payload.body;
 
-                data.callID         = message.callID; // return the call ID also in the response
-
                 mqttClient.publish(bridge + "/devices/update", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(data, response);
+                mqttPendingResponsesHandler(message.callID, response);
             }
             else {
                 data.status = "error";
@@ -684,26 +736,26 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
  *             schema:
  *               type: object
  *               properties:
- *                 callID:
- *                   type: string
- *                   example: "In58F8lxhMEe6a4G"
  *                 status:
  *                   type: string
  *                   example: "ok"
  *                 data:
  *                   type: object
  *                   properties:
+ *                     callID:
+ *                       type: string
+ *                       example: "In58F8lxhMEe6a4G"
  *                     bridge:
  *                       type: string
  *                       example: "bluetooth"
  *                     deviceID:
  *                       type: string
  *                       example: "12345"
- *                     propertiesAndValues:
+ *                     values:
  *                       type: object
  *                       additionalProperties:
  *                         type: string
- *                       example: [{ "rotary_switch": { "value": 4, "valueAsNumeric": 4 }}, {"button": { "value": "pressed", "valueAsNumeric": 1 }}]
+ *                       example: { "rotary_switch": { "value": 4, "valueAsNumeric": 4 }, "button": { "value": "pressed", "valueAsNumeric": 1 }}
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -734,12 +786,10 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
 
-            data.callID         = message.callID; // return the call ID also in the response
-
-            mqttClient.publish(bridge + "/devices/get", JSON.stringify(message)); // ... publish to MQTT broker
+            mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(data, response);
+            mqttPendingResponsesHandler(message.callID, response);
         }
         else {
             data.status = "error";
@@ -788,7 +838,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
  *         application/json:
  *           schema:
  *             type: object
- *             example: [{"light": "middle", "speaker": "on"}]
+ *             example: {"light": "middle", "speaker": "on"}
  *     responses:
  *       "200":
  *         description: Successfully set device values.
@@ -800,9 +850,21 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
  *                 status:
  *                   type: string
  *                   example: "ok"
- *                 callID:
- *                   type: string
- *                   example: "In58F8lxhMEe6a4G"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     bridge:
+ *                       type: string
+ *                       example: "bluetooth"
+ *                     callID:
+ *                       type: string
+ *                       example: "In58F8lxhMEe6a4G"
+ *                     deviceID:
+ *                       type: string
+ *                       example: "12345"
+ *                     values:
+ *                       type: object
+ *                       example: {"light": {"value": "middle", "valueAsNumeric": 2}, "speaker": {"value": "on", "valueAsNumeric": 1}}
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -833,15 +895,13 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
             if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
                 message.deviceID    = payload.deviceID.trim();
                 message.callID      = common.randomHash(); // create a unique call ID to identify the request
-                message.properties  = payload.body;
+                message.values  = payload.body;
                 message.bridge      = bridge;
 
-                data.callID         = message.callID; // return the call ID also in the response
-
-                mqttClient.publish(bridge + "/devices/set", JSON.stringify(message)); // ... publish to MQTT broker
+                mqttClient.publish(bridge + "/devices/values/set", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for setting device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(data, response);
+                mqttPendingResponsesHandler(message.callID, response);
             }
             else {
                 data.status = "error";
@@ -889,15 +949,15 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
  *             schema:
  *               type: object
  *               properties:
- *                 callID:
- *                   type: string
- *                   example: "In58F8lxhMEe6a4G"
  *                 status:
  *                   type: string
  *                   example: "ok"
  *                 data:
  *                   type: object
  *                   properties:
+ *                     callID:
+ *                       type: string
+ *                       example: "In58F8lxhMEe6a4G"
  *                     bridge:
  *                       type: string
  *                       example: "bluetooth"
@@ -956,12 +1016,10 @@ router.get("/:bridge/list/all", async function (request, response) {
         message.callID      = common.randomHash(); // create a unique call ID to identify the request
         message.bridge      = bridge;
 
-        data.callID         = message.callID; // return the call ID also in the response
-
         mqttClient.publish(bridge + "/devices/list/all", JSON.stringify(message)); // ... publish to MQTT broker
         common.conLog("GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
 
-        mqttPendingResponsesHandler(data, response);
+        mqttPendingResponsesHandler(message.callID, response);
     }
     else {
         data.status = "error";

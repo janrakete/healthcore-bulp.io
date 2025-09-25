@@ -511,9 +511,16 @@ router.patch("/:table", async function (request, response) {
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
                   common.conLog("Execute statement: " + statement.statement, "std", false);
 
-                  data.status = "ok";
+                  const result = await database.prepare(statement.statement).run();
 
-                  await database.prepare(statement.statement).run();
+                  if (result.changes === 0) {
+                     data.status = "error";
+                     data.error  ="Entry not found";
+                  }
+                  else {
+                     data.status = "ok";
+                     common.conLog("PATCH Request: entry updated successfully", "gre");
+                  }                  
                }
                else {
                   data.status = statement.status;

@@ -161,13 +161,13 @@ async function startBridgeAndServer() {
                           else {
                             common.conLog("Bluetooth: Subscribed to characteristic " + characteristic.uuid, "gre");
                             characteristic.on("data", function (value) { // if value is received from device, log it
-                              let message                         = {};
-                              message.deviceID                    = device.deviceID;
-                              message.properties                  = {}; // create empty array for properties
-                              message.bridge                      = BRIDGE_PREFIX;
-                              message.properties[property.name]   = device.deviceConverter.get(property, value);
+                              let message                     = {};
+                              message.deviceID                = device.deviceID;
+                              message.values                  = {}; // create empty array for properties
+                              message.bridge                  = BRIDGE_PREFIX;
+                              message.values[property.name]   = device.deviceConverter.get(property, value);
 
-                              mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker    
+                              mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker    
                             }); 
                           }
                         });
@@ -570,12 +570,16 @@ async function startBridgeAndServer() {
           common.conLog(error, "std", false);
         }
         else {
-          bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of devices registed at server
+          bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceRegistered => deviceRegistered.deviceID !== data.deviceID); // remove device from array of devices registed at server
           common.conLog("Bluetooth: Device disconnected and removed: " + data.deviceID, "gre");
-          
           mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
         }
       });
+    }
+    else {
+      bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceRegistered => deviceRegistered.deviceID !== data.deviceID); // remove device from array of devices registed at server
+      common.conLog("Bluetooth: Device removed: " + data.deviceID, "gre");
+      mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
     }
   }
 
@@ -612,7 +616,7 @@ async function startBridgeAndServer() {
   async function mqttDevicesValuesSet(data) {
     common.conLog("Bluetooth: Request for setting values of " + data.deviceID, "yel");
 
-    if (data.properties) {
+    if (data.values) {
       const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
       if (device) { // if device is in array of connected devices, try do set desired values
@@ -623,12 +627,12 @@ async function startBridgeAndServer() {
           for (const characteristic of service.characteristics) { // for each characteristic of service
             const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
             if (property !== undefined) { 
-              if (data.properties.hasOwnProperty(property.name)) { // if property is in properties, that should be set
+              if (data.values.hasOwnProperty(property.name)) { // if property is in properties, that should be set
                 if (property.write === true) { // if property is writable 
                   common.conLog("Bluetooth: Writing characteristic " + characteristic.uuid + " (" + property.name + ")", "yel");
                   const writePromise = new Promise(function (resolve, reject) { // create a promise for writing the characteristic value
 
-                    const anyValue       = data.properties[property.name]; // get value from property
+                    const anyValue       = data.values[property.name]; // get value from property
                     characteristic.write(device.deviceConverter.set(property, anyValue), false, function (error) {
                       if (error) {
                         common.conLog("Bluetooth: Error while writing characteristic:", "red");
@@ -657,7 +661,9 @@ async function startBridgeAndServer() {
         }
         await Promise.all(promises); // wait for all write operations to complete before publishing
   
-        data.properties = Object.keys(data.properties); // get only keys of properties that were set
+        data.values = Object.keys(data.values); // get only keys of properties that were set
+
+        mqttDevicesValuesGet(data); // ... get new values of properties that were set and publish them to MQTT broker
       }
       else { 
         common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
@@ -682,7 +688,7 @@ async function startBridgeAndServer() {
       let message                      = {};
       message.deviceID                 = data.deviceID;
       message.callID                   = data.callID;
-      message.propertiesAndValues      = [];
+      message.values                   = {};
 
       const services    = device.deviceRaw.services; // get services of device
       const promises = []; // array to store promises for reading characteristics
@@ -691,7 +697,7 @@ async function startBridgeAndServer() {
         for (const characteristic of service.characteristics) { // for each characteristic of service
           const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
           if (property !== undefined) { 
-            if (!data.properties || data.properties.includes(property.name)) { // if property is in requested properties or no properties are defined
+            if (!data.values || data.values.includes(property.name)) { // if property is in requested properties or no properties are defined
               common.conLog("Bluetooth: Reading characteristic " + characteristic.uuid + " (" + property.name + ")", "yel");
               const readPromise = new Promise(function (resolve, reject) { // create a promise for reading the characteristic value
                 characteristic.read(function (error, value) {
@@ -701,9 +707,7 @@ async function startBridgeAndServer() {
                     reject(error);
                   }
                   else {
-                    let propertyAndValue                = {};
-                    propertyAndValue[property.name]     = device.deviceConverter.get(property, value);
-                    message.propertiesAndValues.push(propertyAndValue); // add property to array of properties for return
+                    message.values[property.name]  = device.deviceConverter.get(property, value);
                     resolve();
                   }
                 });
@@ -721,7 +725,7 @@ async function startBridgeAndServer() {
       }
       
       await Promise.all(promises); // wait for all read operations to complete before publishing
-      mqttClient.publish("server/devices/values", JSON.stringify(message)); // ... publish to MQTT broker
+      mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
