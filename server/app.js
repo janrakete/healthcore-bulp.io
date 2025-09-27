@@ -172,8 +172,8 @@ async function startServer() {
       }
 
       switch (topic) {
-        case "server/devices/list":
-          mqttDevicesList(data);
+        case "server/devices/refresh":
+          mqttDevicesRefresh(data);
           break;
         case "server/devices/create":
           mqttDevicesCreate(data);
@@ -198,11 +198,11 @@ async function startServer() {
   });
 
   /**
-   * List devices based on the bridge
+   * Refreshed devices IN the bridge
    * @param {Object} data - The data object containing the bridge information.
    * @description This function retrieves a list of devices associated with a specific bridge from the database and publishes the list to the MQTT topic for that bridge.
    */
-  async function mqttDevicesList(data) {
+  async function mqttDevicesRefresh(data) {
     let message = {};
 
     if (data.bridge) {
@@ -213,7 +213,7 @@ async function startServer() {
         mqttClient.publish(data.bridge + "/devices/reconnect", JSON.stringify(message));
       }
       else {
-        mqttClient.publish(data.bridge + "/devices/list", JSON.stringify(message));
+        mqttClient.publish(data.bridge + "/devices/refresh", JSON.stringify(message));
       }
     }
     else {
@@ -247,7 +247,7 @@ async function startServer() {
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
           common.conLog("Server: Created device with ID " + data.deviceID, "gre");
-          mqttDevicesList({ bridge: data.bridge }); // publish updated device list to bridge
+          mqttDevicesRefresh({ bridge: data.bridge }); // publish updated device list to bridge
         }
       }
       else {

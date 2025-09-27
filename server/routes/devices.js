@@ -927,7 +927,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
 
 /**
  * @swagger
- * /devices/{bridge}/list/all:
+ * /devices/{bridge}/list:
  *   get:
  *     summary: Get all devices (registered and connected) of a bridge
  *     description: This endpoint retrieves all devices registered and connected to a specific bridge.
@@ -1003,7 +1003,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.get("/:bridge/list/all", async function (request, response) {
+router.get("/:bridge/list", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
 
@@ -1016,7 +1016,7 @@ router.get("/:bridge/list/all", async function (request, response) {
         message.callID      = common.randomHash(); // create a unique call ID to identify the request
         message.bridge      = bridge;
 
-        mqttClient.publish(bridge + "/devices/list/all", JSON.stringify(message)); // ... publish to MQTT broker
+        mqttClient.publish(bridge + "/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
         common.conLog("GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
 
         mqttPendingResponsesHandler(message.callID, response);
