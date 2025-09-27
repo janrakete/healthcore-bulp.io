@@ -391,11 +391,11 @@ async function startBridgeAndServer() {
         case "bluetooth/devices/update":
           mqttDevicesUpdate(data);
           break;
+        case "bluetooth/devices/refresh":
+          mqttDevicesRefresh(data);
+          break;
         case "bluetooth/devices/list":
           mqttDevicesList(data);
-          break;
-        case "bluetooth/devices/list/all":
-          mqttDevicesListAll(data);
           break;
 
         default:
@@ -459,25 +459,25 @@ async function startBridgeAndServer() {
 
       common.conLog("Bluetooth: Bridge is online - request all registered bluetooth devices from server", "yel");
 
-      mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... then request all registered Bluetooth devices from server via MQTT broker
+      mqttClient.publish("server/devices/refresh", JSON.stringify(message)); // ... then request all registered Bluetooth devices from server via MQTT broker
     }
   }
   
   /**
-   * Sets the list of devices registered at the server based on the provided data.
+   * Refreshes the list of devices registered at the server based on the provided data.
    * @param {Object} data 
-   * @description This function updates the list of devices registered at the server.
+   * @description This function updates IN the bridge the list of devices registered at the server.
    */
-  function mqttDevicesList(data) {
+  function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
   }
 
   /**
    * Gets the list of devices registered and connected at the server based on the provided data.
    * @param {Object} data 
-   * @description This function updates the list of devices registered at the server.
+   * @description This function sends OUT from the bridge the list of devices registered and connected at the server.
    */
-  function mqttDevicesListAll(data) {
+  function mqttDevicesList(data) {
     let message                   = {};
     message.bridge                = BRIDGE_PREFIX;
     message.callID                = data.callID;
@@ -491,7 +491,7 @@ async function startBridgeAndServer() {
       return deviceCopy;
     });
 
-    mqttClient.publish("server/devices/list/all", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
   }
 
   /**
