@@ -167,7 +167,7 @@ async function startBridgeAndServer() {
           message.deviceID     = payload.deviceID;
           message.bridge       = BRIDGE_PREFIX;
 
-          bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== message.deviceID); // remove device from array of connected and registered devices (because HTTP bridge is not a real bridge, connected devices are the same as registered devices)
+          mqttDevicesRemove(message); // remove device from bridge status immediately (because server will not send a message back after removing device)
 
           common.conLog("HTTP: Request for deleting device " + message.deviceID, "yel", false);
 
@@ -221,7 +221,7 @@ async function startBridgeAndServer() {
         }
         else {
           data.status  = "error";
-          data.error   = "No deviceID or productName given";
+          data.error   = "No deviceID or productName or powerType given";
         }
       }
     }
@@ -314,6 +314,9 @@ async function startBridgeAndServer() {
         case "http/devices/list":
           mqttDevicesList(message);
           break;
+        case "http/devices/update":
+          mqttDevicesUpdate(message);
+          break;
         default:
           common.conLog("HTTP: NOT found matching message handler for " + topic, "red");
       }
@@ -326,18 +329,33 @@ async function startBridgeAndServer() {
 
 
   /**
-   * If message is for adding devices (this message ist sent AFTER server created device)
+   * Create a new device
+   * @param {Object} data 
+   * @description This function creates the information of a registered device.
    */
   function mqttDevicesCreate(data) {
-    // TODO: zu arrays hinzufügen
+    common.conLog("HTTP: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+    mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
   }
 
   /**
    * If message is for removing devices (this message ist sent AFTER server removed device)
    * @param {Object} data
+   * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
-    // TODO: aus arrays löschen
+    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected and registered devices (because HTTP bridge is not a real bridge, connected devices are the same as registered devices)
+      mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
+  }
+
+  /**
+   * Updates the information of a registered device.
+   * @param {Object} data 
+   * @description This function updates the information of a registered device.
+   */
+  function mqttDevicesUpdate(data) {
+    common.conLog("HTTP: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
+    mqttClient.publish("server/devices/update", JSON.stringify(data)); // publish updated device to MQTT broker
   }
 
   /**
@@ -360,7 +378,6 @@ async function startBridgeAndServer() {
       }
     }
 
-
     common.conLog("HTTP: Listed all registered HTTP devices from server and set bridge status", "gre");
   }
 
@@ -380,7 +397,6 @@ async function startBridgeAndServer() {
     mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
     common.conLog("HTTP: Listed all registered and connected devices from server", "gre");
   }
-
 
   /**
    * If message is for getting properties and values of a connected device
