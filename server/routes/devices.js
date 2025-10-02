@@ -789,12 +789,11 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
 
             mqttPendingResponsesHandler(message.callID, response);
 
-            if (message.bridge === "bluetooth") {
+            if (message.bridge === "bluetooth" || message.bridge === "zigbee") { // Request latest values from the device via MQTT, i.e. Bluetooth or Zigbee
                 mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
             }
-            else if (message.bridge === "http") {
-                // Get latest values from database for the device
+            else { // Get latest values from database for the device, i.e. HTTP or LoRa
                 const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? GROUP BY property ORDER BY property ASC");
                 const results   = await statement.all(message.deviceID, message.bridge);
 

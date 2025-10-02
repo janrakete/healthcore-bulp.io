@@ -344,7 +344,7 @@ async function startBridgeAndServer() {
    * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
-    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected and registered devices (because HTTP bridge is not a real bridge, connected devices are the same as registered devices)
+    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected and registered devices (because HTTP bridge is not a bridge like BLE, connected devices are the same as registered devices)
       mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
   }
 
@@ -359,9 +359,9 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * If message is for listing devices (this message ist sent AFTER server listed devices)
+   * Refreshes the list of devices registered at the server based on the provided data.
    * @param {Object} data
-   * @description This function updates the bridge status with the list of devices registered at the server and connected devices.
+   * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
@@ -382,9 +382,9 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * Gets the list of devices registered and connected at the server based on the provided data.
+   * Gets the list of devices registered and connected at the bridge based on the provided data.
    * @param {Object} data 
-   * @description This function updates the list of devices registered at the server.
+   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
    */
   function mqttDevicesList(data) {
     let message                   = {};
@@ -393,6 +393,11 @@ async function startBridgeAndServer() {
 
     message.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer; 
     message.devicesConnected           = bridgeStatus.devicesConnected;
+    message.devicesConnected = message.devicesConnected.map(device => { // delete deviceConverter from devicesConnected, because they cannot be stringified
+      const deviceCopy = { ...device };
+      delete deviceCopy.deviceConverter;
+      return deviceCopy;
+    });      
 
     mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
     common.conLog("HTTP: Listed all registered and connected devices from server", "gre");
