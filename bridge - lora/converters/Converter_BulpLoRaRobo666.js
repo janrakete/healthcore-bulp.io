@@ -34,7 +34,7 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
      */   
     get(values) {
         let propertiesAndValues             = [];
-        let propertiesAndValuesConverted    = [];
+        let propertiesAndValuesConverted    = {};
 
         // split the input string into an array of property-value pairs
         propertiesAndValues.push({ "heartrate": values.substring(0, 1) });
@@ -72,7 +72,8 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
                     default:
                         break;
                 }
-                propertiesAndValuesConverted.push(propertyAndValueConverted);
+                propertiesAndValuesConverted = { ...propertiesAndValuesConverted, ...propertyAndValueConverted };
+
             }
         }
         return propertiesAndValuesConverted;

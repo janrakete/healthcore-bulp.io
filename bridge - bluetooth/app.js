@@ -473,9 +473,9 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * Gets the list of devices registered and connected at the server based on the provided data.
+   * Gets the list of devices registered and connected at the bridge based on the provided data.
    * @param {Object} data 
-   * @description This function sends OUT from the bridge the list of devices registered and connected at the server.
+   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
    */
   function mqttDevicesList(data) {
     let message                   = {};
