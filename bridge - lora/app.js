@@ -46,6 +46,11 @@ async function startBridgeAndServer() {
   const mqtt       = require("mqtt");
   const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: BRIDGE_PREFIX }); // connect to broker ...
 
+  /**
+   * Connects the MQTT client and subscribes to Bluetooth-related topics.
+   * @function
+   * @description This function is called when the MQTT client successfully connects to the broker.
+   */
   function mqttConnect() {
     mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to LoRa topics
       common.conLog("MQTT: Subscribed to LoRa topics from broker", "yel"); 
@@ -60,7 +65,7 @@ async function startBridgeAndServer() {
       common.conLog("LoRa: Bridge is online - request all registered LoRa devices from server", "yel");
       let message     = {};
       message.bridge  = BRIDGE_PREFIX;
-      mqttClient.publish("server/devices/list", JSON.stringify(message)); // request all registered LoRa devices from server via MQTT broker 
+      mqttClient.publish("server/devices/refresh", JSON.stringify(message)); // request all registered LoRa devices from server via MQTT broker 
 
     });
   }
@@ -117,7 +122,7 @@ async function startBridgeAndServer() {
   const { SerialPort }      = require("serialport");
   const { ReadlineParser }  = require("@serialport/parser-readline");
 
-  const loRa            = new SerialPort({ path: appConfig.CONF_loRaAdapterPath, baudRate: parseInt(appConfig.CONF_loRaAdapterBaudRate), autoOpen: true });
+  const loRa            = new SerialPort({ path: appConfig.CONF_loRaAdapterPath, baudRate: appConfig.CONF_loRaAdapterBaudRate, autoOpen: true });
   const loRaDataParser  = loRa.pipe(new ReadlineParser({ delimiter: "\r\n" }));
 
   /**
@@ -190,7 +195,7 @@ async function startBridgeAndServer() {
 
           common.conLog("LoRa: Request for sending values of device " + deviceID, "yel", false);
 
-          mqttDeviceGet(message); 
+          mqttDevicesValuesGet(message); 
         }
         else { // if device is not in array of connected devices, send error message
           common.conLog("LoRa: Device is not connected or registered at server", "red");
@@ -216,17 +221,23 @@ async function startBridgeAndServer() {
       message = JSON.parse(message); // parse message to JSON
 
       switch (topic) {
-        case "lora/device/create":
-          mqttDeviceCreate(message);
+        case "lora/devices/create":
+          mqttDevicesCreate(message);
           break;
-        case "lora/device/remove":
-          mqttDeviceRemove(message);
+        case "lora/devices/remove":
+          mqttDevicesRemove(message);
           break;
-        case "lora/device/get":
-          mqttDeviceGet(message);
+        case "lora/devices/values/get":
+          mqttDevicesValuesGet(message);
           break;
-        case "lora/devices/connect":
-          mqttDeviceConnect(message);
+        case "lora/devices/refresh":
+          mqttDevicesRefresh(message);
+          break;
+        case "lora/devices/list":
+          mqttDevicesList(message);
+          break;
+        case "lora/devices/update":
+          mqttDevicesUpdate(message);
           break;
         default:
           common.conLog("LoRa: NOT found matching message handler for " + topic, "red");
@@ -239,34 +250,48 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * If message is for adding devices (this message ist sent AFTER server created device)
+   * Create a new device
+   * @param {Object} data 
+   * @description This function creates the information of a registered device.
    */
-  function mqttDeviceCreate(data) {
-    // TODO: add to arrays
-
+  function mqttDevicesCreate(data) {
+    common.conLog("LoRa: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+    mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
   }
 
   /**
    * If message is for removing devices (this message ist sent AFTER server removed device)
+   * @param {Object} data
+   * @description This function removes a device from the bridge status.
    */
-  function mqttDeviceRemove(data) {
-    // TODO: remove from arrays
+  function mqttDevicesRemove(data) {
+    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected and registered devices (because LoRa bridge is not a bridge like BLE, connected devices are the same as registered devices)
+      mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
   }
 
   /**
-   * If message is for connecting to registered devices, add them list of connected devices
-   * @param {Object} data - The data object containing the devices to connect.
-   * @description This function updates the bridge status with the devices that are connected. It also assigns a converter to each device based on its product name. If no converter is found, it logs an error message.
+   * Updates the information of a registered device.
+   * @param {Object} data 
+   * @description This function updates the information of a registered device.
    */
-  function mqttDeviceConnect(data) {
-    // because LoRa devices have no pairing mode, connected devices are the same as registered devices
+  function mqttDevicesUpdate(data) {
+    common.conLog("LoRa: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
+    mqttClient.publish("server/devices/update", JSON.stringify(data)); // publish updated device to MQTT broker
+  }
+
+  /**
+   * Refreshes the list of devices registered at the server based on the provided data.
+   * @param {Object} data
+   * @description This function updates IN the bridge the list of devices registered at the server.
+   */
+  function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
-    bridgeStatus.devicesConnected            = data.devices; // save all devices connected in array 
+    bridgeStatus.devicesConnected            = data.devices; // save all devices connected in array
 
     for (let device of bridgeStatus.devicesConnected) { // for each device in array of connected devices
       device.deviceConverter = convertersList.find(device.productName); // get converter for device from list of converters
 
-      if (device.deviceConverter === undefined) {
+      if (device.deviceConverter === undefined) { 
         common.conLog("LoRa: No converter found for " + device.productName, "red");
       }
       else {
@@ -274,31 +299,52 @@ async function startBridgeAndServer() {
       }
     }
 
-    common.conLog("LoRa: Connected to devices", "gre");
+    common.conLog("LoRa: Listed all registered LoRa devices from server and set bridge status", "gre");
+  }
+
+  /**
+   * Gets the list of devices registered and connected at the bridge based on the provided data.
+   * @param {Object} data 
+   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
+   */
+  function mqttDevicesList(data) {
+    let message                   = {};
+    message.bridge                = BRIDGE_PREFIX;
+    message.callID                = data.callID;
+
+    message.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer; 
+    message.devicesConnected           = bridgeStatus.devicesConnected;
+    message.devicesConnected = message.devicesConnected.map(device => { // delete deviceConverter from devicesConnected, because they cannot be stringified
+      const deviceCopy = { ...device };
+      delete deviceCopy.deviceConverter;
+      return deviceCopy;
+    });    
+
+    mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
+    common.conLog("LoRa: Listed all registered and connected devices from server", "gre");
   }
 
   /**
    * If message is for getting properties and values of a connected device
-   * @param {Object} data - The data object containing the device ID and values
-   * @description This function retrieves the properties and values of a connected device based on its ID
+   * @param {Object} data - The data object containing the device ID and values to be converted.
+   * @description This function retrieves the properties and values of a connected device, converts them using the device's converter, and publishes the results to the MQTT broker.
    */
-  function mqttDeviceGet(data) {
-    let message                   = {};
-    message.deviceID              = data.deviceID;
-    message.propertiesAndValues   = [];
-    message.bridge  = BRIDGE_PREFIX;
+  function mqttDevicesValuesGet(data) {
+    let message        = {};
+    message.deviceID   = data.deviceID;
+    message.bridge     = BRIDGE_PREFIX;
+    message.callID     = data.callID;
+    message.values     = {};
 
     const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
     if (device) { // if device is in array of connected devices, convert values
-
-      const propertiesAndValues    = device.deviceConverter.get(data.values);
-      message.propertiesAndValues  = propertiesAndValues;
+      message.values = device.deviceConverter.get(data.values);
     }
     else { // if device is not in array of connected devices, send error message
       common.conLog("LoRa: Device is not connected or registered at server", "red");
     }
 
-    mqttClient.publish("server/device/values", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
   }
 }
   
