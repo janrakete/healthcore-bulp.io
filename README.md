@@ -1,6 +1,6 @@
 # healthcore.dev by bulp.io
 
-▷ **Current status:** 0% █████████████████████████▒▒▒▒▒ 100% (= first running version)
+▷ **Current status:** 0% ██████████████████████████▒▒▒▒ 100% (= first running version)
 
 Hi.
 
@@ -85,8 +85,8 @@ production-start.sh uses the process manager, so that a service is restarted if 
 ```plaintext
 ├── broker/               # MQTT broker
 ├── server/               # Server
-│   ├── routes/           # Routes for communication Server ↔ Interface via API 
-│   └── sse/              # Routes for communication Server ↔ Interface via SSE (Server-Sent Events)
+│   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
+│   └── libs/             # Additionally libraries
 ├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
 │   └── converters/       # Common and own converters
 ├── bridge - zigbee/      # ZigBee ↔ MQTT bridge

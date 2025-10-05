@@ -14,12 +14,12 @@ const router        = require("express").Router();
 
 /**
  * MQTT Pending Responses Handler
- * @param {Object} data 
- * @param {Object} response 
+ * @param {string} callID
+ * @param {Object} response
  * @returns {void}
  * @description This function handles pending MQTT responses by setting a timeout for the response and storing the callback in a map.
  */
-function mqttPendingResponsesHandler(callID, response) {
+function mqttPendingResponsesHandler(callID, response) { 
     const data = {};
     
     const responseTimeout = setTimeout(() => {
@@ -785,11 +785,24 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
             message.deviceID    = payload.deviceID.trim();
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
-
-            mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            message.values      = {};
 
             mqttPendingResponsesHandler(message.callID, response);
+
+            if (message.bridge === "bluetooth" || message.bridge === "zigbee") { // Request latest values from the device via MQTT, i.e. Bluetooth or Zigbee
+                mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
+                common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            }
+            else { // Get latest values from database for the device, i.e. HTTP or LoRa
+                const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? GROUP BY property ORDER BY property ASC");
+                const results   = await statement.all(message.deviceID, message.bridge);
+
+                for (const result of results) {
+                    message.values[result.property] = { value: result.value, valueAsNumeric: result.valueAsNumeric };
+                }
+                mqttPendingResponses[message.callID](message);
+            }
+
         }
         else {
             data.status = "error";
@@ -927,7 +940,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
 
 /**
  * @swagger
- * /devices/{bridge}/list/all:
+ * /devices/{bridge}/list:
  *   get:
  *     summary: Get all devices (registered and connected) of a bridge
  *     description: This endpoint retrieves all devices registered and connected to a specific bridge.
@@ -1003,7 +1016,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.get("/:bridge/list/all", async function (request, response) {
+router.get("/:bridge/list", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
 
@@ -1016,7 +1029,7 @@ router.get("/:bridge/list/all", async function (request, response) {
         message.callID      = common.randomHash(); // create a unique call ID to identify the request
         message.bridge      = bridge;
 
-        mqttClient.publish(bridge + "/devices/list/all", JSON.stringify(message)); // ... publish to MQTT broker
+        mqttClient.publish(bridge + "/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
         common.conLog("GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
 
         mqttPendingResponsesHandler(message.callID, response);
