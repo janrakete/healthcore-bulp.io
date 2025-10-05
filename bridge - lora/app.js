@@ -46,6 +46,11 @@ async function startBridgeAndServer() {
   const mqtt       = require("mqtt");
   const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: BRIDGE_PREFIX }); // connect to broker ...
 
+  /**
+   * Connects the MQTT client and subscribes to Bluetooth-related topics.
+   * @function
+   * @description This function is called when the MQTT client successfully connects to the broker.
+   */
   function mqttConnect() {
     mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to LoRa topics
       common.conLog("MQTT: Subscribed to LoRa topics from broker", "yel"); 
