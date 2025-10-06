@@ -154,6 +154,7 @@ async function startBridgeAndServer() {
     constructor() {
       this.devicesConnected          = [];
       this.devicesRegisteredAtServer = [];
+      this.deviceScanCallID          = undefined;
     }
   }
   const bridgeStatus = new BridgeStatus(); // create new object for bridge status
@@ -189,8 +190,9 @@ async function startBridgeAndServer() {
   /**
    * Request all registered ZigBee devices from server via MQTT broker
    */
-  let message     = {};
-  message.bridge  = BRIDGE_PREFIX;
+  let message              = {};
+  message.bridge           = BRIDGE_PREFIX;
+  message.forceReconnect   = true;  
   mqttClient.publish("server/devices/refresh", JSON.stringify(message));
   
   /**
@@ -203,16 +205,23 @@ async function startBridgeAndServer() {
   zigBee.on("deviceInterview", async function (data) { 
     let message = {};
     message.deviceID           = data.device.ieeeAddr;
-    message.interviewCompleted = data.device.interviewCompleted;
     message.lastSeen           = data.device.lastSeen;
     message.vendorName         = data.device.manufacturerName;
     message.productName        = data.device.modelID;
     message.softwareBuildID    = data.device.softwareBuildID;
     message.type               = data.device.type;
+    message.powerType          = data.device.powerSource;
     message.bridge             = BRIDGE_PREFIX;
 
-    if (message.interviewCompleted) { // ... and has been interviewed ...
-      common.conLog("ZigBee: device has joined and been interviewed", "yel");
+    if (data.device.interviewState === "PENDING") {
+      common.conLog("ZigBee: device is currently interviewing", "yel");
+      common.conLog(message, "std", false);
+
+      message.callID = bridgeStatus.deviceScanCallID; // add callID if device is discovered during scanning
+      mqttClient.publish("server/devices/discover", JSON.stringify(message)); // ... publish to MQTT broker
+    }
+    else if (data.device.interviewState === "SUCCESSFUL") {
+      common.conLog("ZigBee: device has joined and been interviewed", "gre");
       common.conLog(message, "std", false);
       
       mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
@@ -228,6 +237,8 @@ async function startBridgeAndServer() {
   zigBee.on("deviceLeave", function (data) {
     common.conLog("ZigBee: device has left", "yel");
     common.conLog(data, "std", false);
+
+    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.ieeeAddr); // remove device from array of connected and registered devices
 
     let message      = {};
     message.deviceID = data.ieeeAddr;
@@ -316,6 +327,10 @@ async function startBridgeAndServer() {
     common.conLog("ZigBee: joining status has been changed to", "yel");
     common.conLog(data, "std", false);
 
+    if (data.permitted === false) {
+      bridgeStatus.deviceScanCallID = undefined;    
+    }
+
     let message      = {};
     message.scanning = data.permitted;
     message.bridge   = BRIDGE_PREFIX;
@@ -334,6 +349,9 @@ async function startBridgeAndServer() {
     let message    = {};
     message.status = "offline";
     message.bridge = BRIDGE_PREFIX;    
+    
+    bridgeStatus.deviceScanCallID = undefined;    
+    
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
@@ -357,7 +375,10 @@ async function startBridgeAndServer() {
         case "zigbee/devices/scan":
           mqttDevicesScan(data);
           break;
-        case "zigbee/devices/connect":
+        case "zigbee/devices/reconnect": // this message is used to connect to ALL registered devices
+          mqttDevicesReconnect(data);
+          break;
+        case "zigbee/devices/connect": // this message is used to connect to ONE specific device
           mqttDevicesConnect(data);
           break;
         case "zigbee/devices/remove":
@@ -395,6 +416,9 @@ async function startBridgeAndServer() {
    */
   function mqttDevicesScan(data) {
     let message = {};
+
+    bridgeStatus.deviceScanCallID = data.callID;
+
     common.conLog("ZigBee: Joining possible for " + data.duration + " seconds", "yel");
     zigBee.permitJoin(data.duration);
     // -> MQTT publish is not needed here, because this is done in the event permitJoinChanged
@@ -417,12 +441,27 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * Refreshes the list of devices registered at the server based on the provided data.
+   * Refreshes the list of devices registered at the server based on the provided data
    * @param {Object} data 
    * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
+  }
+
+  /**
+   * If message is for reconnecting to registered devices, start scanning for devices
+   * @param {Object} data - The data object containing the devices to connect to.
+   * @description This function handles the request to connect to registered devices by scanning for them and publishing
+   */
+  function mqttDevicesReconnect(data) {
+    bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
+    bridgeStatus.devicesConnected            = []; // reset array of connected devices
+    common.conLog("ZigBee: Request to connect to devices", "yel");
+    
+    for (const device of bridgeStatus.devicesRegisteredAtServer) {
+      mqttDevicesConnect(device); // try to connect to each device
+    }
   }
 
   /**
@@ -441,15 +480,9 @@ async function startBridgeAndServer() {
    * @description This function is called when a message is received on the "zigbee/devices/connect" topic. It iterates through the array of devices provided in the message and attempts to connect to each device. If the device is mains-powered, it checks if the device is pingable before adding it to the list of connected devices.
    */
   async function mqttDevicesConnect(data) {
-    bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
+      device = deviceGetInfo(data.deviceID, bridgeStatus.devicesRegisteredAtServer); // get device information
 
-    for (let device of bridgeStatus.devicesRegisteredAtServer) {
-      device = deviceGetInfo(device.deviceID, bridgeStatus.devicesRegisteredAtServer); // get device information
-
-      if (device === undefined) { // if device is not found, continue with next device
-        continue;
-      }
-      else {
+      if (device) {
         common.conLog("ZigBee: Try to connect to device " + device.deviceID + " ...", "yel");
         
         if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable
@@ -468,7 +501,7 @@ async function startBridgeAndServer() {
           bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
         }
       }
-    }
+    
   }
 
   /**

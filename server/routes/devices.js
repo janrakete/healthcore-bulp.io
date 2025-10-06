@@ -47,7 +47,7 @@ function mqttPendingResponsesHandler(callID, response) {
  * @swagger
  *   /devices/scan:
  *     post:
- *       summary: Scan for devices
+ *       summary: Scan for devices (only Bluetooth and ZigBee)
  *       description: This endpoint allows you to initiate a scan for devices connected to a specific bridge.
  *       tags:
  *        - Devices
@@ -145,7 +145,7 @@ router.post("/scan", async function (request, response) {
  * @swagger
  *   /devices/scan/info:
  *     get:
- *       summary: Get information about scanned devices
+ *       summary: Get information about scanned devices (only Bluetooth and ZigBee)
  *       description: This endpoint allows you to retrieve information about devices that were discovered during a scan.
  *       tags:
  *         - Devices
@@ -258,7 +258,7 @@ router.get("/scan/info", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/{deviceID}/connect:
  *     post:
- *       summary: Connect a device via ID
+ *       summary: Connect a device via ID (only Bluetooth and ZigBee - but only with powerType = "mains")
  *       description: This endpoint allows you to connect a device using its ID.
  *       tags:
  *         - Devices
@@ -385,7 +385,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/{deviceID}/disconnect:
  *     post:
- *       summary: Disconnect a device
+ *       summary: Disconnect a device (only Bluetooth)
  *       description: This endpoint allows you to disconnect a device using its ID.
  *       tags:
  *         - Devices
@@ -826,7 +826,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
  * @swagger
  * /devices/{bridge}/{deviceID}/values:
  *   post:
- *     summary: Set device values
+ *     summary: Set device values (only Bluetooth and ZigBee)
  *     description: This endpoint sets new values for a connected device.
  *     tags:
  *       - Devices
