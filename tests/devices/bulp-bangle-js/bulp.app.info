@@ -1,5 +1,0 @@
-require("Storage").write("timer.info",{
-  "id":"timer",
-  "name":"My Timer",
-  "src":"timer.app.js"
-});
