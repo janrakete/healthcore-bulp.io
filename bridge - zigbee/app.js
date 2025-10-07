@@ -266,8 +266,11 @@ async function startBridgeAndServer() {
         common.conLog("ZigBee: Device " + deviceID + " NOT added to list of connected devices", "red");
       }
       else {
-        common.conLog("ZigBee: Device " + data.deviceID + " added to list of connected devices", "gre");
-        bridgeStatus.devicesConnected.push(data); // add device to array of connected devices
+        const deviceConnected = deviceSearchInArray(deviceID, bridgeStatus.devicesConnected); // check if device is already in array of connected devices
+        if (deviceConnected === undefined) { // if device is not in array of connected devices, add it
+          common.conLog("ZigBee: Device " + data.deviceID + " added to list of connected devices", "gre");
+          bridgeStatus.devicesConnected.push(data); // add device to array of connected devices
+        }
       }
     }
     else {
