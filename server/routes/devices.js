@@ -45,12 +45,20 @@ function mqttPendingResponsesHandler(callID, response) {
 
 /**
  * @swagger
- *   /devices/scan:
+ *   /devices/{bridge}/scan:
  *     post:
  *       summary: Scan for devices (only Bluetooth and ZigBee)
  *       description: This endpoint allows you to initiate a scan for devices connected to a specific bridge.
  *       tags:
- *        - Devices
+ *         - Devices
+ *       parameters:
+ *         - in: path
+ *           name: bridge
+ *           required: true
+ *           description: The name of the bridge.
+ *           schema:
+ *             type: string
+ *             example: bluetooth
  *       requestBody:
  *         required: true
  *         content:
@@ -58,10 +66,6 @@ function mqttPendingResponsesHandler(callID, response) {
  *             schema:
  *               type: object
  *               properties:
- *                 bridge:
- *                   type: string
- *                   description: The bridge to scan for devices.
- *                   example: "bluetooth"
  *                 duration:
  *                   type: integer
  *                   description: The duration of the scan in seconds.
@@ -97,9 +101,12 @@ function mqttPendingResponsesHandler(callID, response) {
  *                     type: string
  *                     example: "Error message"
  */
-router.post("/scan", async function (request, response) {
-   const payload  = request.body;
-   let data       = {};
+router.post("/:bridge/scan", async function (request, response) {
+    const payload  = {};
+    payload.bridge = request.params.bridge;
+    payload.body   = request.body;
+
+    let data       = {};
 
     if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
         if (payload.bridge !== undefined) {
@@ -107,12 +114,12 @@ router.post("/scan", async function (request, response) {
             const bridge = payload.bridge.trim();
 
             let message         = {};
-            message.duration    = (payload.duration !== undefined) ? payload.duration : appConfig.CONF_scanTimeDefaultSeconds;
+            message.duration    = (payload.body.duration !== undefined) ? payload.body.duration : appConfig.CONF_scanTimeDefaultSeconds;
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
 
-            data.data = {};
-            data.data.callID         = message.callID; // return the call ID in the response
+            data.data        = {};
+            data.data.callID = message.callID; // return the call ID in the response
 
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
             
@@ -143,13 +150,20 @@ router.post("/scan", async function (request, response) {
 
 /**
  * @swagger
- *   /devices/scan/info:
+ *   /devices/{bridge}/scan/info:
  *     get:
  *       summary: Get information about scanned devices (only Bluetooth and ZigBee)
  *       description: This endpoint allows you to retrieve information about devices that were discovered during a scan.
  *       tags:
  *         - Devices
  *       parameters:
+ *         - in: path
+ *           name: bridge
+ *           required: true
+ *           description: The name of the bridge.
+ *           schema:
+ *             type: string
+ *             example: bluetooth
  *         - in: query
  *           name: callID
  *           required: true
@@ -208,7 +222,7 @@ router.post("/scan", async function (request, response) {
  *                     type: string
  *                     example: "No call ID provided"
  */
-router.get("/scan/info", async function (request, response) {
+router.get("/:bridge/scan/info", async function (request, response) {
     const payload  = {};
     payload.callID = request.query.callID;
     let data       = {};
@@ -385,7 +399,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/{deviceID}/disconnect:
  *     post:
- *       summary: Disconnect a device (only Bluetooth)
+ *       summary: Disconnect a device (only Bluetooth and ZigBee)
  *       description: This endpoint allows you to disconnect a device using its ID.
  *       tags:
  *         - Devices

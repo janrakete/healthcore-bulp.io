@@ -221,6 +221,7 @@ async function startBridgeAndServer() {
       mqttClient.publish("server/devices/discover", JSON.stringify(message)); // ... publish to MQTT broker
     }
     else if (data.device.interviewState === "SUCCESSFUL") {
+        
       common.conLog("ZigBee: device has joined and been interviewed", "gre");
       common.conLog(message, "std", false);
       
@@ -402,6 +403,9 @@ async function startBridgeAndServer() {
         case "zigbee/devices/update":
           mqttDevicesUpdate(data);
           break;
+        case "zigbee/devices/disconnect":
+          mqttDevicesDisconnect(data);
+          break;
         default:
           common.conLog("ZigBee: NOT found matching message handler for " + topic, "red");
       }
@@ -468,6 +472,29 @@ async function startBridgeAndServer() {
   }
 
   /**
+   * If message is for disconnecting a connected device
+   * @param {Object} data - The data object containing the device ID to disconnect.
+   * @description This function handles the request to disconnect a connected device by searching for it in the list of connected devices.
+   */
+  function mqttDevicesDisconnect(data) {
+    common.conLog("ZigBee: Request for disconnecting " + data.deviceID, "yel");
+  
+    const device = deviceGetInfo(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
+
+    if (device) { // if device is in array of connected devices, try do disconnect
+      device.deviceRaw.removeFromNetwork();
+      bridgeStatus.devicesConnected = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected devices
+      common.conLog("ZigBee: Device disconnected: " + data.deviceID, "gre");
+
+      mqttClient.publish("server/devices/disconnect", JSON.stringify(data)); // publish disconnected device to MQTT broker
+    }
+    else {
+      common.conLog("ZigBee: Device " + data.deviceID + " is not connected", "red");
+    }
+  }
+
+
+  /**
    * Updates the information of a registered device.
    * @param {Object} data 
    * @description This function updates the information of a registered device.
@@ -483,28 +510,29 @@ async function startBridgeAndServer() {
    * @description This function is called when a message is received on the "zigbee/devices/connect" topic. It iterates through the array of devices provided in the message and attempts to connect to each device. If the device is mains-powered, it checks if the device is pingable before adding it to the list of connected devices.
    */
   async function mqttDevicesConnect(data) {
-      device = deviceGetInfo(data.deviceID, bridgeStatus.devicesRegisteredAtServer); // get device information
+    device = deviceGetInfo(data.deviceID, bridgeStatus.devicesRegisteredAtServer); // get device information
+    device.callID = data.callID; // add callID to device if provided
 
-      if (device) {
-        common.conLog("ZigBee: Try to connect to device " + device.deviceID + " ...", "yel");
-        
-        if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable
-          common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
-          if (await deviceIsPingable(device)) {
-            common.conLog("... and added " + device.deviceID + " to list to list of connected devices", "gre", false);
-            bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
-          }
-          else {
-            common.conLog("... but " + device.deviceID + " was not pingable and added not to list of connected devices", "red", false);
-          }
-        }
-        else {
-          common.conLog("... Device " + device.deviceID + " is not wired and not pingable ...", "std", false);
-          common.conLog("... so just added to list to list of connected devices", "gre", false);
+    if (device) {
+      common.conLog("ZigBee: Try to connect to device " + device.deviceID + " ...", "yel");
+      
+      if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable
+        common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
+        if (await deviceIsPingable(device)) {
+          common.conLog("... and added " + device.deviceID + " to list to list of connected devices", "gre", false);
           bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
         }
+        else {
+          common.conLog("... but " + device.deviceID + " was not pingable and added not to list of connected devices", "red", false);
+        }
       }
-    
+      else {
+        common.conLog("... Device " + device.deviceID + " is not wired and not pingable ...", "std", false);
+        common.conLog("... so just added to list to list of connected devices", "gre", false);
+        bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
+      }
+      mqttClient.publish("server/devices/connect", JSON.stringify(device));        
+    }
   }
 
   /**
@@ -519,8 +547,8 @@ async function startBridgeAndServer() {
     const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
     if (device) { // if device is in array of connected devices, try do disconnect
-      device.deviceRaw.removeFromDatabase();
       device.deviceRaw.removeFromNetwork();
+      device.deviceRaw.removeFromDatabase();
       bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of devices registed at server
       bridgeStatus.devicesConnected           = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected devices
       common.conLog("ZigBee: Device disconnected and removed: " + data.deviceID, "gre");
