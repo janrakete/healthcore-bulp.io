@@ -399,7 +399,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/{deviceID}/disconnect:
  *     post:
- *       summary: Disconnect a device (only Bluetooth and ZigBee)
+ *       summary: Disconnect a device (only Bluetooth)
  *       description: This endpoint allows you to disconnect a device using its ID.
  *       tags:
  *         - Devices
