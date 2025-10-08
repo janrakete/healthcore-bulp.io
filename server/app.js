@@ -247,7 +247,7 @@ async function startServer() {
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
           common.conLog("Server: Created device with ID " + data.deviceID, "gre");
-          mqttDevicesRefresh({ bridge: data.bridge }); // publish updated device list to bridge
+          mqttDevicesRefresh({ bridge: data.bridge, forceReconnect: true }); // publish updated device list to bridge and force reconnect
         }
       }
       else {
