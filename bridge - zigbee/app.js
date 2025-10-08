@@ -403,9 +403,6 @@ async function startBridgeAndServer() {
         case "zigbee/devices/update":
           mqttDevicesUpdate(data);
           break;
-        case "zigbee/devices/disconnect":
-          mqttDevicesDisconnect(data);
-          break;
         default:
           common.conLog("ZigBee: NOT found matching message handler for " + topic, "red");
       }
@@ -470,29 +467,6 @@ async function startBridgeAndServer() {
       mqttDevicesConnect(device); // try to connect to each device
     }
   }
-
-  /**
-   * If message is for disconnecting a connected device
-   * @param {Object} data - The data object containing the device ID to disconnect.
-   * @description This function handles the request to disconnect a connected device by searching for it in the list of connected devices.
-   */
-  function mqttDevicesDisconnect(data) {
-    common.conLog("ZigBee: Request for disconnecting " + data.deviceID, "yel");
-  
-    const device = deviceGetInfo(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
-
-    if (device) { // if device is in array of connected devices, try do disconnect
-      device.deviceRaw.removeFromNetwork();
-      bridgeStatus.devicesConnected = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected devices
-      common.conLog("ZigBee: Device disconnected: " + data.deviceID, "gre");
-
-      mqttClient.publish("server/devices/disconnect", JSON.stringify(data)); // publish disconnected device to MQTT broker
-    }
-    else {
-      common.conLog("ZigBee: Device " + data.deviceID + " is not connected", "red");
-    }
-  }
-
 
   /**
    * Updates the information of a registered device.
