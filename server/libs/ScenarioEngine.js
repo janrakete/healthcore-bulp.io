@@ -205,12 +205,12 @@ class ScenarioEngine {
   async executeAction(action) {
     try {
         const message = {};
-        message.deviceID                    = action.deviceID;
-        message.bridge                      = action.bridge;
-        message.properties                  = {};
-        message.properties[action.property] = this.convertValue(action.value, action.valueType);
+        message.deviceID                = action.deviceID;
+        message.bridge                  = action.bridge;
+        message.values                  = {};
+        message.values[action.property] = this.convertValue(action.value, action.valueType);
 
-        const topic = action.bridge + "/devices/set";
+        const topic = action.bridge + "/devices/values/set";
         mqttClient.publish(topic, JSON.stringify(message));
 
         common.conLog("Scenario Engine: Executed action - Set " + action.deviceID + "/" + action.property + " = " + action.value, "yel");
