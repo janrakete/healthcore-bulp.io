@@ -485,7 +485,7 @@ async function startBridgeAndServer() {
    */
   async function mqttDevicesConnect(data) {
     device = deviceGetInfo(data.deviceID, bridgeStatus.devicesRegisteredAtServer); // get device information
-    device.callID = data.callID; // add callID to device if provided
+    device.callID = data.callID !== undefined ? data.callID : null; // add callID to device if provided
 
     if (device) {
       common.conLog("ZigBee: Try to connect to device " + device.deviceID + " ...", "yel");
@@ -598,15 +598,14 @@ async function startBridgeAndServer() {
     if (data.values) {
       const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
-      console.log(data);
-
       if (device) { // if device is in array of connected devices, try do get desired values
         if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable and able to read values
           common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
           if (await deviceIsPingable(device)) {
             for (const [propertyName, value] of Object.entries(data.values)) { // for each property in requested properties
+              
               const property = device.deviceConverter.getPropertyByPropertyName(propertyName); // get property by name from converter
-
+              
               if (property === undefined) { // if property is not found, log error
                 common.conLog("ZigBee: No property found for " + propertyName, "red");
               }
