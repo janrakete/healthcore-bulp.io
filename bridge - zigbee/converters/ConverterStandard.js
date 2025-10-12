@@ -54,11 +54,10 @@ class ConverterStandard {
      */
     getPropertyByPropertyName(name) {
         for (const [clusterName, attributes] of Object.entries(this.properties)) {
-            for (let [attributeName, property] of Object.entries(attributes)) {
+            for (const [attributeName, property] of Object.entries(attributes)) {
                 if (property.name === name) {
-                    property.cluster    = clusterName; // add cluster name to property
-                    property.attribute  = attributeName; // add attribute name to property
-                    return property;
+                    // Return a new object with cluster and attribute added, without mutating the original
+                    return { ...property, cluster: clusterName, attribute: attributeName };
                 }
             }
         }
