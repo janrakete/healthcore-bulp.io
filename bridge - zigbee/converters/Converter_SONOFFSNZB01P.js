@@ -11,9 +11,10 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "battery";
+        this.powerType = "Battery";
 
-        this.properties["genOnOff"] = {
+        this.properties["genOnOff"] = {};
+        this.properties["genOnOff"]["button"] = {
             name:        "button",
             standard:    false,
             notify:      true,

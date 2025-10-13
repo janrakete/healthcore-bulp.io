@@ -11,7 +11,7 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "mains";
+        this.powerType = "Mains (single phase)";
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {
@@ -36,7 +36,7 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
         };
     }
 
-    get(property, anyValue) {
+    get(property, anyValue, data) {
         if (property.read === false) {
             return undefined;
         }   

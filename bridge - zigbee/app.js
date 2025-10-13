@@ -128,6 +128,20 @@ async function startBridgeAndServer() {
   }
 
   /**
+   * Check if device is wired
+   * @param {Object} device - The device object to check.
+   * @returns {boolean} True if the device is wired, false otherwise.
+   */
+  function deviceIsWired(device) {
+    if (device.powerType && device.powerType.indexOf("Mains") >= 0) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  /**
    * Ping a device.
    * @param {Object} device - The device object to ping.
    * @returns {Promise<boolean>} A promise that resolves to `true` if the device is pingable, or `false` if it is not.
@@ -296,6 +310,9 @@ async function startBridgeAndServer() {
     message.productName  = data.device.modelID;
     message.values       = {};
     message.bridge       = BRIDGE_PREFIX;
+
+
+
     
     common.conLog("ZigBee: Device " + message.deviceID + " sends message", "yel");
 
@@ -304,10 +321,17 @@ async function startBridgeAndServer() {
 
     if (deviceConverter)  {
       common.conLog("ZigBee: Device converter found", "gre");
+      const properties = deviceConverter.getPropertyByClusterName(data.cluster);
 
-      const property = deviceConverter.getPropertyByClusterName(data.cluster);
-      if (property) {
-        message.values[property.name] = deviceConverter.get(property, data.type, data.data); // get converted value for property
+      if (properties) {
+        for (const [attribute, property] of Object.entries(properties)) {
+          common.conLog("ZigBee: Information about property name '" + property.name + "' (original attribute: '" + attribute + "')", "yel");
+          common.conLog("ZigBee: Property details", "std", false);
+          common.conLog(property, "std", false);
+          common.conLog("ZigBee: data details", "std", false);
+          common.conLog(data, "std", false);
+          message.values[property.name] = deviceConverter.get(property, data.type, data.data); // get converted value for property
+        }
       }
       else {
         common.conLog("ZigBee: No property found for cluster " + data.cluster, "red");
@@ -485,12 +509,11 @@ async function startBridgeAndServer() {
    */
   async function mqttDevicesConnect(data) {
     device = deviceGetInfo(data.deviceID, bridgeStatus.devicesRegisteredAtServer); // get device information
-    device.callID = data.callID !== undefined ? data.callID : null; // add callID to device if provided
 
     if (device) {
+      device.callID = data.callID !== undefined ? data.callID : null; // add callID to device if provided
       common.conLog("ZigBee: Try to connect to device " + device.deviceID + " ...", "yel");
-      
-      if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable
+      if (deviceIsWired(device)) { // if device is wired, then it's pingable
         common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
         if (await deviceIsPingable(device)) {
           common.conLog("... and added " + device.deviceID + " to list to list of connected devices", "gre", false);
@@ -547,7 +570,7 @@ async function startBridgeAndServer() {
     message.callID                = data.callID;
 
     if (device) { // if device is in array of connected devices, try do get desired values
-      if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable and able to read values
+      if (deviceIsWired(device)) { // if device is wired, then it's pingable and able to read values
         common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
         if (await deviceIsPingable(device)) {
 
@@ -599,7 +622,7 @@ async function startBridgeAndServer() {
       const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
       if (device) { // if device is in array of connected devices, try do get desired values
-        if (device.deviceConverter.powerType === "mains") { // if device is wired, then it's pingable and able to read values
+        if (deviceIsWired(device)) { // if device is wired, then it's pingable and able to read values
           common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
           if (await deviceIsPingable(device)) {
             for (const [propertyName, value] of Object.entries(data.values)) { // for each property in requested properties

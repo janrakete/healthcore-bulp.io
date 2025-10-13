@@ -12,7 +12,7 @@ class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "mains"; 
+        this.powerType = "Mains (single phase)"; 
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {
@@ -24,36 +24,37 @@ class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
             anyValue:    ["on", "off"],
             valueType:   "Options"
         };
-
     }
 
-    get(property, anyValue) {
+    get(property, anyValue, data = {}) {
+        if (Object.keys(data).length === 0) { // if data is empty, get the value from anyValue, use orignal attribute name to store it in data for later use
+            data[this.getClusterAndAttributeByPropertyName(property.name).attribute] = anyValue;
+        }
+        else { // if data is not empty, get the value from data
+            anyValue = data[this.getClusterAndAttributeByPropertyName(property.name).attribute];
+        }
+
         if (property.read === false) {
             return undefined;
-        }   
+        }
         else {
             if (property.standard === true) {
                 return this.getStandard(property, anyValue);
             }
             else {
-
-                                            console.log(anyValue);
                 switch (property.name) {
                     case "power":
-                        switch (anyValue) {
-
-
-                            case "commandOn":
+                        switch (data["onOff"]) {
+                            case 1:
                                 return {"value": "on", "valueAsNumeric": 1};
-                            case "commandOff":
+                            default:
                                 return {"value": "off", "valueAsNumeric": 0};
                         }
-
                     default:
                         return undefined;
                 }
             }
-        }
+        }   
     }
 
     set(property, anyValue) {
@@ -64,7 +65,7 @@ class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
             let valueConverted = {};
             switch (property.name) {
                 case "power":
-                    if (anyValue === "on" || anyValue === 1 || anyValue === true) {
+                    if (anyValue === "on") {
                         valueConverted.command = "on";
                     } else {
                         valueConverted.command = "off";
