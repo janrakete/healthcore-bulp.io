@@ -175,11 +175,19 @@ async function startBridgeAndServer() {
 
   /**
    * =============================================================================================
-   * Events at ZigBee adapter
-   * ========================
+   * Events at ZigBee adapter (but first, disable debug logging of zigbee-herdsman)
+   * ==============================================================================
    */  
+  const { setLogger } = require("zigbee-herdsman/dist/utils/logger");
+  setLogger({
+    debug: () => {},
+    info: console.info,
+    warning: console.warn,
+    error: console.error,
+  });
+
   const {Controller: ZigBeeController}  = require("zigbee-herdsman"); 
-  const zigBee = new ZigBeeController({ serialPort: {path: appConfig.CONF_zigBeeAdapterPort, adapter: appConfig.CONF_zigBeeAdapterName}, databasePath: "./devices.db", log: { level: 'none' } }); // create new ZigBee controller
+  const zigBee = new ZigBeeController({ serialPort: {path: appConfig.CONF_zigBeeAdapterPort, adapter: appConfig.CONF_zigBeeAdapterName}, databasePath: "./devices.db" }); // create new ZigBee controller
 
   /**
    * Start ZigBee controller
@@ -269,7 +277,7 @@ async function startBridgeAndServer() {
    */
   zigBee.on("deviceAnnounce", function (data) { 
     common.conLog("ZigBee: device has announced, try to add to connected devices", "yel");
-    
+
     const deviceID = data.device.ieeeAddr;
     
     let device = deviceSearchInArray(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in array of registered devices
@@ -311,7 +319,7 @@ async function startBridgeAndServer() {
     message.values       = {};
     message.bridge       = BRIDGE_PREFIX;
 
-
+    console.log(data);
 
     
     common.conLog("ZigBee: Device " + message.deviceID + " sends message", "yel");
@@ -339,7 +347,7 @@ async function startBridgeAndServer() {
     }
     else {
       common.conLog("ZigBee: No converter found for " + device.modelID, "red");
-      message.Message = "Device not supported";
+      message.message = "Device not supported";
     }
 
     mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
@@ -528,6 +536,25 @@ async function startBridgeAndServer() {
         common.conLog("... so just added to list to list of connected devices", "gre", false);
         bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
       }
+
+      common.conLog("ZigBee: Check if device converter has setupReporting function ...", "yel");
+      if (device.deviceConverter !== undefined && device.deviceConverter.setupReporting !== undefined ) {
+        common.conLog("ZigBee: Device converter has setupReporting function, trying to call it", "gre", false);
+
+        try {
+          const coordinatorDevice   = zigBee.getDevices().find(d => d.type === "Coordinator");
+          const coordinatorEndpoint = coordinatorDevice.getEndpoint(1);
+
+          await device.deviceConverter.setupReporting(device.deviceRaw, coordinatorEndpoint);
+        }
+        catch (error) {
+          common.conLog("ZigBee: Error setting up reporting for " + device.deviceID + ": " + error.message, "red");
+        }
+      }
+      else {
+        common.conLog("ZigBee: Device converter has no setupReporting function", "std", false);
+      }
+
       mqttClient.publish("server/devices/connect", JSON.stringify(device));        
     }
   }
