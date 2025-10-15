@@ -4,6 +4,9 @@
  * =======================================================
  */
 
+const appConfig       = require("../../config");
+const common          = require("../../common");
+
 /**
  * ConverterStandard class provides basic functionality for converting properties of Zigbee devices that follow the standard clusters and attributes.
  * It includes methods to retrieve properties by cluster or attribute name, and to convert values for standard properties.   
@@ -13,7 +16,7 @@
 class ConverterStandard {
     constructor() { 
         this.properties = {};
-    
+
         this.properties["genBasic"] = {};
         this.properties["genBasic"]["zclVersion"] = {
             name:        "zclVersion",
@@ -44,6 +47,29 @@ class ConverterStandard {
             anyValue:    0,
             valueType:   "String"
         };
+    }
+
+    /**
+     *  Binding clusters and setting up reporting intervals
+     * @param {Object} endpoint - The device endpoint to configure
+     * @param {string} cluster - The cluster name to configure reporting for
+     * @param {Array} attributes - An array of attribute configuration objects for reporting
+     * @param {number} timeout - Optional timeout in milliseconds for the reporting configuration (default is 5000ms)
+     * @returns {Promise<void>}
+     * @description This method attempts to bind the specified cluster to the coordinator endpoint and configure reporting for the given attributes. It includes error handling to log any issues that occur during the process, including a timeout mechanism to avoid hanging if the device does not respond.
+     */
+    async safeConfigureReporting(endpoint, cluster, attributes, timeout = appConfig.CONF_zigBeeReportingTimeout) {
+        try {
+            await Promise.race([
+                endpoint.configureReporting(cluster, attributes),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Timeout configuring " + cluster)), timeout)
+                )
+            ]);
+            common.conLog("Reporting for " + cluster + " configured.", "gre");
+        } catch (error) {
+            common.conLog("Reporting setup for " + cluster + " failed: " + error.message, "red");
+        }
     }
 
     /**
