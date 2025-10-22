@@ -1,6 +1,6 @@
-require("Storage").write("bulp.info",{
+{
    "id":"bulp",
    "name":"bulp.io",
    "src":"bulp.app.js",
    "icon":"bulp.png"
-});
+}
