@@ -1,12 +1,70 @@
+NRF.setAdvertising([], { name:"Bangle", connectable:true });
+setupBLE(); // initiiert Service sofort
+
 (function() {
-  const DEVICE_NAME = "bulp.io-hub";
-  const UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-  const UART_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  // --- UUIDs ---
+  const SERVICE_UUID = "6e400001b5a3f393e0a9e50e24dcca9e";
+  const TX_UUID = "6e400002b5a3f393e0a9e50e24dcca9e"; // Notify → Bridge empfängt
+  const RX_UUID = "6e400003b5a3f393e0a9e50e24dcca9e"; // Write → Bridge sendet
+
+  // --- BLE Peripheral Setup ---
+  function setupBLE() {
+    try {
+      NRF.setServices({
+        "6e400001b5a3f393e0a9e50e24dcca9e": {
+          "6e400002b5a3f393e0a9e50e24dcca9e": {
+            value: "",
+            maxLen: 40,
+            notify: true,
+            readable: true
+          },
+          "6e400003b5a3f393e0a9e50e24dcca9e": {
+            value: "",
+            maxLen: 40,
+            writable: true,
+            onWrite: function(evt) {
+              try {
+                var msg = JSON.parse(evt.data);
+                handleIncoming(msg);
+              } catch (e) {
+                print("❌ RX Parse Error:", e);
+              }
+            }
+          }
+        }
+      }, { advertise: ["6e400001b5a3f393e0a9e50e24dcca9e"] });
+      print("✅ BLE aktiv: bulp.io-watch");
+    } catch (e) {
+      print("❌ BLE Fehler:", e);
+    }
+  }
+
+  function sendBLE(obj) {
+    try {
+      var data = JSON.stringify(obj);
+      NRF.updateServices({
+        "6e400001b5a3f393e0a9e50e24dcca9e": {
+          "6e400002b5a3f393e0a9e50e24dcca9e": { value: data }
+        }
+      });
+      print("📤 Gesendet:", data);
+    } catch (e) {
+      print("❌ Sendefehler:", e);
+    }
+  }
+
+  function handleIncoming(msg) {
+    if (msg.type === "ping") {
+      sendBLE({ type: "pong", ts: Date.now() });
+    } else if (msg.type === "getPulse") {
+      showPulse(true); // true = nur senden
+    }
+  }
 
   // --- Splashscreen ---
-  function showSplash() {
+  function splash() {
     g.clear();
-    g.setColor("#8000ff");
+    g.setColor("#8000ff"); // Lila
     g.fillRect(0, 0, g.getWidth(), g.getHeight());
     g.setColor("#ffffff");
     g.setFont("Vector", 80);
@@ -18,102 +76,46 @@
 
   // --- Menü ---
   function showMenu() {
-    g.clear();
-    const menu = {
-      '': { title: 'bulp.io - per BLE senden ...' },
-      'Aktueller Puls': showPulse,
-      'Warn-Ton -> BLE-Gerät': sendWarnTone,
-      'Licht an -> ZigBee-Gerät': sendLightOn,
-      'App beenden': () => load()
+    var menu = {
+      "Aktueller Puls": function() { showPulse(false); },
+      "Bluetooth: Warn-Ton": function() {
+        sendBLE({ type: "warnTone" });
+        E.showMessage("Warn-Ton gesendet", "Bluetooth");
+        setTimeout(showMenu, 1500);
+      },
+      "ZigBee: Licht an": function() {
+        sendBLE({ type: "zigbeeLight" });
+        E.showMessage("Licht eingeschaltet", "ZigBee");
+        setTimeout(showMenu, 1500);
+      },
+      "App beenden": function() { load(); }
     };
     E.showMenu(menu);
   }
 
-  // --- Pulsmessung + BLE-Übertragung ---
-  let hrmListener = null;
-  let lastBPM = null;
-
-  function showPulse() {
-    if (hrmListener) {
-      Bangle.removeListener('HRM', hrmListener);
-      hrmListener = null;
-    }
-
-    E.showMessage("Starte Pulsmessung...", "Puls");
+  // --- Pulsanzeige ---
+  function showPulse(onlySend) {
+    if (!onlySend) E.showMessage("Messung läuft...", "Puls");
     Bangle.setHRMPower(1);
-    let lastUpdate = 0;
 
-    hrmListener = function(hrm) {
-      const now = getTime();
-      if (now - lastUpdate > 1) {
-        lastUpdate = now;
-        lastBPM = hrm.bpm || 0;
+    setTimeout(function() {
+      var hrm = Bangle.getHRM();
+      var bpm = (hrm && hrm.bpm) ? hrm.bpm : 0;
+      sendBLE({ type: "pulse", value: bpm });
 
+      if (!onlySend) {
         g.clear();
+        g.setFont("Vector", 30);
         g.setFontAlign(0, 0);
-
-        g.setFont("Vector", 24);
-        g.setColor("#00aa00");
-        g.drawString("Aktueller Puls", g.getWidth() / 2, 35);
-
-        g.setFont("Vector", 48);
-        g.setColor("#ffffff");
-        const bpmText = lastBPM + " bpm";
-        g.drawString(bpmText, g.getWidth() / 2, g.getHeight() / 2);
-
-        g.setFont("Vector", 16);
-        g.setColor("#888888");
-        g.drawString("Signalstärke: " + (hrm.confidence || 0) + "%", g.getWidth() / 2, g.getHeight() - 25);
-
-        g.flip();
+        g.drawString("Puls: " + bpm + " bpm", g.getWidth() / 2, g.getHeight() / 2);
+        setTimeout(showMenu, 3000);
       }
-    };
 
-    Bangle.on("HRM", hrmListener);
-
-    // Nach 15 Sekunden stoppen und übertragen
-    setTimeout(stopPulse, 15000);
+      Bangle.setHRMPower(0);
+    }, 2500);
   }
 
-  function stopPulse() {
-    if (hrmListener) {
-      Bangle.removeListener("HRM", hrmListener);
-      hrmListener = null;
-    }
-    Bangle.setHRMPower(0);
-
-    if (lastBPM) {
-      sendBLEMessage({ topic: "pulse", payload: lastBPM }, "Puls gesendet.");
-    } else {
-      E.showMessage("Kein Pulswert\nermittelt.");
-      setTimeout(showMenu, 2000);
-    }
-  }
-
-  function sendBLEMessage(payload, label) {
-    E.showMessage("Verbinde BLE...", label);
-
-    NRF.requestDevice({ filters: [{ name: "bulp.io-hub" }] })
-    .then(device => device.gatt.connect())
-    .then(gatt => gatt.getPrimaryService("6e400001-b5a3-f393-e0a9-e50e24dcca9e"))
-    .then(service => service.getCharacteristic("6e400002-b5a3-f393-e0a9-e50e24dcca9e"))
-    .then(txChar => {
-      const data = new TextEncoder().encode(JSON.stringify(payload));
-      return txChar.writeValue(data);
-    })
-    .then(() => {
-      E.showMessage(label + " gesendet!", label);
-      setTimeout(showMenu, 1500);
-    })
-    .catch(e => {
-      E.showMessage("Fehler:\n" + e, label);
-      setTimeout(showMenu, 2000);
-    });
-  }
-
-  function sendWarnTone() { sendBLEMessage({ topic: "warn", payload: 1 }, "Warn-Ton gespielt."); }
-  function sendLightOn() { sendBLEMessage({ topic: "light", payload: "on" }, "Licht eingeschaltet."); }
-
-  // --- Start ---
-  showSplash();
+  // --- App Start ---
+  setupBLE();
+  splash();
 })();
