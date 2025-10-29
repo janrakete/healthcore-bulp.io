@@ -1,144 +1,143 @@
-(function() {
-  // ===============================
-  // BLE Setup Function
-  // ===============================
-  function setupBLE() {
-    try {
-      // Define the BLE services and characteristics
-      NRF.setServices({
-        // Main service
-        "6e400001b5a3f393e0a9e50e24dcca9e": {
-          // TX characteristic: notify = true, readable = true
-          "6e400002b5a3f393e0a9e50e24dcca9e": { // PULSE
-            value: "",
-            maxLen: 40,
-            notify: true,
-            readable: true
-          },
-          "6e400003b5a3f393e0a9e50e24dcca9e": { // LIGHT
-            value: "",
-            maxLen: 40,
-            notify: true,
-            readable: true
-          }
-        }
-      }, {
-        // Make this service visible (advertised) to BLE scanners / Bridge
-        advertise: ["6e400001b5a3f393e0a9e50e24dcca9e"]
-      });
+(() => {
+  const DURATION = 60; // Messdauer in Sekunden
+  const UPDATE_INTERVAL = 3000; // Update alle 3 Sekunden
+  const centerX = g.getWidth() / 2;
+  const centerY = g.getHeight() / 2;
+  const baseSize = 40;
 
-      print("✅ BLE active: bulp.io-watch visible");
-    } catch (e) {
-      print("❌ BLE error:", e);
-    }
+  // ===================================================
+  // BLE senden
+  // ===================================================
+  function sendBLE(data) {
+    Bluetooth.println(JSON.stringify(data) + "\n");
   }
 
-  // ===============================
-  // Function to send data over BLE
-  // ===============================
-  function sendBLE(type, value) {
-    try {
-      if (type === "pulse") {
-        NRF.updateServices({
-          "6e400001b5a3f393e0a9e50e24dcca9e": {
-            "6e400002b5a3f393e0a9e50e24dcca9e": { value: JSON.stringify({ pulse: value }) }
-          }
-        });
-      } else if (type === "light") {
-        NRF.updateServices({
-          "6e400001b5a3f393e0a9e50e24dcca9e": {
-            "6e400003b5a3f393e0a9e50e24dcca9e": { value: JSON.stringify({ light: value }) }
-          }
-        });
-      } else {
-        throw new Error("Unknown type: " + type);
-      }
-
-      print("📤 Sent:", type, value);
-    } catch (e) {
-      print("❌ Send error:", e);
-    }
-  }
-  
-  // ===============================
-  // Splashscreen
-  // ===============================
-  function splash() {
-    g.clear(); // Clear screen
-    g.setColor("#8000ff"); // Background color: purple
-    g.fillRect(0, 0, g.getWidth(), g.getHeight()); // Fill background
-    g.setColor("#ffffff"); // Text color: white
-    g.setFont("Vector", 80); // Large font
-    g.setFontAlign(0, 0); // Center alignment
-    g.drawString("b", g.getWidth() / 2, g.getHeight() / 2); // Draw "b" in center
+  // ===================================================
+  // Text anzeigen
+  // ===================================================
+  function showText(text) {
+    g.clear();
+    g.setColor("#FF00DC");
+    g.fillRect(0, 0, g.getWidth(), g.getHeight());
+    g.setColor(1, 1, 1);
+    g.setFont("6x8", 2);
+    g.drawString(text, (g.getWidth() - g.stringWidth(text)) / 2, (g.getHeight()) / 2);
     g.flip();
-
-    // Start BLE after short delay for stability, then show menu
-    setTimeout(function() {
-      setupBLE(); // Activate BLE
-      showMenu(); // Show menu after splash
-    }, 500); // 500ms delay
   }
 
-  // ===============================
-  // Main Menu
-  // ===============================
+  // ===================================================
+  // Herz zeichnen
+  // ===================================================
+  function drawHeart(bpm) {
+    const size = baseSize;
+    g.clear();
+
+    // Rot
+    g.setColor(1, 0, 0);
+
+    // linke obere Rundung
+    g.fillCircle(centerX - size / 2 + 5, centerY - size / 4, size / 2);
+    // rechte obere Rundung
+    g.fillCircle(centerX + size / 2 - 5, centerY - size / 4, size / 2);
+
+    // unteres Dreieck
+    g.fillPoly([centerX - size + 6, centerY  + 9 - size / 4,
+                centerX + size - 6, centerY  + 9 - size / 4,
+                centerX, centerY + size]);
+
+    // Text oben
+    g.setColor(1, 1, 1);
+    g.setFont("Vector", 20);
+    g.drawString("Dein Puls: " + bpm, (g.getWidth() - g.stringWidth("Dein Puls: " + bpm)) / 2, 30);
+
+    g.flip();
+  }
+
+  // ===================================================
+  // HRM Messung
+  // ===================================================
+  function showHRM() {
+    Bangle.setHRMPower(1);
+
+    const hrmListener = hrm => {
+      if (hrm.confidence < 50)
+        return;
+      const bpm = hrm.bpm;
+      drawHeart(bpm);
+      // send only every UPDATE_INTERVAL
+      if (!this.lastSent || (Date.now() - this.lastSent) >= UPDATE_INTERVAL) {
+        this.lastSent = Date.now();
+        sendBLE({t:"hrm", v:bpm});
+      }
+    };
+
+    Bangle.on("HRM", hrmListener);
+
+    // Timer für 60 Sekunden Messung
+    setTimeout(()=>{
+      Bangle.setHRMPower(0);
+      Bangle.removeListener("HRM", hrmListener);
+      showMenu();
+    }, DURATION * 1000);
+  }
+
+  // ===================================================
+  // Licht an
+  // ===================================================
+  function sendLightOn() {
+    showText("Licht an ...");
+    sendBLE({t:"light", v:"1"});
+    setTimeout(showMenu, 2000);
+  }
+
+  // ===================================================
+  // Alarm an
+  // ===================================================
+  function sendAlarmOn() {
+    showText("Alarm an ...");
+    sendBLE({t:"alarm", v:"1"});
+    setTimeout(showMenu, 2000);
+  }
+
+  // ===================================================
+  // App beenden
+  // ===================================================
+  function exitApp() {
+    showText("Ende.");
+    setTimeout(()=>load(), 1500);
+  }
+
+  // ===================================================
+  // Menü
+  // ===================================================
   function showMenu() {
-    E.showMenu({
-      '': { title: 'bulp.io - send over BLE ...' },
-      // Show current pulse
-      "Current pulse": function() { showPulse(false); },
-      // Send a command to turn ZigBee light on
-      "Light = on": function() {
-        sendBLE("light", "on");
-        E.showMessage("Light turned on", "bulp.io");
-        setTimeout(showMenu, 1500); // Return to menu
-      },
-      // Exit the app
-      "Exit App": function() { load(); }
-    });
+    const menu = {
+      "": {"title":"Per BLE senden:"},
+      "Aktueller Puls\n(an App)": () => showHRM(),
+      "Licht an\n(an ZigBee-Gerät)": () => sendLightOn(),
+      "Alarm an\n(an Bluetooth-Gerät)": () => sendAlarmOn(),
+      "App beenden": () => exitApp()
+    };
+    E.showMenu(menu);
   }
 
-  // ===============================
-  // Pulse Measurement
-  // ===============================
-  function showPulse(onlySend) {
-    if (!onlySend) E.showMessage("Measuring ...", "Pulse");
+  // ===================================================
+  // BLE Status
+  // ===================================================
+  NRF.on("connect", () => g.clear());
+  NRF.on("disconnect", () => g.clear());
 
-    Bangle.setHRMPower(true); // Turn on HRM
+  // ===================================================
+  // Splash "b"
+  // ===================================================
+  g.clear();
+  g.setColor("#FF00DC");
+  g.fillRect(0, 0, g.getWidth(), g.getHeight());
+  g.setColor(1, 1, 1);
+  g.setFont("Vector", 60);
+  const t = "b";
+  g.drawString(t, (g.getWidth() - g.stringWidth(t)) / 2, (g.getHeight() - 60) / 2);
+  g.flip();
 
-    var startTime = Date.now();
-    var measurementDuration = 60000; // 60 seconds
-    var lastBPM = 0;
-
-    function onHRM(hrm) {
-      if (hrm.bpm > 0) lastBPM = hrm.bpm;
-
-      // Send the current BPM immediately
-      sendBLE("pulse", lastBPM);
-
-      // Optionally display on screen every HRM update
-      if (!onlySend) {
-        g.clear();
-        g.setFont("Vector", 30);
-        g.setFontAlign(0, 0);
-        g.drawString("Pulse: " + lastBPM + " bpm", g.getWidth()/2, g.getHeight()/2);
-      }
-
-      // Stop after 60 seconds
-      if (Date.now() - startTime > measurementDuration) {
-        Bangle.setHRMPower(false);          // Turn off HRM
-        Bangle.removeListener('HRM', onHRM); // Remove listener
-        if (!onlySend) showMenu();           // Return to menu
-      }
-    }
-
-    // Listen for HRM events
-    Bangle.on('HRM', onHRM);
-  }
-
-  // ===============================
-  // App Start
-  // ===============================
-  splash(); // Show splashscreen and start BLE/menu sequence
+  setTimeout(showMenu, 1000);
 })();
