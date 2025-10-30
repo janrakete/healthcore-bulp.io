@@ -1,4 +1,5 @@
 (() => {
+  
   const DURATION = 60; // Messdauer in Sekunden
   const UPDATE_INTERVAL = 3000; // Update alle 3 Sekunden
   const centerX = g.getWidth() / 2;
@@ -17,7 +18,7 @@
   // ===================================================
   function showText(text) {
     g.clear();
-    g.setColor("#FF00DC");
+    g.setColor("#8000FF");
     g.fillRect(0, 0, g.getWidth(), g.getHeight());
     g.setColor(1, 1, 1);
     g.setFont("6x8", 2);
@@ -60,14 +61,12 @@
     Bangle.setHRMPower(1);
 
     const hrmListener = hrm => {
-      if (hrm.confidence < 50)
-        return;
       const bpm = hrm.bpm;
       drawHeart(bpm);
       // send only every UPDATE_INTERVAL
       if (!this.lastSent || (Date.now() - this.lastSent) >= UPDATE_INTERVAL) {
         this.lastSent = Date.now();
-        sendBLE({t:"hrm", v:bpm});
+        sendBLE({t:"h", v:bpm});
       }
     };
 
@@ -86,7 +85,7 @@
   // ===================================================
   function sendLightOn() {
     showText("Licht an ...");
-    sendBLE({t:"light", v:"1"});
+    sendBLE({t:"l", v:"1"});
     setTimeout(showMenu, 2000);
   }
 
@@ -95,7 +94,7 @@
   // ===================================================
   function sendAlarmOn() {
     showText("Alarm an ...");
-    sendBLE({t:"alarm", v:"1"});
+    sendBLE({t:"a", v:"1"});
     setTimeout(showMenu, 2000);
   }
 
@@ -131,7 +130,7 @@
   // Splash "b"
   // ===================================================
   g.clear();
-  g.setColor("#FF00DC");
+  g.setColor("#8000FF");
   g.fillRect(0, 0, g.getWidth(), g.getHeight());
   g.setColor(1, 1, 1);
   g.setFont("Vector", 60);
