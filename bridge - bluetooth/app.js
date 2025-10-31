@@ -149,7 +149,9 @@ async function startBridgeAndServer() {
               else
               {
                 for (const service of services) { // for each service of device
+                  common.conLog("Bluetooth: " + device.deviceID + " - Service found: " + service.uuid, "yel");
                   for (const characteristic of service.characteristics) { // for each characteristic of service
+                    common.conLog("Bluetooth: " + device.deviceID + " - Characteristic found: " + characteristic.uuid, "yel");
                     const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
                     if (property !== undefined) {
                       if ((property.notify === true) && characteristic.properties.includes("notify")) { // if characteristic has notify value, subscribe to it
@@ -165,7 +167,16 @@ async function startBridgeAndServer() {
                               message.deviceID                = device.deviceID;
                               message.values                  = {}; // create empty array for properties
                               message.bridge                  = BRIDGE_PREFIX;
-                              message.values[property.name]   = device.deviceConverter.get(property, value);
+
+                              if (property.valueType === "Subproperties") { // if property has multiple subproperties
+                                const subproperty = device.deviceConverter.getSubproperty(property, value);
+                                if (subproperty !== undefined) { // if subproperty is found in converter
+                                  message.values[subproperty.name] = { value: subproperty.value, valueAsNumeric: subproperty.valueAsNumeric };
+                                }
+                              }
+                              else {
+                                message.values[property.name]   = device.deviceConverter.get(property, value);
+                              }
 
                               mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker    
                             }); 
