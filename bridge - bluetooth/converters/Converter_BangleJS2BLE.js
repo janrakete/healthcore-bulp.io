@@ -13,15 +13,43 @@ class Converter_BangleJS2BLE extends ConverterStandard {
 
         this.powerType = "Battery";
 
-        // Definiert die Properties entsprechend der App
-        this.properties["6e400002b5a3f393e0a9e50e24dcca9e"] = {
-            name:        "pulse",
+        this.properties["6e400003b5a3f393e0a9e50e24dcca9e"] = {
+            name:        "several",
             standard:    false,
             notify:      true,
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Subproperties",
+            subproperties: {
+                l: {
+                    name: "light",
+                    standard:    false,
+                    notify:      true,
+                    read:        true,
+                    write:       false,
+                    anyValue: ["on", "off"],
+                    valueType: "Options"
+                },
+                a: {
+                    name: "alarm",
+                    standard:    false,
+                    notify:      true,
+                    read:        true,
+                    write:       false,
+                    anyValue: ["on", "off"],
+                    valueType: "Options"
+                },
+                h: {
+                    name: "heartrate",
+                    standard:    false,
+                    notify:      true,
+                    read:        true,
+                    write:       false,
+                    anyValue: 0,
+                    valueType: "Integer"
+                }
+            }
         };
     }
 
@@ -32,27 +60,40 @@ class Converter_BangleJS2BLE extends ConverterStandard {
      * @return {Object|undefined}
      */
     get(property, value) {
-        if (property.read === false) return undefined;
+        if (property.read === false) {
+            return undefined;   
+        }
 
         if (property.standard === true) {
             return this.getStandard(property, value);
-        } else {
-            switch (property.name) {
-                case "pulse":
-                    if (Buffer.isBuffer(value)) {
-                        return {
-                            value: value.readUInt8(0),
-                            valueAsNumeric: value.readUInt8(0)
-                        };
-                    } else if (typeof value === "number") {
-                        return { value: value, valueAsNumeric: value };
-                    } else {
-                        return undefined;
-                    }
-                default:
-                    return undefined;
-            }
         }
+        else {
+            return undefined;
+        }
+    }
+
+    getSubproperty(property, value) {
+        const valueConverted = (Buffer.isBuffer(value) ? value.toString("utf8") : String(value)).trim();
+        try {
+            const valueParsed = JSON.parse(valueConverted);
+
+            if (property.name === "several") {
+                switch (valueParsed.t) {
+                    case "l":
+                        return {"name": "light", "value": valueParsed.v === "1" ? "on" : "off", "valueAsNumeric": Number(valueParsed.v)};
+                    case "a":
+                        return {"name": "alarm", "value": valueParsed.v === "1" ? "on" : "off", "valueAsNumeric": Number(valueParsed.v)};
+                    case "h":
+                        return {"name": "heartrate", "value": Number(valueParsed.v), "valueAsNumeric": Number(valueParsed.v)};
+                    default:
+                        return undefined;                        
+                }
+            }
+
+        }
+        catch (error) { 
+            return undefined;      
+        }        
     }
 }
 
