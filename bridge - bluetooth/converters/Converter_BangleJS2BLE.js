@@ -72,6 +72,12 @@ class Converter_BangleJS2BLE extends ConverterStandard {
         }
     }
 
+    /**
+     * Converts a subproperty value from the BLE device to a standard format.
+     * @param {Object} property - Subproperty metadata
+     * @param {Buffer|any} value - Raw value from the device
+     * @return {Object|undefined}
+     */
     getSubproperty(property, value) {
         const valueConverted = (Buffer.isBuffer(value) ? value.toString("utf8") : String(value)).trim();
         try {
