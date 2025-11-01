@@ -708,26 +708,29 @@ async function startBridgeAndServer() {
         for (const characteristic of service.characteristics) { // for each characteristic of service
           const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
           if (property !== undefined) { 
-            if (!data.values || data.values.includes(property.name)) { // if property is in requested properties or no properties are defined
-              common.conLog("Bluetooth: Reading characteristic " + characteristic.uuid + " (" + property.name + ")", "yel");
-              const readPromise = new Promise(function (resolve, reject) { // create a promise for reading the characteristic value
-                characteristic.read(function (error, value) {
-                  if (error) {
-                    common.conLog("Bluetooth: Error while reading characteristic:", "red");
-                    common.conLog(error, "std", false);
-                    reject(error);
+            common.conLog("Bluetooth: Reading characteristic " + characteristic.uuid + " (" + property.name + ")", "yel");
+            const readPromise = new Promise(function (resolve, reject) { // create a promise for reading the characteristic value
+              characteristic.read(function (error, value) {
+                if (error) {
+                  common.conLog("Bluetooth: Error while reading characteristic:", "red");
+                  common.conLog(error, "std", false);
+                  reject(error);
+                }
+                else {
+                  if (property.valueType === "Subproperties") { // if property has multiple subproperties
+                    const subproperty = device.deviceConverter.getSubproperty(property, value);
+                    if (subproperty !== undefined) { // if subproperty is found in converter
+                      message.values[subproperty.name] = { value: subproperty.value, valueAsNumeric: subproperty.valueAsNumeric };
+                    }
                   }
                   else {
-                    message.values[property.name]  = device.deviceConverter.get(property, value);
-                    resolve();
+                    message.values[property.name]   = device.deviceConverter.get(property, value);
                   }
-                });
+                  resolve();
+                }
               });
-              promises.push(readPromise); // add promise to array
-            }
-            else { // if property is not in requested properties
-              common.conLog("Bluetooth: Property " + property.name + " not found in requested properties", "red");
-            }
+            });
+            promises.push(readPromise); // add promise to array
           }
           else { // if characteristic is not in converter property list
             common.conLog("Bluetooth: Characteristic " + characteristic.uuid + " not found in converter list", "red");
