@@ -1,13 +1,38 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my-app</title>
+    <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>bulp.io</title>
+    <link rel="stylesheet" href="./src/theme/variables.scss" />
+
   </head>
   <body>
-    <div id="app"></div>
+    <ion-app>
+      <ion-router>
+        <ion-route url="/" component="home-page"></ion-route>
+      </ion-router>
+      <ion-router-outlet></ion-router-outlet>
+
+
+
+      <ion-tab-bar color="secondary" slot="bottom">
+        <ion-tab-button tab="1" href="/start">
+          <ion-icon name="heart"></ion-icon>
+          <ion-label>Start</ion-label>
+        </ion-tab-button>
+
+        <ion-tab-button tab="2" href="/sos">
+          <ion-icon name="musical-note"></ion-icon>
+          <ion-label>SOS</ion-label>
+        </ion-tab-button>
+
+      </ion-tab-bar>
+    </ion-app>
+
+    <script type="module">
+      import "./src/pages/HomePage.js";
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
