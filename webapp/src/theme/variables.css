@@ -1,26 +1,26 @@
 @font-face {
     font-family: Poppins-Thin;
-    src: url(/assets/fonts/Poppins/Poppins-Thin.ttf);
+    src: url(./src/assets/fonts/Poppins/Poppins-Thin.ttf);
 }
 
 @font-face {
     font-family: Poppins-Light;
-    src: url(/assets/fonts/Poppins/Poppins-Light.ttf);
+    src: url(./src/assets/fonts/Poppins/Poppins-Light.ttf);
 }
 
 @font-face {
     font-family: Poppins-Medium;
-    src: url(/assets/fonts/Poppins/Poppins-Medium.ttf);
+    src: url(./src/assets/fonts/Poppins/Poppins-Medium.ttf);
 }
 
 @font-face {
     font-family: Poppins-Bold;
-    src: url(/assets/fonts/Poppins/Poppins-Bold.ttf);
+    src: url(./src/assets/fonts/Poppins/Poppins-Bold.ttf);
 }
 
 @font-face {
     font-family: Poppins;
-    src: url(/assets/fonts/Poppins/Poppins-Regular.ttf);
+    src: url(./src/assets/fonts/Poppins/Poppins-Regular.ttf);
 }
 
 :root {
@@ -88,4 +88,6 @@
     --ion-color-dark-tint: #444444;
 
     --ion-font-family: "Poppins";
+
+    --ion-background-color: linear-gradient(135deg,rgba(103, 58, 183, 1) 0%, rgba(49, 27, 146, 1) 100%);
 }
