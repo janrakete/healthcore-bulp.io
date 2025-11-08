@@ -1,0 +1,23 @@
+{
+  "name": "my-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
+    "sass-embedded": "^1.93.3",
+    "vite": "^7.1.7",
+    "vite-plugin-static-copy": "^3.1.4"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@ionic/core": "^8.7.8"
+  }
+}
