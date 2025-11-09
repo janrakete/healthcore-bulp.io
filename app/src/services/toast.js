@@ -14,7 +14,7 @@
 export async function toastShow(message, type="success") {
     const toast = await window.toastController.create({
       message: message,
-      duration: 3000,
+      duration: window.appConfig.CONF_toastDuration,
       color: type,
     });
 
