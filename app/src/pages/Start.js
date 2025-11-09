@@ -1,6 +1,8 @@
 /**
  * Start page
  */
+import { toastShow } from "../services/toast.js";
+
 class Start extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
@@ -35,26 +37,31 @@ class Start extends HTMLElement {
         </ion-grid>
       </ion-content>
     `;
-    this.bonjourScan();
+    this.serverFind();
   }
 
-  async bonjourScan() {
-    try {
-      console.log("Starting Bonjour scan...");
-
-      if (isCapacitor) {
-
-        console.log("Bonjour scan result:", result);
+  async serverFind() {
+    if (window.appConfig.CONF_serverURL === undefined) {
+      try {
+        let serverURL = "";
+        if (window.isCapacitor) {
+          console.log("Is native - starting Bonjour scan ...");
+          serverURL = "http://";
+        }
+        else {
+          console.log("Is not native - using static URL from appConfig ...");
+          serverURL = window.appConfig.CONF_serverURLStatic;
+        }
+        window.appConfig.CONF_serverURL = serverURL;
+        console.log("Using server URL:", window.appConfig.CONF_serverURL);
+        toastShow("Server verbunden.", "success");
       }
-      else {
-        console.log("Bonjour scan is only available in Capacitor environment.");
+      catch (error) {
+        console.error("Error connecting to server:", error);
+        toastShow("Error: " + error.message, "danger");
       }
-
     }
-    catch (error) {
-    }
-  }  
-
+  }
 }
 
 customElements.define("page-start", Start);

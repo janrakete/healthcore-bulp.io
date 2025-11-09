@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
-    "@ionic/core": "^8.7.8"
+    "@ionic/core": "^8.7.8",
+    "capacitor-zeroconf": "^4.0.0"
   }
 }

@@ -12,6 +12,7 @@ if (isCapacitor) {   // In Capacitor, import Ionic directly from copied dist fil
 else { // In the browser, use the normal loader
   import("@ionic/core/loader").then((m) => m.defineCustomElements(window));
 }
+window.isCapacitor = isCapacitor;
 
 /**
  * Core CSS required for Ionic components to work properly
@@ -45,3 +46,14 @@ import "./theme/variables.css";
  */
 import { toastController } from '@ionic/core';
 window.toastController = toastController;
+
+/**
+ * Load config
+ */
+await fetch("./src/config.json")
+  .then(res => res.json())
+  .then(config => {
+    console.log("Loading config.json:");
+    window.appConfig = config;
+    console.log(window.appConfig);
+ });

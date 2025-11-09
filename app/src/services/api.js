@@ -12,7 +12,7 @@
  * @throws {Error} - Throws error if the request fails
  */
 async function apiRequest(endpoint, options = {}) {
-  const url = endpoint;
+  const url = window.appConfig.CONF_serverURL + endpoint;
   
   const config = {
     headers: {
