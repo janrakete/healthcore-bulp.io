@@ -41,7 +41,8 @@ const appConfig = {
   CONF_tablesMaxEntriesReturned          : parseInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds        : parseInt(process.env.CONF_apiCallTimeoutMilliseconds),
   CONF_scenarioCooldownMilliseconds      : parseInt(process.env.CONF_scenarioCooldownMilliseconds),
-  CONF_zigBeeReportingTimeout            : parseInt(process.env.CONF_zigBeeReportingTimeout)
+  CONF_zigBeeReportingTimeout            : parseInt(process.env.CONF_zigBeeReportingTimeout),
+  CONF_serverIDBonjour                   : process.env.CONF_serverIDBonjour,
 };
 
 module.exports = appConfig;

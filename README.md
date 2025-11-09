@@ -240,4 +240,4 @@ http://localhost:9998/api-docs/
 Example coming soon.
 ```
 
-If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore,” but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
+If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.

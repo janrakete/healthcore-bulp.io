@@ -91,6 +91,21 @@ async function startServer() {
   });
 
   /**
+   * Bonjour service
+   */
+  const BonjourService = require("bonjour-service");
+  const bonjour = new BonjourService.default();
+  bonjour.publish({
+    name: appConfig.CONF_serverIDBonjour,
+    type: "http",
+    port: appConfig.CONF_portServer,
+    txt: {
+      server: appConfig.CONF_serverID,
+      version: appConfig.CONF_serverVersion
+    },
+  });
+
+  /**
    * Scenario Engine
    */
   const ScenarioEngine = require("./libs/ScenarioEngine");

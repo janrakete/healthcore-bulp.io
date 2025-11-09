@@ -6,11 +6,10 @@ const isCapacitor = location.protocol === "capacitor:" || (window.Capacitor && w
 /**
  * Load Ionic
  */
-if (isCapacitor) {
-  // In Capacitor, import Ionic directly from copied dist files
+if (isCapacitor) {   // In Capacitor, import Ionic directly from copied dist files
   import(/* @vite-ignore */ location.origin + "/ionic.esm.js");
-} else {
-  // In the browser, use the normal loader
+}
+else { // In the browser, use the normal loader
   import("@ionic/core/loader").then((m) => m.defineCustomElements(window));
 }
 
@@ -41,5 +40,8 @@ import "@ionic/core/css/display.css";
  */
 import "./theme/variables.css";
 
+/**
+ * Additional controllers
+ */
 import { toastController } from '@ionic/core';
 window.toastController = toastController;

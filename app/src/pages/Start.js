@@ -35,7 +35,26 @@ class Start extends HTMLElement {
         </ion-grid>
       </ion-content>
     `;
+    this.bonjourScan();
   }
+
+  async bonjourScan() {
+    try {
+      console.log("Starting Bonjour scan...");
+
+      if (isCapacitor) {
+
+        console.log("Bonjour scan result:", result);
+      }
+      else {
+        console.log("Bonjour scan is only available in Capacitor environment.");
+      }
+
+    }
+    catch (error) {
+    }
+  }  
+
 }
 
 customElements.define("page-start", Start);
