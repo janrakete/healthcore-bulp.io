@@ -17,8 +17,9 @@
     "vite-plugin-static-copy": "^3.1.4"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^7.4.0",
     "@capacitor/android": "^7.4.4",
     "@ionic/core": "^8.7.8",
-    "capacitor-zeroconf": "^4.0.0"
+    "firebase": "^11.10.0"
   }
 }
