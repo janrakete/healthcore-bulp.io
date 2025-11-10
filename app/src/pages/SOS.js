@@ -2,9 +2,11 @@
  * SOS Page
  */
 
-Bonjour mit App
-Mehrsprachigkeit
-Einträge löschen
+//Einträge löschen
+//SSE drin lassen, aber FCM (beides erklären in readme)
+// Schaubild anpassen
+//Bonjour mit App
+
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
@@ -14,7 +16,7 @@ class SOS extends HTMLElement {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
-          <ion-title>SOS</ion-title>
+          <ion-title>${window.Translation.get("PageSOSHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
@@ -38,7 +40,7 @@ class SOS extends HTMLElement {
         if (!items || items.length === 0) {
           listElement.innerHTML = `
             <ion-item>
-              <ion-label>Keine Einträge vorhanden.</ion-label>
+              <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
             </ion-item>
           `;
         }
@@ -52,12 +54,13 @@ class SOS extends HTMLElement {
                 </ion-label>
               </ion-item>
                 <ion-item-options>
-
+                  <ion-item-option>Favorite</ion-item-option>
+                  <ion-item-option color="danger">Delete</ion-item-option>
                 </ion-item-options>
             </ion-item-sliding>
           `).join("");
         }
-        toastShow("Einträge geladen.", "success");
+        toastShow(window.Translation.get("EntriesLoaded"), "success");
       }
       else {
         toastShow("Error: " + data.message, "danger");

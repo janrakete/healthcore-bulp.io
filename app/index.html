@@ -7,7 +7,7 @@
     <script>
       window.Ionic = {
         config: {
-          backButtonText: "Zurück",
+          /*backButtonText: Translations.get("Back"),*/
           mode: "ios"
         },
       };
@@ -24,12 +24,8 @@
       <ion-router-outlet></ion-router-outlet>
 
       <ion-tabs>
-        <ion-tab tab="start">
-          <page-start></page-start>
-        </ion-tab>
-        <ion-tab tab="sos">
-          <page-sos></page-sos>
-        </ion-tab>
+        <ion-tab tab="start"></ion-tab>
+        <ion-tab tab="sos"></ion-tab>
 
         <ion-tab-bar color="tertiary" slot="bottom">
           <ion-tab-button tab="start" href="/">

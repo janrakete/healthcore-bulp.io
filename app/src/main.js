@@ -48,6 +48,19 @@ import { toastController } from '@ionic/core';
 window.toastController = toastController;
 
 /**
+ * Load translations and initialize global translations object
+ */
+await fetch("./src/assets/i18n/de.json")
+  .then(res => res.json())
+  .then(translations => {
+    console.log("Loading Translations JSON:");
+    window.appTranslations = translations;
+    console.log(window.appTranslations);
+ });
+import { Translation  } from "./services/translations.js";
+window.Translation = Translation;
+
+/**
  * Load config
  */
 await fetch("./src/config.json")
