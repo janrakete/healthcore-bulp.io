@@ -11,6 +11,6 @@ export class Translation {
      * @returns {string} - The translated string or the key if not found
      */
     static get(key) {
-        return window.appTranslations[key] || key;
+        return window.appTranslations[key] || "#" + key;
   }
 }
