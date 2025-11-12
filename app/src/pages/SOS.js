@@ -4,7 +4,6 @@
 
 
 // HTTP 400 richtig auswerten
-//Einträge löschen
 // EEinträge editieren
 //SSE drin lassen, aber FCM (beides erklären in readme)
 // Schaubild anpassen
@@ -26,7 +25,12 @@ class SOS extends HTMLElement {
         <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
         <ion-list id="sos-list" inset="true">
         </ion-list>
-        <ion-action-sheet id="action-sheet" header="${window.Translation.get("Actions")}"></ion-action-sheet>
+        <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
+        <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+          <ion-fab-button color="success" href="/sos-edit">
+            <ion-icon name="add"></ion-icon>
+          </ion-fab-button>
+        </ion-fab>
       </ion-content>
     `;
     this.actionSheetSetup();
@@ -59,9 +63,11 @@ class SOS extends HTMLElement {
       if (event.detail.data?.action === "delete") {
         const data = await apiDELETE("/data/sos?sosID=" + ID);
         if (data.status === "ok") {
-
-          // redirect
-          toastShow(window.Translation.get("EntryDeleted"), "success");
+          const itemDelete = this.querySelector("#sos-list").querySelector("ion-item-option[data-id='" + ID + "']").closest("ion-item-sliding");
+          if (itemDelete) {
+            itemDelete.remove();
+            toastShow(window.Translation.get("EntryDeleted"), "success");
+          }
         }
         else {
           toastShow("Error: " + data.message, "danger");
@@ -81,7 +87,7 @@ class SOS extends HTMLElement {
 
         if (!items || items.length === 0) {
           listElement.innerHTML = `
-            <ion-item>
+            <ion-item color="light">
               <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
             </ion-item>
           `;
