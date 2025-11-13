@@ -2,8 +2,6 @@
  * SOS Page
  */
 
-
-// HTTP 400 richtig auswerten
 // EEinträge editieren
 //SSE drin lassen, aber FCM (beides erklären in readme)
 // Schaubild anpassen
@@ -70,7 +68,7 @@ class SOS extends HTMLElement {
           }
         }
         else {
-          toastShow("Error: " + data.message, "danger");
+          toastShow("Error: " + data.error, "danger");
         }
       }
     });
@@ -122,7 +120,7 @@ class SOS extends HTMLElement {
         toastShow(window.Translation.get("EntriesLoaded"), "success");
       }
       else {
-        toastShow("Error: " + data.message, "danger");
+        toastShow("Error: " + data.error, "danger");
       }
     }
     catch (error) {

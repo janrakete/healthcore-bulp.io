@@ -24,11 +24,6 @@ async function apiRequest(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
-    
-    if (response.ok === false) {
-      throw new Error("HTTP error status: " + response.status);
-    }
-    
     return await response.json();
   }
   catch (error) {
