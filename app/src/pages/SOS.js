@@ -16,6 +16,9 @@ class SOS extends HTMLElement {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
+          <ion-buttons slot="start">
+            <ion-back-button></ion-back-button>
+          </ion-buttons>
           <ion-title>${window.Translation.get("PageSOSHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
@@ -25,12 +28,16 @@ class SOS extends HTMLElement {
         </ion-list>
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-          <ion-fab-button color="success" href="/sos-edit">
+          <ion-fab-button color="success" id="sos-edit-button">
             <ion-icon name="add"></ion-icon>
           </ion-fab-button>
         </ion-fab>
+        <ion-modal trigger="sos-edit-button">
+          <page-sos-edit></page-sos-edit>
+        </ion-modal>
       </ion-content>
     `;
+
     this.actionSheetSetup();
     this.dataLoad();
   }
