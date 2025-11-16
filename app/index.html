@@ -7,7 +7,6 @@
     <script>
       window.Ionic = {
         config: {
-          backButtonText: Translations.get("Back"),
           mode: "ios"
         },
       };
@@ -16,33 +15,19 @@
 
   <body>
     <ion-app> 
-      <ion-nav></ion-nav>
-
-      <ion-router-outlet>
+      <ion-router>
         <ion-route url="/" component="page-start"></ion-route>
         <ion-route url="/sos" component="page-sos"></ion-route>
-      </ion-router-outlet>
+        <ion-route url="/sos-edit" component="page-sos-edit"></ion-route>
+      </ion-router>
 
-      <ion-tabs>
-        <ion-tab-bar color="tertiary" slot="bottom">
-          <ion-tab-button tab="tab-start" href="/">
-            <ion-icon name="apps-sharp" size="large" color="light"></ion-icon>
-          </ion-tab-button>
-          <ion-tab-button tab="tab-sos" href="/sos">
-            <ion-icon name="call-sharp" size="large" color="light"></ion-icon>
-          </ion-tab-button>
-        </ion-tab-bar>
-
-        <ion-tab tab="tab-start" component="page-start"></ion-tab>
-        <ion-tab tab="tab-sos" component="page-sos"></ion-tab>
-
-      </ion-tabs>
-
+      <ion-router-outlet></ion-router-outlet>
     </ion-app>
 
     <script type="module">
       import "./src/pages/Start.js";
       import "./src/pages/SOS.js";
+      import "./src/pages/SOSEdit.js";
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

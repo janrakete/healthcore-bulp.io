@@ -59,6 +59,7 @@ await fetch("./src/assets/i18n/de.json")
  });
 import { Translation  } from "./services/translations.js";
 window.Translation = Translation;
+window.Ionic.config.backButtonText = window.Translation.get("Back"); // Set back button text globally
 
 /**
  * Load config
