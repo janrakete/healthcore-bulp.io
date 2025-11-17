@@ -2,8 +2,10 @@
  * SOS Page
  */
 
-// EEinträge editieren
+// Räume
 //SSE drin lassen, aber FCM (beides erklären in readme)
+// Personen
+
 // Schaubild anpassen
 //Bonjour mit App
 
@@ -17,7 +19,7 @@ class SOS extends HTMLElement {
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button></ion-back-button>
+            <ion-back-button default-href="/"></ion-back-button>
           </ion-buttons>
           <ion-title>${window.Translation.get("PageSOSHeadline")}</ion-title>
         </ion-toolbar>
@@ -32,12 +34,11 @@ class SOS extends HTMLElement {
             <ion-icon name="add"></ion-icon>
           </ion-fab-button>
         </ion-fab>
-        <ion-modal trigger="sos-edit-button">
-          <page-sos-edit></page-sos-edit>
-        </ion-modal>
       </ion-content>
     `;
-
+    this.querySelector("#sos-edit-button").addEventListener("click", () => { // Navigate to SOS Edit page on button click
+      document.querySelector("ion-router").push("/sos-edit/0");
+    });
     this.actionSheetSetup();
     this.dataLoad();
   }
@@ -106,8 +107,8 @@ class SOS extends HTMLElement {
                   ${item.name}
                 </ion-label>
               </ion-item>
-                <ion-item-options>
-                  <ion-item-option color="warning" data-id="${item.sosID}" class="action-edit-option">
+                <ion-item-options side="end">
+                  <ion-item-option color="warning" data-id="${item.sosID}" class="action-edit-option" id="edit-${item.sosID}">
                     <ion-icon slot="icon-only" name="create-sharp"></ion-icon>
                   </ion-item-option>
                   <ion-item-option color="danger" data-id="${item.sosID}" class="action-delete-option">
@@ -117,10 +118,16 @@ class SOS extends HTMLElement {
             </ion-item-sliding>
           `).join("");
           
-          this.querySelectorAll('.action-delete-option').forEach(button => { // Add event listeners for delete buttons
+          this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
             button.addEventListener("click", () => {
-              this.querySelector('#action-sheet').dataset.ID = button.getAttribute("data-id");
-              this.querySelector('#action-sheet').isOpen = true;
+              document.querySelector("ion-router").push("/sos-edit/" + button.getAttribute("data-id"));
+            });
+          });
+          
+          this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
+            button.addEventListener("click", () => {
+              this.querySelector("#action-sheet").dataset.ID = button.getAttribute("data-id");
+              this.querySelector("#action-sheet").isOpen = true;
             });
           });
         }

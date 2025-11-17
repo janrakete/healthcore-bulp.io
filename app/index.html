@@ -7,7 +7,7 @@
     <script>
       window.Ionic = {
         config: {
-          mode: "ios"
+          mode: "ios",
         },
       };
     </script>
@@ -18,7 +18,7 @@
       <ion-router>
         <ion-route url="/" component="page-start"></ion-route>
         <ion-route url="/sos" component="page-sos"></ion-route>
-        <ion-route url="/sos-edit" component="page-sos-edit"></ion-route>
+        <ion-route url="/sos-edit/:ID" component="page-sos-edit"></ion-route>
       </ion-router>
 
       <ion-router-outlet></ion-router-outlet>
