@@ -92,12 +92,8 @@
     --ion-background-color: linear-gradient(135deg,rgba(103, 58, 183, 1) 0%, rgba(49, 27, 146, 1) 100%);
 }
 
-ion-button {
+ion-grid ion-button {
     --box-shadow: 0 2px 6px 0 rgb(0, 0, 0, 0.25);
-}
-
-ion-button div {
-    padding: 10px;
 }
 
 ion-spinner {
@@ -109,5 +105,7 @@ ion-spinner {
     background: none;
 }
 
-.button-content-with-icon {
+ion-input.custom {
+    --padding-start: 10px;
+    --padding-end: 10px;
 }

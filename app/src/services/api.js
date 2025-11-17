@@ -77,3 +77,16 @@ export async function apiDELETE(endpoint) {
     method: "DELETE"
   });
 }
+
+/**
+ * PATCH Request
+ * @param {string} endpoint - The API endpoint URL
+ * @param {object} data - The data to be sent in the request body
+ * @return {Promise<object>} - The JSON response
+ */
+export async function apiPATCH(endpoint, data) {
+  return apiRequest(endpoint, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
