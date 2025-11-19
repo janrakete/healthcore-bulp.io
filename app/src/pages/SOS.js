@@ -2,14 +2,6 @@
  * SOS Page
  */
 
-// Räume
-//SSE drin lassen, aber FCM (beides erklären in readme)
-// Personen
-
-// Schaubild anpassen
-//Bonjour mit App
-
-
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 
