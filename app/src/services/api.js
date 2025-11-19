@@ -13,6 +13,7 @@
  */
 async function apiRequest(endpoint, options = {}) {
   const url = window.appConfig.CONF_serverURL + endpoint;
+  console.log("API Request URL:", url);
   
   const config = {
     headers: {

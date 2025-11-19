@@ -10,7 +10,7 @@ android {
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
     implementation project(':capacitor-firebase-messaging')
-
+    implementation "org.jmdns:jmdns:3.5.5"
 }
 
 

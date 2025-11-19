@@ -19,6 +19,8 @@
         <ion-route url="/" component="page-start"></ion-route>
         <ion-route url="/sos" component="page-sos"></ion-route>
         <ion-route url="/sos-edit/:ID" component="page-sos-edit"></ion-route>
+        <ion-route url="/rooms" component="page-rooms"></ion-route>
+        <ion-route url="/room-edit/:ID" component="page-room-edit"></ion-route>
       </ion-router>
 
       <ion-router-outlet></ion-router-outlet>
@@ -28,6 +30,8 @@
       import "./src/pages/Start.js";
       import "./src/pages/SOS.js";
       import "./src/pages/SOSEdit.js";
+      import "./src/pages/Rooms.js";
+      import "./src/pages/RoomEdit.js";      
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

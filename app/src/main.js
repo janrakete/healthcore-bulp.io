@@ -44,13 +44,14 @@ import "./theme/variables.css";
 /**
  * Additional controllers
  */
+
 import { toastController } from '@ionic/core';
 window.toastController = toastController;
 
 /**
  * Load translations and initialize global translations object
  */
-await fetch("./src/assets/i18n/de.json")
+await fetch("./assets/i18n/de.json")
   .then(res => res.json())
   .then(translations => {
     console.log("Loading Translations JSON:");
@@ -64,10 +65,11 @@ window.Ionic.config.backButtonText = window.Translation.get("Back"); // Set back
 /**
  * Load config
  */
-await fetch("./src/config.json")
+await fetch("./assets/config.json")
   .then(res => res.json())
   .then(config => {
     console.log("Loading config.json:");
     window.appConfig = config;
     console.log(window.appConfig);
  });
+
