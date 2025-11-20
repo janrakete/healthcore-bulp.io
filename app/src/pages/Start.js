@@ -2,6 +2,8 @@
  * Start page
  */
 
+// kleine LAdeneige
+// CORS problem löse
 //SSE drin lassen, aber FCM (beides erklären in readme)
 // Personen
 // Schaubild anpassen
