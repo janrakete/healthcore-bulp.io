@@ -2,7 +2,6 @@
  * Start page
  */
 
-//Bonjour mit App
 //SSE drin lassen, aber FCM (beides erklären in readme)
 // Personen
 // Schaubild anpassen
@@ -46,13 +45,16 @@ class Start extends HTMLElement {
           <ion-col size="12"><ion-button href="/sos" color="tertiary" expand="block"><ion-icon slot="start" name="call-sharp" size="large"></ion-icon><ion-text>${window.Translation.get("SOSTitle")}</ion-text></ion-button></ion-col>
         </ion-row>
         </ion-grid>
-      </ion-content>
+        <ion-alert backdrop-dismiss="false" header="${window.Translation.get("ServerSearch")}" message="${window.Translation.get("ServerSearchMessage")}"></ion-alert>
+        </ion-content>
     `;
     this.serverFind();
   }
 
   async serverFind() {
     if (window.appConfig.CONF_serverURL === undefined) {
+      document.querySelector("ion-alert").present();
+
       try {
         if (window.isCapacitor) {
           console.log("Is native - starting Bonjour scan ...");
@@ -67,8 +69,10 @@ class Start extends HTMLElement {
                 console.log("Bonjour service name matches!");
                 window.appConfig.CONF_serverURL = "http://" + host + ":" + port;
                 console.log("Using server URL:", window.appConfig.CONF_serverURL);
+                document.querySelector("ion-alert").dismiss();
                 toastShow(window.Translation.get("ServerConnected"), "success");
                 Zeroconf.close();
+
               }
               else {
                 console.log("Bonjour service name does not match - ignoring.");
@@ -79,10 +83,30 @@ class Start extends HTMLElement {
         else {
           console.log("Is not native - using static URL from appConfig ...");
           window.appConfig.CONF_serverURL = window.appConfig.CONF_serverURLStatic;
-          console.log("Using server URL:", window.appConfig.CONF_serverURL);
-          toastShow(window.Translation.get("ServerConnected"), "success");
+          console.log("Trying to connect to server URL: " + window.appConfig.CONF_serverURL);
+                              
+          const tryConnect = async () => {
+            const response = await fetch(window.appConfig.CONF_serverURL + "/info");
+            if (response.ok) {
+              console.log("Connected to server at static URL:", window.appConfig.CONF_serverURL);
+              document.querySelector("ion-alert").dismiss();
+              toastShow(window.Translation.get("ServerConnected"), "success");
+              return true;
+            }
+            return false;
+          };
+
+          const interval = setInterval(async () => { // Interval to retry connection
+            try {
+              if (await tryConnect() === true) {
+                clearInterval(interval);
+              }
+            }
+            catch (error) {
+              console.log("Connection attempt failed, retrying ...");
+            }
+          }, 1000);
         }
-        
       }
       catch (error) {
         console.error("Error connecting to server:", error);
