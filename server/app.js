@@ -65,6 +65,9 @@ async function startServer() {
     }
   });
 
+
+  const infoData = require("./routes/info"); // import routes for server info
+  app.use("/info", infoData);
   const routesData = require("./routes/data"); // import routes for data manipulation
   app.use("/data", routesData);
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation

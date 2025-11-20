@@ -15,7 +15,7 @@ const options = {
       description: "This file is an auto-generated swagger doc from JSDoc comments.",
     },
   },
-  apis: ["./routes/data.js", "./routes/devices.js", "./routes/scenarios.js"],
+  apis: ["./routes/info.js", "./routes/data.js", "./routes/devices.js", "./routes/scenarios.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
