@@ -8,4 +8,5 @@
 *.tmp*
 devices.db
 healthcore_database.db
-healthcore_database.db
+app/android/app/google-services.json
+
