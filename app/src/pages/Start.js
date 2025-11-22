@@ -4,6 +4,7 @@
 
 
 // CORS problem löse
+//fetch umbauen zu apiget
 //SSE drin lassen, aber FCM (beides erklären in readme)
 // Personen
 // Schaubild anpassen
@@ -60,7 +61,7 @@ class Start extends HTMLElement {
       const loadingInterval = await barLoadingStart("ion-alert", "message");
 
       try {
-        if (window.isCapacitor) {
+        if (window.isCapacitor === true) {
           console.log("Is native - starting Bonjour scan ...");
           Zeroconf.watch("_http._tcp.", "local.").subscribe(result => {
             console.log("Result from Zeroconf:");
@@ -72,14 +73,13 @@ class Start extends HTMLElement {
                 const port = result.service.port;
                 console.log("Bonjour service name matches!");
                 window.appConfig.CONF_serverURL = "http://" + host + ":" + port;
-                console.log("Using server URL:", window.appConfig.CONF_serverURL);
+                console.log("Using server URL: " + window.appConfig.CONF_serverURL);
 
                 barLoadingStop(loadingInterval, "ion-alert", "message");
                 
                 document.querySelector("ion-alert").dismiss();
                 toastShow(window.Translation.get("ServerConnected"), "success");
                 Zeroconf.close();
-
               }
               else {
                 console.log("Bonjour service name does not match - ignoring.");
@@ -95,7 +95,7 @@ class Start extends HTMLElement {
           const tryConnect = async () => {
             const response = await fetch(window.appConfig.CONF_serverURL + "/info");
             if (response.ok) {
-              console.log("Connected to server at static URL:", window.appConfig.CONF_serverURL);
+              console.log("Connected to server at static URL: " +  window.appConfig.CONF_serverURL);
 
               barLoadingStop(loadingInterval, "ion-alert", "message");
 

@@ -1,5 +1,10 @@
 {
   "appId": "io.bulp.app",
   "appName": "bulp.io",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
 }

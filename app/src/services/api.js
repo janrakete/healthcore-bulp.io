@@ -4,6 +4,8 @@
  * ===========
  */
 
+import { Http } from '@capacitor-community/http';
+
 /**
  * Generic API request function
  * @param {string} endpoint - The API endpoint URL
@@ -23,9 +25,11 @@ async function apiRequest(endpoint, options = {}) {
     ...options,
   };
 
+  console.log("API Request Config:", config);
+
   try {
-    const response = await fetch(url, config);
-    return await response.json();
+      const response = await fetch(url, config);
+      return await response.json();
   }
   catch (error) {
     console.error("HTTP request failed:", error);
