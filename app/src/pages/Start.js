@@ -2,10 +2,8 @@
  * Start page
  */
 
-
-// CORS problem löse
-//fetch umbauen zu apiget
 //SSE drin lassen, aber FCM (beides erklären in readme)
+// Splash-Screen
 // Personen
 // Schaubild anpassen
 
@@ -13,6 +11,7 @@
 import { toastShow } from "../services/toast.js";
 import { Zeroconf } from "@ionic-native/zeroconf";
 import {barLoadingStart, barLoadingStop} from "../services/helper.js";
+import { apiGET } from "../services/api.js";
 
 class Start extends HTMLElement {
   connectedCallback() {
@@ -93,8 +92,8 @@ class Start extends HTMLElement {
           console.log("Trying to connect to server URL: " + window.appConfig.CONF_serverURL);
                               
           const tryConnect = async () => {
-            const response = await fetch(window.appConfig.CONF_serverURL + "/info");
-            if (response.ok) {
+            const response = await apiGET("/info");
+            if (response.status === "ok") {
               console.log("Connected to server at static URL: " +  window.appConfig.CONF_serverURL);
 
               barLoadingStop(loadingInterval, "ion-alert", "message");

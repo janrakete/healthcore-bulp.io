@@ -4,8 +4,6 @@
  * ===========
  */
 
-import { Http } from '@capacitor-community/http';
-
 /**
  * Generic API request function
  * @param {string} endpoint - The API endpoint URL

@@ -22,6 +22,9 @@ const router          = require("express").Router();
  *               schema:
  *                 type: object
  *                 properties:
+ *                   status:
+ *                    type: string
+ *                    example: "ok"
  *                   serverName:
  *                     type: string
  *                     example: "bulp.io"
@@ -31,6 +34,7 @@ const router          = require("express").Router();
  */
 router.get("/", async function (request, response) {
     const data = {};
+    data.status = "ok";
     data.serverName       = appConfig.CONF_serverID;
     data.serverVersion    = appConfig.CONF_serverVersion;
     data.serverIDBonjour  = appConfig.CONF_serverIDBonjour;

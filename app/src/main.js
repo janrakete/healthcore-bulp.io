@@ -1,7 +1,9 @@
 /**
  * Determine if the app is running in Capacitor
  */
-const isCapacitor = location.protocol === "capacitor:" || (window.Capacitor && window.Capacitor.platform !== "web");
+//const isCapacitor = location.protocol === "capacitor:" || (window.Capacitor && window.Capacitor.platform !== "web");
+const isCapacitor = window.Capacitor.getPlatform() !== "web";
+console.log("Platform: " +  window.Capacitor.getPlatform());
 
 /**
  * Load Ionic
@@ -79,23 +81,25 @@ await fetch("./assets/config.json")
 import { FCM } from "@capacitor-community/fcm";
 import { PushNotifications } from "@capacitor/push-notifications";
 
-await PushNotifications.requestPermissions();
-await PushNotifications.register();
+if (window.isCapacitor === true) {
+  await PushNotifications.requestPermissions();
+  await PushNotifications.register();
 
-console.log("Push: trying to subscribe to topic '" + window.appConfig.CONF_pushTopic + "' ...");
+  console.log("Push: trying to subscribe to topic '" + window.appConfig.CONF_pushTopic + "' ...");
 
-try {
-  await FCM.subscribeTo({ topic: window.appConfig.CONF_pushTopic });
-  console.log("Push: subscribed to topic '" + window.appConfig.CONF_pushTopic + "'");
-}
-catch (error) {
-  console.log(error);
-}
+  try {
+    await FCM.subscribeTo({ topic: window.appConfig.CONF_pushTopic });
+    console.log("Push: subscribed to topic '" + window.appConfig.CONF_pushTopic + "'");
+  }
+  catch (error) {
+    console.log(error);
+  }
 
-try {
-  const token = await FCM.getToken();
-  console.log("Push: device token is " + token.token);
-}
-catch (error) {
-  console.log(error);
+  try {
+    const token = await FCM.getToken();
+    console.log("Push: device token is " + token.token);
+  }
+  catch (error) {
+    console.log(error);
+  }
 }
