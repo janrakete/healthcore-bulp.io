@@ -11,7 +11,7 @@
  */
 export function barLoadingStart(element, attribute="textContent", interval = 200) {
     const elementDOM = document.querySelector(element);
-    console.log("Starting loading bar in element '" +  element + "' with attribute '" +  attribute + "'" + " at interval " + interval + "ms" );
+    console.log("Loading Bar: Starting loading bar in element '" +  element + "' with attribute '" +  attribute + "'" + " at interval " + interval + "ms" );
 
     let index = 0;
     const loadingChars = ["🩷","🧡","💛","💚","💙","🩵","💜","🤎","🖤","🩶","🤍"];

@@ -3,6 +3,7 @@
  */
 
 //SSE drin lassen, aber FCM (beides erklären in readme)
+// Dark Mode
 // Splash-Screen
 // Personen
 // Schaubild anpassen
@@ -11,7 +12,7 @@
 import { toastShow } from "../services/toast.js";
 import { Zeroconf } from "@ionic-native/zeroconf";
 import {barLoadingStart, barLoadingStop} from "../services/helper.js";
-import { apiGET } from "../services/api.js";
+import { apiGET, apiPOST } from "../services/api.js";
 
 class Start extends HTMLElement {
   connectedCallback() {
@@ -55,46 +56,51 @@ class Start extends HTMLElement {
   }
 
   async serverFind() {
+    let serverFound = false;
+
     if (window.appConfig.CONF_serverURL === undefined) {
       document.querySelector("ion-alert").present();
       const loadingInterval = await barLoadingStart("ion-alert", "message");
 
       try {
         if (window.isCapacitor === true) {
-          console.log("Is native - starting Bonjour scan ...");
+          console.log("App: Is native - starting Bonjour scan ...");
           Zeroconf.watch("_http._tcp.", "local.").subscribe(result => {
-            console.log("Result from Zeroconf:");
+            console.log("App: Result from Zeroconf:");
             console.log(result);
             if (result.action === "resolved") {
-              console.log("Bonjour service resolved, checking name ...");
-              if (result.service.name === window.appConfig.CONF_serverIDBonjour) {
+              console.log("App: Bonjour service resolved, checking name ...");
+              if ((result.service.name === window.appConfig.CONF_serverIDBonjour) &&  (serverFound === false)) {
+                serverFound = true;
+                Zeroconf.close();
                 const host = result.service.ipv4Addresses[0];
                 const port = result.service.port;
-                console.log("Bonjour service name matches!");
+                console.log("App: Bonjour service name matches!");
                 window.appConfig.CONF_serverURL = "http://" + host + ":" + port;
-                console.log("Using server URL: " + window.appConfig.CONF_serverURL);
+                console.log("App: Using server URL: " + window.appConfig.CONF_serverURL);
 
                 barLoadingStop(loadingInterval, "ion-alert", "message");
                 
                 document.querySelector("ion-alert").dismiss();
                 toastShow(window.Translation.get("ServerConnected"), "success");
-                Zeroconf.close();
+
+                this.serverCheckPushToken();
               }
               else {
-                console.log("Bonjour service name does not match - ignoring.");
+                console.log("App: Bonjour service name does not match OR already found a server.");
               }
             }
           }); 
         }
         else {
-          console.log("Is not native - using static URL from appConfig ...");
+          console.log("App: Is not native - using static URL from appConfig ...");
           window.appConfig.CONF_serverURL = window.appConfig.CONF_serverURLStatic;
-          console.log("Trying to connect to server URL: " + window.appConfig.CONF_serverURL);
+          console.log("App: Trying to connect to server URL: " + window.appConfig.CONF_serverURL);
                               
           const tryConnect = async () => {
-            const response = await apiGET("/info");
-            if (response.status === "ok") {
-              console.log("Connected to server at static URL: " +  window.appConfig.CONF_serverURL);
+            const data = await apiGET("/info");
+            if (data.status === "ok") {
+              console.log("App: Connected to server at static URL: " +  window.appConfig.CONF_serverURL);
 
               barLoadingStop(loadingInterval, "ion-alert", "message");
 
@@ -112,15 +118,50 @@ class Start extends HTMLElement {
               }
             }
             catch (error) {
-              console.log("Connection attempt failed, retrying ...");
+              console.log("App: Connection attempt failed, retrying ...");
             }
           }, 1000);
         }
       }
       catch (error) {
         barLoadingStop(loadingInterval, "ion-alert", "message");
-        console.error("Error connecting to server:", error);
+        console.error("App: Error connecting to server:", error);
         toastShow("Error: " + error.message, "danger");
+      }
+    }
+  }
+
+  async serverCheckPushToken() {
+    console.log("Push: Checking push notification token ...");
+    if (window.devicePushToken !== undefined) {
+      console.log("Push: Checking push token on server ...");
+      try {
+        const dataGET = await apiGET("/data/push_tokens?token=" + window.devicePushToken);
+        if (dataGET.status === "ok") {
+          if (dataGET.results.length === 0) {
+            console.log("Push: Push token not registered on server, registering ...");
+            const dataPOST = await apiPOST("/data/push_tokens", { token: window.devicePushToken });
+            if (dataPOST.status === "ok") {
+              console.log("Push: Push token registered on server.");
+            } 
+            else {
+              console.error("Push: Error registering push token on server:");
+              console.log(dataPOST);
+            }
+          }
+          else {
+            console.log("Push: Push token already registered on server.");
+          }
+        }
+        else {
+          console.error("Push: Error checking push token on server:");
+          console.log(dataGET);
+
+        }
+      }
+      catch (error) {
+        console.error("Push: Error during push token check:");
+        console.log(error);
       }
     }
   }

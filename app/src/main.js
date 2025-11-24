@@ -56,7 +56,7 @@ window.toastController = toastController;
 await fetch("./assets/i18n/de.json")
   .then(res => res.json())
   .then(translations => {
-    console.log("Loading Translations JSON:");
+    console.log("App: Loading Translations JSON:");
     window.appTranslations = translations;
     console.log(window.appTranslations);
  });
@@ -70,7 +70,7 @@ window.Ionic.config.backButtonText = window.Translation.get("Back"); // Set back
 await fetch("./assets/config.json")
   .then(res => res.json())
   .then(config => {
-    console.log("Loading config.json:");
+    console.log("App: Loading config.json:");
     window.appConfig = config;
     console.log(window.appConfig);
  });
@@ -82,24 +82,34 @@ import { FCM } from "@capacitor-community/fcm";
 import { PushNotifications } from "@capacitor/push-notifications";
 
 if (window.isCapacitor === true) {
-  await PushNotifications.requestPermissions();
-  await PushNotifications.register();
+  const permissionRequest = await PushNotifications.requestPermissions();
+  console.log("Push: permission status is:");
+  console.log(permissionRequest);
 
-  console.log("Push: trying to subscribe to topic '" + window.appConfig.CONF_pushTopic + "' ...");
+  if (permissionRequest.receive === "granted") {
+    console.log("Push: permission granted");
+    await PushNotifications.register();
+    console.log("Push: trying to subscribe to topic '" + window.appConfig.CONF_pushTopic + "' ...");
 
-  try {
-    await FCM.subscribeTo({ topic: window.appConfig.CONF_pushTopic });
-    console.log("Push: subscribed to topic '" + window.appConfig.CONF_pushTopic + "'");
-  }
-  catch (error) {
-    console.log(error);
-  }
+    try {
+      await FCM.subscribeTo({ topic: window.appConfig.CONF_pushTopic });
+      console.log("Push: subscribed to topic '" + window.appConfig.CONF_pushTopic + "'");
+    }
+    catch (error) {
+      console.log(error);
+    }
 
-  try {
-    const token = await FCM.getToken();
-    console.log("Push: device token is " + token.token);
+    try {
+      const token = await FCM.getToken();
+      console.log("Push: device token is " + token.token);
+      window.devicePushToken = token.token;
+    }
+    catch (error) {
+      console.log(error);
+    }
+
   }
-  catch (error) {
-    console.log(error);
+  else {
+    console.log("Push: permission denied");
   }
 }
