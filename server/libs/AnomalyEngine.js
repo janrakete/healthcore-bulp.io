@@ -10,7 +10,6 @@ const { IsolationForest } = require("isolation-forest");
 
 class AnomalyEngine {
   constructor() {
-
   }
 
   /**
@@ -36,7 +35,7 @@ class AnomalyEngine {
       const trainingScores = model.scores();
       const latestScore    = model.predict([{ [property]: values[0][property] }])[0]; // get score of latest entry
       if (latestScore > appConfig.CONF_anomalyDetectionThreshold) {
-        common.conLog("Server: Anomaly detected for property " + property + " with score " + latestScore, "gre");
+        common.conLog("Anomaly Engine: Anomaly detected for property " + property + " with score " + latestScore, "gre");
         let message         = {};
         message.deviceID    = data.deviceID;
         message.bridge      = data.bridge;
