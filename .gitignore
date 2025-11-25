@@ -1,7 +1,6 @@
 /logs
 /node_modules
 .env.local
-/_old
 ./vscode
 .DS_Store
 *.log
@@ -9,4 +8,4 @@
 devices.db
 healthcore_database.db
 app/android/app/google-services.json
-
+push-firebase-admin.json

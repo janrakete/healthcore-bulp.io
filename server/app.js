@@ -88,7 +88,7 @@ async function startServer() {
    */
   const server = require("http").createServer(app);
   server.listen(appConfig.CONF_portServer, function () {
-    common.logoShow("Server",             appConfig.CONF_portServer); // show logo
+    //common.logoShow("Server",             appConfig.CONF_portServer); // show logo
     common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
     common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
   });
@@ -119,6 +119,13 @@ async function startServer() {
    */
   const AnomalyEngine = require("./libs/AnomalyEngine");
   const anomalies     = new AnomalyEngine();
+
+  /**
+   * Push notifications
+   */
+  const PushEngine = require("./libs/PushEngine");
+  const pushEngine = new PushEngine();
+  pushEngine.sendAll("Server started", "The server " + appConfig.CONF_serverID + " has started successfully.");
 
   /**
    * MQTT client
