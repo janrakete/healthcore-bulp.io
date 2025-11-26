@@ -31,7 +31,7 @@ class AnomalyEngine {
       const values = results.map(result => { return { [property]: result.valueAsNumeric }} ); // map results to values  
       const model = new IsolationForest();
 
-      model.fit(values.slice(1)); // Cut first entry of data, because if it is already in dataset then it will not be considered as anomaly
+      model.fit(values.slice(1)); // cut first entry of data, because if it is already in dataset then it will not be considered as anomaly
       const trainingScores = model.scores();
       const latestScore    = model.predict([{ [property]: values[0][property] }])[0]; // get score of latest entry
       if (latestScore > appConfig.CONF_anomalyDetectionThreshold) {

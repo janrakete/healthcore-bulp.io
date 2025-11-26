@@ -3,12 +3,8 @@
  */
 
 
-// TOKEN LÖSCHEN Wenn Rückgabe
-// onTokenRefresh
-// FInall: ebiaunen bei Riles (wenn Flag PushToken gesetzt ist)
 
-
-
+// Refresh tolen
 //SSE drin lassen, aber FCM (beides erklären in readme)
 // Dark Mode
 // Splash-Screen

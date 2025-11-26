@@ -8,7 +8,8 @@ const appConfig = require("../../config");
 
 class ScenarioEngine {
   constructor() {
-    this.executionCooldowns = new Map(); // Prevent rapid re-execution
+    this.executionCooldowns = new Map(); // prevent rapid re-execution
+    this.pushEngine = null; // push notifications engine
   }
 
   /**
@@ -18,7 +19,7 @@ class ScenarioEngine {
   async evaluateScenarios(deviceData) {
 
     try {
-      // Get all enabled scenarios with triggers that match this device/property
+      // get all enabled scenarios with triggers that match this device/property
       const scenarios = database.prepare("SELECT DISTINCT s.*, st.triggerID, st.operator, st.value AS triggerValue, st.valueType AS triggerValueType FROM scenarios AS s JOIN scenarios_triggers AS st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.deviceID = ? AND st.bridge = ?  AND st.property = ? ORDER BY s.priority DESC").all(deviceData.deviceID, deviceData.bridge, deviceData.property);
 
       for (const scenario of scenarios) {
@@ -37,8 +38,7 @@ class ScenarioEngine {
    */
   async evaluateScenario(scenario, deviceData) {
     try {
-      // Check cooldown to prevent rapid re-execution
-      const cooldownKey     = scenario.scenarioID + "-" + deviceData.deviceID + "-" + deviceData.property;
+      const cooldownKey     = scenario.scenarioID + "-" + deviceData.deviceID + "-" + deviceData.property;  // check cooldown to prevent rapid re-execution
       const lastExecution   = this.executionCooldowns.get(cooldownKey);
       const now             = Date.now();
       
@@ -46,11 +46,9 @@ class ScenarioEngine {
         return;
       }
 
-      // Get all triggers for this scenario
-      const triggers = database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID);
-
-      // Check if ALL triggers are satisfied
-      let allTriggersSatisfied = true;
+      const triggers = database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID); // get all triggers for this scenario
+      
+      let allTriggersSatisfied = true; // check if ALL triggers are satisfied
       
       for (const trigger of triggers) {
         const triggerSatisfied = await this.evaluateTrigger(trigger, deviceData);
@@ -78,13 +76,11 @@ class ScenarioEngine {
    * @returns {boolean} - Whether the trigger condition is satisfied
    */
   async evaluateTrigger(trigger, deviceData) {
-    // if this trigger is for the current device/property, use the incoming value
-    if (trigger.deviceID === deviceData.deviceID && trigger.bridge === deviceData.bridge &&  trigger.property === deviceData.property) {
+    if (trigger.deviceID === deviceData.deviceID && trigger.bridge === deviceData.bridge &&  trigger.property === deviceData.property) {     // if this trigger is for the current device/property, use the incoming value
       return this.compareValues(deviceData.value, trigger.operator, trigger.value, trigger.valueType);
     }
 
-    // For other triggers, get the current value from the database
-    const currentValue = await this.getCurrentDeviceValue(trigger.deviceID, trigger.bridge, trigger.property);
+    const currentValue = await this.getCurrentDeviceValue(trigger.deviceID, trigger.bridge, trigger.property); // for other triggers, get the current value from the database
     if (currentValue === null) {
       return false; // Device/property not found
     }
@@ -102,7 +98,7 @@ class ScenarioEngine {
    */
   compareValues(actualValue, operator, expectedValue, valueType) {
     try {
-      // Convert values based on type
+      // convert values based on type
       let actual   = this.convertValue(actualValue, valueType);
       let expected = this.convertValue(expectedValue, valueType);
 
@@ -172,27 +168,27 @@ class ScenarioEngine {
    */
   async executeScenario(scenario, triggerData) {
     try {
-      // Get all actions for this scenario
-      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID);
+      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID); // get all actions for this scenario
 
-      // Log execution
-      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run(
+      
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run( // log execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 1
       );
 
-      // Execute actions with delays
-      for (const action of actions) {
+      for (const action of actions) { // execute actions with delays
         setTimeout(() => {
           this.executeAction(action);
         }, action.delay);
       }
 
+      if ((this.pushEngine) && (scenario.pushNotification === 1)) { // send push notification if enabled
+        this.pushEngine.sendAll(scenario.name, scenario.description);
+      }
     }
     catch (error) {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
-
-      // Log failed execution
-      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success, errorMessage) VALUES (?, ?, ?, ?, ?, ?)").run(
+          
+      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success, errorMessage) VALUES (?, ?, ?, ?, ?, ?)").run( // log failed execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 0, error.message
       );
     }

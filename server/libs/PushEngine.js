@@ -10,8 +10,15 @@ const firebaseAdmin = require("firebase-admin");
 
 class PushEngine {
   constructor() {
-    var serviceAccount = require("../../push-firebase-admin.json");
-    firebaseAdmin.initializeApp({credential: firebaseAdmin.credential.cert(serviceAccount)});    
+    const serviceAccount = require("../../push-firebase-admin.json");
+    firebaseAdmin.initializeApp({credential: firebaseAdmin.credential.cert(serviceAccount)});  
+    
+    this.permanentInvalidTokenErrors = [
+        "messaging/invalid-registration-token",
+        "messaging/registration-token-not-registered",
+        "messaging/invalid-recipient",
+        "messaging/invalid-argument"
+      ];
   }
 
   /**
@@ -21,6 +28,7 @@ class PushEngine {
    */
   async sendAll(pushTitle, pushBody = "") {
     common.conLog("Push Engine: Starting to send push notification with title '" + pushTitle + "'", "yel");
+    
     const results   = database.prepare("SELECT token FROM push_tokens").all(); // get all registered push tokens
     const tokens    = results.map(result => result.token);
     
@@ -29,19 +37,35 @@ class PushEngine {
         message.notification        = {};
         message.notification.title  = pushTitle;
         message.notification.body   = pushBody;
-        message.tokens             = tokens;
-    
-        common.conLog("Push Engine: Trying to send push message:", "std", false);
-        common.conLog(message, "std", false);
 
         try { 
-            const call = await firebaseAdmin.messaging().sendEachForMulticast(message);
-            common.conLog("Push Engine: Successfully sent push notification to " + call.successCount + " tokens", "gre");
+            const batchSize = 500; // send in batches of 500 tokens each
+            
+            for (let batchIndex = 0; batchIndex < tokens.length; batchIndex += batchSize) {
+                const batchTokens = tokens.slice(batchIndex, batchIndex + batchSize);
+                const batchMessage = {
+                    notification: message.notification,
+                    tokens: batchTokens
+                };
+                
+                common.conLog("Push Engine: Trying to send push message in batch " + (batchIndex / batchSize + 1) + ":", "std", false);
+                common.conLog(batchMessage, "std", false);
 
-            for (const response of call.responses) {
-                if (response.error) {
-                    common.conLog("Push Engine: Error sending to token '': " + response.error, "red");
-                    // ===== 
+                const call = await firebaseAdmin.messaging().sendEachForMulticast(batchMessage);
+                common.conLog("Push Engine: Successfully sent push notification to " + call.successCount + " tokens", "gre");
+
+                let tokenIndex = 0;
+                for (const response of call.responses) {
+                    if (response.success === false) { // delete invalid token
+                        common.conLog("Push Engine: Error sending to token:", "red");
+                        common.conLog(response.error, "std", false);
+
+                        if (this.permanentInvalidTokenErrors.includes(response.error.errorInfo.code)) {
+                            database.prepare("DELETE FROM push_tokens WHERE token = ? LIMIT 1").run(tokens[tokenIndex]);
+                            common.conLog("Push Engine: Removed invalid push token '" + tokens[tokenIndex] + "' from database", "std", false);
+                        }
+                    }
+                    tokenIndex++;
                 }
             }
         }

@@ -88,7 +88,7 @@ async function startServer() {
    */
   const server = require("http").createServer(app);
   server.listen(appConfig.CONF_portServer, function () {
-    //common.logoShow("Server",             appConfig.CONF_portServer); // show logo
+    common.logoShow("Server",             appConfig.CONF_portServer); // show logo
     common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
     common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
   });
@@ -125,7 +125,7 @@ async function startServer() {
    */
   const PushEngine = require("./libs/PushEngine");
   const pushEngine = new PushEngine();
-  pushEngine.sendAll("Server started", "The server " + appConfig.CONF_serverID + " has started successfully.");
+  scenarios.pushEngine = pushEngine; // make push engine available in scenarios
 
   /**
    * MQTT client
@@ -366,7 +366,7 @@ async function startServer() {
           /**
            * Evaluate scenarios based on the fetched values
            */
-          if (data.values !== undefined) { // Evaluate scenarios based on the fetched values
+          if (data.values !== undefined) { // evaluate scenarios based on the fetched values
             Object.keys(data.values).forEach((property) => {
               const valueData = data.values[property];
 
