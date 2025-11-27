@@ -108,6 +108,10 @@ if (window.isCapacitor === true) {
       console.log(error);
     }
 
+    await FCM.onTokenRefresh((newToken) => { // Listen for future token refreshes
+      console.log("Push: device token refreshed to " + newToken.token);
+      window.devicePushToken = newToken.token;
+    });
   }
   else {
     console.log("Push: permission denied");
