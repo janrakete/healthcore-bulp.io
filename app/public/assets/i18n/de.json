@@ -21,5 +21,6 @@
     "Name" : "Name",
     "Phone" : "Telefonnummer",
     "EntrySaved" : "Eintrag gespeichert.",
-    "EntryLoaded" : "Eintrag geladen."    
+    "EntryLoaded" : "Eintrag geladen.",
+    "ServerSearch" : "Suche bulp.station ..."
 }
