@@ -2,14 +2,37 @@
  * Start page
  */
 
+/*
+
+README ANPASSEN
+Apps using ionic ... und Capactitor
 
 
-// Refresh tolen
-//SSE drin lassen, aber FCM (beides erklären in readme)
+
+Cd app
+Npm run dev
+
+
+Default URL: http://localhost:5173/
+
+-> For Native:
+
+Install: https://capacitorjs.com/docs/getting-started/environment-setup
+Install Java
+
+1. Npm run build
+2. npx cap sync 
+3. npx cap run android
+*/
+
+
+
+//SSE entfernen und Schaubild anpassen
 // Dark Mode
 // Splash-Screen
 // Personen
-// Schaubild anpassen
+// ... 
+
 
 
 import { toastShow } from "../services/toast.js";
