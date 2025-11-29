@@ -21,6 +21,7 @@
     "@capacitor-community/http": "^1.4.1",
     "@capacitor/android": "^7.4.4",
     "@capacitor/push-notifications": "^7.0.3",
+    "@capacitor/splash-screen": "^7.0.3",
     "@ionic-native/core": "^5.36.0",
     "@ionic-native/zeroconf": "^5.36.0",
     "@ionic/core": "^8.7.8",

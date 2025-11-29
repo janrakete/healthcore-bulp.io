@@ -72,8 +72,6 @@ async function startServer() {
   app.use("/data", routesData);
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
   app.use("/devices", routesDevices);
-  const routesSSE = require("./routes/sse"); // import routes for server side events
-  app.use("/sse", routesSSE);
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
   app.use("/scenarios", routesScenarios);
   
@@ -350,11 +348,6 @@ async function startServer() {
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
 
           /**
-           * Broadcast new values to all SSE clients
-           */
-          sseChannel.broadcast(JSON.stringify(data), "value");
-
-          /**
            * Check for anomalies in the fetched values
            */
           if (appConfig.CONF_anomalyDetectionActive) {
@@ -452,14 +445,6 @@ async function startServer() {
       message.error       = "Bridge missing";
     }
   }
-
-  /**
-   * Create Server Side Events channel
-   */
-  const sse         = require("better-sse"); 
-  global.sse        = sse;
-  global.sseChannel = sse.createChannel(); // make channel global
-  
 }
 
 startServer();

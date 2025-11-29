@@ -25,12 +25,8 @@ Install Java
 3. npx cap run android
 */
 
-
-
-//SSE entfernen und Schaubild anpassen
-// Dark Mode
-// Splash-Screen
-// Personen
+// Personen mit Rooms 
+// und Requiered
 // ... 
 
 
@@ -61,7 +57,7 @@ class Start extends HTMLElement {
       <ion-grid>
         <ion-row>
           <ion-col size="6"><ion-button expand="block" color="danger"><div><div><ion-icon slot="start" name="notifications-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("MessagesTitle")}</ion-text></div></div></div></ion-button></ion-col>
-          <ion-col size="6"><ion-button expand="block"><div><div><ion-icon slot="start" name="person-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("PeopleTitle")}</ion-text></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button expand="block" href="/individuals"><div><div><ion-icon slot="start" name="person-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("IndividualsTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
             <ion-col size="6"><ion-button expand="block" href="/rooms"><div><div><ion-icon slot="start" name="scan-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("RoomsTitle")}</ion-text></div></div></ion-button></ion-col>
