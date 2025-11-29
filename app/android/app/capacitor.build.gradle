@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-community-fcm')
     implementation project(':capacitor-community-http')
     implementation project(':capacitor-push-notifications')
+    implementation project(':capacitor-splash-screen')
     implementation "org.jmdns:jmdns:3.5.5"
 }
 

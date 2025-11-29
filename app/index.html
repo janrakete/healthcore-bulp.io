@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
   <head>
+    <meta name="color-scheme" content="light dark" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>bulp.io</title>
@@ -21,6 +22,8 @@
         <ion-route url="/sos-edit/:ID" component="page-sos-edit"></ion-route>
         <ion-route url="/rooms" component="page-rooms"></ion-route>
         <ion-route url="/room-edit/:ID" component="page-room-edit"></ion-route>
+        <ion-route url="/individuals" component="page-individuals"></ion-route>
+        <ion-route url="/individual-edit/:ID" component="page-individual-edit"></ion-route>
       </ion-router>
 
       <ion-router-outlet></ion-router-outlet>
@@ -32,6 +35,8 @@
       import "./src/pages/SOSEdit.js";
       import "./src/pages/Rooms.js";
       import "./src/pages/RoomEdit.js";      
+      import "./src/pages/Individuals.js";
+      import "./src/pages/IndividualEdit.js";
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

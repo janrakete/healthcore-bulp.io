@@ -4,7 +4,7 @@
     "Edit" : "Bearbeiten",
     "Back" : "Zurück",
     "MessagesTitle" : "Nachrichten",
-    "PeopleTitle" : "Personen",
+    "IndividualsTitle" : "Personen",
     "SOSTitle" : "SOS",
     "RoomsTitle" : "Räume",
     "DevicesTitle" : "Geräte",
@@ -22,5 +22,6 @@
     "Phone" : "Telefonnummer",
     "EntrySaved" : "Eintrag gespeichert.",
     "EntryLoaded" : "Eintrag geladen.",
-    "ServerSearch" : "Suche bulp.station ..."
+    "ServerSearch" : "Suche bulp.station ...",
+    "PageRoomsHeadline" : "Räume"
 }
