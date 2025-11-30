@@ -96,8 +96,8 @@ class IndividualEdit extends HTMLElement {
           const select = this.querySelector("ion-select[name='editRoom']");
           roomData.results.forEach(room => {
             const option = document.createElement("ion-select-option");
-            option.value  = room.roomID;
-            option.innerHTML   = room.name;
+            option.value     = room.roomID;
+            option.innerHTML = room.name;
             if (room.roomID === item.roomID) {
               option.selected = true;
             }
