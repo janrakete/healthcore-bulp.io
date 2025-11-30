@@ -76,57 +76,65 @@ class Individuals extends HTMLElement {
 
   async dataLoad() {
     try {
-      const data = await apiGET("/data/individuals");
-      console.log("API call - Output:", data);
-      
-      if (data.status === "ok") {
-        const listElement = this.querySelector("#individuals-list");
-        const items = data.results;
+      const roomData = await apiGET("/data/rooms"); // load rooms for select
+      console.log("API call - Output:", roomData);
+      if (roomData.status === "ok") { 
+        const data = await apiGET("/data/individuals");
+        console.log("API call - Output:", data);
+        
+        if (data.status === "ok") {
+          const listElement = this.querySelector("#individuals-list");
+          const items = data.results;
 
-        if (!items || items.length === 0) {
-          listElement.innerHTML = `
-            <ion-item color="light">
-              <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
-            </ion-item>
-          `;
+          if (!items || items.length === 0) {
+            listElement.innerHTML = `
+              <ion-item color="light">
+                <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
+              </ion-item>
+            `;
+          }
+          else {
+            listElement.innerHTML = items.map(item => `
+              <ion-item-sliding>
+                <ion-item detail="false" color="light">
+                  <ion-icon slot="start" name="person-sharp"></ion-icon>
+                  <ion-label>
+                    ${item.firstname} ${item.lastname}
+                    ${item.roomID > 0 && roomData.results.find(room => room.roomID === item.roomID) ? `<p><small>${window.Translation.get("Room")}: ${roomData.results.find(room => room.roomID === item.roomID).name}</small></p>` : '' }
+                  </ion-label>
+                </ion-item>
+                  <ion-item-options side="end">
+                    <ion-item-option color="warning" data-id="${item.individualID}" class="action-edit-option" id="edit-${item.individualID}">
+                      <ion-icon slot="icon-only" name="create-sharp"></ion-icon>
+                    </ion-item-option>
+                    <ion-item-option color="danger" data-id="${item.individualID}" class="action-delete-option">
+                      <ion-icon slot="icon-only" name="trash-sharp"></ion-icon>
+                    </ion-item-option>
+                  </ion-item-options>
+              </ion-item-sliding>
+            `).join("");
+            
+            this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
+              button.addEventListener("click", () => {
+                document.querySelector("ion-router").push("/individual-edit/" + button.getAttribute("data-id"));
+              });
+            });
+            
+            this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
+              button.addEventListener("click", () => {
+                this.querySelector("#action-sheet").dataset.ID  = button.getAttribute("data-id");
+                this.querySelector("#action-sheet").isOpen      = true;
+              });
+            });
+          }
+          toastShow(window.Translation.get("EntriesLoaded"), "success");
         }
         else {
-          listElement.innerHTML = items.map(item => `
-            <ion-item-sliding>
-              <ion-item detail="false" color="light">
-                <ion-icon slot="start" name="person-sharp"></ion-icon>
-                <ion-label>
-                  ${item.firstname} ${item.lastname}
-                </ion-label>
-              </ion-item>
-                <ion-item-options side="end">
-                  <ion-item-option color="warning" data-id="${item.individualID}" class="action-edit-option" id="edit-${item.individualID}">
-                    <ion-icon slot="icon-only" name="create-sharp"></ion-icon>
-                  </ion-item-option>
-                  <ion-item-option color="danger" data-id="${item.individualID}" class="action-delete-option">
-                    <ion-icon slot="icon-only" name="trash-sharp"></ion-icon>
-                  </ion-item-option>
-                </ion-item-options>
-            </ion-item-sliding>
-          `).join("");
-          
-          this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
-            button.addEventListener("click", () => {
-              document.querySelector("ion-router").push("/individual-edit/" + button.getAttribute("data-id"));
-            });
-          });
-          
-          this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
-            button.addEventListener("click", () => {
-              this.querySelector("#action-sheet").dataset.ID  = button.getAttribute("data-id");
-              this.querySelector("#action-sheet").isOpen      = true;
-            });
-          });
+          toastShow("Error: " + data.error, "danger");
         }
-        toastShow(window.Translation.get("EntriesLoaded"), "success");
       }
       else {
-        toastShow("Error: " + data.error, "danger");
+        toastShow("Error: " + data.error, "danger");        
       }
     }
     catch (error) {

@@ -31,7 +31,8 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 */
 
-// Personen mit Rooms 
+
+// Icons einfügen, erste Call um zu suchen
 // und Requiered
 // ... 
 
@@ -67,7 +68,7 @@ class Start extends HTMLElement {
         </ion-row>
         <ion-row>
             <ion-col size="6"><ion-button expand="block" href="/rooms"><div><div><ion-icon slot="start" name="scan-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("RoomsTitle")}</ion-text></div></div></ion-button></ion-col>
-            <ion-col size="6"><ion-button expand="block"><div><div><ion-icon slot="start" name="radio-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("DevicesTitle")}</ion-text></div></div></ion-button></ion-col>
+            <ion-col size="6"><ion-button expand="block" href="/devices"><div><div><ion-icon slot="start" name="radio-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("DevicesTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
           <ion-col size="6"><ion-button expand="block"><div><div><ion-icon slot="start" name="unlink-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
