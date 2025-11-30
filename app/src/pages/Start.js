@@ -23,6 +23,12 @@ Install Java
 1. Npm run build
 2. npx cap sync 
 3. npx cap run android
+
+
+Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Desktop/push-firebase-admin.json im Root speochen
+
+
+
 */
 
 // Personen mit Rooms 
