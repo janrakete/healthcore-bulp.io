@@ -62,8 +62,8 @@ await fetch("./assets/i18n/de.json")
     console.log(window.appTranslations);
  });
 import { Translation  } from "./services/translations.js";
-window.Translation = Translation;
-window.Ionic.config.backButtonText = window.Translation.get("Back"); // Set back button text globally
+window.Translation                  = Translation;
+window.Ionic.config.backButtonText  = window.Translation.get("Back"); // Set back button text globally
 
 /**
  * Load config
