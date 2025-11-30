@@ -27,6 +27,10 @@ class IndividualEdit extends HTMLElement {
               <ion-item color="light">
                 <ion-input type="text" placeholder="${window.Translation.get("LastName")}" name="editLastName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
+              <ion-item color="light">
+                <ion-select  interface="popover" name="editRoom" label="${window.Translation.get("Room")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                </ion-select>
+              </ion-item>      
             </ion-list>
           </ion-col>
         </ion-row>
@@ -46,8 +50,9 @@ class IndividualEdit extends HTMLElement {
 
   async submit() {
     const formData = {};
-    formData.firstname = this.querySelector("ion-input[name='editFirstName']").value;
-    formData.lastname = this.querySelector("ion-input[name='editLastName']").value;
+    formData.firstname  = this.querySelector("ion-input[name='editFirstName']").value;
+    formData.lastname   = this.querySelector("ion-input[name='editLastName']").value;
+    formData.roomID     = this.querySelector("ion-select[name='editRoom']").value;
 
     let data = {};
 
@@ -82,8 +87,26 @@ class IndividualEdit extends HTMLElement {
       if (data.status === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editFirstName']").value = item.firstname;
-        this.querySelector("ion-input[name='editLastName']").value = item.lastname;
-        toastShow(window.Translation.get("EntryLoaded"), "success");        
+        this.querySelector("ion-input[name='editLastName']").value  = item.lastname;
+        toastShow(window.Translation.get("EntryLoaded"), "success");  
+        
+        const roomData = await apiGET("/data/rooms"); // load rooms for select
+        console.log("API call - Output:", roomData);
+        if (roomData.status === "ok") { 
+          const select = this.querySelector("ion-select[name='editRoom']");
+          roomData.results.forEach(room => {
+            const option = document.createElement("ion-select-option");
+            option.value  = room.roomID;
+            option.innerHTML   = room.name;
+            if (room.roomID === item.roomID) {
+              option.selected = true;
+            }
+            select.appendChild(option);
+          });
+        }
+        else {
+          toastShow("Error: " + roomData.error, "danger");
+        }
       }
       else {
         toastShow("Error: " + data.error, "danger");

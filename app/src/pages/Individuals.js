@@ -118,8 +118,8 @@ class Individuals extends HTMLElement {
           
           this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
             button.addEventListener("click", () => {
-              this.querySelector("#action-sheet").dataset.ID = button.getAttribute("data-id");
-              this.querySelector("#action-sheet").isOpen = true;
+              this.querySelector("#action-sheet").dataset.ID  = button.getAttribute("data-id");
+              this.querySelector("#action-sheet").isOpen      = true;
             });
           });
         }
