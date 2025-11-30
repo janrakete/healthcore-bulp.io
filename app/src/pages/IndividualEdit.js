@@ -28,7 +28,8 @@ class IndividualEdit extends HTMLElement {
                 <ion-input type="text" placeholder="${window.Translation.get("LastName")}" name="editLastName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
-                <ion-select  interface="popover" name="editRoom" label="${window.Translation.get("Room")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                <ion-select  interface="popover" class="custom" name="editRoom" label="${window.Translation.get("Room")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                  <ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>
                 </ion-select>
               </ion-item>      
             </ion-list>
@@ -98,11 +99,9 @@ class IndividualEdit extends HTMLElement {
             const option = document.createElement("ion-select-option");
             option.value     = room.roomID;
             option.innerHTML = room.name;
-            if (room.roomID === item.roomID) {
-              option.selected = true;
-            }
             select.appendChild(option);
           });
+          select.value = item.roomID;
         }
         else {
           toastShow("Error: " + roomData.error, "danger");

@@ -105,7 +105,7 @@ ion-spinner {
     background: none;
 }
 
-ion-input.custom {
+ion-input.custom, ion-select.custom {
     --padding-start: 10px;
     --padding-end: 10px;
 }

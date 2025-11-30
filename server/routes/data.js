@@ -122,7 +122,7 @@ async function conditionBuild(table, payload) {
  *       summary: Inserting data into a table
  *       description: This endpoint allows you to insert data into a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI). 
  *       tags:
- *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens")
+ *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
  *       parameters:
  *         - in: path
  *           name: table
@@ -222,7 +222,7 @@ router.post("/:table", async function (request, response) {
  *       summary: Retrieving data from a table
  *       description: This endpoint allows you to retrieve data from a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
  *       tags:
- *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens")
+ *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
  *       parameters:
  *         - in: path
  *           name: table
@@ -327,7 +327,7 @@ router.get("/:table", async function (request, response) {
  *       summary: Deleting data from a table
  *       description: This endpoint allows you to delete data from a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
  *       tags:
- *         - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens")
+ *         - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
  *       parameters:
  *         - in: path
  *           name: table
@@ -438,7 +438,7 @@ router.delete("/:table", async function (request, response) {
  *       summary: Update data in a table
  *       description: This endpoint allows you to update data in a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
  *       tags:
- *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens")
+ *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
  *       parameters:
  *         - in: path
  *           name: table
