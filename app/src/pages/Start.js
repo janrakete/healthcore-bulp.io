@@ -34,6 +34,7 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 // Icons einfügen, erste Call um zu suchen
 // und Requiered
+// Doku 
 // ... 
 
 

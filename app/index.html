@@ -25,7 +25,11 @@
         <ion-route url="/individuals" component="page-individuals"></ion-route>
         <ion-route url="/individual-edit/:ID" component="page-individual-edit"></ion-route>
         <ion-route url="/devices" component="page-devices"></ion-route>
-        <ion-route url="/device-add" component="page-device-add"></ion-route>
+        <ion-route url="/devices-add" component="page-devices-add"></ion-route>
+        <ion-route url="/devices-add/zigbee" component="page-devices-add-zigbee"></ion-route>
+        <ion-route url="/devices-add/bluetooth" component="page-devices-add-bluetooth"></ion-route>
+        <ion-route url="/devices-add/lora" component="page-devices-add-lora"></ion-route>
+        <ion-route url="/devices-add/http" component="page-devices-add-http"></ion-route>
       </ion-router>
 
       <ion-router-outlet></ion-router-outlet>
@@ -40,7 +44,8 @@
       import "./src/pages/Individuals.js";
       import "./src/pages/IndividualEdit.js";
       import "./src/pages/Devices.js";
-      import "./src/pages/DeviceAdd.js";      
+      import "./src/pages/DevicesAdd.js";      
+      import "./src/pages/DevicesAddZigBee.js";      
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

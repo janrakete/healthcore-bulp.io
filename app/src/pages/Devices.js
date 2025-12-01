@@ -29,7 +29,7 @@ class Devices extends HTMLElement {
       </ion-content>
     `;
     this.querySelector("#device-edit-button").addEventListener("click", () => { // Navigate to Device Add page on button click
-      document.querySelector("ion-router").push("/device-add");
+      document.querySelector("ion-router").push("/devices-add");
     });
     this.actionSheetSetup();
     this.dataLoad();
