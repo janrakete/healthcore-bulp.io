@@ -7,6 +7,9 @@ class DevicesAdd extends HTMLElement {
     this.innerHTML = `
         <ion-header>
             <ion-toolbar color="primary">
+            <ion-buttons slot="start">
+                <ion-back-button default-href="/devices"></ion-back-button>
+            </ion-buttons>
                 <ion-title>${window.Translation.get("PageDevicesAddHeadline")}</ion-title>
             </ion-toolbar>
         </ion-header>

@@ -32,7 +32,9 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 */
 
 
-// Icons einfügen, erste Call um zu suchen
+// Zigbee korggieren
+// Persinen und Räume ubmauen auf Card
+// Nachrichten (e8infach alle ausgelästem Szenaroen anzeigen)
 // und Requiered
 // Doku 
 // ... 
