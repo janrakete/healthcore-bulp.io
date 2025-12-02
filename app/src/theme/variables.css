@@ -109,7 +109,7 @@ ion-input.custom, ion-select.custom {
     --padding-start: 10px;
     --padding-end: 10px;
 }
-
+/*
 @media (prefers-color-scheme: dark) {
     ion-toolbar::part(background) {
         background-color: #000;
@@ -119,3 +119,4 @@ ion-input.custom, ion-select.custom {
         color: #fff;
     }
 }
+*/
