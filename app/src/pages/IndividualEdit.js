@@ -9,7 +9,7 @@ class IndividualEdit extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
-        <ion-toolbar>
+        <ion-toolbar color="primary">
           <ion-buttons slot="start">
             <ion-back-button default-href="/individuals"></ion-back-button>
           </ion-buttons> 
@@ -44,6 +44,7 @@ class IndividualEdit extends HTMLElement {
       </ion-content>
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
+    this.loadRoomsData();
     if (this.ID > 0) {
       this.loadData();
     }
@@ -80,6 +81,30 @@ class IndividualEdit extends HTMLElement {
     }
   }
 
+  async loadRoomsData() {
+    try {
+      const data = await apiGET("/data/rooms"); // load rooms for select
+      console.log("API call - Output:", data);
+      if (data.status === "ok") { 
+        const select = this.querySelector("ion-select[name='editRoom']");
+        data.results.forEach(room => {
+          const option = document.createElement("ion-select-option");
+          option.value     = room.roomID;
+          option.innerHTML = room.name;
+          select.appendChild(option);
+        });
+      }
+      else {
+        toastShow("Error: " + data.error, "danger");
+      }
+    }
+    catch (error) {
+      console.error("API call - Error:", error);
+      toastShow("Error: " + error.message, "danger");
+    }
+  }
+
+
   async loadData() {
     try {
       const data = await apiGET("/data/individuals?individualID=" + this.ID);
@@ -89,23 +114,9 @@ class IndividualEdit extends HTMLElement {
         const item = data.results[0];
         this.querySelector("ion-input[name='editFirstName']").value = item.firstname;
         this.querySelector("ion-input[name='editLastName']").value  = item.lastname;
+        const select = this.querySelector("ion-select[name='editRoom']");
+        select.value = item.roomID;
         toastShow(window.Translation.get("EntryLoaded"), "success");  
-        
-        const roomData = await apiGET("/data/rooms"); // load rooms for select
-        console.log("API call - Output:", roomData);
-        if (roomData.status === "ok") { 
-          const select = this.querySelector("ion-select[name='editRoom']");
-          roomData.results.forEach(room => {
-            const option = document.createElement("ion-select-option");
-            option.value     = room.roomID;
-            option.innerHTML = room.name;
-            select.appendChild(option);
-          });
-          select.value = item.roomID;
-        }
-        else {
-          toastShow("Error: " + roomData.error, "danger");
-        }
       }
       else {
         toastShow("Error: " + data.error, "danger");

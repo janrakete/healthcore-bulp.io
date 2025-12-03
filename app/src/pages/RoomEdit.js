@@ -9,7 +9,7 @@ class RoomEdit extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
-        <ion-toolbar>
+        <ion-toolbar color="primary">
           <ion-buttons slot="start">
             <ion-back-button default-href="/rooms"></ion-back-button>
           </ion-buttons> 

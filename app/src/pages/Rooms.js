@@ -18,8 +18,7 @@ class Rooms extends HTMLElement {
       </ion-header>
       <ion-content class="ion-padding">
         <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
-        <ion-list id="rooms-list" inset="true">
-        </ion-list>
+        <div id="rooms-list"></div>
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="success" id="room-edit-button">
@@ -61,7 +60,7 @@ class Rooms extends HTMLElement {
       if (event.detail.data?.action === "delete") {
         const data = await apiDELETE("/data/rooms?roomID=" + ID);
         if (data.status === "ok") {
-          const itemDelete = this.querySelector("#rooms-list").querySelector("ion-item-option[data-id='" + ID + "']").closest("ion-item-sliding");
+          const itemDelete = this.querySelector("#rooms-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
             toastShow(window.Translation.get("EntryDeleted"), "success");
@@ -85,29 +84,18 @@ class Rooms extends HTMLElement {
 
         if (!items || items.length === 0) {
           listElement.innerHTML = `
-            <ion-item color="light">
-              <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
-            </ion-item>
+            <center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
           `;
         }
         else {
           listElement.innerHTML = items.map(item => `
-            <ion-item-sliding>
-              <ion-item detail="false" color="light">
-                <ion-icon slot="start" name="scan-sharp"></ion-icon>
-                <ion-label>
-                  ${item.name}
-                </ion-label>
-              </ion-item>
-                <ion-item-options side="end">
-                  <ion-item-option color="warning" data-id="${item.roomID}" class="action-edit-option" id="edit-${item.roomID}">
-                    <ion-icon slot="icon-only" name="create-sharp"></ion-icon>
-                  </ion-item-option>
-                  <ion-item-option color="danger" data-id="${item.roomID}" class="action-delete-option">
-                    <ion-icon slot="icon-only" name="trash-sharp"></ion-icon>
-                  </ion-item-option>
-                </ion-item-options>
-            </ion-item-sliding>
+            <ion-card color="primary" data-id="${item.roomID}">
+              <ion-card-header>
+                  <ion-card-title>${item.name}</ion-card-title>
+              </ion-card-header>
+              <ion-button data-id="${item.roomID}" id="edit-${item.roomID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+              <ion-button data-id="${item.roomID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+            </ion-card>
           `).join("");
           
           this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
