@@ -18,8 +18,7 @@ class Individuals extends HTMLElement {
       </ion-header>
       <ion-content class="ion-padding">
         <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
-        <ion-list id="individuals-list" inset="true">
-        </ion-list>
+        <div id="individuals-list"></div>
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="success" id="individual-edit-button">
@@ -61,7 +60,7 @@ class Individuals extends HTMLElement {
       if (event.detail.data?.action === "delete") {
         const data = await apiDELETE("/data/individuals?individualID=" + ID);
         if (data.status === "ok") {
-          const itemDelete = this.querySelector("#individuals-list").querySelector("ion-item-option[data-id='" + ID + "']").closest("ion-item-sliding");
+          const itemDelete = this.querySelector("#individuals-list").querySelector("ion-card[data-id='" + ID + "']").closest("ion-item-sliding");
           if (itemDelete) {
             itemDelete.remove();
             toastShow(window.Translation.get("EntryDeleted"), "success");
@@ -88,30 +87,19 @@ class Individuals extends HTMLElement {
 
           if (!items || items.length === 0) {
             listElement.innerHTML = `
-              <ion-item color="light">
-                <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
-              </ion-item>
+              <center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
             `;
           }
           else {
             listElement.innerHTML = items.map(item => `
-              <ion-item-sliding>
-                <ion-item detail="false" color="light">
-                  <ion-icon slot="start" name="person-sharp"></ion-icon>
-                  <ion-label>
-                    ${item.firstname} ${item.lastname}
-                    ${item.roomID > 0 && roomData.results.find(room => room.roomID === item.roomID) ? `<p><small>${window.Translation.get("Room")}: ${roomData.results.find(room => room.roomID === item.roomID).name}</small></p>` : '' }
-                  </ion-label>
-                </ion-item>
-                  <ion-item-options side="end">
-                    <ion-item-option color="warning" data-id="${item.individualID}" class="action-edit-option" id="edit-${item.individualID}">
-                      <ion-icon slot="icon-only" name="create-sharp"></ion-icon>
-                    </ion-item-option>
-                    <ion-item-option color="danger" data-id="${item.individualID}" class="action-delete-option">
-                      <ion-icon slot="icon-only" name="trash-sharp"></ion-icon>
-                    </ion-item-option>
-                  </ion-item-options>
-              </ion-item-sliding>
+              <ion-card color="primary" data-id="${item.individualID}">
+                <ion-card-header>
+                    <ion-card-title>${item.firstname} ${item.lastname}</ion-card-title>
+                    <ion-card-subtitle>${item.roomID > 0 && roomData.results.find(room => room.roomID === item.roomID) ? `${window.Translation.get("Room")}: ${roomData.results.find(room => room.roomID === item.roomID).name}` : '' }</ion-card-subtitle>
+                </ion-card-header>
+                <ion-button data-id="${item.individualID}" id="edit-${item.individualID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+                <ion-button data-id="${item.individualID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+              </ion-card>
             `).join("");
             
             this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons

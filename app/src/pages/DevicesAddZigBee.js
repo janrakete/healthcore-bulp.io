@@ -6,6 +6,12 @@ import { apiGET, apiDELETE, apiPOST } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 
 class DevicesAddZigBee extends HTMLElement {
+
+    constructor() {
+        super();
+        this.scanning = true;
+    }
+
     connectedCallback() {
         this.innerHTML = `
             <ion-header>
@@ -33,22 +39,23 @@ class DevicesAddZigBee extends HTMLElement {
 
         const interval = setInterval(async () => {
             const scanData = await apiGET("/devices/zigbee/scan/info?callID=" + data.data.callID);
-          
-            if (scanData.status === "ok") {
-                if ((scanData.data.devices) && (scanData.data.devices.length !== 0)) {
-                    const listElement = this.querySelector("#devices-list-container");
-                    listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanFoundAndAdded") + "</ion-text></center>";
-                    listElement.innerHTML += scanData.data.devices.map(device => `
-                        <ion-card  color="primary">
-                        <ion-card-header>
-                            <ion-card-title>${device.productName}</ion-card-title>
-                            <ion-card-subtitle>${device.vendorName}</ion-card-subtitle>
-                        </ion-card-header>
-                        <ion-card-content>
-                            ${device.deviceID}
-                        </ion-card-content>
-                        </ion-card>
-                    `).join("");
+            if (this.scanning === true) {
+                if (scanData.status === "ok") {
+                    if ((scanData.data.devices) && (scanData.data.devices.length !== 0)) {
+                        const listElement = this.querySelector("#devices-list-container");
+                        listElement.innerHTML = "<center><ion-text color='light'>" +  window.Translation.get("DevicesScanFoundAndAdded") + "</ion-text></center>";
+                        listElement.innerHTML += scanData.data.devices.map(device => `
+                            <ion-card  color="primary">
+                                <ion-card-header>
+                                    <ion-card-title>${device.productName}</ion-card-title>
+                                    <ion-card-subtitle>${device.vendorName}</ion-card-subtitle>
+                                </ion-card-header>
+                                <ion-card-content>
+                                    ${device.deviceID}
+                                </ion-card-content>
+                            </ion-card>
+                        `).join("");
+                    }
                 }
             }
             else {
@@ -60,11 +67,14 @@ class DevicesAddZigBee extends HTMLElement {
             clearInterval(interval);
             const spinner = this.querySelector("ion-spinner"); // Remove spinner
             spinner.remove();
+            this.scanning = false;
             const listElement = this.querySelector("#devices-list-container");
             if (listElement.innerHTML === "") {
-                listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanNoDevicesFound") + "</ion-text></center><br />";
+                listElement.innerHTML = "<center><ion-text color='light'>" +  window.Translation.get("DevicesScanNoDevicesFound") + "</ion-text></center><br />";
             }
-            listElement.innerHTML += "<center><ion-text>" +  window.Translation.get("DevicesScanFinished") + "</ion-text></center><br />"; 
+            else {
+                listElement.innerHTML += "<center><ion-text color='light'>" +  window.Translation.get("DevicesScanFinished") + "</ion-text></center><br />"; 
+            }
             listElement.innerHTML += "<center><ion-button expand='block' href='/devices'>"+ window.Translation.get("PageDevicesGoToDevices") +"</ion-button></center>";
         }, (window.appConfig.CONF_scanDuration) * 1000);
       }

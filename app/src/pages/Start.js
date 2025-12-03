@@ -31,9 +31,7 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 */
 
-
-// Zigbee korggieren
-// Persinen und Räume ubmauen auf Card
+// Segemnt für Devices uhd in Cards ubmaueen
 // Nachrichten (e8infach alle ausgelästem Szenaroen anzeigen)
 // und Requiered
 // Doku 

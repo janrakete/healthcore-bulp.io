@@ -101,6 +101,10 @@ ion-spinner {
     height: 50px;
 }
 
+ion-item::part(native) {
+  background: var(--ion-color-light);
+}
+
 .action-sheet-cancel.sc-ion-action-sheet-ios::after {
     background: none;
 }
