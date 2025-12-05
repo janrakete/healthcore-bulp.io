@@ -181,6 +181,8 @@ class ScenarioEngine {
         }, action.delay);
       }
 
+      database.prepare("INSERT INTO notifications (text, scenarioID) VALUES (?, ?)").run(scenarion.name, scenario.scenarioID); // insert into notifications table
+
       if ((this.pushEngine) && (scenario.pushNotification === 1)) { // send push notification if enabled
         this.pushEngine.sendAll(scenario.name, scenario.description);
       }

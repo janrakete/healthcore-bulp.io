@@ -3,5 +3,6 @@
     "CONF_toastDuration": 100,
     "CONF_serverIDBonjour" : "healthcore",
     "CONF_pushTopic": "Information",
-    "CONF_scanDuration": 30
+    "CONF_scanDuration": 30,
+    "CONF_dateLocale": "de-DE"
 }

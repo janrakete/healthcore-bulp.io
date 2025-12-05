@@ -22,7 +22,7 @@ const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which ta
 async function statementBuild(table, payload, type="INSERT") {
    let response = {};
 
-   const results = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
 
    let dataList = [];
@@ -83,8 +83,14 @@ async function statementBuild(table, payload, type="INSERT") {
 async function conditionBuild(table, payload) {
    let response = {};
 
-   const results = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
+   
+   let orderByString = ""; // if payload contains orderBy block, remove it from payload and save it for later processing
+   if (payload.orderBy !== undefined) {
+      orderByString = payload.orderBy;
+      delete payload.orderBy;
+   }
 
    response.condition = "";   
    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
@@ -112,6 +118,51 @@ async function conditionBuild(table, payload) {
       response.status  = "ok"; // if payload is empty it's also ok, no WHERE condition returned
    }
 
+   if (response.status === "ok") { // if status is ok ...
+      if (orderByString !== "") { // ... process orderBy block
+         const orderByResponse = await orderByBuild(orderByString, table);
+         if (orderByResponse.status === "ok") { 
+            response.condition = response.condition + orderByResponse.statement;
+         }
+         else {
+            response.status = "error";
+            response.error  = orderByResponse.error;
+         }
+      }
+   }
+   return (response);
+}
+
+/**
+ * This function builds an ORDER BY clause for SQL queries based on the provided orderBy string.
+ * @async
+ * @function orderByBuild
+ * @param {string} orderByString - The orderBy string in the format "column,direction" (e.g., "dateTime,DESC").
+ * @param {string} table - The name of the table to validate the column against.
+ * @returns {object} - An object containing the status of the operation, any error messages, and the constructed ORDER BY clause.
+ * @description This function checks if the specified column exists in the table. If it does, it constructs an ORDER BY clause with the specified direction (ASC or DESC). If the column does not exist, it returns an error.
+ */
+async function orderByBuild(orderByString, table) {
+   const column   = orderByString.split(",")[0]; // first part column name
+   let direction  = orderByString.split(",")[1]; // second part direction (ASC or DESC)
+
+   if (direction === undefined) {
+      direction = "ASC"; // default direction
+   }
+
+   let response      = {};
+   const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   const columnsList = results.map(result => result.name);
+
+   if (columnsList.includes(column)) { // if key is an existing table column ...
+      response.status    = "ok"; // ... return ok and ...
+      response.statement = " ORDER BY " + column + " " + direction;
+   }
+   else { // if key is not an existing table column
+      response.statement   = "";
+      response.status      = "error"; // ... return error
+      response.error       = "Given column '" + column + "' in orderBy block does not exists in table";
+   }         
    return (response);
 }
 
@@ -122,7 +173,7 @@ async function conditionBuild(table, payload) {
  *       summary: Inserting data into a table
  *       description: This endpoint allows you to insert data into a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI). 
  *       tags:
- *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
+ *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "notifications")
  *       parameters:
  *         - in: path
  *           name: table
@@ -222,7 +273,7 @@ router.post("/:table", async function (request, response) {
  *       summary: Retrieving data from a table
  *       description: This endpoint allows you to retrieve data from a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
  *       tags:
- *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
+ *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "notifications")
  *       parameters:
  *         - in: path
  *           name: table
@@ -327,7 +378,7 @@ router.get("/:table", async function (request, response) {
  *       summary: Deleting data from a table
  *       description: This endpoint allows you to delete data from a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
  *       tags:
- *         - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
+ *         - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "notifications")
  *       parameters:
  *         - in: path
  *           name: table
@@ -438,7 +489,7 @@ router.delete("/:table", async function (request, response) {
  *       summary: Update data in a table
  *       description: This endpoint allows you to update data in a specified table. Allowed tables are defined in the .env file (CONF_tablesAllowedForAPI).
  *       tags:
- *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "devices")
+ *        - Data manipulation (standard allowed tables are "individuals","rooms","users","sos","settings", "push_tokens", "notifications")
  *       parameters:
  *         - in: path
  *           name: table

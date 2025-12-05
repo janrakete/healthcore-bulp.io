@@ -34,3 +34,21 @@ export function barLoadingStop(loadingInterval, element, attribute="textContent"
     const elementDOM = document.querySelector(element);
     elementDOM[attribute] = "";
 }
+
+/***
+ * Convert date to readable format
+ * @param {string} dateString - The date string to be converted, i.e. 2025-09-25 21:07:08
+ * @param {string} locale - The locale code for formatting, e.g. "en-US" or "de-DE"
+ * @returns {string} - The formatted date string.
+ */
+export function dateFormat(dateString, locale = "en-US") {
+    const date = new Date(dateString);
+    return date.toLocaleString(locale, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    });
+}
