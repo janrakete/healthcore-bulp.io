@@ -32,7 +32,6 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 */
 
 // Segemnt für Devices uhd in Cards ubmaueen
-// Nachrichten (e8infach alle ausgelästem Szenaroen anzeigen)
 // und Requiered
 // Doku 
 // ... 
@@ -64,7 +63,7 @@ class Start extends HTMLElement {
 
       <ion-grid>
         <ion-row>
-          <ion-col size="6"><ion-button expand="block" color="danger"><div><div><ion-icon slot="start" name="notifications-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("MessagesTitle")}</ion-text></div></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button expand="block" href="/notifications" color="danger"><div><div><ion-icon slot="start" name="notifications-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("MessagesTitle")}</ion-text></div></div></div></ion-button></ion-col>
           <ion-col size="6"><ion-button expand="block" href="/individuals"><div><div><ion-icon slot="start" name="person-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("IndividualsTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>

@@ -60,7 +60,7 @@ class Individuals extends HTMLElement {
       if (event.detail.data?.action === "delete") {
         const data = await apiDELETE("/data/individuals?individualID=" + ID);
         if (data.status === "ok") {
-          const itemDelete = this.querySelector("#individuals-list").querySelector("ion-card[data-id='" + ID + "']").closest("ion-item-sliding");
+          const itemDelete = this.querySelector("#individuals-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
             toastShow(window.Translation.get("EntryDeleted"), "success");

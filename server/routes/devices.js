@@ -45,6 +45,86 @@ function mqttPendingResponsesHandler(callID, response) {
 
 /**
  * @swagger
+ *  /devices/all:
+ *    get:
+ *      summary: Get all devices
+ *      description: This endpoint retrieves all devices from the system.
+ *      tags:
+ *        - Devices
+ *      responses:
+ *        "200":
+ *          description: Successfully retrieved all devices.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "ok"
+ *                  data:
+ *                    type: object
+ *                    properties:
+ *                      results:
+ *                        type: array
+ *                        items:
+ *                          type: object
+ *                          properties:
+ *                            deviceID:
+ *                              type: string
+ *                              example: "12345"
+ *                            productName:
+ *                              type: string
+ *                              example: "Product XYZ"
+ *                            bridge:
+ *                              type: string
+ *                              example: "bluetooth"
+ *        "400":
+ *          description: Bad request. The request was invalid or cannot be served.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "error"
+ *                  error:
+ *                    type: string
+ *                    example: "Error message"
+ */
+router.get("/all", async function (request, response) {
+    let data = {};
+    try {
+        data.status = "ok";
+        const statement = "SELECT * FROM devices LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
+        common.conLog("GET Request: access table 'devices'", "gre");
+        common.conLog("Execute statement: " + statement, "std", false);
+
+        const results = await database.prepare(statement).all();
+        data.results = results;
+    }
+    catch (error) {
+    data.status = "error";
+    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+    }
+
+
+    if (data.status === "error") {
+        common.conLog("GET Request: an error occured", "red");
+    }
+
+    common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+    if (data.status === "ok") {
+        return response.status(200).json(data);
+    }
+    else {
+        return response.status(400).json(data);
+    }
+});
+
+/**
+ * @swagger
  *   /devices/{bridge}/scan:
  *     post:
  *       summary: Scan for devices (only Bluetooth and ZigBee)
