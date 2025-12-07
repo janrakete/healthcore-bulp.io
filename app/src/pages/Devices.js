@@ -18,6 +18,24 @@ class Devices extends HTMLElement {
       </ion-header>
       <ion-content class="ion-padding">
         <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
+
+        <ion-segment value="all" scrollable="true" swipeGesture="true">
+          <ion-segment-button value="all">
+            <ion-label>${window.Translation.get("All")}</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="zigbee">
+            <ion-label>${window.Translation.get("Zigbee")}</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="bluetooth">
+            <ion-label>${window.Translation.get("Bluetooth")}</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="lora">
+            <ion-label>${window.Translation.get("LoRa")}</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="http">
+            <ion-label>${window.Translation.get("Wifi")}</ion-label>
+          </ion-segment-button>
+        </ion-segment>
         <div id="devices-list"></div>
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
@@ -27,9 +45,13 @@ class Devices extends HTMLElement {
         </ion-fab>
       </ion-content>
     `;
-    this.querySelector("#device-edit-button").addEventListener("click", () => { // Navigate to Device Add page on button click
+    this.querySelector("#device-edit-button").addEventListener("click", () => { // navigate to Device Add page on button click
       document.querySelector("ion-router").push("/devices-add");
     });
+    this.querySelector("ion-segment").addEventListener("ionChange", (event) => { // reload data when segment changes
+      this.dataLoad(event.detail.value);
+    });
+
     this.actionSheetSetup();
     this.dataLoad();
   }
@@ -55,10 +77,11 @@ class Devices extends HTMLElement {
 
     actionSheet.addEventListener("ionActionSheetDidDismiss", async (event) => { // Handle action sheet dismissal
       actionSheet.isOpen = false;
-      const ID = actionSheet.dataset.ID; // Get ID of entry to delete
+      const ID      = actionSheet.dataset.ID; // Get ID of entry to delete
+      const bridge  = actionSheet.dataset.bridge; // Get bridge of entry to delete
       console.log("Action sheet: ID of entry:", ID);
       if (event.detail.data?.action === "delete") {
-        const data = await apiDELETE("/data/devices?deviceID=" + ID);
+        const data = await apiDELETE("/devices/" + bridge + "/" + ID);
         if (data.status === "ok") {
           const itemDelete = this.querySelector("#devices-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
@@ -73,9 +96,19 @@ class Devices extends HTMLElement {
     });
   }
 
-  async dataLoad() {
+  async dataLoad(filter = "all") {
     try {
-      const data = await apiGET("/devices/all");
+      console.log("Devices: Loading devices with filter: " +  filter);
+
+      let data = {};
+      if (filter === "all") {
+        data = await apiGET("/devices/all");
+      }
+      else {
+        data = await apiGET("/devices/" +  filter + "/list");
+        data = data.devicesRegisteredAtServer;
+      }
+
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {
@@ -84,7 +117,7 @@ class Devices extends HTMLElement {
 
         if (!items || items.length === 0) {
           listElement.innerHTML = `
-            <center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
+            <br /><center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
           `;
         }
         else {
@@ -115,7 +148,7 @@ class Devices extends HTMLElement {
                   <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
               </ion-card-header>
               <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-              <ion-button data-id="${item.deviceID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+              <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
             </ion-card>
           `;
           }).join("");
@@ -128,8 +161,9 @@ class Devices extends HTMLElement {
           
           this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
             button.addEventListener("click", () => {
-              this.querySelector("#action-sheet").dataset.ID  = button.getAttribute("data-id");
-              this.querySelector("#action-sheet").isOpen      = true;
+              this.querySelector("#action-sheet").dataset.ID      = button.getAttribute("data-id");
+              this.querySelector("#action-sheet").dataset.bridge  = button.getAttribute("data-bridge");
+              this.querySelector("#action-sheet").isOpen          = true;
             });
           });
         }

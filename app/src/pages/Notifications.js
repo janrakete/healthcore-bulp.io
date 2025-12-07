@@ -40,17 +40,16 @@ class Notifications extends HTMLElement {
           `;
         }
         else {
-          listElement.innerHTML = items.map(item => `
+            listElement.innerHTML = items.map(item => `
             <ion-card color="primary" data-id="${item.notificationID}">
               <ion-card-header>
-                  <ion-card-title>${item.text}</ion-card-title>
-                  <ion-card-subtitle>${dateFormat(item.dateTime, window.appConfig.CONF_dateLocale)}</ion-card-subtitle>
+                <ion-card-title>${item.text}</ion-card-title>
+                <ion-card-subtitle>${dateFormat(item.dateTime, window.appConfig.CONF_dateLocale)}</ion-card-subtitle>
               </ion-card-header>
-              <ion-card-content>
-                fasfasf
-              </ion-card-content>
-            </ion-card>
-          `).join("");
+              ${item.description !== null ? `<ion-card-content><ion-text color="light">${item.description}</ion-text></ion-card-content>` : ""}
+              ${item.scenarioID > 0 ? `<ion-button href="/scenario-edit/${item.scenarioID}"><ion-icon slot="start" name="unlink-sharp" color="tertiary"></ion-icon><ion-text color="light">${window.Translation.get("ScenarioGoTo")}</ion-text></ion-button>` : ''}
+              </ion-card>
+            `).join("");
         }
         toastShow(window.Translation.get("EntriesLoaded"), "success");
       }
