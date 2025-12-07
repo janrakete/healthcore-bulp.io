@@ -5,7 +5,7 @@
 .DS_Store
 *.log
 *.tmp*
-devices.db
+/bridge - zigbee/devices.db
 healthcore_database.db
 app/android/app/google-services.json
 push-firebase-admin.json
