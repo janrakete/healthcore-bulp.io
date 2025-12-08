@@ -106,7 +106,9 @@ class Devices extends HTMLElement {
       }
       else {
         data = await apiGET("/devices/" +  filter + "/list");
-        data = data.devicesRegisteredAtServer;
+
+        //console.log(data);
+        //data = data.devicesRegisteredAtServer;
       }
 
       console.log("API call - Output:", data);
@@ -179,7 +181,7 @@ class Devices extends HTMLElement {
     }
     
     const spinner = this.querySelector("ion-spinner"); // Remove spinner
-    spinner.remove();
+    //spinner.remove();
   }
 }
 
