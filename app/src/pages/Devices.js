@@ -17,10 +17,9 @@ class Devices extends HTMLElement {
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
-        <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
 
-        <ion-segment value="all" scrollable="true" swipeGesture="true">
-          <ion-segment-button value="all">
+        <ion-segment value="zigbee,bluetooth,lora,http" scrollable="true" swipeGesture="true">
+          <ion-segment-button value="zigbee,bluetooth,lora,http">
             <ion-label>${window.Translation.get("All")}</ion-label>
           </ion-segment-button>
           <ion-segment-button value="zigbee">
@@ -49,7 +48,7 @@ class Devices extends HTMLElement {
       document.querySelector("ion-router").push("/devices-add");
     });
     this.querySelector("ion-segment").addEventListener("ionChange", (event) => { // reload data when segment changes
-      this.dataLoad(event.detail.value);
+      this.dataLoad(event.detail.value.split(","));
     });
 
     this.actionSheetSetup();
@@ -96,92 +95,92 @@ class Devices extends HTMLElement {
     });
   }
 
-  async dataLoad(filter = "all") {
+  async dataLoad(filters = ["zigbee","bluetooth","lora","http"]) {
+    this.querySelector("#devices-list").innerHTML = "";
+    const spinner = document.createElement("ion-spinner");
+    spinner.name = "dots";
+    spinner.color = "warning";
+    const center = document.createElement("center");
+    center.appendChild(spinner);
+    this.querySelector("#devices-list").prepend(center);
+
     try {
-      console.log("Devices: Loading devices with filter: " +  filter);
+      for (const filter of filters) {
+        console.log("Devices: Loading devices with filter: " +  filter);
 
-      let data = {};
-      if (filter === "all") {
-        data = await apiGET("/devices/all");
-      }
-      else {
-        data = await apiGET("/devices/" +  filter + "/list");
+        let data = await apiGET("/devices/" +  filter + "/list");
+        data.results = data.data.devicesRegisteredAtServer
+        console.log("API call - Output:", data);
 
-        //console.log(data);
-        //data = data.devicesRegisteredAtServer;
-      }
+        if (data.status === "ok") {
+          const listElement = this.querySelector("#devices-list");
+          const items = data.results;
 
-      console.log("API call - Output:", data);
-      
-      if (data.status === "ok") {
-        const listElement = this.querySelector("#devices-list");
-        const items = data.results;
-
-        if (!items || items.length === 0) {
-          listElement.innerHTML = `
-            <br /><center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
-          `;
+          if (!items || items.length === 0) {
+            listElement.innerHTML = `
+              <br /><center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
+            `;
+          }
+          else {
+            listElement.innerHTML = items.map(item => {
+              let displayInfo = "";
+            
+              switch(item.bridge) {
+                case "zigbee":
+                  displayInfo = window.Translation.get("Zigbee");
+                  break;
+                case "bluetooth":
+                  displayInfo = window.Translation.get("Bluetooth");
+                  break;
+                case "lora":
+                  displayInfo = window.Translation.get("LoRa");
+                  break;
+                case "http":
+                  displayInfo = window.Translation.get("Wifi");
+                  break;
+                default:
+                  displayInfo = window.Translation.get("Unknown");
+              }
+            
+              return `
+              <ion-card color="primary" data-id="${item.deviceID}">
+                <ion-card-header>
+                    <ion-card-title>${item.name}</ion-card-title>
+                    <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
+                </ion-card-header>
+                <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+                <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+              </ion-card>
+            `;
+            }).join("");
+          
+            this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
+              button.addEventListener("click", () => {
+                document.querySelector("ion-router").push("/device-edit/" + button.getAttribute("data-id"));
+              });
+            });
+          
+            this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
+              button.addEventListener("click", () => {
+                this.querySelector("#action-sheet").dataset.ID      = button.getAttribute("data-id");
+                this.querySelector("#action-sheet").dataset.bridge  = button.getAttribute("data-bridge");
+                this.querySelector("#action-sheet").isOpen          = true;
+              });
+            });
+          }
+          toastShow(window.Translation.get("EntriesLoaded"), "success");
         }
         else {
-          listElement.innerHTML = items.map(item => {
-            let displayInfo = "";
-            
-            switch(item.bridge) {
-              case "zigbee":
-                displayInfo = window.Translation.get("Zigbee");
-                break;
-              case "bluetooth":
-                displayInfo = window.Translation.get("Bluetooth");
-                break;
-              case "lora":
-                displayInfo = window.Translation.get("LoRa");
-                break;
-              case "http":
-                displayInfo = window.Translation.get("Wifi");
-                break;
-              default:
-                displayInfo = window.Translation.get("Unknown");
-            }
-            
-            return `
-            <ion-card color="primary" data-id="${item.deviceID}">
-              <ion-card-header>
-                  <ion-card-title>${item.name}</ion-card-title>
-                  <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
-              </ion-card-header>
-              <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-              <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
-            </ion-card>
-          `;
-          }).join("");
-          
-          this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
-            button.addEventListener("click", () => {
-              document.querySelector("ion-router").push("/device-edit/" + button.getAttribute("data-id"));
-            });
-          });
-          
-          this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
-            button.addEventListener("click", () => {
-              this.querySelector("#action-sheet").dataset.ID      = button.getAttribute("data-id");
-              this.querySelector("#action-sheet").dataset.bridge  = button.getAttribute("data-bridge");
-              this.querySelector("#action-sheet").isOpen          = true;
-            });
-          });
+          toastShow("Error: " + data.error, "danger");
         }
-        toastShow(window.Translation.get("EntriesLoaded"), "success");
-      }
-      else {
-        toastShow("Error: " + data.error, "danger");
       }
     }
     catch (error) {
       console.error("API call - Error:", error);
       toastShow("Error: " + error.message, "danger");
     }
-    
-    const spinner = this.querySelector("ion-spinner"); // Remove spinner
-    //spinner.remove();
+   
+    spinner.remove();
   }
 }
 
