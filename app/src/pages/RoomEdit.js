@@ -42,8 +42,8 @@ class RoomEdit extends HTMLElement {
   }
 
   async submit() {
-    const formData = {};
-    formData.name = this.querySelector("ion-input[name='editName']").value;
+    const formData          = {};
+    formData.name           = this.querySelector("ion-input[name='editName']").value;
 
     let data = {};
 

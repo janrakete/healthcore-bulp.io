@@ -31,6 +31,7 @@
         <ion-route url="/devices-add/lora" component="page-devices-add-lora"></ion-route>
         <ion-route url="/devices-add/http" component="page-devices-add-http"></ion-route>
         <ion-route url="/notifications" component="page-notifications"></ion-route>
+        <ion-route url="/device-edit/:BRIDGE/:ID" component="page-device-edit"></ion-route>
       </ion-router>
 
       <ion-router-outlet></ion-router-outlet>
@@ -48,6 +49,7 @@
       import "./src/pages/DevicesAdd.js";      
       import "./src/pages/DevicesAddZigBee.js";  
       import "./src/pages/Notifications.js";
+      import "./src/pages/DeviceEdit.js";
 
     </script>
     <script type="module" src="/src/main.js"></script>

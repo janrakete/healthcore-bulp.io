@@ -51,7 +51,7 @@ class IndividualEdit extends HTMLElement {
   }
 
   async submit() {
-    const formData = {};
+    const formData      = {};
     formData.firstname  = this.querySelector("ion-input[name='editFirstName']").value;
     formData.lastname   = this.querySelector("ion-input[name='editLastName']").value;
     formData.roomID     = this.querySelector("ion-select[name='editRoom']").value;
