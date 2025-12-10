@@ -82,7 +82,7 @@ class Start extends HTMLElement {
           <ion-col size="12"><ion-button href="/sos" color="tertiary" expand="block"><ion-icon slot="start" name="call-sharp" size="large"></ion-icon><ion-text>${window.Translation.get("SOSTitle")}</ion-text></ion-button></ion-col>
         </ion-row>
         </ion-grid>
-        <ion-alert backdrop-dismiss="false" header="${window.Translation.get("ServerSearch")}" message="${window.Translation.get("ServerSearchMessage")}"></ion-alert>
+        <ion-alert backdrop-dismiss="false" header="${window.Translation.get("ServerSearch")}"></ion-alert>
         </ion-content>
     `;
     this.serverFind();
