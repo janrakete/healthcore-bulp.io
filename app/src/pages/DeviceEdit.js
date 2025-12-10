@@ -1,17 +1,17 @@
 /**
- * Rooms Edit Page
+ * Device Edit Page
  */
 
-import { apiGET, apiPATCH, apiPOST} from "../services/api.js";
+import { apiGET, apiPATCH} from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 
-class RoomEdit extends HTMLElement {
+class DeviceEdit extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/rooms"></ion-back-button>
+            <ion-back-button default-href="/devices"></ion-back-button>
           </ion-buttons> 
           <ion-title>${window.Translation.get("Edit")}</ion-title>
         </ion-toolbar>
@@ -23,6 +23,9 @@ class RoomEdit extends HTMLElement {
             <ion-list inset="true">
               <ion-item color="light">
                 <ion-input type="text" placeholder="${window.Translation.get("Name")}" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+              </ion-item>      
+              <ion-item color="light">
+                <ion-input type="text" placeholder="${window.Translation.get("Description")}" name="editDescription" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
             </ion-list>
           </ion-col>
@@ -36,29 +39,22 @@ class RoomEdit extends HTMLElement {
       </ion-content>
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
-    if (this.ID > 0) {
-      this.loadData();
-    }
+    this.loadData();
   }
 
   async submit() {
     const formData          = {};
     formData.name           = this.querySelector("ion-input[name='editName']").value;
+    formData.description    = this.querySelector("ion-input[name='editDescription']").value;
 
     let data = {};
 
     try {
-      if (parseInt(this.ID) === 0) // New entry    
-      {
-        data = await apiPOST("/data/rooms", formData);
-      }
-      else {
-        data = await apiPATCH("/data/rooms?roomID=" + this.ID, formData);
-      }
+      data = await apiPATCH("/devices/" + this.BRIDGE + "/" + this.ID, formData);
         
       if (data.status === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");             
-        document.querySelector("ion-router").push("/rooms");   
+        document.querySelector("ion-router").push("/devices");   
       }
       else {
         toastShow("Error: " + data.error, "danger");
@@ -72,12 +68,13 @@ class RoomEdit extends HTMLElement {
 
   async loadData() {
     try {
-      const data = await apiGET("/data/rooms?roomID=" + this.ID);
+      const data = await apiGET("/devices/" + this.BRIDGE + "/" + this.ID);
       console.log("API call - Output:", data);
 
       if (data.status === "ok") {
-        const item = data.results[0];
-        this.querySelector("ion-input[name='editName']").value = item.name;
+        const item = data.device;
+        this.querySelector("ion-input[name='editName']").value        = item.name;
+        this.querySelector("ion-input[name='editDescription']").value = item.description;
         toastShow(window.Translation.get("EntryLoaded"), "success");        
       }
       else {
@@ -91,4 +88,4 @@ class RoomEdit extends HTMLElement {
   }
 }
 
-customElements.define("page-room-edit", RoomEdit);
+customElements.define("page-device-edit", DeviceEdit);

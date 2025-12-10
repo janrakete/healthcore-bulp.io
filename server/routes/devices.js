@@ -1140,4 +1140,105 @@ router.get("/:bridge/list", async function (request, response) {
     }
 });
 
+/**
+ * @swagger
+ *  /devices/{bridge}/{deviceID}:
+ *    get:
+ *      summary: Get device info via ID
+ *      description: This endpoint retrieves detailed information about a specific device using its ID.
+ *      tags:
+ *        - Devices
+ *      parameters:
+ *        - in: path
+ *          name: bridge
+ *          required: true
+ *          description: The name of the bridge.
+ *          schema:
+ *            type: string
+ *            example: bluetooth
+ *        - in: path
+ *          name: deviceID
+ *          required: true
+ *          description: The ID of the device.
+ *          schema:
+ *            type: string
+ *            example: 12345
+ *      responses:
+ *        "200":
+ *          description: Successfully retrieved device information.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "ok"
+ *                  device:
+ *                    type: object
+ *                    properties:
+ *                      deviceID:
+ *                        type: string
+ *                        example: "12345"
+ *                      bridge:
+ *                        type: string
+ *                        example: "bluetooth"
+ *                      powerType:
+ *                        type: string
+ *                        example: "mains"
+ *        "400":
+ *          description: Bad request. The request was invalid or cannot be served.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "error"
+ *                  error:
+ *                    type: string
+ *                    example: "Error message"
+ */
+router.get("/:bridge/:deviceID", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    let data             = {};
+
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+            const device = database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ?").get(payload.deviceID.trim(), bridge);;
+            if (device !== undefined) {
+                data.status = "ok";
+                data.device = device;
+                common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
+            }
+            else {
+                data.status = "error";
+                data.error  = "Device not found";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No ID provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No bridge provided";
+    }
+
+    if (data.status === "ok") {
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.status(200).json(data);
+    }
+    else {
+        common.conLog("GET request for device info: an error occured", "red");
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.status(400).json(data);
+    }
+});
+
 module.exports = router;

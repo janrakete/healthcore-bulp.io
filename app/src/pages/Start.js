@@ -30,9 +30,13 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 
 */
-// Segemnt für Devices uhd in Cards ubmaueen
-// Doku
+// Update
+// dann alle weitern Svans
+// Refresh
 // und Requiered
+// Doku
+// Szenarien
+
  
 // ... 
 
