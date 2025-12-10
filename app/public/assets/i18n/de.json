@@ -23,5 +23,28 @@
     "EntrySaved" : "Eintrag gespeichert.",
     "EntryLoaded" : "Eintrag geladen.",
     "ServerSearch" : "Suche bulp.station ...",
-    "PageRoomsHeadline" : "Räume"
+    "PageRoomsHeadline" : "Räume",
+    "PageNotificationsHeadline" : "Nachrichten",
+    "ScenarioGoTo" : "Zum Szenario",
+    "PageIndividualsHeadline" : "Personen",
+    "FirstName" : "Vorname",
+    "LastName" : "Nachname",
+    "Room" : "Raum",
+    "PleaseSelect" : "(bitte wählen)",
+    "None" : "(keine)",
+    "PageDevicesHeadline" : "Geräte",
+    "All" : "Alle",
+    "Zigbee" : "ZigBee",
+    "Bluetooth" : "Bluetooth",
+    "Wifi" : "WLAN",
+    "LoRa" : "LoRa",
+    "Disconnected" : "Getrennt",
+    "Connected" : "Verbunden",
+    "Unknown" : "Unbekannt",
+    "PageDevicesAddHeadline" : "Gerät hinzufügen",
+    "ScanStarted" : "Geräte-Scan wird gestartet.",
+    "DevicesScanNoDevicesFound" : "Keine Geräte gefunden.",
+    "PageDevicesGoToDevices" : "Zur Geräte-Übersicht"
+
+
 }
