@@ -30,7 +30,7 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 
 */
-// Update
+// Deviced load fix
 // dann alle weitern Svans
 // Refresh
 // und Requiered

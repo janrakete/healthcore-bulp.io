@@ -354,7 +354,28 @@ async function startBridgeAndServer() {
    * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
-    common.conLog("HTTP: Request to update device " + data.deviceID + ", but updating here will have no effect", "red");
+    common.conLog("HTTP: Request to update device " + data.deviceID, "yel");
+    
+    if (data && typeof data.updates === "object") {
+      bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesRegisteredAtServer.map(deviceRegistered => {
+        if (deviceRegistered.deviceID === data.deviceID) {
+          return { ...deviceRegistered, ...data.updates }; // update device with new data
+        }
+        return deviceRegistered;
+      });
+      bridgeStatus.devicesConnected = bridgeStatus.devicesConnected.map(deviceConnected => {
+        if (deviceConnected.deviceID === data.deviceID) {
+          return { ...deviceConnected, ...data.updates }; // update device with new data
+        }
+        return deviceConnected;
+      });
+
+      common.conLog("HTTP: Updated bridge status (registered and connected devices)", "gre", false);
+    }
+    else {
+      common.conLog("HTTP: No updates provided, so not updated bridge status", "red", false);
+    }
+
     mqttClient.publish("server/devices/update", JSON.stringify(data)); // publish updated device to MQTT broker
   }
 
