@@ -44,7 +44,6 @@
     "PageDevicesAddHeadline" : "Gerät hinzufügen",
     "ScanStarted" : "Geräte-Scan wird gestartet.",
     "DevicesScanNoDevicesFound" : "Keine Geräte gefunden.",
-    "PageDevicesGoToDevices" : "Zur Geräte-Übersicht"
-
-
+    "PageDevicesGoToDevices" : "Zur Geräte-Übersicht",
+    "Description" : "Beschreibung"
 }

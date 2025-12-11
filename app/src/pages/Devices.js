@@ -104,6 +104,8 @@ class Devices extends HTMLElement {
     center.appendChild(spinner);
     this.querySelector("#devices-list").prepend(center);
 
+    let devicesCount = 0;
+
     try {
       for (const filter of filters) {
         console.log("Devices: Loading devices with filter: " +  filter);
@@ -118,72 +120,72 @@ class Devices extends HTMLElement {
           const listElement = this.querySelector("#devices-list");
           const items       = response.resultsRegistered;
 
-          if (!items || items.length === 0) {
-            listElement.innerHTML = `
-              <br /><center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
-            `;
-          }
-          else {
-            listElement.innerHTML = items.map(item => {
-              let displayInfo     = "";
-              let deviceConnected = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
-            
-              switch(item.bridge) {
-                case "zigbee":
-                  displayInfo = window.Translation.get("Zigbee");
-                  if (response.resultsConnected && response.resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
-                    deviceConnected = 1;
-                  }
-                  break;
-                case "bluetooth":
-                  displayInfo = window.Translation.get("Bluetooth");
-                  if (response.resultsConnected && response.resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
-                    deviceConnected = 1;
-                  }
-                  break;
-                case "lora":
-                  displayInfo = window.Translation.get("LoRa");
-                  deviceConnected = 2;
-                  break;
-                case "http":
-                  displayInfo = window.Translation.get("Wifi");
-                  deviceConnected = 2;
-                  break;
-                default:
-                  displayInfo = window.Translation.get("Unknown");
-              }
-            
-              return `
-              <ion-card color="primary" data-id="${item.deviceID}">
-                <ion-card-header>
-                    <ion-card-title>${item.name} <ion-badge color="${deviceConnected === 1 ? "success" : deviceConnected === 0 ? "danger" : "medium"}">${deviceConnected === 1 ? window.Translation.get("Connected") : deviceConnected === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
-                    <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
-                </ion-card-header>
-                <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" data-bridge="${item.bridge}"class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-                <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
-              </ion-card>
-            `;
-            }).join("");
+          listElement.innerHTML += items.map(item => {
+            devicesCount++;
+
+            let displayInfo     = "";
+            let deviceConnected = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
           
-            this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
-              button.addEventListener("click", () => {
-                document.querySelector("ion-router").push("/device-edit/" + button.getAttribute("data-bridge") + "/" + button.getAttribute("data-id"));
-              });
-            });
+            switch(item.bridge) {
+              case "zigbee":
+                displayInfo = window.Translation.get("Zigbee");
+                if (response.resultsConnected && response.resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
+                  deviceConnected = 1;
+                }
+                break;
+              case "bluetooth":
+                displayInfo = window.Translation.get("Bluetooth");
+                if (response.resultsConnected && response.resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
+                  deviceConnected = 1;
+                }
+                break;
+              case "lora":
+                displayInfo = window.Translation.get("LoRa");
+                deviceConnected = 2;
+                break;
+              case "http":
+                displayInfo = window.Translation.get("Wifi");
+                deviceConnected = 2;
+                break;
+              default:
+                displayInfo = window.Translation.get("Unknown");
+            }
           
-            this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
-              button.addEventListener("click", () => {
-                this.querySelector("#action-sheet").dataset.ID      = button.getAttribute("data-id");
-                this.querySelector("#action-sheet").dataset.bridge  = button.getAttribute("data-bridge");
-                this.querySelector("#action-sheet").isOpen          = true;
-              });
+            return `
+            <ion-card color="primary" data-id="${item.deviceID}">
+              <ion-card-header>
+                  <ion-card-title>${item.name} <ion-badge color="${deviceConnected === 1 ? "success" : deviceConnected === 0 ? "danger" : "medium"}">${deviceConnected === 1 ? window.Translation.get("Connected") : deviceConnected === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
+                  <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
+              </ion-card-header>
+              <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" data-bridge="${item.bridge}"class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+              <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+            </ion-card>
+          `;
+          }).join("");
+        
+          this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
+            button.addEventListener("click", () => {
+              document.querySelector("ion-router").push("/device-edit/" + button.getAttribute("data-bridge") + "/" + button.getAttribute("data-id"));
             });
-          }
+          });
+        
+          this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
+            button.addEventListener("click", () => {
+              this.querySelector("#action-sheet").dataset.ID      = button.getAttribute("data-id");
+              this.querySelector("#action-sheet").dataset.bridge  = button.getAttribute("data-bridge");
+              this.querySelector("#action-sheet").isOpen          = true;
+            });
+          });
+          
           toastShow(window.Translation.get("EntriesLoaded"), "success");
         }
         else {
           toastShow("Error: " + response.error, "danger");
         }
+      }
+
+      if (devicesCount === 0) {
+        this.querySelector("#devices-list").innerHTML = `<br /><center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>`;
       }
     }
     catch (error) {
