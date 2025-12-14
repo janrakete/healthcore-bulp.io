@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { dateFormat } from "../services/helper.js";
+import { dateFormat, showSpinner } from "../services/helper.js";
 
 class Notifications extends HTMLElement {
   connectedCallback() {
@@ -18,14 +18,25 @@ class Notifications extends HTMLElement {
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
-        <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
+        <ion-refresher id="refresher" slot="fixed">
+          <ion-refresher-content refreshing-spinner="bubbles" pulling-text="${window.Translation.get("RefreshPullingText")}">
+          </ion-refresher-content>
+        </ion-refresher>
+
         <div id="notifications-list"></div>
       </ion-content>
     `;
+    
+    this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => { // pull to refresh
+      await this.dataLoad();
+      event.target.complete();
+    });
+
     this.dataLoad();
   }
 
   async dataLoad() {
+    const spinner = showSpinner("#notifications-list");    
     try {
       const data = await apiGET("/data/notifications?orderBy=dateTime,DESC");
       console.log("API call - Output:", data);
@@ -62,7 +73,6 @@ class Notifications extends HTMLElement {
       toastShow("Error: " + error.message, "danger");
     }
     
-    const spinner = this.querySelector("ion-spinner"); // Remove spinner
     spinner.remove();
   }
 }

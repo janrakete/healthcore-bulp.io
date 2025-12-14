@@ -30,9 +30,8 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 
 */
-// dann alle weitern Svans
-// Refresh
 // und Requiered
+// dann alle weitern Svans
 // Doku
 // Szenarien
 
@@ -50,7 +49,7 @@ class Start extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
-        <ion-toolbar color="primary">
+        <ion-toolbar>
           <ion-title>${window.Translation.get("PageStartHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
@@ -59,26 +58,29 @@ class Start extends HTMLElement {
       <ion-grid>
         <ion-row>
           <ion-col>
-            <ion-img src="./assets/customer_logo_background.jpg"></ion-img>
+            <!--<ion-img class="custom" src="./assets/customer_logo_background.jpg"></ion-img>-->
+            <div id="logo">
+              <span id="logo-pre">bulp</span><span id="logo-post">.io</span>
+            </div>
           </ion-col>
         </ion-row>
       </ion-grid>
 
       <ion-grid>
         <ion-row>
-          <ion-col size="6"><ion-button expand="block" href="/notifications" color="danger"><div><div><ion-icon slot="start" name="notifications-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("MessagesTitle")}</ion-text></div></div></div></ion-button></ion-col>
-          <ion-col size="6"><ion-button expand="block" href="/individuals"><div><div><ion-icon slot="start" name="person-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("IndividualsTitle")}</ion-text></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button class="selection" expand="block" href="/notifications" color="danger"><div><div><ion-icon slot="start" name="notifications-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("MessagesTitle")}</ion-text></div></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button class="selection" expand="block" href="/individuals"><div><div><ion-icon slot="start" name="person-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("IndividualsTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
-            <ion-col size="6"><ion-button expand="block" href="/rooms"><div><div><ion-icon slot="start" name="scan-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("RoomsTitle")}</ion-text></div></div></ion-button></ion-col>
-            <ion-col size="6"><ion-button expand="block" href="/devices"><div><div><ion-icon slot="start" name="radio-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("DevicesTitle")}</ion-text></div></div></ion-button></ion-col>
+            <ion-col size="6"><ion-button class="selection" expand="block" href="/rooms"><div><div><ion-icon slot="start" name="scan-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("RoomsTitle")}</ion-text></div></div></ion-button></ion-col>
+            <ion-col size="6"><ion-button class="selection" expand="block" href="/devices"><div><div><ion-icon slot="start" name="radio-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("DevicesTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
-          <ion-col size="6"><ion-button expand="block"><div><div><ion-icon slot="start" name="unlink-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
-          <ion-col size="6"><ion-button expand="block"><div><div><ion-icon slot="start" name="build-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("SettingsTitle")}</ion-text></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button class="selection" expand="block"><div><div><ion-icon slot="start" name="unlink-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button class="selection" expand="block"><div><div><ion-icon slot="start" name="build-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("SettingsTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
-          <ion-col size="12"><ion-button href="/sos" color="tertiary" expand="block"><ion-icon slot="start" name="call-sharp" size="large"></ion-icon><ion-text>${window.Translation.get("SOSTitle")}</ion-text></ion-button></ion-col>
+          <ion-col size="12"><ion-button href="/sos" class="selection" color="tertiary" expand="block"><ion-icon slot="start" name="call-sharp" size="large"></ion-icon><ion-text>${window.Translation.get("SOSTitle")}</ion-text></ion-button></ion-col>
         </ion-row>
         </ion-grid>
         <ion-alert backdrop-dismiss="false" header="${window.Translation.get("ServerSearch")}"></ion-alert>

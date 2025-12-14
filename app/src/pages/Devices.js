@@ -4,6 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
+import { showSpinner } from "../services/helper.js";
 
 class Devices extends HTMLElement {
   connectedCallback() {
@@ -17,6 +18,10 @@ class Devices extends HTMLElement {
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
+        <ion-refresher id="refresher" slot="fixed">
+          <ion-refresher-content refreshing-spinner="bubbles" pulling-text="${window.Translation.get("RefreshPullingText")}">
+          </ion-refresher-content>
+        </ion-refresher>
 
         <ion-segment value="zigbee,bluetooth,lora,http" scrollable="true" swipeGesture="true">
           <ion-segment-button value="zigbee,bluetooth,lora,http">
@@ -49,6 +54,11 @@ class Devices extends HTMLElement {
     });
     this.querySelector("ion-segment").addEventListener("ionChange", (event) => { // reload data when segment changes
       this.dataLoad(event.detail.value.split(","));
+    });
+
+    this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => { // pull to refresh
+      await this.dataLoad(this.querySelector("ion-segment").value.split(","));
+      event.target.complete();
     });
 
     this.actionSheetSetup();
@@ -96,14 +106,7 @@ class Devices extends HTMLElement {
   }
 
   async dataLoad(filters = ["zigbee","bluetooth","lora","http"]) {
-    this.querySelector("#devices-list").innerHTML = "";
-    const spinner = document.createElement("ion-spinner");
-    spinner.name = "dots";
-    spinner.color = "warning";
-    const center = document.createElement("center");
-    center.appendChild(spinner);
-    this.querySelector("#devices-list").prepend(center);
-  
+    const spinner = showSpinner("#devices-list");
 
     let resultsRegistered = [];
     let resultsConnected  = [];
@@ -127,7 +130,7 @@ class Devices extends HTMLElement {
       const listElement = this.querySelector("#devices-list");
       const items       = resultsRegistered;
 
-      listElement.innerHTML = items.map(item => {
+      listElement.innerHTML = items.map(item => { // Second: generate HTML for each device
         let displayInfo     = "";
         let deviceConnected = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
       

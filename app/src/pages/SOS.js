@@ -4,6 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
+import { showSpinner } from "../services/helper.js";
 
 class SOS extends HTMLElement {
   connectedCallback() {
@@ -17,9 +18,14 @@ class SOS extends HTMLElement {
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
-        <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
-        <ion-list id="sos-list" inset="true">
-        </ion-list>
+        <ion-refresher id="refresher" slot="fixed">
+          <ion-refresher-content refreshing-spinner="bubbles" pulling-text="${window.Translation.get("RefreshPullingText")}">
+          </ion-refresher-content>
+        </ion-refresher>
+
+        <div id="sos-refresher"></div>
+        <ion-list id="sos-list" inset="true"></ion-list>
+
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="success" id="sos-edit-button">
@@ -31,6 +37,12 @@ class SOS extends HTMLElement {
     this.querySelector("#sos-edit-button").addEventListener("click", () => { // Navigate to SOS Edit page on button click
       document.querySelector("ion-router").push("/sos-edit/0");
     });
+
+    this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => { // pull to refresh
+      await this.dataLoad();
+      event.target.complete();
+    });
+
     this.actionSheetSetup();
     this.dataLoad();
   }
@@ -75,12 +87,16 @@ class SOS extends HTMLElement {
   }
 
   async dataLoad() {
+    const spinner = showSpinner("#sos-refresher");        
     try {
       const data = await apiGET("/data/sos");
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {
         const listElement = this.querySelector("#sos-list");
+
+        console.log(listElement);
+
         const items = data.results;
 
         if (!items || items.length === 0) {
@@ -133,8 +149,7 @@ class SOS extends HTMLElement {
       console.error("API call - Error:", error);
       toastShow("Error: " + error.message, "danger");
     }
-    
-    const spinner = this.querySelector("ion-spinner"); // Remove spinner
+
     spinner.remove();
   }
 }

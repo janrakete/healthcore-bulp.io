@@ -4,6 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
+import { showSpinner } from "../services/helper.js";
 
 class Individuals extends HTMLElement {
   connectedCallback() {
@@ -17,7 +18,11 @@ class Individuals extends HTMLElement {
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
-        <center><ion-spinner name="dots" color="warning"></ion-spinner></center>
+        <ion-refresher id="refresher" slot="fixed">
+          <ion-refresher-content refreshing-spinner="bubbles" pulling-text="${window.Translation.get("RefreshPullingText")}">
+          </ion-refresher-content>
+        </ion-refresher>
+
         <div id="individuals-list"></div>
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
@@ -30,6 +35,12 @@ class Individuals extends HTMLElement {
     this.querySelector("#individual-edit-button").addEventListener("click", () => { // Navigate to Individual Edit page on button click
       document.querySelector("ion-router").push("/individual-edit/0");
     });
+
+    this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => { // pull to refresh
+      await this.dataLoad();
+      event.target.complete();
+    });
+
     this.actionSheetSetup();
     this.dataLoad();
   }
@@ -74,6 +85,7 @@ class Individuals extends HTMLElement {
   }
 
   async dataLoad() {
+    const spinner = showSpinner("#individuals-list");        
     try {
       const roomData = await apiGET("/data/rooms"); // load rooms for select
       console.log("API call - Output:", roomData);
@@ -129,8 +141,7 @@ class Individuals extends HTMLElement {
       console.error("API call - Error:", error);
       toastShow("Error: " + error.message, "danger");
     }
-    
-    const spinner = this.querySelector("ion-spinner"); // Remove spinner
+
     spinner.remove();
   }
 }
