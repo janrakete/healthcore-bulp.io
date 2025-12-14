@@ -89,11 +89,61 @@
 
     --ion-font-family: "Poppins";
 
-    --ion-background-color: linear-gradient(135deg,rgba(103, 58, 183, 1) 0%, rgba(49, 27, 146, 1) 100%);
+
+
+    /*--ion-background-color: linear-gradient(135deg,rgba(103, 58, 183, 1) 0%, rgba(49, 27, 146, 1) 100%);*/
+}
+
+#logo {
+    text-align: center;
+    font-size: 5em;
+    text-align: center;
+    color: var(--ion-color-primary)
+}
+
+#logo-pre {
+    font-family: "Poppins-Bold";
+}
+
+#logo-post {
+    font-family: "Poppins";
+}
+
+ion-button.selection {
+    --background: var(--ion-color-light);
+    --color: var(--ion-color-dark);
+    --box-shadow: 0 2px 6px 0 rgb(0, 0, 0, 0.3);
+    --border-color: var(--ion-color-primary);
+    --border-style: solid;
+    --color-hover: var(--ion-color-light);
+}
+
+ion-toolbar {
+    --border-style: solid;
+    --border-color: var(--ion-color-primary);
+    --background: var(--ion-color-light);
+    --color: var(--ion-color-primary);
+    --border-width: 0px 0px 2px 0px !important;
+    --border-color: var(--ion-color-primary);
+}
+
+ion-card {
+    box-shadow: 0 2px 6px 0 rgb(0, 0, 0, 0.3);       
+}
+
+ion-refresher {
+    ion-spinner {
+        margin-top: 25px;
+        --color: var(--ion-color-warning);
+  }
+}
+
+ion-refresher-content {
+    background-color: var(--ion-color-secondary);
 }
 
 ion-grid ion-button {
-    --box-shadow: 0 2px 6px 0 rgb(0, 0, 0, 0.25);
+    --box-shadow: 0 2px 6px 0 rgb(0, 0, 0, 0.3);
 }
 
 ion-spinner {

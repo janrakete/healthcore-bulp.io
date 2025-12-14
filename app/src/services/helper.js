@@ -52,3 +52,14 @@ export function dateFormat(dateString, locale = "en-US") {
         second: "2-digit"
     });
 }
+
+export function showSpinner(containerSelector) {
+    document.querySelector(containerSelector).innerHTML = "";
+    const spinner = document.createElement("ion-spinner");
+    spinner.name = "dots";
+    spinner.color = "warning";
+    const center = document.createElement("center");
+    center.appendChild(spinner);
+    document.querySelector(containerSelector).prepend(center);
+    return spinner;
+}
