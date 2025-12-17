@@ -25,7 +25,7 @@ class DeviceEdit extends HTMLElement {
                 <ion-input type="text" placeholder="${window.Translation.get("Name")}" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("Description")}" name="editDescription" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" placeholder="${window.Translation.get("Description")}" name="editDescription" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
             </ion-list>
           </ion-col>
@@ -43,6 +43,11 @@ class DeviceEdit extends HTMLElement {
   }
 
   async submit() {
+    if ([...this.querySelectorAll("ion-input[required]")].some(input => !input.value?.trim())) { // Validate required fields
+      toastShow(window.Translation.get("RequiredFieldsMissing"), "warning");
+      return;
+    }
+
     const formData          = {};
     formData.name           = this.querySelector("ion-input[name='editName']").value;
     formData.description    = this.querySelector("ion-input[name='editDescription']").value;

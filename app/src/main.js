@@ -47,9 +47,9 @@ import "./theme/variables.css";
 /**
  * Additional controllers
  */
-
-import { toastController } from '@ionic/core';
+import { toastController, createAnimation } from '@ionic/core';
 window.toastController = toastController;
+window.createAnimation = createAnimation;
 
 /**
  * Load translations and initialize global translations object

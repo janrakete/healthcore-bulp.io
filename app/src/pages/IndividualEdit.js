@@ -25,7 +25,7 @@ class IndividualEdit extends HTMLElement {
                 <ion-input type="text" placeholder="${window.Translation.get("FirstName")}" name="editFirstName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("LastName")}" name="editLastName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" placeholder="${window.Translation.get("LastName")}" name="editLastName" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
                 <ion-select  interface="popover" class="custom" name="editRoom" label="${window.Translation.get("Room")}" placeholder="${window.Translation.get("PleaseSelect")}">
@@ -51,6 +51,11 @@ class IndividualEdit extends HTMLElement {
   }
 
   async submit() {
+    if ([...this.querySelectorAll("ion-input[required]")].some(input => !input.value?.trim())) { // Validate required fields
+      toastShow(window.Translation.get("RequiredFieldsMissing"), "warning");
+      return;
+    }
+
     const formData      = {};
     formData.firstname  = this.querySelector("ion-input[name='editFirstName']").value;
     formData.lastname   = this.querySelector("ion-input[name='editLastName']").value;
