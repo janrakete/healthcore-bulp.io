@@ -30,7 +30,6 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 
 */
-// und Requiered
 // dann alle weitern Svans
 // Doku
 // Szenarien
@@ -86,6 +85,15 @@ class Start extends HTMLElement {
         <ion-alert backdrop-dismiss="false" header="${window.Translation.get("ServerSearch")}"></ion-alert>
         </ion-content>
     `;
+
+    const animation = window.createAnimation()
+      .addElement(document.querySelector("#logo"))
+      .duration(400)
+      .iterations(1)
+      .keyframes([{ offset: 0, transform: "scale(0.8)", opacity: "0.5" }, { offset: 1, transform: "scale(1)", opacity: "1"}
+      ]);
+    animation.play();
+
     this.serverFind();
   }
 

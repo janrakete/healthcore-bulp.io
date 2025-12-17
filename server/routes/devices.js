@@ -380,7 +380,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
  *               properties:
  *                 addDeviceToServer:
  *                   type: boolean
- *                   description: Whether to add the device to the database if it is not already present.
+ *                   description: Whether to add the device to the database if it is not already present (only for Bluetooth).
  *                   example: true
  *       responses:
  *         "200":

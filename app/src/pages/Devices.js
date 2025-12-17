@@ -188,7 +188,7 @@ class Devices extends HTMLElement {
       toastShow(window.Translation.get("EntriesLoaded"), "success");
 
       if (resultsRegistered.length === 0) {
-        this.querySelector("#devices-list").innerHTML = `<br /><center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>`;
+        this.querySelector("#devices-list").innerHTML = `<br /><center><ion-text>${window.Translation.get("EntriesNone")}</ion-text></center>`;
       }
     }
     catch (error) {

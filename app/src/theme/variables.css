@@ -89,8 +89,8 @@
 
     --ion-font-family: "Poppins";
 
-
-
+    --ion-background-color: #fff;
+    /*--ion-background-color: linear-gradient(180deg, rgba(255, 255, 255, 1) 20%, rgba(49, 27, 146, 1) 100%);*/
     /*--ion-background-color: linear-gradient(135deg,rgba(103, 58, 183, 1) 0%, rgba(49, 27, 146, 1) 100%);*/
 }
 
@@ -136,10 +136,6 @@ ion-refresher {
         margin-top: 25px;
         --color: var(--ion-color-warning);
   }
-}
-
-ion-refresher-content {
-    background-color: var(--ion-color-secondary);
 }
 
 ion-grid ion-button {

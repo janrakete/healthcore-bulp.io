@@ -45,6 +45,11 @@ class SOSEdit extends HTMLElement {
   }
 
   async submit() {
+    if ([...this.querySelectorAll("ion-input[required]")].some(input => !input.value?.trim())) { // Validate required fields
+      toastShow(window.Translation.get("RequiredFieldsMissing"), "warning");
+      return;
+    }
+
     const formData  = {};
     formData.name   = this.querySelector("ion-input[name='editName']").value;
     formData.number = this.querySelector("ion-input[name='editPhone']").value;
