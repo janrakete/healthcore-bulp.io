@@ -59,6 +59,7 @@ async function startBridgeAndServer() {
   const server = require("http").createServer(app);
   server.listen(appConfig.CONF_portBridgeHTTP, function () {
     common.logoShow(BRIDGE_PREFIX, appConfig.CONF_portBridgeHTTP); // show logo
+    bridgeStatus.status = "online"; // set bridge status to online - this is here because server is started and there is no other peripheral connection
   });
 
   /**
@@ -67,15 +68,14 @@ async function startBridgeAndServer() {
    */
   app.get("/info", async function (request, response) {
     const data  = {};
-    data.status = "running";
+    data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
-    data.port   = appConfig.CONF_portBridgeBluetooth;
+    data.port   = appConfig.CONF_portBridgeHTTP;
     common.conLog("Bridge info send!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });
   
-
   /**
    * =============================================================================================
    * MQTT client - subscribe to specific topics
@@ -139,12 +139,14 @@ async function startBridgeAndServer() {
    * @class
    * @property {Object[]} devicesConnected - Array of currently connected HTTP devices.
    * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
+   * @propery {string} status - The current status of the bridge (e.g., "online", "offline").
    * @description This class is used to manage the status of the HTTP bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
       this.devicesConnected          = [];
       this.devicesRegisteredAtServer = [];
+      this.status                    = "offline";
     }
   }
   const bridgeStatus = new BridgeStatus(); // create new object for bridge status

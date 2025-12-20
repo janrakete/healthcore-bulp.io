@@ -44,9 +44,9 @@ async function startBridgeAndServer() {
    */
   app.get("/info", async function (request, response) {
     const data  = {};
-    data.status = "running";
+    data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
-    data.port   = appConfig.CONF_portBridgeBluetooth;
+    data.port   = appConfig.CONF_portBridgeLoRa;
     common.conLog("Bridge info send!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
@@ -117,6 +117,7 @@ async function startBridgeAndServer() {
    * @property {Object[]} devicesConnected - Array of currently connected LoRa devices.
    * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
    * @property {boolean} portOpened - Indicates whether the serial port for the LoRa adapter is opened.
+   * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the LoRa bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
@@ -124,6 +125,7 @@ async function startBridgeAndServer() {
       this.devicesConnected          = [];
       this.devicesRegisteredAtServer = [];
       this.portOpened                = false;
+      this.status                    = "offline";
     }
   }
   const bridgeStatus = new BridgeStatus(); // create new object for bridge status
@@ -147,6 +149,7 @@ async function startBridgeAndServer() {
   loRa.on("open", async function () {
     common.conLog("LoRa: serial port for LoRa Adapter opened", "gre");
     bridgeStatus.portOpened = true; // set port opened to true
+    bridgeStatus.status     = "online"; // set status to online
 
     (async function () { // send configuration commands to LoRa adapter
       loRa.write("AT+FRE=" + appConfig.CONF_loRaAdapterFRE + "\r\n");
@@ -175,6 +178,7 @@ async function startBridgeAndServer() {
     common.conLog("LoRa: serial port for LoRa Adapter closed with error", "red");
     common.conLog(error.message, "std", false);
     bridgeStatus.portOpened = false; // set port opened to false
+    bridgeStatus.status     = "offline"; // set status to offline
   });
 
   /**
