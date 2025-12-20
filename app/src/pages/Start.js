@@ -30,6 +30,7 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 
 */
+// neue Bild
 // dann alle weitern Svans
 // Doku
 // Szenarien

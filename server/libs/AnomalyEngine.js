@@ -10,6 +10,7 @@ const { IsolationForest } = require("isolation-forest");
 
 class AnomalyEngine {
   constructor() {
+    
   }
 
   /**
