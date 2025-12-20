@@ -62,6 +62,21 @@ async function startBridgeAndServer() {
   });
 
   /**
+   * Server info
+   * @description Endpoint to retrieve basic information about the bridge.
+   */
+  app.get("/info", async function (request, response) {
+    const data  = {};
+    data.status = "running";
+    data.bridge = BRIDGE_PREFIX;
+    data.port   = appConfig.CONF_portBridgeBluetooth;
+    common.conLog("Bridge info send!", "gre");
+    common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
+    return response.status(200).json(data);
+  });
+  
+
+  /**
    * =============================================================================================
    * MQTT client - subscribe to specific topics
    * ==========================================

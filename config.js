@@ -9,12 +9,14 @@ dotenv.config({path: "../.env"});
 dotenv.config({path: "../.env.local", override: true});
 
 const appConfig = {
+  CONF_bridges                           : process.env.CONF_bridges.split(","),
   CONF_portBroker                        : parseInt(process.env.CONF_portBroker),
   CONF_portServer                        : parseInt(process.env.CONF_portServer),
   CONF_portBridgeZigBee                  : parseInt(process.env.CONF_portBridgeZigBee),
   CONF_portBridgeHTTP                    : parseInt(process.env.CONF_portBridgeHTTP),
   CONF_portBridgeBluetooth               : parseInt(process.env.CONF_portBridgeBluetooth),
   CONF_portBridgeLoRa                    : parseInt(process.env.CONF_portBridgeLoRa),
+  CONF_portBridgeThread                  : parseInt(process.env.CONF_portBridgeThread),
   CONF_brokerAddress                     : process.env.CONF_brokerAddress,
   CONF_dbPort                            : parseInt(process.env.CONF_dbPort),
   CONF_corsURL                           : process.env.CONF_corsURL,
@@ -37,7 +39,7 @@ const appConfig = {
   CONF_anomalyDetectionThreshold         : parseFloat(process.env.CONF_anomalyDetectionThreshold),
   CONF_anomalyDetectionHistorySize       : parseInt(process.env.CONF_anomalyDetectionHistorySize),
   CONF_anomalyDetectionActive            : process.env.CONF_anomalyDetectionActive,
-  CONF_tablesAllowedForAPI               : process.env.CONF_tablesAllowedForAPI,
+  CONF_tablesAllowedForAPI               : process.env.CONF_tablesAllowedForAPI.split(","),
   CONF_tablesMaxEntriesReturned          : parseInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds        : parseInt(process.env.CONF_apiCallTimeoutMilliseconds),
   CONF_scenarioCooldownMilliseconds      : parseInt(process.env.CONF_scenarioCooldownMilliseconds),
