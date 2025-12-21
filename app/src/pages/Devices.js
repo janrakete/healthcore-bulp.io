@@ -111,19 +111,45 @@ class Devices extends HTMLElement {
     let resultsRegistered = [];
     let resultsConnected  = [];
 
+    let bridges = [];
+
+    try {
+      const data = await apiGET("/info");
+      if (data.status === "ok") {
+        bridges = data.bridges;
+      }
+      else {
+        spinner.remove();
+        toastShow("Error: " + data.error, "danger");
+        return;
+      }
+    }
+    catch (error) {
+      spinner.remove();
+      console.error("API call - Error:", error);
+      toastShow("Error: " + error.message, "danger");
+    }
+
     try { // First: get all devices and put them into one array
       for (const filter of filters) {
-        console.log("Devices: Loading devices with filter: " +  filter);
 
-        let response = await apiGET("/devices/" +  filter + "/list");
-        console.log("API call - Output:", response);
+        const bridgeInfo = bridges.find(bridges => bridges.bridge.toLowerCase() === filter.toLowerCase()); // Find bridge info for current filter
+        if (bridgeInfo && bridgeInfo.status.toLowerCase() === "online") {
+          console.log("Devices: Loading devices with filter: " + filter);
 
-        if (response.status === "ok") {
-          resultsRegistered = resultsRegistered.concat(response.data.devicesRegisteredAtServer);
-          resultsConnected  = resultsConnected.concat(response.data.devicesConnected);
+          let response = await apiGET("/devices/" +  filter + "/list");
+          console.log("API call - Output:", response);
+
+          if (response.status === "ok") {
+            resultsRegistered = resultsRegistered.concat(response.data.devicesRegisteredAtServer);
+            resultsConnected  = resultsConnected.concat(response.data.devicesConnected);
+          }
+          else {
+            toastShow("Error: " + response.error, "danger");
+          }
         }
         else {
-          toastShow("Error: " + response.error, "danger");
+          console.log("Devices: Skipping loading devices with filter: " + filter + " (bridge offline)");
         }
       }
 
