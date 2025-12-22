@@ -101,7 +101,7 @@
     color: var(--ion-color-primary)
 }
 
-ion-content.background_1 {
+ion-content.background-1 {
     --background: url("../assets/backgrounds/background_1.png") no-repeat bottom 30px left 30px / 50% fixed;
 }
 
