@@ -47,7 +47,7 @@ const router          = require("express").Router();
  *                         example: 9996
  *                       status:
  *                         type: string
- *                         example: "running"
+ *                         example: "online"
  */
 router.get("/", async function (request, response) {
     const data            = {};
