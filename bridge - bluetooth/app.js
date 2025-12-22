@@ -44,7 +44,7 @@ async function startBridgeAndServer() {
    */
   app.get("/info", async function (request, response) {
     const data  = {};
-    data.status = "running";
+    data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeBluetooth;
     common.conLog("Bridge info send!", "gre");
@@ -264,6 +264,7 @@ async function startBridgeAndServer() {
    * @property {Object[]} devicesFoundViaScan - Array of devices found via scanning.
    * @property {boolean} devicesRegisteredReconnect - Flag indicating if the bridge is set to connect to registered devices.
    * @property {number|null} deviceScanCallID - ID of call if scanning is initiated.
+   * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
   class BridgeStatusClass {
@@ -273,6 +274,7 @@ async function startBridgeAndServer() {
       this.devicesFoundViaScan           = []; // Array of devices found via scanning
       this.devicesRegisteredReconnect    = false; // Flag indicating if the bridge is set to reconnect to registered devices
       this.deviceScanCallID              = undefined; // ID of call if scanning is initiated
+      this.status                        = "offline"; // Status of the bridge
     }
   }
   const bridgeStatus = new BridgeStatusClass(); // create new object for bridge status
@@ -369,6 +371,8 @@ async function startBridgeAndServer() {
       bridgeStatus.devicesFoundViaScan          = [];
       bridgeStatus.deviceScanCallID             = undefined;
     }
+
+    bridgeStatus.status = message.status; // save status in bridge status object
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 

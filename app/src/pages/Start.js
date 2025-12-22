@@ -29,8 +29,7 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 
 
-*/
-// neue Bild
+*/ // ridges icon 
 // dann alle weitern Svans
 // Doku
 // Szenarien
@@ -53,7 +52,7 @@ class Start extends HTMLElement {
           <ion-title>${window.Translation.get("PageStartHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
-      <ion-content class="ion-padding">
+      <ion-content class="ion-padding background_1">
 
       <ion-grid>
         <ion-row>

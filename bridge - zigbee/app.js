@@ -44,9 +44,9 @@ async function startBridgeAndServer() {
    */
   app.get("/info", async function (request, response) {
     const data  = {};
-    data.status = "running";
+    data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
-    data.port   = appConfig.CONF_portBridgeBluetooth;
+    data.port   = appConfig.CONF_portBridgeZigBee;
     common.conLog("Bridge info send!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
@@ -176,6 +176,8 @@ async function startBridgeAndServer() {
    * @class
    * @property {Object[]} devicesConnected - Array of currently connected ZigBee devices.
    * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
+   * @property {string|null} deviceScanCallID - ID of the current device scan call, if any.
+   * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the ZigBee bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
@@ -183,6 +185,7 @@ async function startBridgeAndServer() {
       this.devicesConnected          = [];
       this.devicesRegisteredAtServer = [];
       this.deviceScanCallID          = undefined;
+      this.status                    = "offline";
     }
   }
   const bridgeStatus = new BridgeStatus(); // create new object for bridge status
@@ -211,7 +214,7 @@ async function startBridgeAndServer() {
     data.bridge = BRIDGE_PREFIX;
     try {
       await zigBee.start();
-      data.status = "online";
+      data.status         = "online";
       common.conLog("ZigBee: Bridge started", "gre");
     }
     catch (error) {
@@ -219,6 +222,7 @@ async function startBridgeAndServer() {
       common.conLog("ZigBee: Error while starting ZigBee controller:", "red");
       common.conLog(error, "std", false);
     }
+    bridgeStatus.status = data.status;
     mqttClient.publish("server/bridge/status", JSON.stringify(data)); // publish to MQTT broker
   }
   await zigBeeStart();
@@ -400,7 +404,8 @@ async function startBridgeAndServer() {
     message.status = "offline";
     message.bridge = BRIDGE_PREFIX;    
     
-    bridgeStatus.deviceScanCallID = undefined;    
+    bridgeStatus.deviceScanCallID   = undefined;
+    bridgeStatus.status             = message.status;
     
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
