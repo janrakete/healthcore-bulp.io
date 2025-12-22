@@ -21,6 +21,22 @@ window.isCapacitor = isCapacitor;
  */
 import "@ionic/core/css/core.css";
 
+/*
+ * Own icons 
+  */
+import { addIcons } from "ionicons";
+import icon_zigbee from "/assets/icons/bridges/icon_zigbee_1.svg";
+import icon_bluetooth from "/assets/icons/bridges/icon_bluetooth.svg";
+import icon_lora from "/assets/icons/bridges/icon_lora.svg";
+import icon_http from "/assets/icons/bridges/icon_http.svg";
+
+addIcons({
+  "icon-zigbee":    icon_zigbee,
+  "icon-bluetooth": icon_bluetooth,
+  "icon-lora":      icon_lora,
+  "icon-http":      icon_http
+});
+
 /**
  * Basic CSS for apps built with Ionic
  */

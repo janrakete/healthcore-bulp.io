@@ -3,7 +3,6 @@
  * Converter for the SONOFF S26R2ZBTPF Zigbee Smart Plug
  * ======================================================
  */
-const { any } = require("async");
 const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
