@@ -10,6 +10,8 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
 
     constructor() {
         super();
+        
+        this.powerType = "Mains (single phase)";
 
         this.properties[0] = {
             name:       "voltage",

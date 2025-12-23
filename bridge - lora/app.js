@@ -274,6 +274,17 @@ async function startBridgeAndServer() {
    */
   function mqttDevicesCreate(data) {
     common.conLog("LoRa: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+    
+    const deviceConverter = convertersList.find(data.productName); // get converter for device from list of converters
+    if (deviceConverter === undefined) { 
+      common.conLog("LoRa: No converter found for " + data.productName, "red");
+      data.powerType = "?"; 
+    }
+    else {
+      common.conLog("LoRa: Converter found for " + data.productName, "gre");
+      data.powerType = deviceConverter.powerType;
+    }
+
     mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
   }
 

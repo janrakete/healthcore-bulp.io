@@ -3,6 +3,9 @@
   "appName": "bulp.io",
   "webDir": "dist",
   "plugins": {
+    "StatusBar": {
+      "style": "DARK"
+    },
     "CapacitorHttp": {
       "enabled": true
     },

@@ -454,6 +454,9 @@ async function startBridgeAndServer() {
         case "zigbee/devices/update":
           mqttDevicesUpdate(data);
           break;
+        case "zigbee/devices/create":
+          mqttDevicesCreate(data);
+          break;
         default:
           common.conLog("ZigBee: NOT found matching message handler for " + topic, "red");
       }
@@ -728,6 +731,27 @@ async function startBridgeAndServer() {
       common.conLog("ZigBee: No properties given", "red");
     }
   }
+
+  /**
+  * Create a new device
+  * @param {Object} data 
+  * @description This function creates the information of a registered device.
+  */
+  function mqttDevicesCreate(data) {
+    common.conLog("Bluetooth: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+
+    const deviceConverter = convertersList.find(data.productName); // get converter for device from list of converters
+    if (deviceConverter === undefined) { 
+      common.conLog("ZigBee: No converter found for " + data.productName, "red");
+      data.powerType = "?"; 
+    }
+    else {
+      common.conLog("ZigBee: Converter found for " + data.productName, "gre");
+      data.powerType = deviceConverter.powerType;
+    }
+
+    mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
+  } 
 }
 
 startBridgeAndServer();
