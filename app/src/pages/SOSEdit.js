@@ -22,10 +22,10 @@ class SOSEdit extends HTMLElement {
           <ion-col>
             <ion-list inset="true">
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("Name")}" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("Phone")}" name="editPhone" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" label="${window.Translation.get("Phone")}" label-placement="stacked" name="editPhone" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>
             </ion-list>
           </ion-col>

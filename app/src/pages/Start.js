@@ -30,11 +30,7 @@ Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Deskto
 
 */
 
-// dann alle weitern Svans
-// Power Type
-//productName
-//Bridge
-//devceID
+// Server refreshe
 // Doku
 // Szenarien
 
@@ -52,7 +48,7 @@ class Start extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
-        <ion-toolbar>
+        <ion-toolbar color="primary">
           <ion-title>${window.Translation.get("PageStartHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>

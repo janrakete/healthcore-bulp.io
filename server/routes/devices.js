@@ -674,6 +674,131 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
 /**
  * @swagger
  *  /devices/{bridge}/{deviceID}:
+ *    post:
+ *      summary: Add a new device
+ *      description: This endpoint adds a new device to the system.
+ *      tags:
+ *        - Devices
+ *      parameters:
+ *        - in: path
+ *          name: bridge
+ *          required: true
+ *          description: The name of the bridge.
+ *          schema:
+ *            type: string
+ *            example: bluetooth
+ *        - in: path
+ *          name: deviceID
+ *          required: true
+ *          description: The ID of the device.
+ *          schema:
+ *            type: string
+ *            example: 12345
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                name:
+ *                  type: string
+ *                  example: "Device Name"
+ *                description:
+ *                  type: string
+ *                  example: "Device Description"
+ *                productName:
+ *                  type: string
+ *                  example: "Product XYZ"
+ *      responses:
+ *        "200":
+ *          description: Device added successfully
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "ok"
+ *                  data:
+ *                    type: object
+ *                    properties:
+ *                      deviceID:
+ *                        type: string
+ *                        example: "12345"
+ *                      bridge:
+ *                        type: string
+ *                        example: "bluetooth"
+ *                      callID:
+ *                        type: string
+ *                        example: "In58F8lxhMEe6a4G"
+ *        "400":
+ *          description: Bad request. The request was invalid or cannot be served.
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                    example: "error"
+ *                  error:
+ *                    type: string
+ *                    example: "Error message"
+ */
+router.post("/:bridge/:deviceID", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    payload.body         = request.body;
+
+    let data       = {};
+    let message    = {};
+
+    if ((payload.body !== undefined) && (Object.keys(payload.body).length > 0)) {
+        if (payload.bridge !== undefined) {
+            const bridge = payload.bridge.trim();
+
+            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
+                message.deviceID    = payload.deviceID.trim();
+                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+                message.bridge      = bridge;
+                message.productName = payload.body.productName;
+                message.name        = payload.body.name;
+                message.description = payload.body.description;
+                message.powerType   = payload.body.powerType;
+
+                mqttClient.publish(bridge + "/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
+                common.conLog("POST request for device add via ID " + message.deviceID + " forwarded via MQTT", "gre");
+
+                mqttPendingResponsesHandler(message.callID, response);
+            }
+            else {
+                data.status = "error";
+                data.error  = "No ID provided";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No bridge provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No payload provided";
+    }
+
+    if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
+        common.conLog("POST request for device add: an error occured", "red");
+        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
+        return response.status(400).json(data);
+    }
+});
+
+/**
+ * @swagger
+ *  /devices/{bridge}/{deviceID}:
  *    patch:
  *      summary: Update a device
  *      description: This endpoint updates the information of a device. You can update the name, description, or other properties of the device (you can get all properties with a GET request on table "devices", see "Data manipulation").
