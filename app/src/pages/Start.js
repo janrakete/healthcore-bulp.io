@@ -31,6 +31,7 @@ und goilgle swervies ..
 
 */
 // Doku
+// Stromversorgung WIRE, BATTERY
 // Szenarien
 
  
