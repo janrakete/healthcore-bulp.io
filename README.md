@@ -125,7 +125,7 @@ Then open a browser und type:
 ```bash
 http://localhost:9990
 ```
-(9990 is the standard port healthcheck and localhost the standard base URL, configured in .env)
+(9990 is the standard port healthcheck and localhost the standard base URL, configured in `.env`)
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
@@ -239,3 +239,38 @@ Example coming soon.
 If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
 
 ## 📱 App
+Yes, there is also an app in this repository. More specifically, it is the official bulp.io app or rather the source code for it.
+
+It is fully functional and can be used until you have programmed your own interface.
+
+The app is located in the `app/` folder and has its own `package.json`. So you have to install it separately from Healthcore via npm. Here are the steps. By the way: the app is programmed in the Ionic Framework/Capacitor with Vanilla JS. 
+
+Installing and compiling the app:
+1. Change to folder `app/`
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run locally in web browser: 
+   ```bash
+   npm run dev
+   ```
+   Open in browser:
+   `http://localhost:5173/` (the correct url is shown in the console)
+4. Deploy to Android and iOS:
+   1. To setup the environments, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
+   2. Test on Android (Android device must be connected. Maybe first start Android Studio once and make sure that debug mode on device is activated. Then connect device with Android Studion).
+
+5. To see the console output of the app:
+   Use Chrome: `chrome://inspect/`
+6. Make changes to app config (if you want):
+   See `app/public/assets/config.json`
+
+That's it. Basically, it is of course advisable to familiarize yourself with Ionic and Capacitor. Many problems encountered during compilation have already been discussed and, in the best case, solved somewhere in those forums.
+
+
+
+
+
+npx cap run android
+
