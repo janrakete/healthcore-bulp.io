@@ -99,8 +99,7 @@ class DeviceEdit extends HTMLElement {
         this.querySelector("ion-input[name='editName']").value        = item.name;
         this.querySelector("ion-input[name='editDescription']").value = item.description;
         this.querySelector("ion-input[name='editDeviceID']").value    = item.deviceID;
-        this.querySelector("ion-input[name='editProductName']").value = item.productName;
-        toastShow(window.Translation.get("EntryLoaded"), "success");        
+        this.querySelector("ion-input[name='editProductName']").value = item.productName;      
       }
       else {
         toastShow("Error: " + data.error, "danger");

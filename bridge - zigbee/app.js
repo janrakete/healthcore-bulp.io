@@ -264,6 +264,8 @@ async function startBridgeAndServer() {
         
       common.conLog("ZigBee: device has joined and been interviewed", "gre");
       common.conLog(message, "std", false);
+
+      message.forceReconnect = true; // because this is ZigBee, reconnect device after creation
       
       mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
     }
@@ -750,6 +752,8 @@ async function startBridgeAndServer() {
       data.powerType = deviceConverter.powerType;
     }
 
+    data.forceReconnect = true; // because this is ZigBee, reconnect devices after creation
+    
     mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
   } 
 }

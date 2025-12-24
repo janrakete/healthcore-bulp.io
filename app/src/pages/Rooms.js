@@ -123,7 +123,6 @@ class Rooms extends HTMLElement {
             });
           });
         }
-        toastShow(window.Translation.get("EntriesLoaded"), "success");
       }
       else {
         toastShow("Error: " + data.error, "danger");

@@ -269,8 +269,13 @@ async function startServer() {
           message.status    = "ok";
           message.deviceID  = data.deviceID;
           message.bridge    = data.bridge;
+
+          if (!data.forceReconnect) { // set forceReconnect to true if not provided
+            data.forceReconnect = true; 
+          }
+
           common.conLog("Server: Created device with ID " + data.deviceID, "gre");
-          mqttDevicesRefresh({ bridge: data.bridge, forceReconnect: true }); // publish updated device list to bridge and force reconnect
+          mqttDevicesRefresh({ bridge: data.bridge, forceReconnect: data.forceReconnect }); // publish updated device list to bridge and force reconnect if requested
         }
       }
       else {

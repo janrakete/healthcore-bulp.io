@@ -62,7 +62,6 @@ class Notifications extends HTMLElement {
               </ion-card>
             `).join("");
         }
-        toastShow(window.Translation.get("EntriesLoaded"), "success");
       }
       else {
         toastShow("Error: " + data.error, "danger");

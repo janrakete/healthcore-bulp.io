@@ -231,6 +231,8 @@ async function startBridgeAndServer() {
           message.powerType    = payload.powerType;
           message.bridge       = BRIDGE_PREFIX;
 
+          message.forceReconnect = false; // because this is HTTP, just refresh devices after creation and do not reconnect
+
           common.conLog("HTTP: Request for creating a device " + message.deviceID, "yel");
 
           mqttClient.publish("server/devices/create", JSON.stringify(message));
@@ -362,7 +364,9 @@ async function startBridgeAndServer() {
       common.conLog("HTTP: Converter found for " + data.productName, "gre");
       data.powerType = deviceConverter.powerType;
     }
-    
+
+    data.forceReconnect = false; // because this is HTTP, just refresh devices after creation and do not reconnect
+
     mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
   }
 

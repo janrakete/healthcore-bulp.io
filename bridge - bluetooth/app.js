@@ -218,6 +218,8 @@ async function startBridgeAndServer() {
                   message.name        = device.name || "";
                   message.description = device.description || "";
 
+                  message.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
+
                   mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
                   common.conLog("Try to add device " + message.deviceID + " to server", "yel");
               }                 
@@ -805,6 +807,8 @@ async function startBridgeAndServer() {
         common.conLog("Bluetooth: Converter found for " + data.productName, "gre");
         data.powerType = deviceConverter.powerType;
       }
+
+      data.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
 
       mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
    } 

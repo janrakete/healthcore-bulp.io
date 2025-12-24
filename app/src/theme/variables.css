@@ -172,6 +172,10 @@ ion-input.custom, ion-select.custom {
 ion-segment {
     --background: var(--ion-color-tertiary);
 }
+
+ion-fab {
+  margin-bottom: var(--ion-safe-area-bottom, 0);
+}
 /*
 @media (prefers-color-scheme: dark) {
     ion-toolbar::part(background) {
