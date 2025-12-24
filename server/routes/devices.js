@@ -1021,7 +1021,6 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
                 }
                 mqttPendingResponses[message.callID](message);
             }
-
         }
         else {
             data.status = "error";

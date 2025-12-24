@@ -87,8 +87,7 @@ class SOSEdit extends HTMLElement {
       if (data.status === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editName']").value   = item.name;
-        this.querySelector("ion-input[name='editPhone']").value  = item.number;
-        toastShow(window.Translation.get("EntryLoaded"), "success");        
+        this.querySelector("ion-input[name='editPhone']").value  = item.number;   
       }
       else {
         toastShow("Error: " + data.error, "danger");

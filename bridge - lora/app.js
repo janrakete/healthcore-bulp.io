@@ -285,6 +285,8 @@ async function startBridgeAndServer() {
       data.powerType = deviceConverter.powerType;
     }
 
+    data.forceReconnect = false; // because this is LoRa, just refresh devices after creation and do not reconnect
+
     mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
   }
 

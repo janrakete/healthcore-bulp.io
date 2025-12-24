@@ -121,7 +121,6 @@ class IndividualEdit extends HTMLElement {
         this.querySelector("ion-input[name='editLastName']").value  = item.lastname;
         const select = this.querySelector("ion-select[name='editRoom']");
         select.value = item.roomID;
-        toastShow(window.Translation.get("EntryLoaded"), "success");  
       }
       else {
         toastShow("Error: " + data.error, "danger");

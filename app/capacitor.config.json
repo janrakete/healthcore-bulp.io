@@ -4,7 +4,7 @@
   "webDir": "dist",
   "plugins": {
     "StatusBar": {
-      "style": "DARK"
+      "style": "LIGHT"
     },
     "CapacitorHttp": {
       "enabled": true
@@ -13,7 +13,7 @@
       "presentationOptions": ["badge", "sound", "alert"]
     },
     "SplashScreen": {
-      "launchShowDuration": 1500
+      "launchShowDuration": 1000
     }
   },
   "server": {

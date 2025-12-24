@@ -26,11 +26,10 @@ Install Java
 
 
 Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Desktop/push-firebase-admin.json im Root speochen
+und goilgle swervies ..
 
 
 */
-
-// Server refreshe
 // Doku
 // Szenarien
 
