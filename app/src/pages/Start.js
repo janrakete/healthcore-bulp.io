@@ -2,42 +2,8 @@
  * Start page
  */
 
-/*
-
-README ANPASSEN
-Apps using ionic ... und Capactitor
-
-
-
-Cd app
-Npm run dev
-
-
-Default URL: http://localhost:5173/
-
--> For Native:
-
-Install: https://capacitorjs.com/docs/getting-started/environment-setup
-Install Java
-
-1. Npm run build
-2. npx cap sync 
-3. npx cap run android
-
-
-Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Desktop/push-firebase-admin.json im Root speochen
-und goilgle swervies ..
-
-
-*/
-// Doku
 // Stromversorgung WIRE, BATTERY
 // Szenarien
-
- 
-// ... 
-
-
 
 import { toastShow } from "../services/toast.js";
 import { Zeroconf } from "@ionic-native/zeroconf";
