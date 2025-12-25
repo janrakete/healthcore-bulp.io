@@ -247,16 +247,19 @@ The app is located in the `app/` folder and has its own `package.json`. So you h
 
 Installing and compiling the app:
 1. Change to folder `app/`
+
 2. Install dependencies:
    ```bash
    npm install
    ```
+
 3. Run locally in web browser: 
    ```bash
    npm run dev
    ```
    Open in browser:
    `http://localhost:5173/` (the correct url is shown in the console)
+
 4. Deploy to Android:
    1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
    2. To use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
@@ -268,10 +271,13 @@ Installing and compiling the app:
       `npx cap sync` 
    5. Compile and deploy to device (Android device must be connected - maybe first start Android Studio once and make sure that debug mode on device is activated, then connect device with Android Studio):
       `npx cap run android`
+
 5. Deploy to iOS:
    Coming soon (but it's nearly the same like Android)
+
 6. To see the console output of the app:
    Use Chrome: `chrome://inspect/`
+
 7. Make changes to app config (if you want):
    See `app/public/assets/config.json`
 
