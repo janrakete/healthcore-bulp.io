@@ -257,20 +257,22 @@ Installing and compiling the app:
    ```
    Open in browser:
    `http://localhost:5173/` (the correct url is shown in the console)
-4. Deploy to Android and iOS:
-   1. To setup the environments, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
-   2. Test on Android (Android device must be connected. Maybe first start Android Studio once and make sure that debug mode on device is activated. Then connect device with Android Studion).
-
-5. To see the console output of the app:
+4. Deploy to Android:
+   1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
+   2. To use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
+      1. `google-services.json` in `app/android/app/` (https://support.google.com/firebase/answer/7015592?hl=en)
+      2. `push-firebase-admin.json` in Healthcore root directory ()
+   3. Build:
+      `npm run build`
+   4. Sync:
+      `npx cap sync` 
+   5. Compile and deploy to device (Android device must be connected - maybe first start Android Studio once and make sure that debug mode on device is activated, then connect device with Android Studio):
+      `npx cap run android`
+5. Deploy to iOS:
+   Coming soon (but it's nearly the same like Android)
+6. To see the console output of the app:
    Use Chrome: `chrome://inspect/`
-6. Make changes to app config (if you want):
+7. Make changes to app config (if you want):
    See `app/public/assets/config.json`
 
 That's it. Basically, it is of course advisable to familiarize yourself with Ionic and Capacitor. Many problems encountered during compilation have already been discussed and, in the best case, solved somewhere in those forums.
-
-
-
-
-
-npx cap run android
-
