@@ -263,9 +263,9 @@ Installing and compiling the app:
 5. Deploy to Android:
    1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
 
-   2. To use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
+   2. If you want to use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
       1. `google-services.json` in `app/android/app/` (https://support.google.com/firebase/answer/7015592?hl=en)
-      2. `push-firebase-admin.json` in Healthcore root directory ()
+      2. `push-firebase-admin.json` in Healthcore root directory (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments)
 
    3. Build:
       ```bash
@@ -281,12 +281,12 @@ Installing and compiling the app:
       ```bash
       npx cap run android 
       ```
-      
+
 6. Deploy to iOS:
    Coming soon (but it's nearly the same like Android)
 
 7. To see the console output of the app:
-   Use Chrome: `chrome://inspect/`
+   Use Chrome and type `chrome://inspect/`
 
 8. Make changes to app config (if you want):
    See `app/public/assets/config.json`
