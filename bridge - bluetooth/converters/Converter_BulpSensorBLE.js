@@ -11,7 +11,7 @@ class Converter_BulpSensorBLE extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "Mains (single phase)";
+        this.powerType = MAINS;
 
         this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
             name:        "rotary_switch",

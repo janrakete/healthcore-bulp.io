@@ -13,7 +13,7 @@
       "presentationOptions": ["badge", "sound", "alert"]
     },
     "SplashScreen": {
-      "launchShowDuration": 1000
+      "backgroundColor": "#311b92"
     }
   },
   "server": {

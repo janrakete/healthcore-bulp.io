@@ -1219,7 +1219,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
  *                             example: "bluetooth"
  *                           powerType:
  *                             type: string
- *                             example: "battery"
+ *                             example: "BATTERY"
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -1309,7 +1309,7 @@ router.get("/:bridge/list", async function (request, response) {
  *                        example: "bluetooth"
  *                      powerType:
  *                        type: string
- *                        example: "mains"
+ *                        example: "MAINS"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:

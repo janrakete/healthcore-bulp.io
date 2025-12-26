@@ -11,7 +11,7 @@ class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "Mains (single phase)"; 
+        this.powerType = MAINS; 
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {

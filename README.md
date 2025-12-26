@@ -144,7 +144,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
       constructor() { 
           super(); // call the parent class constructor
 
-          this.powerType = WIRE; // set the power type for this device ("WIRE" or "BATTERY")
+          this.powerType = MAINS; // set the power type for this device ("MAINS" or "BATTERY")
 
           // Define the properties supported by this device, using their Bluetooth UUIDs as keys. Each property object contains metadata used for conversion and access control.
           this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
@@ -264,8 +264,8 @@ Installing and compiling the app:
    1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
 
    2. If you want to use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
-      1. `google-services.json` in `app/android/app/` (https://support.google.com/firebase/answer/7015592?hl=en)
-      2. `push-firebase-admin.json` in Healthcore root directory (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments)
+      1. `google-services.json` to `app/android/app/` (https://support.google.com/firebase/answer/7015592?hl=en)
+      2. `push-firebase-admin.json` to Healthcore root directory (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments)
 
    3. Build:
       ```bash
