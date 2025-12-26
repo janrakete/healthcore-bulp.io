@@ -2,7 +2,6 @@
  * Start page
  */
 
-// Stromversorgung WIRE, BATTERY
 // Szenarien
 
 import { toastShow } from "../services/toast.js";

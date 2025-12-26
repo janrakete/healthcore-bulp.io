@@ -11,7 +11,7 @@ class Converter_BangleJS2BLE extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "Battery";
+        this.powerType = BATTERY;
 
         this.properties["6e400003b5a3f393e0a9e50e24dcca9e"] = {
             name:        "several",

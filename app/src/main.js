@@ -61,6 +61,15 @@ import "./theme/variables.css";
 //import '@ionic/core/css/palettes/dark.system.css';
 
 /**
+ * Splash Screen
+ */
+import { SplashScreen } from "@capacitor/splash-screen";
+await SplashScreen.show({
+  showDuration: 1000,
+  autoHide: true
+});
+
+/**
  * Additional controllers
  */
 import { toastController, createAnimation } from '@ionic/core';
