@@ -144,7 +144,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
       constructor() { 
           super(); // call the parent class constructor
 
-          this.powerType = MAINS; // set the power type for this device ("MAINS" or "BATTERY")
+          this.powerType = "MAINS"; // set the power type for this device ("MAINS" or "BATTERY")
 
           // Define the properties supported by this device, using their Bluetooth UUIDs as keys. Each property object contains metadata used for conversion and access control.
           this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
