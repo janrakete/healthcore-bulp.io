@@ -147,7 +147,7 @@ async function startBridgeAndServer() {
    * @returns {boolean} True if the device is wired, false otherwise.
    */
   function deviceIsWired(device) {
-    if (device.powerType && device.powerType == MAINS) {
+    if (device.powerType && device.powerType === "MAINS") {
       return true;
     }
     else {

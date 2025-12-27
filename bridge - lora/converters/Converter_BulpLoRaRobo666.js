@@ -11,7 +11,7 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = BATTERY;
+        this.powerType = "BATTERY";
 
         this.properties[0] = {
             name:       "heartrate",

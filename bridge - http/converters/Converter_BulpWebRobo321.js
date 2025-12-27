@@ -11,7 +11,7 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
     constructor() {
         super();
         
-        this.powerType = MAINS;
+        this.powerType = "MAINS";
 
         this.properties[0] = {
             name:       "voltage",
