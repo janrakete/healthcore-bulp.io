@@ -32,6 +32,8 @@
         <ion-route url="/devices-add/http" component="page-devices-add-http"></ion-route>
         <ion-route url="/notifications" component="page-notifications"></ion-route>
         <ion-route url="/device-edit/:BRIDGE/:ID" component="page-device-edit"></ion-route>
+        <ion-route url="/scenarios" component="page-scenarios"></ion-route>
+        <ion-route url="/scenario-edit/:ID" component="page-scenario-edit"></ion-route>
       </ion-router>
 
       <ion-router-outlet></ion-router-outlet>
@@ -53,7 +55,8 @@
       import "./src/pages/DevicesAddHTTP.js";
       import "./src/pages/Notifications.js";
       import "./src/pages/DeviceEdit.js";
-
+      import "./src/pages/Scenarios.js";
+      import "./src/pages/ScenarioEdit.js";
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

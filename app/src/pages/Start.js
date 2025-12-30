@@ -40,7 +40,7 @@ class Start extends HTMLElement {
             <ion-col size="6"><ion-button class="selection" expand="block" href="/devices"><div><div><ion-icon slot="start" name="radio-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("DevicesTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
-          <ion-col size="6"><ion-button class="selection" expand="block"><div><div><ion-icon slot="start" name="unlink-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button class="selection" expand="block" href="/scenarios"><div><div><ion-icon slot="start" name="unlink-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
           <ion-col size="6"><ion-button class="selection" expand="block"><div><div><ion-icon slot="start" name="build-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("SettingsTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
@@ -51,7 +51,7 @@ class Start extends HTMLElement {
         </ion-content>
     `;
 
-    const animation = window.createAnimation()
+    const animation = window.createAnimation() // Logo animation
       .addElement(document.querySelector("#logo"))
       .duration(400)
       .iterations(1)
