@@ -22,7 +22,7 @@ class RoomEdit extends HTMLElement {
           <ion-col>
             <ion-list inset="true">
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("Name")}" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
             </ion-list>
           </ion-col>
@@ -82,8 +82,7 @@ class RoomEdit extends HTMLElement {
 
       if (data.status === "ok") {
         const item = data.results[0];
-        this.querySelector("ion-input[name='editName']").value = item.name;
-        toastShow(window.Translation.get("EntryLoaded"), "success");        
+        this.querySelector("ion-input[name='editName']").value = item.name;     
       }
       else {
         toastShow("Error: " + data.error, "danger");

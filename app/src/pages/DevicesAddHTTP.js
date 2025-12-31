@@ -19,7 +19,7 @@ class DevicesAddHTTP extends HTMLElement {
             </ion-header>
             <ion-content class="ion-padding">
                 <center><ion-text>${window.Translation.get("DevicesWithNoScanHelp")}</ion-text></center><br />
-                <center><ion-button expand="block" href="/device-edit/http/0">${window.Translation.get("DevicesAddManually")}</ion-button></center>
+                <center><ion-button expand="block" href="/device-edit/http/[new]">${window.Translation.get("DevicesAddManually")}</ion-button></center>
             </ion-content>
         `;
     }

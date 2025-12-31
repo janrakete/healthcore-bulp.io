@@ -22,13 +22,13 @@ class IndividualEdit extends HTMLElement {
           <ion-col>
             <ion-list inset="true">
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("FirstName")}" name="editFirstName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" label="${window.Translation.get("FirstName")}" label-placement="stacked" name="editFirstName" required="true" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
-                <ion-input type="text" placeholder="${window.Translation.get("LastName")}" name="editLastName" shape="round" fill="outline" class="custom"></ion-input>
+                <ion-input type="text" label="${window.Translation.get("LastName")}" label-placement="stacked" name="editLastName" shape="round" fill="outline" class="custom"></ion-input>
               </ion-item>      
               <ion-item color="light">
-                <ion-select  interface="popover" class="custom" name="editRoom" label="${window.Translation.get("Room")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                <ion-select interface="popover" class="custom" label-placement="stacked" name="editRoom" label="${window.Translation.get("Room")}" placeholder="${window.Translation.get("PleaseSelect")}">
                   <ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>
                 </ion-select>
               </ion-item>      
@@ -121,7 +121,6 @@ class IndividualEdit extends HTMLElement {
         this.querySelector("ion-input[name='editLastName']").value  = item.lastname;
         const select = this.querySelector("ion-select[name='editRoom']");
         select.value = item.roomID;
-        toastShow(window.Translation.get("EntryLoaded"), "success");  
       }
       else {
         toastShow("Error: " + data.error, "danger");

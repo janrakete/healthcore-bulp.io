@@ -1,12 +1,12 @@
 /**
- * Rooms Page
+ * Scenarios Page
  */
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { showSpinner } from "../services/helper.js";
 
-class Rooms extends HTMLElement {
+class Scenarios extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
@@ -14,7 +14,7 @@ class Rooms extends HTMLElement {
           <ion-buttons slot="start">
             <ion-back-button default-href="/"></ion-back-button>
           </ion-buttons>
-          <ion-title>${window.Translation.get("PageRoomsHeadline")}</ion-title>
+          <ion-title>${window.Translation.get("PageScenariosHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
@@ -23,17 +23,17 @@ class Rooms extends HTMLElement {
           </ion-refresher-content>
         </ion-refresher>
 
-        <div id="rooms-list"></div>
+        <div id="scenarios-list"></div>
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-          <ion-fab-button color="success" id="room-edit-button">
+          <ion-fab-button color="success" id="scenario-edit-button">
             <ion-icon name="add"></ion-icon>
           </ion-fab-button>
         </ion-fab>
       </ion-content>
     `;
-    this.querySelector("#room-edit-button").addEventListener("click", () => { // Navigate to Room Edit page on button click
-      document.querySelector("ion-router").push("/room-edit/0");
+    this.querySelector("#scenario-edit-button").addEventListener("click", () => { // Navigate to Scenario Edit page on button click
+      document.querySelector("ion-router").push("/scenario-edit/0");
     });
 
     this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => { // pull to refresh
@@ -69,9 +69,9 @@ class Rooms extends HTMLElement {
       const ID = actionSheet.dataset.ID; // Get ID of entry to delete
       console.log("Action sheet: ID of entry:", ID);
       if (event.detail.data?.action === "delete") {
-        const data = await apiDELETE("/data/rooms?roomID=" + ID);
+        const data = await apiDELETE("/data/scenario?scenarioID=" + ID);
         if (data.status === "ok") {
-          const itemDelete = this.querySelector("#rooms-list").querySelector("ion-card[data-id='" + ID + "']");
+          const itemDelete = this.querySelector("#scenarios-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
             toastShow(window.Translation.get("EntryDeleted"), "success");
@@ -85,13 +85,13 @@ class Rooms extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = showSpinner("#rooms-list");        
+    const spinner = showSpinner("#scenarios-list");        
     try {
-      const data = await apiGET("/data/rooms");
+      const data = await apiGET("/data/scenarios");
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {
-        const listElement = this.querySelector("#rooms-list");
+        const listElement = this.querySelector("#scenarios-list");
         const items = data.results;
 
         if (!items || items.length === 0) {
@@ -101,18 +101,18 @@ class Rooms extends HTMLElement {
         }
         else {
           listElement.innerHTML = items.map(item => `
-            <ion-card color="primary" data-id="${item.roomID}">
+            <ion-card color="primary" data-id="${item.scenarioID}">
               <ion-card-header>
                   <ion-card-title>${item.name}</ion-card-title>
               </ion-card-header>
-              <ion-button data-id="${item.roomID}" id="edit-${item.roomID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-              <ion-button data-id="${item.roomID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+              <ion-button data-id="${item.scenarioID}" id="edit-${item.scenarioID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+              <ion-button data-id="${item.scenarioID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
             </ion-card>
           `).join("");
           
           this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
             button.addEventListener("click", () => {
-              document.querySelector("ion-router").push("/room-edit/" + button.getAttribute("data-id"));
+              document.querySelector("ion-router").push("/scenario-edit/" + button.getAttribute("data-id"));
             });
           });
           
@@ -137,4 +137,4 @@ class Rooms extends HTMLElement {
   }
 }
 
-customElements.define("page-rooms", Rooms);
+customElements.define("page-scenarios", Scenarios);

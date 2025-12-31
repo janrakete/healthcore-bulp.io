@@ -1,17 +1,17 @@
 /**
- * SOS Edit Page
+ * Scenario Edit Page
  */
 
 import { apiGET, apiPATCH, apiPOST} from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 
-class SOSEdit extends HTMLElement {
+class ScenarioEdit extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/sos"></ion-back-button>
+            <ion-back-button default-href="/scenarios"></ion-back-button>
           </ion-buttons> 
           <ion-title>${window.Translation.get("Edit")}</ion-title>
         </ion-toolbar>
@@ -21,12 +21,12 @@ class SOSEdit extends HTMLElement {
         <ion-row>
           <ion-col>
             <ion-list inset="true">
-              <ion-item color="light">
-                <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
-              </ion-item>      
-              <ion-item color="light">
-                <ion-input type="text" label="${window.Translation.get("Phone")}" label-placement="stacked" name="editPhone" required="true" shape="round" fill="outline" class="custom"></ion-input>
-              </ion-item>
+                <ion-item color="light">
+                    <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                </ion-item> 
+                <ion-item>
+                    <ion-toggle color="primary" name="editPush">${window.Translation.get("PushActivate")}</ion-toggle>
+                </ion-item>     
             </ion-list>
           </ion-col>
         </ion-row>
@@ -50,24 +50,24 @@ class SOSEdit extends HTMLElement {
       return;
     }
 
-    const formData  = {};
-    formData.name   = this.querySelector("ion-input[name='editName']").value;
-    formData.number = this.querySelector("ion-input[name='editPhone']").value;
+    const formData              = {};
+    formData.name               = this.querySelector("ion-input[name='editName']").value;
+    formData.pushNotification   = this.querySelector("ion-toggle[name='editPush']").checked ? 1 : 0;
 
     let data = {};
 
     try {
       if (parseInt(this.ID) === 0) // New entry    
       {
-        data = await apiPOST("/data/sos", formData);
+        data = await apiPOST("/data/scenarios", formData);
       }
       else {
-        data = await apiPATCH("/data/sos?sosID=" + this.ID, formData);
+        data = await apiPATCH("/data/scenarios?scenarioID=" + this.ID, formData);
       }
         
       if (data.status === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");             
-        document.querySelector("ion-router").push("/sos");   
+        document.querySelector("ion-router").push("/scenarios");   
       }
       else {
         toastShow("Error: " + data.error, "danger");
@@ -81,13 +81,12 @@ class SOSEdit extends HTMLElement {
 
   async loadData() {
     try {
-      const data = await apiGET("/data/sos?sosID=" + this.ID);
+      const data = await apiGET("/data/scenarios?scenarioID=" + this.ID);
       console.log("API call - Output:", data);
 
       if (data.status === "ok") {
         const item = data.results[0];
-        this.querySelector("ion-input[name='editName']").value   = item.name;
-        this.querySelector("ion-input[name='editPhone']").value  = item.number;   
+        this.querySelector("ion-input[name='editName']").value = item.name;     
       }
       else {
         toastShow("Error: " + data.error, "danger");
@@ -100,4 +99,4 @@ class SOSEdit extends HTMLElement {
   }
 }
 
-customElements.define("page-sos-edit", SOSEdit);
+customElements.define("page-scenario-edit", ScenarioEdit);

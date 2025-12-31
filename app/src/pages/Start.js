@@ -2,46 +2,7 @@
  * Start page
  */
 
-/*
-
-README ANPASSEN
-Apps using ionic ... und Capactitor
-
-
-
-Cd app
-Npm run dev
-
-
-Default URL: http://localhost:5173/
-
--> For Native:
-
-Install: https://capacitorjs.com/docs/getting-started/environment-setup
-Install Java
-
-1. Npm run build
-2. npx cap sync 
-3. npx cap run android
-
-
-Firebase admn SSDK; ASch Pricate Schlüssel generieren und als /Users/jan/Desktop/push-firebase-admin.json im Root speochen
-
-
-*/
-
-// dann alle weitern Svans
-// Power Type
-//productName
-//Bridge
-//devceID
-// Doku
 // Szenarien
-
- 
-// ... 
-
-
 
 import { toastShow } from "../services/toast.js";
 import { Zeroconf } from "@ionic-native/zeroconf";
@@ -52,7 +13,7 @@ class Start extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
-        <ion-toolbar>
+        <ion-toolbar color="primary">
           <ion-title>${window.Translation.get("PageStartHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
@@ -79,7 +40,7 @@ class Start extends HTMLElement {
             <ion-col size="6"><ion-button class="selection" expand="block" href="/devices"><div><div><ion-icon slot="start" name="radio-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("DevicesTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
-          <ion-col size="6"><ion-button class="selection" expand="block"><div><div><ion-icon slot="start" name="unlink-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
+          <ion-col size="6"><ion-button class="selection" expand="block" href="/scenarios"><div><div><ion-icon slot="start" name="unlink-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
           <ion-col size="6"><ion-button class="selection" expand="block"><div><div><ion-icon slot="start" name="build-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("SettingsTitle")}</ion-text></div></div></ion-button></ion-col>
         </ion-row>
         <ion-row>
@@ -90,7 +51,7 @@ class Start extends HTMLElement {
         </ion-content>
     `;
 
-    const animation = window.createAnimation()
+    const animation = window.createAnimation() // Logo animation
       .addElement(document.querySelector("#logo"))
       .duration(400)
       .iterations(1)

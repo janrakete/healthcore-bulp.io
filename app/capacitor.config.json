@@ -3,6 +3,9 @@
   "appName": "bulp.io",
   "webDir": "dist",
   "plugins": {
+    "StatusBar": {
+      "style": "LIGHT"
+    },
     "CapacitorHttp": {
       "enabled": true
     },
@@ -10,7 +13,7 @@
       "presentationOptions": ["badge", "sound", "alert"]
     },
     "SplashScreen": {
-      "launchShowDuration": 1500
+      "backgroundColor": "#311b92"
     }
   },
   "server": {

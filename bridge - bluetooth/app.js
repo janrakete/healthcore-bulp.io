@@ -218,6 +218,8 @@ async function startBridgeAndServer() {
                   message.name        = device.name || "";
                   message.description = device.description || "";
 
+                  message.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
+
                   mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
                   common.conLog("Try to add device " + message.deviceID + " to server", "yel");
               }                 
@@ -425,6 +427,9 @@ async function startBridgeAndServer() {
           break;
         case "bluetooth/devices/list":
           mqttDevicesList(data);
+          break;
+        case "bluetooth/devices/create":
+          mqttDevicesCreate(data);
           break;
 
         default:
@@ -783,7 +788,30 @@ async function startBridgeAndServer() {
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
     }
-  }   
+  }
+  
+   /**
+    * Create a new device
+    * @param {Object} data 
+    * @description This function creates the information of a registered device.
+    */
+   function mqttDevicesCreate(data) {
+      common.conLog("Bluetooth: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+
+      const deviceConverter = convertersList.find(data.productName); // get converter for device from list of converters
+      if (deviceConverter === undefined) { 
+        common.conLog("Bluetooth: No converter found for " + data.productName, "red");
+        data.powerType = "?"; 
+      }
+      else {
+        common.conLog("Bluetooth: Converter found for " + data.productName, "gre");
+        data.powerType = deviceConverter.powerType;
+      }
+
+      data.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
+
+      mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
+   } 
 }
 
 startBridgeAndServer();

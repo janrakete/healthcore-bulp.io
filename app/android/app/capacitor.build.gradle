@@ -11,8 +11,10 @@ apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
     implementation project(':capacitor-community-fcm')
     implementation project(':capacitor-community-http')
+    implementation project(':capacitor-app')
     implementation project(':capacitor-push-notifications')
     implementation project(':capacitor-splash-screen')
+    implementation project(':capacitor-status-bar')
     implementation "org.jmdns:jmdns:3.5.5"
 }
 

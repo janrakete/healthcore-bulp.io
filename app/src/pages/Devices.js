@@ -210,8 +210,6 @@ class Devices extends HTMLElement {
           this.querySelector("#action-sheet").isOpen          = true;
         });
       });
-      
-      toastShow(window.Translation.get("EntriesLoaded"), "success");
 
       if (resultsRegistered.length === 0) {
         this.querySelector("#devices-list").innerHTML = `<br /><center><ion-text>${window.Translation.get("EntriesNone")}</ion-text></center>`;

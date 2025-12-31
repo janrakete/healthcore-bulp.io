@@ -119,6 +119,7 @@ ion-button.selection {
     --box-shadow: 0 2px 6px 0 rgb(0, 0, 0, 0.3);
     --border-color: var(--ion-color-primary);
     --border-style: solid;
+    --border-width: 3px;
     --color-hover: var(--ion-color-light);
 }
 
@@ -127,7 +128,7 @@ ion-toolbar {
     --border-color: var(--ion-color-primary);
     --background: var(--ion-color-light);
     --color: var(--ion-color-primary);
-    --border-width: 0px 0px 2px 0px !important;
+    --border-width: 0px 0px 3px 0px !important;
     --border-color: var(--ion-color-primary);
 }
 
@@ -170,6 +171,10 @@ ion-input.custom, ion-select.custom {
 
 ion-segment {
     --background: var(--ion-color-tertiary);
+}
+
+ion-fab {
+  margin-bottom: var(--ion-safe-area-bottom, 0);
 }
 /*
 @media (prefers-color-scheme: dark) {

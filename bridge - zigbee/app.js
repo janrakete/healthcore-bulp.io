@@ -147,7 +147,7 @@ async function startBridgeAndServer() {
    * @returns {boolean} True if the device is wired, false otherwise.
    */
   function deviceIsWired(device) {
-    if (device.powerType && device.powerType.indexOf("Mains") >= 0) {
+    if (device.powerType && device.powerType === "MAINS") {
       return true;
     }
     else {
@@ -210,7 +210,7 @@ async function startBridgeAndServer() {
    * Start ZigBee controller
    */
   async function zigBeeStart() {
-    let data = {};
+    let data    = {};
     data.bridge = BRIDGE_PREFIX;
     try {
       await zigBee.start();
@@ -243,14 +243,13 @@ async function startBridgeAndServer() {
    * @description This event is triggered when a new device joins the ZigBee network. It logs the device information and publishes a message to the MQTT broker.
   */
   zigBee.on("deviceInterview", async function (data) { 
-    let message = {};
+    let message                = {};
     message.deviceID           = data.device.ieeeAddr;
     message.lastSeen           = data.device.lastSeen;
     message.vendorName         = data.device.manufacturerName;
     message.productName        = data.device.modelID;
     message.softwareBuildID    = data.device.softwareBuildID;
     message.type               = data.device.type;
-    message.powerType          = data.device.powerSource;
     message.bridge             = BRIDGE_PREFIX;
 
     if (data.device.interviewState === "PENDING") {
@@ -261,9 +260,21 @@ async function startBridgeAndServer() {
       mqttClient.publish("server/devices/discover", JSON.stringify(message)); // ... publish to MQTT broker
     }
     else if (data.device.interviewState === "SUCCESSFUL") {
-        
       common.conLog("ZigBee: device has joined and been interviewed", "gre");
+
+      const deviceConverter = convertersList.find(message.productName); // get converter for device from list of converters
+      if (deviceConverter === undefined) { 
+        common.conLog("ZigBee: No converter found for " + message.productName, "red");
+        message.powerType = "?"; 
+      }
+      else {
+        common.conLog("ZigBee: Converter found for " + message.productName, "gre");
+        message.powerType = deviceConverter.powerType;
+      }
+
       common.conLog(message, "std", false);
+
+      message.forceReconnect = true; // because this is ZigBee, reconnect device after creation
       
       mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
     }
@@ -453,6 +464,9 @@ async function startBridgeAndServer() {
           break;
         case "zigbee/devices/update":
           mqttDevicesUpdate(data);
+          break;
+        case "zigbee/devices/create":
+          mqttDevicesCreate(data);
           break;
         default:
           common.conLog("ZigBee: NOT found matching message handler for " + topic, "red");
@@ -728,6 +742,29 @@ async function startBridgeAndServer() {
       common.conLog("ZigBee: No properties given", "red");
     }
   }
+
+  /**
+  * Create a new device
+  * @param {Object} data 
+  * @description This function creates the information of a registered device.
+  */
+  function mqttDevicesCreate(data) {
+    common.conLog("Bluetooth: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+
+    const deviceConverter = convertersList.find(data.productName); // get converter for device from list of converters
+    if (deviceConverter === undefined) { 
+      common.conLog("ZigBee: No converter found for " + data.productName, "red");
+      data.powerType = "?"; 
+    }
+    else {
+      common.conLog("ZigBee: Converter found for " + data.productName, "gre");
+      data.powerType = deviceConverter.powerType;
+    }
+
+    data.forceReconnect = true; // because this is ZigBee, reconnect devices after creation
+    
+    mqttClient.publish("server/devices/create", JSON.stringify(data)); // publish created device to MQTT broker
+  } 
 }
 
 startBridgeAndServer();
