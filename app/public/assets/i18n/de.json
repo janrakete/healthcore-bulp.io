@@ -45,5 +45,6 @@
     "ScanStarted" : "Geräte-Scan wird gestartet.",
     "DevicesScanNoDevicesFound" : "Keine Geräte gefunden.",
     "PageDevicesGoToDevices" : "Zur Geräte-Übersicht",
-    "Description" : "Beschreibung"
+    "Description" : "Beschreibung",
+    "PageScenariosHeadline" : "Szenarien"
 }

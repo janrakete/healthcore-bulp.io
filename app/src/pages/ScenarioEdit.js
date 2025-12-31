@@ -59,7 +59,7 @@ class ScenarioEdit extends HTMLElement {
     try {
       if (parseInt(this.ID) === 0) // New entry    
       {
-        data = await apiPOST("/data/scenarios", formData);
+        data = await apiPOST("/scenarios", formData);
       }
       else {
         data = await apiPATCH("/data/scenarios?scenarioID=" + this.ID, formData);
@@ -81,7 +81,7 @@ class ScenarioEdit extends HTMLElement {
 
   async loadData() {
     try {
-      const data = await apiGET("/data/scenarios?scenarioID=" + this.ID);
+      const data = await apiGET("/scenarios/" + this.ID);
       console.log("API call - Output:", data);
 
       if (data.status === "ok") {
