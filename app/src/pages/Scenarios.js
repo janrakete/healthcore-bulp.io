@@ -69,7 +69,7 @@ class Scenarios extends HTMLElement {
       const ID = actionSheet.dataset.ID; // Get ID of entry to delete
       console.log("Action sheet: ID of entry:", ID);
       if (event.detail.data?.action === "delete") {
-        const data = await apiDELETE("/data/scenario?scenarioID=" + ID);
+        const data = await apiDELETE("/scenarios/" + ID);
         if (data.status === "ok") {
           const itemDelete = this.querySelector("#scenarios-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
@@ -87,7 +87,7 @@ class Scenarios extends HTMLElement {
   async dataLoad() {
     const spinner = showSpinner("#scenarios-list");        
     try {
-      const data = await apiGET("/data/scenarios");
+      const data = await apiGET("/scenarios/all");
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {

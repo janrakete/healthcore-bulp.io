@@ -8,7 +8,7 @@ const router        = require("express").Router();
 
 /**
  * @swagger
- * /scenarios:
+ * /scenarios/all:
  *   get:
  *     summary: Get all scenarios
  *     description: Retrieve all scenarios with their triggers and actions
@@ -43,7 +43,7 @@ const router        = require("express").Router();
  *                   type: string
  *                   example: "Error message"
  */
-router.get("/", async function (request, response) {
+router.get("/all", async function (request, response) {
     let data       = {};
     try {
         data.status = "ok";
@@ -52,7 +52,8 @@ router.get("/", async function (request, response) {
         const results   = await database.prepare(statement).all(appConfig.CONF_tablesMaxEntriesReturned);
 
         for (const result of results) {         //convert 0/1 to false/true
-          result.enabled = result.enabled === 1;
+            result.enabled          = result.enabled === 1 ? true : false;
+            result.pushNotification = result.pushNotification === 1 ? true : false;
         }
 
         common.conLog("GET Request: access table 'scenarios'", "gre");
@@ -78,6 +79,88 @@ router.get("/", async function (request, response) {
 
     if (data.status === "ok") {
         return response.status(200).json(data);
+    }
+    else {
+        return response.status(400).json(data);
+    }
+});
+
+/**
+ * @swagger
+ * /scenarios/{scenarioID}:
+ *   get:
+ *     summary: Get a specific scenario
+ *     description: Retrieve a specific scenario by its ID, including its triggers and actions
+ *     tags:
+ *       - Scenarios
+ *     parameters:
+ *       - in: path
+ *         name: scenarioID
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       "200":
+ *         description: Successfully retrieved scenario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
+ */
+router.get("/:scenarioID", async function (request, response) {
+    const scenarioID = parseInt(request.params.scenarioID);
+    let data         = {};
+    try {
+        const result = await database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
+        if (result) {
+            result.enabled          = result.enabled === 1 ? true : false;
+            result.pushNotification = result.pushNotification === 1 ? true : false;
+
+            result.triggers = await database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.actions  = await database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            data.status    = "ok";
+            data.results   = [result];
+            common.conLog("GET Request: access table 'scenarios'", "gre");
+        } 
+        else {
+            data.status = "error";
+            data.error  = "Scenario not found";
+        }
+    } 
+    catch (error) {
+        data.status = "error";
+        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+    }
+    if (data.status === "error") {
+        common.conLog("GET Request: an error occured", "red");
+    }
+
+    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);
+
+    if (data.status === "ok") {
+        return response.status(200).json(data);
+
     }
     else {
         return response.status(400).json(data);
@@ -210,6 +293,7 @@ router.post("/", async function (request, response) {
                         payload.name,
                         payload.description || "",
                         payload.enabled === true ? 1 : 0,
+                        payload.pushNotification === true ? 1 : 0,
                         payload.priority || 0
                     );
 
@@ -398,7 +482,8 @@ router.put("/:scenarioID", async function (request, response) {
         // Update scenario
         if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined) {
           if (payload.enabled !== undefined) { // convert boolean to 0/1
-            payload.enabled = payload.enabled === true ? 1 : 0;
+            payload.enabled           = payload.enabled === true ? 1 : 0;
+            payload.pushNotification  = payload.pushNotification === true ? 1 : 0;
           }
           
           database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
