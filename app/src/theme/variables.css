@@ -101,16 +101,16 @@
     color: var(--ion-color-primary)
 }
 
-ion-content.background-1 {
-    --background: url("../assets/backgrounds/background_1.png") no-repeat bottom 30px left 30px / 50% fixed;
-}
-
 #logo-pre {
     font-family: "Poppins-Bold";
 }
 
 #logo-post {
     font-family: "Poppins";
+}
+
+ion-content.background-1 {
+    --background: url("../assets/backgrounds/background_1.png") no-repeat bottom 30px left 30px / 50% fixed;
 }
 
 ion-button.selection {
@@ -162,6 +162,10 @@ ion-segment-button::part(indicator-background) {
 
 .action-sheet-cancel.sc-ion-action-sheet-ios::after {
     background: none;
+}
+
+ion-card ion-button {
+    --padding-start: 30px;
 }
 
 ion-input.custom, ion-select.custom {
