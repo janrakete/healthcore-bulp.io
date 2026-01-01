@@ -103,8 +103,18 @@ class Scenarios extends HTMLElement {
           listElement.innerHTML = items.map(item => `
             <ion-card color="primary" data-id="${item.scenarioID}">
               <ion-card-header>
-                  <ion-card-title>${item.name}</ion-card-title>
+                  <ion-card-title>${item.name}</ion-card-title> 
               </ion-card-header>
+              <ion-card-content>
+                <ion-row>
+                  <ion-col size="4">
+                      ${item.enabled === true ? `<ion-text color="light"><ion-icon name="play-circle-sharp" color="success"></ion-icon> ${window.Translation.get("Enabled")}</ion-text>` : `<ion-text color="light"><ion-icon name="pause-circle-sharp" color="danger"></ion-icon> ${window.Translation.get("Disabled")}</ion-text>`}
+                  </ion-col>
+                  <ion-col size="8">
+                      ${item.pushNotification === true ? `<ion-text color="light"><ion-icon name="notifications-sharp" color="warning"></ion-icon> ${window.Translation.get("PushNotificationEnabled")}</ion-text>` : `<ion-text color="light"><ion-icon name="notifications-off-sharp" color="medium"></ion-icon> ${window.Translation.get("PushNotificationDisabled")}</ion-text>`}
+                  </ion-col>
+                </ion-row>
+              </ion-card-content>
               <ion-button data-id="${item.scenarioID}" id="edit-${item.scenarioID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
               <ion-button data-id="${item.scenarioID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
             </ion-card>

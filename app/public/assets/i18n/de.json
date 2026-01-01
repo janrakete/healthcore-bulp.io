@@ -46,5 +46,9 @@
     "DevicesScanNoDevicesFound" : "Keine Geräte gefunden.",
     "PageDevicesGoToDevices" : "Zur Geräte-Übersicht",
     "Description" : "Beschreibung",
-    "PageScenariosHeadline" : "Szenarien"
+    "PageScenariosHeadline" : "Szenarien",
+    "Enabled" : "Aktiviert",
+    "Disabled" : "Deaktiviert",
+    "PushNotificationEnabled" : "Benachrichtigung ein",
+    "PushNotificationDisabled" : "Benachrichtigung aus"
 }
