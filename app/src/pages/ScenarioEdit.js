@@ -33,29 +33,20 @@ class ScenarioEdit extends HTMLElement {
             </ion-list>
           </ion-col>
         </ion-row>
-      <ion-row>
-        <ion-col>
-          <ion-text>Wenn:</ion-text>
-        </ion-col>
-      </ion-row>
-      <ion-row>
-        <ion-col>
-          <ion-button expand="block" color="medium" disabled><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddCondition")}</ion-button>      
-        </ion-col>
-      </ion-row>
-      <ion-row>
-        <ion-col>
-          <ion-text>Dann:</ion-text>
-        </ion-col>
-      </ion-row>
-      <ion-row>
-        <ion-col>
-          <ion-button expand="block" color="medium" disabled><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
-        </ion-col>
-      </ion-row>
-
-
-
+        <ion-row>
+          <ion-col>
+            <ion-text>Wenn:</ion-text>
+            <div id="triggers-list"></div>
+            <ion-button expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddCondition")}</ion-button>      
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col>
+            <ion-text>Dann:</ion-text>
+            <div id="actions-list"></div>
+            <ion-button expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
+          </ion-col>
+        </ion-row>
         <ion-row>
           <ion-col>
             <ion-button expand="block" color="success" id="submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
@@ -116,6 +107,66 @@ class ScenarioEdit extends HTMLElement {
         this.querySelector("ion-input[name='editName']").value        = item.name; 
         this.querySelector("ion-toggle[name='editPush']").checked     = item.pushNotification === true;
         this.querySelector("ion-toggle[name='editEnabled']").checked  = item.enabled === true;    
+
+        const listElementTriggers = this.querySelector("#triggers-list");
+        listElementTriggers.innerHTML = item.triggers.map(item => {
+          let bridgeInfo = "";
+          switch(item.bridge) {
+            case "zigbee":
+              bridgeInfo = window.Translation.get("Zigbee");
+              break;
+            case "bluetooth":
+              bridgeInfo = window.Translation.get("Bluetooth");
+              break;
+            case "http":
+              bridgeInfo = window.Translation.get("Wifi");
+              break;
+            case "lora":
+              bridgeInfo = window.Translation.get("LoRa");
+              break;
+            default:
+              bridgeInfo = window.Translation.get("Unknown");
+          }              
+
+          let operatorInfo = "";            
+          switch(item.operator) {
+            case "equals":
+              operatorInfo = window.Translation.get("Equals");
+              break;
+            case "greater":
+              operatorInfo = window.Translation.get("Greater");
+              break;
+            case "less":
+              operatorInfo = window.Translation.get("Less");
+              break;
+            case "between":
+              operatorInfo = window.Translation.get("Between");
+              break;
+            case "contains":
+              operatorInfo = window.Translation.get("Contains");
+              break;
+            default:
+              operatorInfo = window.Translation.get("Equals");              
+          }
+
+          return `
+            <ion-card color="primary" data-id="${item.triggerID}">
+              <ion-card-header>
+                  <ion-card-title>${item.deviceName}</ion-card-title> 
+                  <ion-card-subtitle>${item.deviceID} (${bridgeInfo})</ion-card-subtitle>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-row>
+                  <ion-col>
+                      <ion-text color="light">${item.property}</ion-text>  <ion-text color="light">${operatorInfo}</ion-text> <ion-text color="light">${item.value}</ion-text>
+                  </ion-col>                
+                </ion-row>
+              </ion-card-content>
+              <ion-button data-id="${item.triggerID}" id="edit-${item.triggerID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+              <ion-button data-id="${item.triggerID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+            </ion-card>
+        `;          
+        }).join("");
       }
       else {
         toastShow("Error: " + data.error, "danger");
