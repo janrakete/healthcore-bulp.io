@@ -50,5 +50,7 @@
     "Enabled" : "Aktiviert",
     "Disabled" : "Deaktiviert",
     "PushNotificationEnabled" : "Benachrichtigung ein",
-    "PushNotificationDisabled" : "Benachrichtigung aus"
+    "PushNotificationDisabled" : "Benachrichtigung aus",
+    "PushNotification" : "Benachrichtigung",
+    "Priority" : "Priorität"
 }
