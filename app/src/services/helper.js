@@ -53,6 +53,11 @@ export function dateFormat(dateString, locale = "en-US") {
     });
 }
 
+/**
+ * Shows a spinner inside the specified container element.
+ * @param {String} containerSelector 
+ * @returns {HTMLElement} - The spinner element created.
+ */
 export function showSpinner(containerSelector) {
     document.querySelector(containerSelector).innerHTML = "";
     const spinner = document.createElement("ion-spinner");
@@ -62,4 +67,30 @@ export function showSpinner(containerSelector) {
     center.appendChild(spinner);
     document.querySelector(containerSelector).prepend(center);
     return spinner;
+}
+
+/**
+ * Translates bridge code to human-readable format.
+ * @param {String} bridge 
+ * @returns {String} - Translated bridge name.
+ */
+export function bridgeTranslate(bridge) {
+    let bridgeInfo = "";
+    switch(bridge) {
+        case "zigbee":
+            bridgeInfo = window.Translation.get("Zigbee");
+            break;
+        case "bluetooth":
+            bridgeInfo = window.Translation.get("Bluetooth");
+            break;
+        case "http":
+            bridgeInfo = window.Translation.get("Wifi");
+            break;
+        case "lora":
+            bridgeInfo = window.Translation.get("LoRa");
+            break;
+        default:
+            bridgeInfo = window.Translation.get("Unknown");
+    }
+    return bridgeInfo;
 }
