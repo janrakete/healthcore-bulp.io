@@ -173,6 +173,10 @@ ion-input.custom, ion-select.custom {
     --padding-end: 10px;
 }
 
+ion-toggle.custom {
+    padding-left: 10px;
+}
+
 ion-segment {
     --background: var(--ion-color-tertiary);
 }
