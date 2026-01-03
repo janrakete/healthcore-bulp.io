@@ -4,6 +4,7 @@
 
 import { apiGET, apiPATCH, apiPOST} from "../services/api.js";
 import { toastShow } from "../services/toast.js";
+import { bridgeTranslate } from "../services/helper.js";
 
 class ScenarioEdit extends HTMLElement {
   connectedCallback() {
@@ -35,16 +36,16 @@ class ScenarioEdit extends HTMLElement {
         </ion-row>
         <ion-row>
           <ion-col>
-            <ion-text>Wenn:</ion-text>
+            <ion-text><h3>${window.Translation.get("When")}:</h3></ion-text>
             <div id="triggers-list"></div>
-            <ion-button expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddCondition")}</ion-button>      
+            <ion-button id="openTriggerEdit" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddTrigger")}</ion-button>      
           </ion-col>
         </ion-row>
         <ion-row>
           <ion-col>
-            <ion-text>Dann:</ion-text>
+            <ion-text><h3>${window.Translation.get("Then")}:</h3></ion-text>
             <div id="actions-list"></div>
-            <ion-button expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
+            <ion-button id="openActionEdit" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
           </ion-col>
         </ion-row>
         <ion-row>
@@ -53,6 +54,9 @@ class ScenarioEdit extends HTMLElement {
           </ion-col>
         </ion-row>
       </ion-grid>
+
+      <ion-modal trigger="openTriggerEdit"></ion-modal>
+      <ion-modal trigger="openActionEdit"></ion-modal>
       </ion-content>
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
@@ -110,24 +114,8 @@ class ScenarioEdit extends HTMLElement {
 
         const listElementTriggers = this.querySelector("#triggers-list");
         listElementTriggers.innerHTML = item.triggers.map(item => {
-          let bridgeInfo = "";
-          switch(item.bridge) {
-            case "zigbee":
-              bridgeInfo = window.Translation.get("Zigbee");
-              break;
-            case "bluetooth":
-              bridgeInfo = window.Translation.get("Bluetooth");
-              break;
-            case "http":
-              bridgeInfo = window.Translation.get("Wifi");
-              break;
-            case "lora":
-              bridgeInfo = window.Translation.get("LoRa");
-              break;
-            default:
-              bridgeInfo = window.Translation.get("Unknown");
-          }              
-
+          const bridgeInfo = bridgeTranslate(item.bridge);
+          
           let operatorInfo = "";            
           switch(item.operator) {
             case "equals":
@@ -167,6 +155,29 @@ class ScenarioEdit extends HTMLElement {
             </ion-card>
         `;          
         }).join("");
+
+        const listElementActions = this.querySelector("#actions-list");
+        listElementActions.innerHTML = item.actions.map(item => {
+          const bridgeInfo = bridgeTranslate(item.bridge); 
+
+          return `
+            <ion-card color="primary" data-id="${item.actionID}">
+              <ion-card-header>
+                  <ion-card-title>${item.deviceName}</ion-card-title> 
+                  <ion-card-subtitle>${item.deviceID} (${bridgeInfo})</ion-card-subtitle>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-row>
+                  <ion-col>
+                      <ion-text color="light">${item.property}</ion-text> ${window.Translation.get("PropertySetTo")} <ion-text color="light">${item.value}</ion-text>
+                  </ion-col>                
+                </ion-row>
+              </ion-card-content>
+              <ion-button color="primary" data-id="${item.actionID}" id="edit-${item.actionID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+              <ion-button color="primary" data-id="${item.actionID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+            </ion-card>
+        `;          
+        }).join("");  
       }
       else {
         toastShow("Error: " + data.error, "danger");

@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { showSpinner } from "../services/helper.js";
+import { showSpinner, bridgeTranslate } from "../services/helper.js";
 
 class Devices extends HTMLElement {
   connectedCallback() {
@@ -157,32 +157,26 @@ class Devices extends HTMLElement {
       const items       = resultsRegistered;
 
       listElement.innerHTML = items.map(item => { // Second: generate HTML for each device
-        let displayInfo     = "";
+        const displayInfo   = bridgeTranslate(item.bridge);
         let deviceConnected = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
       
         switch(item.bridge) {
           case "zigbee":
-            displayInfo = window.Translation.get("Zigbee");
             if (resultsConnected && resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
               deviceConnected = 1;
             }
             break;
           case "bluetooth":
-            displayInfo = window.Translation.get("Bluetooth");
             if (resultsConnected && resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
               deviceConnected = 1;
             }
             break;
           case "lora":
-            displayInfo = window.Translation.get("LoRa");
             deviceConnected = 2;
             break;
           case "http":
-            displayInfo = window.Translation.get("Wifi");
             deviceConnected = 2;
             break;
-          default:
-            displayInfo = window.Translation.get("Unknown");
         }
       
         return `
