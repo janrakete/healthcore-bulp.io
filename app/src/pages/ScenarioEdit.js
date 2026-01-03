@@ -25,11 +25,37 @@ class ScenarioEdit extends HTMLElement {
                     <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
                 </ion-item> 
                 <ion-item>
-                    <ion-toggle color="primary" name="editPush">${window.Translation.get("PushActivate")}</ion-toggle>
+                    <ion-toggle class="custom" color="primary" name="editEnabled">${window.Translation.get("Enabled")}</ion-toggle>
+                </ion-item>                  
+                <ion-item>
+                    <ion-toggle class="custom" color="primary" name="editPush">${window.Translation.get("PushNotification")}</ion-toggle>
                 </ion-item>     
             </ion-list>
           </ion-col>
         </ion-row>
+      <ion-row>
+        <ion-col>
+          <ion-text>Wenn:</ion-text>
+        </ion-col>
+      </ion-row>
+      <ion-row>
+        <ion-col>
+          <ion-button expand="block" color="medium" disabled><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddCondition")}</ion-button>      
+        </ion-col>
+      </ion-row>
+      <ion-row>
+        <ion-col>
+          <ion-text>Dann:</ion-text>
+        </ion-col>
+      </ion-row>
+      <ion-row>
+        <ion-col>
+          <ion-button expand="block" color="medium" disabled><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
+        </ion-col>
+      </ion-row>
+
+
+
         <ion-row>
           <ion-col>
             <ion-button expand="block" color="success" id="submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
@@ -52,7 +78,8 @@ class ScenarioEdit extends HTMLElement {
 
     const formData              = {};
     formData.name               = this.querySelector("ion-input[name='editName']").value;
-    formData.pushNotification   = this.querySelector("ion-toggle[name='editPush']").checked ? 1 : 0;
+    formData.pushNotification   = this.querySelector("ion-toggle[name='editPush']").checked;
+    formData.enabled            = this.querySelector("ion-toggle[name='editEnabled']").checked;
 
     let data = {};
 
@@ -62,7 +89,7 @@ class ScenarioEdit extends HTMLElement {
         data = await apiPOST("/scenarios", formData);
       }
       else {
-        data = await apiPATCH("/data/scenarios?scenarioID=" + this.ID, formData);
+        data = await apiPATCH("/scenarios/" + this.ID, formData);
       }
         
       if (data.status === "ok") {
@@ -86,7 +113,9 @@ class ScenarioEdit extends HTMLElement {
 
       if (data.status === "ok") {
         const item = data.results[0];
-        this.querySelector("ion-input[name='editName']").value = item.name;     
+        this.querySelector("ion-input[name='editName']").value        = item.name; 
+        this.querySelector("ion-toggle[name='editPush']").checked     = item.pushNotification === true;
+        this.querySelector("ion-toggle[name='editEnabled']").checked  = item.enabled === true;    
       }
       else {
         toastShow("Error: " + data.error, "danger");

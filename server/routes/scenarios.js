@@ -195,6 +195,9 @@ router.get("/:scenarioID", async function (request, response) {
  *               enabled:
  *                 type: boolean
  *                 default: true
+ *               pushNotification:
+ *                 type: boolean
+ *                 default: true
  *               priority:
  *                 type: integer
  *                 default: 0
@@ -367,7 +370,7 @@ router.post("/", async function (request, response) {
 /**
  * @swagger
  * /scenarios/{scenarioID}:
- *   put:
+ *   patch:
  *     summary: Update a scenario
  *     description: Update an existing scenario
  *     tags:
@@ -392,6 +395,9 @@ router.post("/", async function (request, response) {
  *                 type: string
  *                 example: "Updated description"
  *               enabled:
+ *                 type: boolean
+ *                 example: true
+ *               pushNotification:
  *                 type: boolean
  *                 example: true
  *               priority:
@@ -468,7 +474,7 @@ router.post("/", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.put("/:scenarioID", async function (request, response) {
+router.patch("/:scenarioID", async function (request, response) {
   const scenarioID = parseInt(request.params.scenarioID);
   const payload    = request.body;
   let data         = {};
@@ -486,10 +492,10 @@ router.put("/:scenarioID", async function (request, response) {
             payload.pushNotification  = payload.pushNotification === true ? 1 : 0;
           }
           
-          database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
-            payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.priority !== undefined ? payload.priority : null, scenarioID
+          database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), pushNotification = COALESCE(?, pushNotification), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
+            payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.pushNotification !== undefined ? payload.pushNotification : null, payload.priority !== undefined ? payload.priority : null, scenarioID
           );
-          common.conLog("PUT Request: access table 'scenarios'", "gre");
+          common.conLog("PATCH Request: access table 'scenarios'", "gre");
         }
 
         // Update triggers if provided
@@ -503,7 +509,7 @@ router.put("/:scenarioID", async function (request, response) {
           for (const trigger of payload.triggers) {
             insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "String");
           }
-          common.conLog("PUT Request: access table 'scenarios'", "gre");
+          common.conLog("PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
         }
 
@@ -518,7 +524,7 @@ router.put("/:scenarioID", async function (request, response) {
           for (const action of payload.actions) {
             insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "String", action.delay || 0);
           }
-          common.conLog("PUT Request: access table 'scenarios'", "gre");
+          common.conLog("PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);
         }
       });
@@ -536,7 +542,7 @@ router.put("/:scenarioID", async function (request, response) {
   }
 
   if (data.status === "error") {
-      common.conLog("PUT Request: an error occured", "red");
+      common.conLog("PATCH Request: an error occured", "red");
   }
 
   common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
