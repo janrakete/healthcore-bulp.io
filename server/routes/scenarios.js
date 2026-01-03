@@ -60,8 +60,8 @@ router.get("/all", async function (request, response) {
         common.conLog("Execute statement: " + statement, "std", false);
 
         for (const result of results) {
-            result.triggers = await database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ? LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
-            result.actions  = await database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
         }   
 
         data.results = results;
@@ -137,8 +137,8 @@ router.get("/:scenarioID", async function (request, response) {
             result.enabled          = result.enabled === 1 ? true : false;
             result.pushNotification = result.pushNotification === 1 ? true : false;
 
-            result.triggers = await database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
-            result.actions  = await database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
             data.status    = "ok";
             data.results   = [result];
             common.conLog("GET Request: access table 'scenarios'", "gre");

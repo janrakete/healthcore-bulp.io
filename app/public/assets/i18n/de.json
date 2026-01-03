@@ -52,5 +52,10 @@
     "PushNotificationEnabled" : "Benachrichtigung ein",
     "PushNotificationDisabled" : "Benachrichtigung aus",
     "PushNotification" : "Benachrichtigung",
-    "Priority" : "Priorität"
+    "Priority" : "Priorität",
+    "Greater" : "ist größer als",
+    "Less" : "ist kleiner als",
+    "Between" : "ist zwischen",
+    "Contains" : "enthält",
+    "Equals" : "entspricht"
 }
