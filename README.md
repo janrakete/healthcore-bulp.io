@@ -154,7 +154,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
               write:       false, // write access
               anyValue:    0, // pre-defined value
               standard:    false, // is this a standard value? (https://www.bluetooth.com/wp-content/uploads/Files/Specification/Assigned_Numbers.html)
-              valueType:   "Integer" // Integer or String or Options
+              valueType:   "Numeric" // Numeric or String or Options
           };
 
           this.properties["19b10000e8f2537e4f6cd104768a1218"] = {

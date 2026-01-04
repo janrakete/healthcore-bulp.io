@@ -47,7 +47,7 @@ class Converter_BangleJS2BLE extends ConverterStandard {
                     read:        true,
                     write:       false,
                     anyValue: 0,
-                    valueType: "Integer"
+                    valueType: "Numeric"
                 }
             }
         };

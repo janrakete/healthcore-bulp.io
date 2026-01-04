@@ -2,8 +2,6 @@
  * Start page
  */
 
-// Szenarien
-
 import { toastShow } from "../services/toast.js";
 import { Zeroconf } from "@ionic-native/zeroconf";
 import {barLoadingStart, barLoadingStop} from "../services/helper.js";

@@ -55,8 +55,47 @@ class ScenarioEdit extends HTMLElement {
         </ion-row>
       </ion-grid>
 
-      <ion-modal trigger="openTriggerEdit"></ion-modal>
-      <ion-modal trigger="openActionEdit"></ion-modal>
+      <ion-modal trigger="openTriggerEdit">
+        <ion-header>
+          <ion-toolbar>
+            <ion-title>${window.Translation.get("Edit")}</ion-title>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content>
+          <ion-grid>
+            <ion-row>
+              <ion-col>
+                <ion-list inset="true">     
+                  <ion-item color="light">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerDevice" label="${window.Translation.get("Device")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                      <ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>
+                    </ion-select>
+                  </ion-item>  
+                  <ion-item color="light">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerProperty" label="${window.Translation.get("Property")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                      <ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>
+                    </ion-select>
+                  </ion-item>                  
+                  <ion-item color="light">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerOperator" label="${window.Translation.get("Operator")}" placeholder="${window.Translation.get("PleaseSelect")}">
+                      <ion-select-option value="equal">${window.Translation.get("Equals")}</ion-select-option>
+                      <ion-select-option value="greater">${window.Translation.get("Greater")}</ion-select-option>
+                      <ion-select-option value="less">${window.Translation.get("Less")}</ion-select-option>
+                      <ion-select-option value="between">${window.Translation.get("Between")}</ion-select-option>
+                      <ion-select-option value="contains">${window.Translation.get("Contains")}</ion-select-option>                      
+                    </ion-select>
+                  </ion-item>                  
+
+                </ion-list>
+              </ion-col>
+            </ion-row>
+          </ion-grid>
+        </ion-content>      
+      </ion-modal>
+      
+      <ion-modal trigger="openActionEdit">
+      
+      </ion-modal>
       </ion-content>
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
