@@ -1337,6 +1337,7 @@ router.get("/:bridge/:deviceID", async function (request, response) {
             if (device !== undefined) {
                 data.status = "ok";
                 data.device = device;
+
                 common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
             }
             else {

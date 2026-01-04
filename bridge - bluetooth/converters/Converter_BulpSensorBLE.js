@@ -19,7 +19,7 @@ class Converter_BulpSensorBLE extends ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         this.properties["19b10000e8f2537e4f6cd104768a1219"] = {

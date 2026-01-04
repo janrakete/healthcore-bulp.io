@@ -30,7 +30,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Human-readable manufacturer name string (e.g., "Philips", "IKEA")
@@ -74,7 +74,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Version of the Zigbee protocol stack implementation
@@ -85,7 +85,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Hardware version number of the device
@@ -151,7 +151,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // User-settable description of the device's physical location (e.g., "Living Room")
@@ -173,7 +173,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Whether the device is enabled (true) or disabled (false) for operation
@@ -195,7 +195,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Bitmask to disable local configuration options (e.g., physical buttons)
@@ -206,7 +206,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Manufacturer's product code or SKU identifier
@@ -239,7 +239,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Generic device type identifier within the device class
@@ -250,7 +250,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Revision number of the cluster specification implemented
@@ -261,7 +261,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Status of attribute reporting configuration (0x00=Pending, 0x01=Complete, etc.)
@@ -272,7 +272,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -288,7 +288,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Remaining battery percentage (0-200, where 200 = 100%, 0 = 0%)
@@ -299,7 +299,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Physical size of battery (0x00=No battery, 0x01=Built-in, 0x02=Other, 0x03=AA, 0x04=AAA, etc.)
@@ -310,7 +310,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Number of batteries installed in the device
@@ -321,7 +321,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Rated voltage of the battery in 100mV units (e.g., 15 = 1.5V for AA battery)
@@ -332,7 +332,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Bitmask indicating which battery alarm conditions are enabled
@@ -343,7 +343,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Minimum voltage threshold in 100mV units that triggers a low battery alarm
@@ -354,7 +354,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -370,7 +370,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Minimum temperature value the sensor can measure (same units as measuredValue)
@@ -381,7 +381,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Maximum temperature value the sensor can measure (same units as measuredValue)
@@ -392,7 +392,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -408,7 +408,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Minimum humidity value the sensor can measure (same units as measuredValue)
@@ -419,7 +419,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Maximum humidity value the sensor can measure (same units as measuredValue)
@@ -430,7 +430,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -446,7 +446,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Minimum pressure value the sensor can measure
@@ -457,7 +457,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Maximum pressure value the sensor can measure
@@ -468,7 +468,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -506,7 +506,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Time in 1/10ths of a second to wait before turning off after onTime expires (0xFFFF=don't turn off)
@@ -517,7 +517,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -533,7 +533,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Time in 1/10ths of a second for a level change to complete (0=instant, 0xFFFF=use default)
@@ -544,7 +544,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Default level to move to when device is turned on (0x00=use previous, 0xFF=use onLevel)
@@ -555,7 +555,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -571,7 +571,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current color mode (0x00=Hue/Sat, 0x01=XY, 0x02=Color Temperature)
@@ -582,7 +582,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current hue value (0-254 representing 0-360 degrees on color wheel)
@@ -593,7 +593,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current saturation value (0=white, 254=fully saturated color)
@@ -604,7 +604,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current X coordinate in CIE 1931 color space (0-65535, 0x0000=0.0, 0xFEFF=1.0)
@@ -615,7 +615,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current Y coordinate in CIE 1931 color space (0-65535, 0x0000=0.0, 0xFEFF=1.0)
@@ -626,7 +626,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -642,7 +642,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Minimum illuminance value the sensor can measure
@@ -653,7 +653,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Maximum illuminance value the sensor can measure
@@ -664,7 +664,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -680,7 +680,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Type of occupancy sensor (0x00=PIR, 0x01=Ultrasonic, 0x02=PIR+Ultrasonic, 0x03=Physical contact)
@@ -691,7 +691,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Delay time in seconds before reporting unoccupied state after no detection
@@ -702,7 +702,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -718,7 +718,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Type of IAS zone (0x000D=Motion, 0x0015=Contact, 0x0028=Fire, 0x002A=Water, 0x002B=CO, 0x002C=Personal emergency, etc.)
@@ -729,7 +729,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current zone status bitmask (bit 0: alarm1, bit 1: alarm2, bit 2: tamper, bit 3: battery, bit 4: supervision reports, bit 5: restore reports, bit 6: trouble, bit 7: AC mains)
@@ -740,7 +740,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // IEEE address of the CIE (Control and Indicating Equipment) device that manages this zone
@@ -762,7 +762,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Number of zone enrollment methods supported by the device
@@ -773,7 +773,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current sensitivity level of the zone sensor (0=low sensitivity, higher numbers=more sensitive)
@@ -784,7 +784,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -800,7 +800,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Type of lock (0x00=Dead bolt, 0x01=Magnetic, 0x02=Other, etc.)
@@ -811,7 +811,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Whether the lock is actuator enabled (can be controlled electronically)
@@ -833,7 +833,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Number of times the door has been locked since last reset
@@ -844,7 +844,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Auto relock time in seconds (0=disabled, 1-65534=seconds before auto-lock)
@@ -855,7 +855,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -871,7 +871,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Occupied cooling setpoint temperature in hundredths of degrees Celsius
@@ -882,7 +882,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Occupied heating setpoint temperature in hundredths of degrees Celsius
@@ -893,7 +893,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current system mode (0x00=Off, 0x01=Auto, 0x03=Cool, 0x04=Heat, 0x05=Emergency heating, 0x06=Precooling, 0x07=Fan only, 0x08=Dry, 0x09=Sleep)
@@ -904,7 +904,7 @@ class ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current thermostat running mode (0x00=Off, 0x03=Cool, 0x04=Heat)
@@ -915,7 +915,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current thermostat running state bitmap (bit 0=Heat on, bit 1=Cool on, bit 2=Fan on, bit 3=Heat 2nd stage on, bit 4=Cool 2nd stage on, bit 5=Fan 2nd stage on, bit 6=Fan 3rd stage on)
@@ -926,7 +926,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -942,7 +942,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // RMS voltage in volts (AC voltage measurement)
@@ -953,7 +953,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // RMS current in amperes
@@ -964,7 +964,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Apparent power in volt-amperes (VA)
@@ -975,7 +975,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Power factor as a percentage (0-100, where 100 = 1.0 power factor, signed)
@@ -986,7 +986,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // =============================================================================================
@@ -1002,7 +1002,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current lift position as percentage (0=fully open, 100=fully closed)
@@ -1013,7 +1013,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Current tilt position as percentage (0=fully open, 100=fully closed)
@@ -1024,7 +1024,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Configuration/status bitmap (bit 0=Operational, bit 1=Online, bit 2=Commands reversed, bit 3=Lift control closed loop, bit 4=Tilt control closed loop, bit 5=Lift encoder controlled, bit 6=Tilt encoder controlled)
@@ -1035,7 +1035,7 @@ class ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
     }
 
@@ -1151,7 +1151,7 @@ class ConverterStandard {
      * @param {Object} property - The property object containing metadata about the property.
      * @param {any} anyValue - The value to convert.
      * @returns {any|undefined} - The converted value if the property is readable, otherwise undefined.
-     * @description This method checks if the property is readable. If it is, it converts the value based on the property's valueType. Handles String, Integer, and Boolean types appropriately.
+     * @description This method checks if the property is readable. If it is, it converts the value based on the property's valueType. Handles String, Numeric and Boolean types appropriately.
      */
     getStandard(property, anyValue) {  
         if (property.read === false) {
@@ -1165,7 +1165,7 @@ class ConverterStandard {
                 return { "value": anyValue ? true : false, "valueAsNumeric": anyValue ? 1 : 0 };
             }
             else {
-                // Integer or other numeric types
+                // Numeric types
                 return { "value": anyValue, "valueAsNumeric": anyValue };
             }
         }

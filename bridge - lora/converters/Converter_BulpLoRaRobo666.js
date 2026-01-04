@@ -17,7 +17,7 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
             name:       "heartrate",
             read:       true,
             anyValue:   0,
-            valueType:  "Integer"
+            valueType:  "Numeric"
         };
 
         this.properties[1] = {

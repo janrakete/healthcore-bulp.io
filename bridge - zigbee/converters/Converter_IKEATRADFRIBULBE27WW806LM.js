@@ -32,7 +32,7 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
             read:        true,
             write:       true,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
     }
 

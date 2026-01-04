@@ -35,7 +35,7 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Battery level cluster
@@ -47,7 +47,7 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
 
         // Battery voltage
@@ -58,7 +58,7 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
             read:        true,
             write:       false,
             anyValue:    0,
-            valueType:   "Integer"
+            valueType:   "Numeric"
         };
     }
 

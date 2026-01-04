@@ -93,7 +93,7 @@ class ScenarioEngine {
    * @param {any} actualValue - Current device value
    * @param {string} operator - Comparison operator (equals, greater, less, between, contains)
    * @param {any} expectedValue - Value to compare against
-   * @param {string} valueType - Type of the values (String, Integer, Boolean)
+   * @param {string} valueType - Type of the values (String, Numeric, Boolean)
    * @returns {boolean} - Result of the comparison
    */
   compareValues(actualValue, operator, expectedValue, valueType) {
@@ -106,11 +106,11 @@ class ScenarioEngine {
         case "equals":
           return actual === expected;
         case "greater":
-          return valueType === "Integer" ? actual > expected : false;
+          return valueType === "Numeric" ? actual > expected : false;
         case "less":
-          return valueType === "Integer" ? actual < expected : false;
+          return valueType === "Numeric" ? actual < expected : false;
         case "between":
-          if (valueType === "Integer" && Array.isArray(expected) && expected.length === 2) {
+          if (valueType === "Numeric" && Array.isArray(expected) && expected.length === 2) {
             return actual >= expected[0] && actual <= expected[1];
           }
           return false;
@@ -129,12 +129,12 @@ class ScenarioEngine {
   /**
    * Converts value to the specified type
    * @param {any} value - Value to convert
-   * @param {string} valueType - Target type (String, Integer, Boolean)
+   * @param {string} valueType - Target type (String, Numeric, Boolean)
    * @returns {any} - Converted value
    */
   convertValue(value, valueType) {
     switch (valueType) {
-      case "Integer":
+      case "Numeric":
         return parseInt(value);
       case "Boolean":
         return Boolean(value === true || value === "true" || value === "1");

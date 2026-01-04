@@ -223,8 +223,8 @@ router.get("/:scenarioID", async function (request, response) {
  *                       example: "100"
  *                     valueType:
  *                       type: string
- *                       enum: ["String", "Integer", "Boolean"]
- *                       example: "Integer"
+ *                       enum: ["String", "Numeric", "Boolean"]
+ *                       example: "Numeric"
  *               actions:
  *                 type: array
  *                 items:
@@ -244,7 +244,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                       example: "on"
  *                     valueType:
  *                       type: string
- *                       enum: ["String", "Integer", "Boolean"]
+ *                       enum: ["String", "Numeric", "Boolean"]
  *                     delay:
  *                       type: integer
  *                       example: 300
@@ -425,7 +425,7 @@ router.post("/", async function (request, response) {
  *                       example: "100"
  *                     valueType:
  *                       type: integer
- *                       enum: ["String", "Integer", "Boolean"]
+ *                       enum: ["String", "Numeric", "Boolean"]
  *               actions:
  *                 type: array
  *                 items:
@@ -445,7 +445,7 @@ router.post("/", async function (request, response) {
  *                       example: "on"
  *                     valueType:
  *                       type: string
- *                       enum: ["String", "Integer", "Boolean"]
+ *                       enum: ["String", "Numeric", "Boolean"]
  *                     delay:
  *                       type: integer
  *                       example: 1000

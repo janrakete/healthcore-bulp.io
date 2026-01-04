@@ -38,7 +38,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -62,7 +62,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -178,7 +178,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -202,7 +202,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -230,7 +230,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -242,7 +242,7 @@ class ConverterStandard {
             read:       false,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -258,7 +258,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "SInt16"
         };
 
@@ -270,7 +270,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -282,7 +282,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt32"
         };
 
@@ -294,7 +294,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -318,7 +318,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -330,7 +330,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -342,7 +342,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "SInt8"
         };
 
@@ -354,7 +354,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "SInt24"
         };
 
@@ -366,7 +366,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -378,7 +378,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "SInt8"
         };
 
@@ -390,7 +390,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -402,7 +402,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -430,7 +430,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -454,7 +454,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -482,7 +482,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -534,7 +534,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -586,7 +586,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -614,7 +614,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt32"
         };
 
@@ -638,7 +638,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt32"
         };
 
@@ -666,7 +666,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt32"
         };
 
@@ -702,7 +702,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -730,7 +730,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -770,7 +770,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -822,7 +822,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt32"
         };
 
@@ -898,7 +898,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "SInt8"
         };
 
@@ -910,7 +910,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -922,7 +922,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -934,7 +934,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -974,7 +974,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -986,7 +986,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1002,7 +1002,7 @@ class ConverterStandard {
             read:       false,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1014,7 +1014,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1062,7 +1062,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1074,7 +1074,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1090,7 +1090,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1102,7 +1102,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1114,7 +1114,7 @@ class ConverterStandard {
             read:       false,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1166,7 +1166,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1190,7 +1190,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1202,7 +1202,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1214,7 +1214,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1226,7 +1226,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1238,7 +1238,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1250,7 +1250,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1262,7 +1262,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1274,7 +1274,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1286,7 +1286,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1298,7 +1298,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1310,7 +1310,7 @@ class ConverterStandard {
             read:       true,
             write:      true,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
 
@@ -1390,7 +1390,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt16"
         };
 
@@ -1426,7 +1426,7 @@ class ConverterStandard {
             read:       true,
             write:      false,
             anyValue:   0,
-            valueType:  "Integer",
+            valueType:  "Numeric",
             dataFormat: "UInt8"
         };
     }
