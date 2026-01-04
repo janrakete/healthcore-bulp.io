@@ -269,7 +269,8 @@ async function startBridgeAndServer() {
       }
       else {
         common.conLog("ZigBee: Converter found for " + message.productName, "gre");
-        message.powerType = deviceConverter.powerType;
+        message.powerType   = deviceConverter.powerType;
+        message.properties  = common.devicePropertiesToArray(deviceConverter.properties);        
       }
 
       common.conLog(message, "std", false);
@@ -758,7 +759,8 @@ async function startBridgeAndServer() {
     }
     else {
       common.conLog("ZigBee: Converter found for " + data.productName, "gre");
-      data.powerType = deviceConverter.powerType;
+      data.powerType  = deviceConverter.powerType;
+      data.properties = common.devicePropertiesToArray(deviceConverter.properties);      
     }
 
     data.forceReconnect = true; // because this is ZigBee, reconnect devices after creation

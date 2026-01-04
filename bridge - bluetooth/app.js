@@ -214,7 +214,7 @@ async function startBridgeAndServer() {
                   message.bridge      = device.bridge || "";
                   message.powerType   = device.deviceConverter.powerType || "";
                   message.productName = device.productName || "";
-                  message.properties  = device.deviceConverter.properties || "";
+                  message.properties  = common.devicePropertiesToArray(device.deviceConverter.properties) || "";
                   message.name        = device.name || "";
                   message.description = device.description || "";
 
@@ -805,7 +805,8 @@ async function startBridgeAndServer() {
       }
       else {
         common.conLog("Bluetooth: Converter found for " + data.productName, "gre");
-        data.powerType = deviceConverter.powerType;
+        data.powerType  = deviceConverter.powerType;
+        data.properties = common.devicePropertiesToArray(deviceConverter.properties);
       }
 
       data.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation

@@ -282,7 +282,8 @@ async function startBridgeAndServer() {
     }
     else {
       common.conLog("LoRa: Converter found for " + data.productName, "gre");
-      data.powerType = deviceConverter.powerType;
+      data.powerType  = deviceConverter.powerType;
+      data.properties = common.devicePropertiesToArray(deviceConverter.properties);
     }
 
     data.forceReconnect = false; // because this is LoRa, just refresh devices after creation and do not reconnect
