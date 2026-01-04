@@ -362,7 +362,8 @@ async function startBridgeAndServer() {
     }
     else {
       common.conLog("HTTP: Converter found for " + data.productName, "gre");
-      data.powerType = deviceConverter.powerType;
+      data.powerType  = deviceConverter.powerType;
+      data.properties = common.devicePropertiesToArray(deviceConverter.properties);      
     }
 
     data.forceReconnect = false; // because this is HTTP, just refresh devices after creation and do not reconnect

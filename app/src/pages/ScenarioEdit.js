@@ -55,13 +55,13 @@ class ScenarioEdit extends HTMLElement {
         </ion-row>
       </ion-grid>
 
-      <ion-modal trigger="openTriggerEdit">
+      <ion-modal trigger="openTriggerEdit" id="trigger-edit-modal">
         <ion-header>
           <ion-toolbar>
             <ion-title>${window.Translation.get("Edit")}</ion-title>
           </ion-toolbar>
         </ion-header>
-        <ion-content>
+        <ion-content class="ion-padding">
           <ion-grid>
             <ion-row>
               <ion-col>
@@ -85,10 +85,20 @@ class ScenarioEdit extends HTMLElement {
                       <ion-select-option value="contains">${window.Translation.get("Contains")}</ion-select-option>                      
                     </ion-select>
                   </ion-item>                  
-
                 </ion-list>
               </ion-col>
             </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-button expand="block" color="success" id="trigger-submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
+              </ion-col>
+            </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-button expand="block" color="danger" id="trigger-cancel-button"><ion-icon slot="start" name="close-sharp"></ion-icon> ${window.Translation.get("Cancel")}</ion-button>      
+              </ion-col>
+            </ion-row>            
+
           </ion-grid>
         </ion-content>      
       </ion-modal>
@@ -102,6 +112,15 @@ class ScenarioEdit extends HTMLElement {
     if (this.ID > 0) {
       this.loadData();
     }
+
+    this.querySelector("#trigger-submit-button").addEventListener("click", () => {
+      toastShow("Not implemented yet", "warning");
+    });
+
+    this.querySelector("#trigger-cancel-button").addEventListener("click", () => {
+      const modal = document.querySelector("#trigger-edit-modal");
+      modal.dismiss(null, "cancel");
+    });
   }
 
   async submit() {

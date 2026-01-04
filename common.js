@@ -178,4 +178,30 @@ function createHashFromString(input, algo = "sha256", length = 64) {
     return length ? hash.slice(0, length) : hash;
 }
 
-module.exports = { conLog, Translations, logoShow, pause, randomHash, createHashFromString };
+/**
+ * Converts device properties object to an array including subproperties.
+ * @param {Array} properties 
+ * @returns {Array} A clean array of device properties including subproperties.
+ * @description This function takes a device properties object and converts it into a clean array format. It includes both the base properties and any subproperties defined within them.
+ */
+function devicePropertiesToArray(properties) {
+    const result = [];
+
+    for (const key of Object.keys(properties)) {
+        const property = properties[key];
+
+        // Basis-Property kopieren (ohne subproperties)
+        const { subproperties, ...base } = property;
+        result.push({ ...base });
+
+        // Falls Subproperties existieren → ebenfalls hinzufügen
+        if (subproperties && typeof subproperties === "object") {
+            for (const subKey of Object.keys(subproperties)) {
+                result.push({ ...subproperties[subKey] });
+            }
+        }
+    }
+    return result;
+}
+
+module.exports = { conLog, Translations, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray };
