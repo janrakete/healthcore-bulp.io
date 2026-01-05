@@ -190,13 +190,18 @@ function devicePropertiesToArray(properties) {
     for (const key of Object.keys(properties)) {
         const property = properties[key];
 
-        // Basis-Property kopieren (ohne subproperties)
-        const { subproperties, ...base } = property;
+        const { subproperties, ...base } = property; // extract subproperties and base properties
+        
+        base.notify     = base.notify || false; // ... ensure notify, read, write are defined
+        base.read       = base.read || false;
+        base.write = base.write || false;
         result.push({ ...base });
 
-        // Falls Subproperties existieren → ebenfalls hinzufügen
-        if (subproperties && typeof subproperties === "object") {
+        if (subproperties && typeof subproperties === "object") { // add subproperties if exist
             for (const subKey of Object.keys(subproperties)) {
+                subproperties[subKey].notify = subproperties[subKey].notify || false;  // ... ensure notify, read, write are defined
+                subproperties[subKey].read   = subproperties[subKey].read || false;
+                subproperties[subKey].write  = subproperties[subKey].write || false;
                 result.push({ ...subproperties[subKey] });
             }
         }

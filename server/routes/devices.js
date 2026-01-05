@@ -102,11 +102,25 @@ router.get("/all", async function (request, response) {
         common.conLog("Execute statement: " + statement, "std", false);
 
         const results = await database.prepare(statement).all();
+
+        results.forEach(device => {  // Convert "properties" from JSON string to object
+            if (device.properties) {
+                try {
+                    device.properties = JSON.parse(device.properties);
+                }
+                catch (error) {
+                    data.status         = "error";
+                    data.error          = "Fatal error: " + (error.stack).slice(0, 128);
+                    device.properties   = {};
+                }
+            }
+        });
+
         data.results = results;
     }
     catch (error) {
-    data.status = "error";
-    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+        data.status = "error";
+        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
 
 
@@ -1337,6 +1351,16 @@ router.get("/:bridge/:deviceID", async function (request, response) {
             if (device !== undefined) {
                 data.status = "ok";
                 data.device = device;
+                if (data.device.properties !== undefined) {
+                    try {
+                        data.device.properties = JSON.parse(data.device.properties); // Convert "properties" from JSON string to object
+                    }
+                    catch (error) {
+                        data.status             = "error";
+                        data.error              = "Fatal error: " + (error.stack).slice(0, 128);
+                        data.device.properties  = {};
+                    }   
+                }
 
                 common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
             }
