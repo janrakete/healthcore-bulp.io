@@ -38,14 +38,14 @@ class ScenarioEdit extends HTMLElement {
           <ion-col>
             <ion-text><h3>${window.Translation.get("When")}:</h3></ion-text>
             <div id="triggers-list"></div>
-            <ion-button id="openTriggerEdit" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddTrigger")}</ion-button>      
+            <ion-button id="open-trigger-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddTrigger")}</ion-button>      
           </ion-col>
         </ion-row>
         <ion-row>
           <ion-col>
             <ion-text><h3>${window.Translation.get("Then")}:</h3></ion-text>
             <div id="actions-list"></div>
-            <ion-button id="openActionEdit" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
+            <ion-button id="open-action-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
           </ion-col>
         </ion-row>
         <ion-row>
@@ -55,7 +55,7 @@ class ScenarioEdit extends HTMLElement {
         </ion-row>
       </ion-grid>
 
-      <ion-modal trigger="openTriggerEdit" id="trigger-edit-modal">
+      <ion-modal id="trigger-edit-modal">
         <ion-header>
           <ion-toolbar>
             <ion-title>${window.Translation.get("Edit")}</ion-title>
@@ -121,6 +121,19 @@ class ScenarioEdit extends HTMLElement {
       const modal = document.querySelector("#trigger-edit-modal");
       modal.dismiss(null, "cancel");
     });
+
+    this.querySelector("#open-trigger-id").addEventListener("click", async () => {
+      this.loadDataTriggerDevices();
+      const modal = document.querySelector("#trigger-edit-modal");
+      await modal.present();
+
+    });
+
+    this.querySelector("ion-select[name='editTriggerDevice']").addEventListener("ionChange", (event) => {
+      const deviceID  = event.detail.value;
+      const bridge    = event.target.querySelector(`ion-select-option[value="${deviceID}"]`)?.getAttribute("data-bridge");
+      this.loadDataTriggerDeviceProperties(bridge, deviceID);
+    });
   }
 
   async submit() {
@@ -148,6 +161,46 @@ class ScenarioEdit extends HTMLElement {
       if (data.status === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");             
         document.querySelector("ion-router").push("/scenarios");   
+      }
+      else {
+        toastShow("Error: " + data.error, "danger");
+      }
+    }
+    catch (error) {
+      console.error("API call - Error:", error);
+      toastShow("Error: " + error.message, "danger");
+    }
+  }
+
+  async loadDataTriggerDevices() {
+    try {
+      const data = await apiGET("/devices/all");
+      console.log("API call - Output:", data);
+      if (data.status === "ok") {
+        const selectDevice = document.querySelector("ion-select[name='editTriggerDevice']");
+        selectDevice.innerHTML = `<ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>` + data.results.map(item => {
+          return `<ion-select-option value="${item.deviceID}" data-bridge="${item.bridge}">${item.name} (${item.deviceID}, ${item.bridge})</ion-select-option>`;
+        }).join("");
+      }
+      else {
+        toastShow("Error: " + data.error, "danger");
+      }
+    }
+    catch (error) {
+      console.error("API call - Error:", error);
+      toastShow("Error: " + error.message, "danger");
+    } 
+  }
+
+  async loadDataTriggerDeviceProperties(bridge, deviceID) {
+    try {
+      const data = await apiGET("/devices/" + bridge + "/" + deviceID);
+      console.log("API call - Output:", data);
+      if (data.status === "ok") {
+        const selectProperty = document.querySelector("ion-select[name='editTriggerProperty']");
+        selectProperty.innerHTML = `<ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>` + data.device.properties.map(item => {
+          return `<ion-select-option value="${item.name}">${item.name}</ion-select-option>`;
+        }).join("");
       }
       else {
         toastShow("Error: " + data.error, "danger");
