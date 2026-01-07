@@ -1,0 +1,38 @@
+{
+    "button": {
+        "de": "Button",
+        "en": "Button"
+    },
+    "switch": {
+        "de": "Schalter",
+        "en": "Switch"
+    },
+    "on": {
+        "de": "An",
+        "en": "On"
+    },
+    "off": {
+        "de": "Aus",
+        "en": "Off"
+    },
+    "motion": {
+        "de": "Bewegung",
+        "en": "Motion"
+    },
+    "battery": {
+        "de": "Batterie",
+        "en": "Battery"
+    },
+    "brightness": {
+        "de": "Helligkeit",
+        "en": "Brightness"
+    },
+    "color": {
+        "de": "Farbe",
+        "en": "Color"
+    },
+    "red": {
+        "de": "Rot",
+        "en": "Red"
+    }
+}
