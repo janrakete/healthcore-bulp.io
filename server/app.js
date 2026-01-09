@@ -32,13 +32,6 @@ async function startServer() {
   global.moment = moment;   
 
   /**
-   * Translations
-   */
-  const translations = new common.Translations();
-  await translations.build();
-  global.translations = translations;
-
-  /**
    * Middleware
    */
   const express     = require("express");

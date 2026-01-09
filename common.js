@@ -80,52 +80,7 @@ function conLog(anyValue, color = "std", showSeparators = true, cutString = true
  */
 async function pause(milliseconds) {
     await sleep(milliseconds);    
-}
-
-/**
- * Translations Class
- * @description This class handles translations for the application. It fetches translations from a MySQL database and provides a method to retrieve them by their ID.
-*/
-class Translations {
-    constructor() {
-        this.translations = [];
-    }
-
-    /**
-     * Builds the translations by fetching them from the MySQL database.
-     * @returns {Promise<void>} - A promise that resolves when the translations are built.
-     * @description This method queries the `translations` table in the MySQL database and stores the results in the `translations` array, indexed by the translation ID in lowercase.
-     */
-    async build() {
-        const translations = [];
-
-        const results = await database.prepare("SELECT * FROM translations").all();
-
-        for (const result of results) {
-            translations[result.translationID.toLowerCase()] = result;
-        }
-
-        this.translations = translations;
-    }
-
-    /**
-     *  Retrieves a translation by its ID.
-     * @param {string} string - The translation ID to retrieve. It will be converted to lowercase.
-     * @return {Object|null} - The translation object if found, or null if not found.
-     * @description This method looks up a translation in the `translations` array by its ID
-     */
-    get (string) {
-        if (string !== undefined) {
-            string = string.toString().toLowerCase();
-            let data = this.translations[string] || this.translations.not_translated;
-            if (data) {
-                delete data.translationID;
-            }
-            return data;
-        }
-        return null;
-    }
-}   
+} 
 
 /**
  * Show Logo Function
@@ -187,14 +142,17 @@ function createHashFromString(input, algo = "sha256", length = 64) {
 function devicePropertiesToArray(properties) {
     const result = [];
 
+    const Translations = require("./i18n.json");
+
     for (const key of Object.keys(properties)) {
         const property = properties[key];
 
         const { subproperties, ...base } = property; // extract subproperties and base properties
         
-        base.notify     = base.notify || false; // ... ensure notify, read, write are defined
-        base.read       = base.read || false;
-        base.write = base.write || false;
+        base.notify         = base.notify || false; // ... ensure notify, read, write are defined
+        base.read           = base.read || false;
+        base.write          = base.write || false;
+
         result.push({ ...base });
 
         if (subproperties && typeof subproperties === "object") { // add subproperties if exist
@@ -206,7 +164,33 @@ function devicePropertiesToArray(properties) {
             }
         }
     }
+
+    for (let i = 0; i < result.length; i++) { // loop through result array to add translated names
+        const property = result[i];
+        if (Translations[property.name]) {
+            property.translation = Translations[property.name];
+        } else {
+            property.translation = null;
+        }
+
+        if (property.valueType === "Options" && property.anyValue && Array.isArray(property.anyValue)) {
+            let anyValueTranslated = [];
+            for (const value of property.anyValue) {
+                const translatedValue = {};
+                if (Translations[value]) {
+                    translatedValue.value = value;
+                    translatedValue.translation = Translations[value];
+                    anyValueTranslated.push(translatedValue);
+                } else {
+                    anyValueTranslated.push({ value: value, translation: null });
+     
+                }
+            }
+            property.anyValue = anyValueTranslated;
+        }
+    }
+
     return result;
 }
 
-module.exports = { conLog, Translations, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray };
+module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray };
