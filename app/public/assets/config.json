@@ -5,5 +5,6 @@
     "CONF_pushTopic": "Information",
     "CONF_scanDuration": 10,
     "CONF_dateLocale": "de-DE",
-    "CONF_scanRefreshInterval": 2000
+    "CONF_scanRefreshInterval": 2000,
+    "CONF_language": "de"
 }

@@ -107,10 +107,12 @@ class Scenarios extends HTMLElement {
               </ion-card-header>
               <ion-card-content>
                 <ion-row>
-                  <ion-col size="4">
+                  <ion-col>
                       ${item.enabled === true ? `<ion-text color="light"><ion-icon name="play-circle-sharp" color="success"></ion-icon> ${window.Translation.get("Enabled")}</ion-text>` : `<ion-text color="light"><ion-icon name="pause-circle-sharp" color="danger"></ion-icon> ${window.Translation.get("Disabled")}</ion-text>`}
                   </ion-col>
-                  <ion-col size="8">
+                </ion-row>
+                <ion-row>
+                  <ion-col>
                       ${item.pushNotification === true ? `<ion-text color="light"><ion-icon name="notifications-sharp" color="warning"></ion-icon> ${window.Translation.get("PushNotificationEnabled")}</ion-text>` : `<ion-text color="light"><ion-icon name="notifications-off-sharp" color="medium"></ion-icon> ${window.Translation.get("PushNotificationDisabled")}</ion-text>`}
                   </ion-col>
                 </ion-row>
