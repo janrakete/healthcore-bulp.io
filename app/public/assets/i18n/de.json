@@ -57,5 +57,16 @@
     "Less" : "ist kleiner als",
     "Between" : "ist zwischen",
     "Contains" : "enthält",
-    "Equals" : "entspricht"
+    "Equals" : "entspricht",
+    "When" : "Wenn",
+    "Then" : "Dann",
+    "AddTrigger" : "Auslöser hinzufügen",
+    "AddAction" : "Aktion hinzufügen",
+    "Property" : "Eigenschaft",
+    "Operator" : "Operator",
+    "Value" : "Wert",
+    "RefreshPullingText" : "Zum Aktualisieren ziehen und loslassen ...",
+    "RequiredFieldsMissing" : "Es fehlen Eingaben.",
+    "Device" : "Gerät",
+    "PropertySetTo" : "setzen auf"
 }
