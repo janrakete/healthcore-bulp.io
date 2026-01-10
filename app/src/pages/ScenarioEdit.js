@@ -9,55 +9,14 @@ import { bridgeTranslate } from "../services/helper.js";
 class ScenarioEdit extends HTMLElement {
   triggerSelectedDevice = null;
   actionSelectedDevice  = null;
+  
+  scenarioData = {
+    triggers: [],
+    actions: []
+  };
 
-  connectedCallback() {
-    this.innerHTML = `
-      <ion-header>
-        <ion-toolbar color="primary">
-          <ion-buttons slot="start">
-            <ion-back-button default-href="/scenarios"></ion-back-button>
-          </ion-buttons> 
-          <ion-title>${window.Translation.get("Edit")}</ion-title>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content class="ion-padding">
-      <ion-grid>
-        <ion-row>
-          <ion-col>
-            <ion-list inset="true">
-                <ion-item color="light">
-                    <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
-                </ion-item> 
-                <ion-item>
-                    <ion-toggle class="custom" color="primary" name="editEnabled">${window.Translation.get("Enabled")}</ion-toggle>
-                </ion-item>                  
-                <ion-item>
-                    <ion-toggle class="custom" color="primary" name="editPush">${window.Translation.get("PushNotification")}</ion-toggle>
-                </ion-item>     
-            </ion-list>
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <ion-col>
-            <ion-text><h3>${window.Translation.get("When")}:</h3></ion-text>
-            <div id="triggers-list"></div>
-            <ion-button id="open-trigger-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddTrigger")}</ion-button>      
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <ion-col>
-            <ion-text><h3>${window.Translation.get("Then")}:</h3></ion-text>
-            <div id="actions-list"></div>
-            <ion-button id="open-action-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
-          </ion-col>
-        </ion-row>
-        <ion-row>
-          <ion-col>
-            <ion-button expand="block" color="success" id="submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
-          </ion-col>
-        </ion-row>
-      </ion-grid>
-
+  getTriggerEditModalHTML() {
+    return `
       <ion-modal id="trigger-edit-modal">
         <ion-header>
           <ion-toolbar>
@@ -107,17 +66,116 @@ class ScenarioEdit extends HTMLElement {
                 <ion-button expand="block" color="danger" id="trigger-cancel-button"><ion-icon slot="start" name="close-sharp"></ion-icon> ${window.Translation.get("Cancel")}</ion-button>      
               </ion-col>
             </ion-row>            
-
           </ion-grid>
         </ion-content>      
       </ion-modal>
-      
-      <ion-modal trigger="openActionEdit">
-      
+    `;
+  }
+
+  getActionEditModalHTML() {
+    return `
+      <ion-modal id="action-edit-modal">
+        <ion-header>
+          <ion-toolbar>
+            <ion-title>${window.Translation.get("Edit")}</ion-title>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-grid>
+            <ion-row>
+              <ion-col>
+                <ion-list inset="true">     
+                  <ion-item color="light">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editActionDevice" label="${window.Translation.get("Device")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
+                      <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
+                    </ion-select>
+                  </ion-item>  
+                  <ion-item color="light">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editActionProperty" label="${window.Translation.get("Property")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
+                      <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
+                    </ion-select>
+                  </ion-item>                                   
+                  <ion-item color="light">
+                    <div id ="edit-action-value-container">
+                      <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                    </div>
+                  </ion-item>                  
+                </ion-list>
+              </ion-col>
+            </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-button expand="block" color="success" id="action-submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
+              </ion-col>
+            </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-button expand="block" color="danger" id="action-cancel-button"><ion-icon slot="start" name="close-sharp"></ion-icon> ${window.Translation.get("Cancel")}</ion-button>      
+              </ion-col>
+            </ion-row>            
+          </ion-grid>
+        </ion-content>      
       </ion-modal>
+    `;
+  }
+
+  connectedCallback() {
+    this.innerHTML = `
+      <ion-header>
+        <ion-toolbar color="primary">
+          <ion-buttons slot="start">
+            <ion-back-button default-href="/scenarios"></ion-back-button>
+          </ion-buttons> 
+          <ion-title>${window.Translation.get("Edit")}</ion-title>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+      <ion-grid>
+        <ion-row>
+          <ion-col>
+            <ion-list inset="true">
+                <ion-item color="light">
+                    <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
+                </ion-item> 
+                <ion-item>
+                    <ion-toggle class="custom" color="primary" name="editEnabled">${window.Translation.get("Enabled")}</ion-toggle>
+                </ion-item>                  
+                <ion-item>
+                    <ion-toggle class="custom" color="primary" name="editPush">${window.Translation.get("PushNotification")}</ion-toggle>
+                </ion-item>     
+            </ion-list>
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col>
+            <ion-text><h3>${window.Translation.get("When")}:</h3></ion-text>
+            <div id="triggers-list"></div>
+            <ion-button id="open-trigger-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddTrigger")}</ion-button>      
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col>
+            <ion-text><h3>${window.Translation.get("Then")}:</h3></ion-text>
+            <div id="actions-list"></div>
+            <ion-button id="open-action-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col>
+            <ion-button expand="block" color="success" id="submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+
+      ${this.getTriggerEditModalHTML()}
+      
+      ${this.getActionEditModalHTML()}
+ 
       </ion-content>
     `;
+
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
+    
     if (this.ID > 0) {
       this.loadData();
     }
@@ -225,11 +283,10 @@ class ScenarioEdit extends HTMLElement {
       valueSelect.disabled    = false;
     }
 
-    if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (operatorSelect.value !== "") && (valueSelect.value !== "" && valueSelect.value != "")) {
+    if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (operatorSelect.value !== "") && (valueSelect.value !== "")) {
       submitButton.disabled   = false;
     }
   }
-
 
   async loadDataTriggerDevices() {
     try {
@@ -326,66 +383,15 @@ class ScenarioEdit extends HTMLElement {
         const item = data.results[0];
         this.querySelector("ion-input[name='editName']").value        = item.name; 
         this.querySelector("ion-toggle[name='editPush']").checked     = item.pushNotification === true;
-        this.querySelector("ion-toggle[name='editEnabled']").checked  = item.enabled === true;    
+        this.querySelector("ion-toggle[name='editEnabled']").checked  = item.enabled === true; 
 
-        const listElementTriggers = this.querySelector("#triggers-list");
-        listElementTriggers.innerHTML = item.triggers.map(item => {
-          const bridgeInfo = bridgeTranslate(item.bridge);
-          
-          let operatorInfo = "";            
-          switch(item.operator) {
-            case "equals":
-              operatorInfo = window.Translation.get("Equals");
-              break;
-            case "greater":
-              operatorInfo = window.Translation.get("Greater");
-              break;
-            case "less":
-              operatorInfo = window.Translation.get("Less");
-              break;
-            case "between":
-              operatorInfo = window.Translation.get("Between");
-              break;
-            case "contains":
-              operatorInfo = window.Translation.get("Contains");
-              break;
-            default:
-              operatorInfo = window.Translation.get("Equals");              
-          }
+        this.scenarioData.triggers = item.triggers;
+        console.log(this.scenarioData.triggers);
 
-          return `
-            <ion-card color="primary" data-id="${item.triggerID}">
-              <ion-card-header>
-                  <ion-card-title>${item.deviceName}</ion-card-title> 
-                  <ion-card-subtitle>${item.deviceID} (${bridgeInfo})</ion-card-subtitle>
-              </ion-card-header>
-              <ion-card-content>
-                <ion-row>
-                  <ion-col>
-                      <ion-text color="light">${item.property}</ion-text> <ion-text color="light">${operatorInfo}</ion-text> <ion-text color="light">${item.value}</ion-text>
-                  </ion-col>                
-                </ion-row>
-              </ion-card-content>
-              <ion-button data-id="${item.triggerID}" id="trigger-edit-${item.triggerID}" class="trigger-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-              <ion-button data-id="${item.triggerID}" class="trigger-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
-            </ion-card>
-        `;          
-        }).join("");
-        
-        this.querySelectorAll(".trigger-delete-option").forEach(button => { // Add event listeners for delete buttons
-          button.addEventListener("click", () => {
-            const itemDelete = this.querySelector("#triggers-list").querySelector("ion-card[data-id='" + button.getAttribute("data-id") + "']");
-            if (itemDelete) {
-              itemDelete.remove();
-            }
-          });
-        });
+        // loop triggers
 
-        this.querySelectorAll(".trigger-edit-option").forEach(button => { // Add event listeners for edit buttons
-          button.addEventListener("click", () => {
-            
-          });
-        });
+
+        this.triggerRenderList(); 
 
       }
       else {
@@ -397,6 +403,69 @@ class ScenarioEdit extends HTMLElement {
       toastShow("Error: " + error.message, "danger");
     }
   }
+
+  triggerRenderList() {
+    const listElementTriggers = this.querySelector("#triggers-list");
+    listElementTriggers.innerHTML = this.scenarioData.triggers.map(item => {
+      const bridgeInfo = bridgeTranslate(item.bridge);
+          
+      let operatorInfo = "";            
+      switch(item.operator) {
+        case "equals":
+          operatorInfo = window.Translation.get("Equals");
+          break;
+        case "greater":
+          operatorInfo = window.Translation.get("Greater");
+          break;
+        case "less":
+          operatorInfo = window.Translation.get("Less");
+          break;
+        case "between":
+          operatorInfo = window.Translation.get("Between");
+          break;
+        case "contains":
+          operatorInfo = window.Translation.get("Contains");
+          break;
+        default:
+          operatorInfo = window.Translation.get("Equals");              
+      }
+
+      return `
+        <ion-card color="primary" data-id="${item.triggerID}">
+          <ion-card-header>
+              <ion-card-title>${item.deviceName}</ion-card-title> 
+              <ion-card-subtitle>${item.deviceID} (${bridgeInfo})</ion-card-subtitle>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-row>
+              <ion-col>
+                  <ion-text color="light">${item.property}</ion-text> <ion-text color="light">${operatorInfo}</ion-text> <ion-text color="light">${item.value}</ion-text>
+              </ion-col>                
+            </ion-row>
+          </ion-card-content>
+          <ion-button data-id="${item.triggerID}" id="trigger-edit-${item.triggerID}" class="trigger-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+          <ion-button data-id="${item.triggerID}" class="trigger-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+        </ion-card>
+    `;          
+    }).join("");
+        
+    this.querySelectorAll(".trigger-delete-option").forEach(button => { // Add event listeners for delete buttons
+      button.addEventListener("click", () => {
+        const itemDelete = this.querySelector("#triggers-list").querySelector("ion-card[data-id='" + button.getAttribute("data-id") + "']");
+        if (itemDelete) {
+          itemDelete.remove();
+        }
+      });
+    });
+
+    this.querySelectorAll(".trigger-edit-option").forEach(button => { // Add event listeners for edit buttons
+      button.addEventListener("click", () => {
+        
+      });
+    });
+
+  }
+
 }
 
 customElements.define("page-scenario-edit", ScenarioEdit);
