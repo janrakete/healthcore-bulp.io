@@ -60,9 +60,35 @@ router.get("/all", async function (request, response) {
         common.conLog("Execute statement: " + statement, "std", false);
 
         for (const result of results) {
-            result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
-            result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
-        }   
+          result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+          result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+
+          for (const trigger of result.triggers) {
+              if (trigger.deviceProperties) {
+                  try {
+                      trigger.deviceProperties = JSON.parse(trigger.deviceProperties);
+                  }
+                  catch (error) {
+                      data.status              = "error";
+                      data.error               = "Fatal error: " + (error.stack).slice(0, 128);
+                      trigger.deviceProperties = {};
+                  }
+              }
+          }
+
+          for (const action of result.actions) {
+              if (action.deviceProperties) {
+                  try {
+                      action.deviceProperties = JSON.parse(action.deviceProperties);
+                  }
+                  catch (error) {
+                      data.status             = "error";
+                      data.error              = "Fatal error: " + (error.stack).slice(0, 128);
+                      action.deviceProperties = {};
+                  }
+              }
+          }
+        }
 
         data.results = results;
     } 
@@ -139,6 +165,33 @@ router.get("/:scenarioID", async function (request, response) {
 
             result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
             result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+
+            for (const trigger of result.triggers) {
+                if (trigger.deviceProperties) {
+                    try {
+                        trigger.deviceProperties = JSON.parse(trigger.deviceProperties);
+                    }
+                    catch (error) {
+                        data.status              = "error";
+                        data.error               = "Fatal error: " + (error.stack).slice(0, 128);
+                        trigger.deviceProperties = {};
+                    }
+                }
+            }
+
+            for (const action of result.actions) {
+                if (action.deviceProperties) {
+                    try {
+                        action.deviceProperties = JSON.parse(action.deviceProperties);
+                    }
+                    catch (error) {
+                        data.status             = "error";
+                        data.error              = "Fatal error: " + (error.stack).slice(0, 128);
+                        action.deviceProperties = {};
+                    }
+                }
+            }
+
             data.status    = "ok";
             data.results   = [result];
             common.conLog("GET Request: access table 'scenarios'", "gre");
