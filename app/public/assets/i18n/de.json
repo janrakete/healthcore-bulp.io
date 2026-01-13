@@ -68,5 +68,6 @@
     "RefreshPullingText" : "Zum Aktualisieren ziehen und loslassen ...",
     "RequiredFieldsMissing" : "Es fehlen Eingaben.",
     "Device" : "Gerät",
-    "PropertySetTo" : "setzen auf"
+    "PropertySetTo" : "setzen auf",
+    "And" : "und"
 }
