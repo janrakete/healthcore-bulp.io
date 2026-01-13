@@ -1,12 +1,12 @@
 /**
- * Scenario Edit - Action logic extracted for clarity
+ * Scenario Edit - Action logic
  */
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { bridgeTranslate } from "../services/helper.js";
 
-export const ScenarioEditActionsMixin = (Base) => class extends Base {
+export const ScenarioEditActions = (Base) => class extends Base {
   actionSelectedDevice = null;
 
   getActionEditModalHTML() {
@@ -289,7 +289,7 @@ export const ScenarioEditActionsMixin = (Base) => class extends Base {
       return;
     }
 
-    listElementActions.innerHTML = this.scenarioData.actions.map(item => {
+    listElementActions.innerHTML = this.scenarioData.actions.map((item, index) => {
       const bridgeInfo = bridgeTranslate(item.bridge);
 
       return `
@@ -311,6 +311,7 @@ export const ScenarioEditActionsMixin = (Base) => class extends Base {
           <ion-button data-id="${item.actionID}" id="action-edit-${item.actionID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
           <ion-button data-id="${item.actionID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
+        <ion-text>${index < this.scenarioData.actions.length - 1 ? `<center>${window.Translation.get("And")}</center>` : ""}</ion-text>
     `;
     }).join("");
 

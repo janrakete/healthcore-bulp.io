@@ -4,10 +4,10 @@
 
 import { apiGET, apiPATCH, apiPOST} from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { ScenarioEditTriggersMixin } from "./ScenarioEditTriggersMixin.js";
-import { ScenarioEditActionsMixin } from "./ScenarioEditActionsMixin.js";
+import { ScenarioEditTriggers } from "./ScenarioEditTriggers.js";
+import { ScenarioEditActions } from "./ScenarioEditActions.js";
 
-class ScenarioEdit extends ScenarioEditActionsMixin(ScenarioEditTriggersMixin(HTMLElement)) {
+class ScenarioEdit extends ScenarioEditActions(ScenarioEditTriggers(HTMLElement)) {
   
   scenarioData = {
     triggers: [],
@@ -33,28 +33,29 @@ class ScenarioEdit extends ScenarioEditActionsMixin(ScenarioEditTriggersMixin(HT
                     <ion-input type="text" label="${window.Translation.get("Name")}" label-placement="stacked" name="editName" required="true" shape="round" fill="outline" class="custom"></ion-input>
                 </ion-item> 
                 <ion-item>
-                    <ion-toggle class="custom" color="primary" name="editEnabled">${window.Translation.get("Enabled")}</ion-toggle>
+                    <ion-toggle class="custom" color="primary" name="editEnabled" checked="true">${window.Translation.get("Enabled")}</ion-toggle>
                 </ion-item>                  
                 <ion-item>
-                    <ion-toggle class="custom" color="primary" name="editPush">${window.Translation.get("PushNotification")}</ion-toggle>
+                    <ion-toggle class="custom" color="primary" name="editPush" checked="true">${window.Translation.get("PushNotification")}</ion-toggle>
                 </ion-item>     
             </ion-list>
           </ion-col>
         </ion-row>
         <ion-row>
           <ion-col>
-            <ion-text><h3>${window.Translation.get("When")}:</h3></ion-text>
+            <ion-text><center><h3>${window.Translation.get("When")}:</h3></center></ion-text>
             <div id="triggers-list"></div>
             <ion-button id="open-trigger-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddTrigger")}</ion-button>      
           </ion-col>
         </ion-row>
         <ion-row>
           <ion-col>
-            <ion-text><h3>${window.Translation.get("Then")}:</h3></ion-text>
+            <ion-text><center><h3>${window.Translation.get("Then")}:</h3></center></ion-text>
             <div id="actions-list"></div>
             <ion-button id="open-action-id" expand="block" color="secondary"><ion-icon slot="start" name="add-sharp"></ion-icon> ${window.Translation.get("AddAction")}</ion-button>      
           </ion-col>
         </ion-row>
+        <br />
         <ion-row>
           <ion-col>
             <ion-button expand="block" color="success" id="submit-button"><ion-icon slot="start" name="checkmark-sharp"></ion-icon> ${window.Translation.get("Save")}</ion-button>      
@@ -130,8 +131,8 @@ class ScenarioEdit extends ScenarioEditActionsMixin(ScenarioEditTriggersMixin(HT
         this.querySelector("ion-toggle[name='editPush']").checked     = item.pushNotification === true;
         this.querySelector("ion-toggle[name='editEnabled']").checked  = item.enabled === true; 
 
-        this.scenarioData.triggers = item.triggers;
-        this.scenarioData.actions  = item.actions ?? [];
+        this.scenarioData.triggers = item.triggers ? item.triggers : [];
+        this.scenarioData.actions  = item.actions ? item.actions : [];
 
         this.triggerRenderList(); 
         this.actionRenderList();

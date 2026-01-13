@@ -1,12 +1,12 @@
 /**
- * Scenario Edit - Trigger logic extracted for clarity
+ * Scenario Edit - Trigger logic
  */
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { bridgeTranslate } from "../services/helper.js";
 
-export const ScenarioEditTriggersMixin = (Base) => class extends Base {
+export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerSelectedDevice = null;
 
   getTriggerEditModalHTML() {
@@ -67,6 +67,7 @@ export const ScenarioEditTriggersMixin = (Base) => class extends Base {
       const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
       const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
       const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
+      
       let valueSelect;
       if ((document.querySelector("ion-input[name='editTriggerValue']")) && (document.querySelector("ion-input[name='editTriggerValue']") !== undefined)) {
         valueSelect = document.querySelector("ion-input[name='editTriggerValue']");
@@ -74,8 +75,9 @@ export const ScenarioEditTriggersMixin = (Base) => class extends Base {
       else {
         valueSelect = document.querySelector("ion-select[name='editTriggerValue']");
       }
+      
       const newTrigger = {
-        triggerID:       Date.now(), // Temporary ID
+        triggerID:      Date.now(), // Temporary ID
         bridge:         this.triggerSelectedDevice.bridge,
         deviceID:       deviceSelect.value,
         deviceName:     this.triggerSelectedDevice.name,
@@ -86,7 +88,9 @@ export const ScenarioEditTriggersMixin = (Base) => class extends Base {
       };
 
       this.scenarioData.triggers.push(newTrigger);
+      
       this.triggerRenderList();
+      
       const modal = document.querySelector("#trigger-edit-modal");
       modal.dismiss();
     });
@@ -163,7 +167,7 @@ export const ScenarioEditTriggersMixin = (Base) => class extends Base {
       const data = await apiGET("/devices/all");
       console.log("API call - Output:", data);
       if (data.status === "ok") {
-        const selectDevice      = document.querySelector("ion-select[name='editTriggerDevice']");
+        const selectDevice = document.querySelector("ion-select[name='editTriggerDevice']");
         if (selectedDeviceID !== null) {
           selectDevice.value = selectedDeviceID;
         }
@@ -301,7 +305,7 @@ export const ScenarioEditTriggersMixin = (Base) => class extends Base {
     this.translatePropertiesAndValue();
 
     const listElementTriggers = this.querySelector("#triggers-list");
-    listElementTriggers.innerHTML = this.scenarioData.triggers.map(item => {
+    listElementTriggers.innerHTML = this.scenarioData.triggers.map((item, index) => {
       const bridgeInfo = bridgeTranslate(item.bridge);
 
       let operatorInfo = "";
@@ -341,6 +345,7 @@ export const ScenarioEditTriggersMixin = (Base) => class extends Base {
           <ion-button data-id="${item.triggerID}" id="trigger-edit-${item.triggerID}" class="trigger-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
           <ion-button data-id="${item.triggerID}" class="trigger-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
+        <ion-text>${index < this.scenarioData.triggers.length - 1 ? `<center>${window.Translation.get("And")}</center>` : ""}</ion-text>
     `;
     }).join("");
 
