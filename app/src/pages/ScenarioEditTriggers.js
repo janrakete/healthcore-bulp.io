@@ -9,6 +9,10 @@ import { bridgeTranslate } from "../services/helper.js";
 export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerSelectedDevice = null;
 
+  /**
+   * Render the HTML for the trigger edit modal
+   * @returns HTML string
+   */
   getTriggerEditModalHTML() {
     return `
       <ion-modal id="trigger-edit-modal">
@@ -38,7 +42,6 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                   </ion-item>                  
                   <ion-item color="light">
                     <div id ="edit-trigger-value-container">
-                      <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom"></ion-input>
                     </div>
                   </ion-item>                  
                 </ion-list>
@@ -60,9 +63,14 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     `;
   }
 
+  /**
+   * Setup event listeners for trigger edit modal
+   */
   setupTriggerEvents() {
-    this.triggerEnabledDisable();
 
+    /**
+     * Event listener for trigger submit button
+     */
     this.querySelector("#trigger-submit-button").addEventListener("click", () => {
       const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
       const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
@@ -95,18 +103,29 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       modal.dismiss();
     });
 
+    /**
+     * Event listener for trigger cancel button
+     */
     this.querySelector("#trigger-cancel-button").addEventListener("click", () => {
       const modal = document.querySelector("#trigger-edit-modal");
       modal.dismiss(null, "cancel");
     });
 
+    /*
+     * Event listener for open trigger modal button
+    */
     this.querySelector("#open-trigger-id").addEventListener("click", async () => {
+      this.resetTriggerEditModalFields();
+      this.triggerEnabledDisable();
       this.loadDataTriggerDevices();
       this.loadDataTriggerDeviceOperator();
       const modal = document.querySelector("#trigger-edit-modal");
       await modal.present();
     });
 
+    /**
+     * Event listener for trigger device select change
+     */
     this.querySelector("ion-select[name='editTriggerDevice']").addEventListener("ionChange", async (event) => {
       const deviceID  = event.detail.value;
       const bridge    = event.target.querySelector(`ion-select-option[value="${deviceID}"]`)?.getAttribute("data-bridge");
@@ -114,17 +133,43 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       this.triggerEnabledDisable();
     });
 
+    /**
+     * Event listener for trigger property select change
+     */
     this.querySelector("ion-select[name='editTriggerProperty']").addEventListener("ionChange", async (event) => {
       const propertyName  = event.detail.value;
       await this.loadDataTriggerDevicePropertiesValues(propertyName);
       this.triggerEnabledDisable();
     });
 
+    /**
+     * Event listener for trigger operator select change
+     */
     this.querySelector("ion-select[name='editTriggerOperator']").addEventListener("ionChange", () => {
       this.triggerEnabledDisable();
     });
   }
 
+  /**
+   * Reset trigger edit modal fields
+   */
+  async resetTriggerEditModalFields() {
+    const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
+    const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
+    const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
+    const valueContainer = document.querySelector("#edit-trigger-value-container");
+
+    deviceSelect.value    = "";
+    propertySelect.value  = "";
+    operatorSelect.value  = "";
+    valueContainer.innerHTML = `
+      <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
+    `;
+  }
+
+  /**
+   * Enable/Disable trigger edit modal fields based on selections
+   */
   async triggerEnabledDisable() {
     const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
     const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
@@ -162,6 +207,11 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Load trigger devices into the select dropdown
+   * @param {number|null} selectedDeviceID - Device ID to pre-select (optional)
+   * @returns {Promise<void>}
+   */
   async loadDataTriggerDevices(selectedDeviceID = null) {
     try {
       const data = await apiGET("/devices/all");
@@ -186,6 +236,12 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Load trigger device properties into the select dropdown
+   * @param {String} bridge 
+   * @param {String} deviceID 
+   * @param {String} selectedProperty - Property to pre-select (optional)
+   */
   async loadDataTriggerDeviceProperties(bridge, deviceID, selectedProperty = null) {
     try {
       const data = await apiGET("/devices/" + bridge + "/" + deviceID);
@@ -217,6 +273,11 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Load trigger device operator into the select dropdown
+   * @param {String|null} selectedOperator - Operator to pre-select (optional)
+   * @returns {Promise<void>}
+   */
   async loadDataTriggerDeviceOperator(selectedOperator = null) {
     const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
     operatorSelect.innerHTML = `
@@ -233,6 +294,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Translate properties and values for triggers
+   */
   async translatePropertiesAndValue() {
     for (const item of this.scenarioData.triggers) { // Translate property
       const propertyTranslation = item.deviceProperties.find(property => property.name === item.property);
@@ -249,6 +313,12 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       }
     }
   }
+
+  /**
+   * Load trigger device property values into the input/select field
+   * @param {String} propertyName 
+   * @param {String|null} selectedValue 
+   */
 
   async loadDataTriggerDevicePropertiesValues(propertyName, selectedValue = null) {
     const property        = this.triggerSelectedDevice.properties.find(item => item.name === propertyName);
@@ -298,6 +368,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Render the list of triggers
+   */
   triggerRenderList() {
     console.log("Current trigger data:");
     console.log(this.scenarioData);
@@ -363,7 +436,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       button.addEventListener("click", async () => {
         const triggerData = this.scenarioData.triggers.find(item => item.triggerID === parseInt(button.getAttribute("data-id")));
 
-        await this.loadDataTriggerDevices(triggerData.deviceID);
+        await this.loadDataTriggerDevices(triggerData.deviceID); 
         await this.loadDataTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID, triggerData.property);
         await this.loadDataTriggerDeviceOperator(triggerData.operator);
         await this.loadDataTriggerDevicePropertiesValues(triggerData.property, triggerData.value);
