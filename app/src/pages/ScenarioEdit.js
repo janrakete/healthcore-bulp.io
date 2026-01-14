@@ -7,7 +7,9 @@ import { toastShow } from "../services/toast.js";
 import { ScenarioEditTriggers } from "./ScenarioEditTriggers.js";
 import { ScenarioEditActions } from "./ScenarioEditActions.js";
 
-class ScenarioEdit extends ScenarioEditActions(ScenarioEditTriggers(HTMLElement)) {
+const ScenarioEditBase = ScenarioEditActions(ScenarioEditTriggers(HTMLElement));
+
+class ScenarioEdit extends ScenarioEditBase {
   
   scenarioData = {
     triggers: [],
@@ -118,7 +120,6 @@ class ScenarioEdit extends ScenarioEditActions(ScenarioEditTriggers(HTMLElement)
       toastShow("Error: " + error.message, "danger");
     }
   }
-
 
   async loadData() {
     try {
