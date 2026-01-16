@@ -8,6 +8,7 @@ import { bridgeTranslate } from "../services/helper.js";
 
 export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerSelectedDevice = null;
+  triggerID             = null;
 
   /**
    * Render the HTML for the trigger edit modal
@@ -41,7 +42,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                     </ion-select>
                   </ion-item>                  
                   <ion-item color="light">
-                    <div id ="edit-trigger-value-container">
+                    <div id="edit-trigger-value-container">
                     </div>
                   </ion-item>                  
                 </ion-list>
@@ -85,17 +86,22 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       }
       
       const newTrigger = {
-        triggerID:      Date.now(), // Temporary ID
-        bridge:         this.triggerSelectedDevice.bridge,
-        deviceID:       deviceSelect.value,
-        deviceName:     this.triggerSelectedDevice.name,
-        property:       propertySelect.value,
-        operator:       operatorSelect.value,
-        value:          valueSelect.value,
+        triggerID:        Date.now(), // Temporary ID, because triggers are not stored in DB separately
+        bridge:           this.triggerSelectedDevice.bridge,
+        deviceID:         deviceSelect.value,
+        deviceName:       this.triggerSelectedDevice.name,
+        property:         propertySelect.value,
+        operator:         operatorSelect.value,
+        value:            valueSelect.value,
+        valueType:        isNaN(valueSelect.value) ? "String" : "Numeric",
         deviceProperties: this.triggerSelectedDevice.properties
       };
-
       this.scenarioData.triggers.push(newTrigger);
+
+      if (this.triggerID !== null) { // If editing an existing trigger, remove the old one
+        this.scenarioData.triggers = this.scenarioData.triggers.filter(item => item.triggerID !== this.triggerID);
+        this.triggerID = null; // Reset triggerID after editing
+      }
       
       this.triggerRenderList();
       
@@ -107,7 +113,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
      * Event listener for trigger cancel button
      */
     this.querySelector("#trigger-cancel-button").addEventListener("click", () => {
-      const modal = document.querySelector("#trigger-edit-modal");
+      const modal = document.querySelector("#trigger-edit-modal"); 
       modal.dismiss(null, "cancel");
     });
 
@@ -115,10 +121,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
      * Event listener for open trigger modal button
     */
     this.querySelector("#open-trigger-id").addEventListener("click", async () => {
+      this.triggerID = null;
+
       this.resetTriggerEditModalFields();
       this.triggerEnabledDisable();
       this.loadDataTriggerDevices();
       this.loadDataTriggerDeviceOperator();
+
       const modal = document.querySelector("#trigger-edit-modal");
       await modal.present();
     });
@@ -203,7 +212,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
 
     if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (operatorSelect.value !== "") && (valueSelect.value !== "")) {
-      submitButton.disabled   = false;
+      submitButton.disabled   = false; 
     }
   }
 
@@ -255,11 +264,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         }
 
         selectProperty.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + data.device.properties.map(item => {
-          if (item.translation != null && item.translation !== "") {
-            return `<ion-select-option value="${item.name}">${item.translation[window.appConfig.CONF_language]}</ion-select-option>`;
-          }
-          else {
-            return `<ion-select-option value="${item.name}">${item.name}</ion-select-option>`;
+          if (item.read === true) { // Only show readable properties
+            if (item.translation != null && item.translation !== "") {
+              return `<ion-select-option value="${item.name}">${item.translation[window.appConfig.CONF_language]}</ion-select-option>`;
+            }
+            else {
+              return `<ion-select-option value="${item.name}">${item.name}</ion-select-option>`;
+            }
           }
         }).join("");
       }
@@ -435,6 +446,10 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     this.querySelectorAll(".trigger-edit-option").forEach(button => { // Add event listeners for edit buttons
       button.addEventListener("click", async () => {
         const triggerData = this.scenarioData.triggers.find(item => item.triggerID === parseInt(button.getAttribute("data-id")));
+
+        this.triggerID = triggerData.triggerID; // Store the triggerID being edited
+
+        this.resetTriggerEditModalFields();
 
         await this.loadDataTriggerDevices(triggerData.deviceID); 
         await this.loadDataTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID, triggerData.property);
