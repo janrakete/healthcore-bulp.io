@@ -308,8 +308,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
   /**
    * Translate properties and values for triggers
    */
-  async translatePropertiesAndValue() {
+  async translateTriggerPropertiesAndValue() {
     for (const item of this.scenarioData.triggers) { // Translate property
+      console.log(item);
       const propertyTranslation = item.deviceProperties.find(property => property.name === item.property);
       if (propertyTranslation && propertyTranslation.translation && propertyTranslation.translation[window.appConfig.CONF_language]) {
         item.propertyTranslated = propertyTranslation.translation[window.appConfig.CONF_language];
@@ -382,10 +383,10 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
    * Render the list of triggers
    */
   triggerRenderList() {
-    console.log("Current trigger data:");
+    console.log("Current scenario data:");
     console.log(this.scenarioData);
 
-    this.translatePropertiesAndValue();
+    this.translateTriggerPropertiesAndValue();
 
     const listElementTriggers = this.querySelector("#triggers-list");
     listElementTriggers.innerHTML = this.scenarioData.triggers.map((item, index) => {
@@ -421,7 +422,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
           <ion-card-content>
             <ion-row>
               <ion-col>
-                  <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text> <ion-text color="light">${operatorInfo}</ion-text> <ion-text color="light">${item.valueTranslated ? item.valueTranslated : item.value}</ion-text>
+                  <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
+                  <ion-text color="light">${operatorInfo}</ion-text>
+                  <ion-text color="light">${item.valueTranslated ? item.valueTranslated : item.value}</ion-text>
               </ion-col>                
             </ion-row>
           </ion-card-content>

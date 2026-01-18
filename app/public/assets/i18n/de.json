@@ -69,5 +69,8 @@
     "RequiredFieldsMissing" : "Es fehlen Eingaben.",
     "Device" : "Gerät",
     "PropertySetTo" : "setzen auf",
-    "And" : "und"
+    "And" : "und",
+    "SetTo" : "ändern auf",
+    "Seconds" : "Sekunden",
+    "Delay" : "Verzögerung"
 }

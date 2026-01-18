@@ -178,7 +178,7 @@ class ScenarioEngine {
       for (const action of actions) { // execute actions with delays
         setTimeout(() => {
           this.executeAction(action);
-        }, action.delay);
+        }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
       }
 
       database.prepare("INSERT INTO notifications (text, description, scenarioID) VALUES (?, ?, ?)").run(scenario.name, scenario.description, scenario.scenarioID); // insert into notifications table

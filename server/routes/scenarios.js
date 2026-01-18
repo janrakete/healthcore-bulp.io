@@ -300,7 +300,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                       enum: ["String", "Numeric", "Boolean"]
  *                     delay:
  *                       type: integer
- *                       example: 300
+ *                       example: 3
  *     responses:
  *       "200":
  *         description: Successfully retrieved scenarios
@@ -498,7 +498,7 @@ router.post("/", async function (request, response) {
  *                       enum: ["String", "Numeric", "Boolean"]
  *                     delay:
  *                       type: integer
- *                       example: 1000
+ *                       example: 3
  *     responses:
  *       "200":
  *         description: Successfully updated scenario
