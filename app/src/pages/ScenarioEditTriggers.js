@@ -330,7 +330,6 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
    * @param {String} propertyName 
    * @param {String|null} selectedValue 
    */
-
   async loadDataTriggerDevicePropertiesValues(propertyName, selectedValue = null) {
     const property        = this.triggerSelectedDevice.properties.find(item => item.name === propertyName);
     const valueContainer  = document.querySelector("#edit-trigger-value-container");
