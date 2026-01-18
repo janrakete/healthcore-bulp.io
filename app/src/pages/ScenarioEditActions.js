@@ -272,16 +272,17 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
   }
 
-  -------
-
-  async translateActionPropertiesAndValue() {
-    for (const item of this.scenarioData.actions) {
-      const propertyTranslation = item.deviceProperties?.find(property => property.name === item.property);
+  /**
+   * Translate properties and values for actions
+   */
+  async translatePropertiesAndValue() {
+    for (const item of this.scenarioData.actions) { // Translate property
+      const propertyTranslation = item.deviceProperties.find(property => property.name === item.property);
       if (propertyTranslation && propertyTranslation.translation && propertyTranslation.translation[window.appConfig.CONF_language]) {
         item.propertyTranslated = propertyTranslation.translation[window.appConfig.CONF_language];
       }
 
-      const valueTranslation = item.deviceProperties?.find(property => property.name === item.property);
+      const valueTranslation = item.deviceProperties.find(property => property.name === item.property); // Translate value
       if (valueTranslation && valueTranslation.anyValue) {
         const anyValueItem = valueTranslation.anyValue.find(valueItem => valueItem.value === item.value);
         if (anyValueItem && anyValueItem.translation && anyValueItem.translation[window.appConfig.CONF_language]) {
@@ -291,6 +292,11 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Load action device property values into the input/select field
+   * @param {String} propertyName 
+   * @param {String|null} selectedValue 
+   */
   async loadDataActionDevicePropertiesValues(propertyName, selectedValue = null) {
     const property        = this.actionSelectedDevice.properties.find(item => item.name === propertyName);
     const valueContainer  = document.querySelector("#edit-action-value-container");
@@ -339,17 +345,16 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Render the list of actions
+   */
   actionRenderList() {
     console.log("Current action data:");
     console.log(this.scenarioData);
 
-    this.translateActionPropertiesAndValue();
+    this.translatePropertiesAndValue();
 
     const listElementActions = this.querySelector("#actions-list");
-    if (!listElementActions) {
-      return;
-    }
-
     listElementActions.innerHTML = this.scenarioData.actions.map((item, index) => {
       const bridgeInfo = bridgeTranslate(item.bridge);
 
@@ -376,29 +381,27 @@ export const ScenarioEditActions = (Base) => class extends Base {
     `;
     }).join("");
 
-    this.querySelectorAll(".action-delete-option").forEach(button => {
+    this.querySelectorAll(".action-delete-option").forEach(button => { // Add event listeners for delete buttons
       button.addEventListener("click", () => {
-        const id = parseInt(button.getAttribute("data-id"));
-        this.scenarioData.actions = this.scenarioData.actions.filter(item => item.actionID !== id);
-        this.actionRenderList();
+        const itemDelete = this.querySelector("#actions-list").querySelector("ion-card[data-id='" + button.getAttribute("data-id") + "']");
+        if (itemDelete) {
+          this.scenarioData.actions = this.scenarioData.actions.filter(item => item.actionID !== parseInt(button.getAttribute("data-id")));
+          this.actionRenderList();
+        }
       });
     });
 
     this.querySelectorAll(".action-edit-option").forEach(button => {
       button.addEventListener("click", async () => {
         const actionData = this.scenarioData.actions.find(item => item.actionID === parseInt(button.getAttribute("data-id")));
-        if (!actionData) {
-          return;
-        }
+        
+        this.actionID = actionData.actionID;  
+
+        this.resetActionEditModalFields();
 
         await this.loadDataActionDevices(actionData.deviceID);
         await this.loadDataActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
         await this.loadDataActionDevicePropertiesValues(actionData.property, actionData.value);
-
-        const delayInput = document.querySelector("ion-input[name='editActionDelay']");
-        if (delayInput) {
-          delayInput.value = actionData.delay ?? 0;
-        }
 
         this.actionEnabledDisable();
 
