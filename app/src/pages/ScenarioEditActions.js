@@ -42,7 +42,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
                     </div>
                   </ion-item>                  
                   <ion-item color="light">
-                    <ion-input type="number" label="${window.Translation.get("Delay")}" label-placement="stacked" name="editActionDelay" placeholder="ms" shape="round" fill="outline" class="custom"></ion-input>
+                    <ion-input type="number" label="${window.Translation.get("Delay")}" label-placement="stacked" name="editActionDelay" placeholder="${window.Translation.get("Seconds")}" shape="round" fill="outline" class="custom"></ion-input>
                   </ion-item>
                 </ion-list>
               </ion-col>
@@ -189,6 +189,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
     propertySelect.disabled = true;
     valueSelect.disabled    = true;
+    delayInput.disabled     = true;
     submitButton.disabled   = true;
 
     if (deviceSelect.value !== "") {
@@ -200,6 +201,10 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
 
     if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect.value !== "")) {
+      delayInput.disabled = false;
+    }
+
+    if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect.value !== "") && ((delayInput.value === ""))) {
       submitButton.disabled = false;
     }
   }
@@ -275,7 +280,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
   /**
    * Translate properties and values for actions
    */
-  async translatePropertiesAndValue() {
+  async translateActionsPropertiesAndValue() {
     for (const item of this.scenarioData.actions) { // Translate property
       const propertyTranslation = item.deviceProperties.find(property => property.name === item.property);
       if (propertyTranslation && propertyTranslation.translation && propertyTranslation.translation[window.appConfig.CONF_language]) {
@@ -349,17 +354,17 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * Render the list of actions
    */
   actionRenderList() {
-    console.log("Current action data:");
+    console.log("Current scenario data:");
     console.log(this.scenarioData);
 
-    this.translatePropertiesAndValue();
+    this.translateActionsPropertiesAndValue();
 
     const listElementActions = this.querySelector("#actions-list");
     listElementActions.innerHTML = this.scenarioData.actions.map((item, index) => {
       const bridgeInfo = bridgeTranslate(item.bridge);
 
       return `
-        <ion-card color="secondary" data-id="${item.actionID}">
+        <ion-card color="primary" data-id="${item.actionID}">
           <ion-card-header>
               <ion-card-title>${item.deviceName}</ion-card-title>
               <ion-card-subtitle>${item.deviceID} (${bridgeInfo})</ion-card-subtitle>
@@ -368,9 +373,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
             <ion-row>
               <ion-col>
                   <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
-                  <ion-text color="light"> = </ion-text>
+                  <ion-text color="light">${window.Translation.get("SetTo")}</ion-text>
                   <ion-text color="light">${item.valueTranslated ? item.valueTranslated : item.value}</ion-text>
-                  ${item.delay ? `<ion-text color="light"> (${item.delay}ms)</ion-text>` : ``}
+                  ${item.delay ? `<ion-text color="light"> (${window.Translation.get("Delay")}: ${item.delay} ${window.Translation.get("Seconds")})</ion-text>` : ``}
               </ion-col>
             </ion-row>
           </ion-card-content>
