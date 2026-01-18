@@ -7,8 +7,13 @@ import { toastShow } from "../services/toast.js";
 import { bridgeTranslate } from "../services/helper.js";
 
 export const ScenarioEditActions = (Base) => class extends Base {
-  actionSelectedDevice = null;
+  actionSelectedDevice  = null;
+  actionID              = null;
 
+  /**
+   * Render the HTML for the action edit modal
+   * @returns HTML string
+   */  
   getActionEditModalHTML() {
     return `
       <ion-modal id="action-edit-modal">
@@ -34,7 +39,6 @@ export const ScenarioEditActions = (Base) => class extends Base {
                   </ion-item>                                   
                   <ion-item color="light">
                     <div id ="edit-action-value-container">
-                      <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom"></ion-input>
                     </div>
                   </ion-item>                  
                   <ion-item color="light">
@@ -59,26 +63,18 @@ export const ScenarioEditActions = (Base) => class extends Base {
     `;
   }
 
+  /**
+   * Setup event listeners for action edit modal
+   */
   setupActionEvents() {
-    this.actionEnabledDisable();
 
-    this.querySelector("#open-action-id")?.addEventListener("click", async () => {
-      await this.loadDataActionDevices();
-      const modal = document.querySelector("#action-edit-modal");
-      await modal.present();
-    });
-
-    this.querySelector("#action-cancel-button")?.addEventListener("click", () => {
-      const modal = document.querySelector("#action-edit-modal");
-      modal.dismiss(null, "cancel");
-    });
-
+    /**
+     * Event listener for action submit button
+     */
     this.querySelector("#action-submit-button")?.addEventListener("click", () => {
       const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
       const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
-
-      const delayInput = document.querySelector("ion-input[name='editActionDelay']");
-      const delay = Math.max(0, parseInt(delayInput?.value ?? "0", 10) || 0);
+      const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
 
       let valueSelect;
       if ((document.querySelector("ion-input[name='editActionValue']")) && (document.querySelector("ion-input[name='editActionValue']") !== undefined)) {
@@ -88,44 +84,98 @@ export const ScenarioEditActions = (Base) => class extends Base {
         valueSelect = document.querySelector("ion-select[name='editActionValue']");
       }
 
-      const propertyDef = this.actionSelectedDevice?.properties?.find(p => p.name === propertySelect.value);
-      const valueType = propertyDef?.valueType ?? "String";
-
       const newAction = {
-        actionID:        Date.now(),
-        bridge:          this.actionSelectedDevice.bridge,
-        deviceID:        deviceSelect.value,
-        deviceName:      this.actionSelectedDevice.name,
-        property:        propertySelect.value,
-        value:           valueSelect.value,
-        valueType,
-        delay,
+        actionID:         Date.now(),
+        bridge:           this.actionSelectedDevice.bridge,
+        deviceID:         deviceSelect.value,
+        deviceName:       this.actionSelectedDevice.name,
+        property:         propertySelect.value,
+        value:            valueSelect.value,
+        valueType:        isNaN(valueSelect.value) ? "String" : "Numeric",
+        delay:            parseInt(delayInput.value) > 0 ? parseInt(delayInput.value) : 0,
         deviceProperties: this.actionSelectedDevice.properties
       };
 
       this.scenarioData.actions.push(newAction);
+
+      if (this.actionID !== null) { // If editing an existing action, remove the old one
+        this.scenarioData.actions = this.scenarioData.actions.filter(item => item.actionID !== this.actionID);
+        this.actionID             = null; // Reset actionID after editing
+      }
+
       this.actionRenderList();
+
       const modal = document.querySelector("#action-edit-modal");
       modal.dismiss();
     });
 
-    this.querySelector("ion-select[name='editActionDevice']")?.addEventListener("ionChange", async (event) => {
+    /**
+     * Event listener for action cancel button
+     */    
+    this.querySelector("#action-cancel-button")?.addEventListener("click", () => {
+      const modal = document.querySelector("#action-edit-modal");
+      modal.dismiss(null, "cancel");
+    });
+
+    /*
+     * Event listener for open action modal button
+     */
+    this.querySelector("#open-action-id")?.addEventListener("click", async () => {
+      this.actionID = null;
+
+      this.resetActionEditModalFields();
+      this.actionEnabledDisable();
+      this.loadDataActionDevices();
+
+      const modal = document.querySelector("#action-edit-modal");
+      await modal.present();
+    });
+
+    /**
+     * Event listener for action device select change
+     */
+    this.querySelector("ion-select[name='editActionDevice']").addEventListener("ionChange", async (event) => {
       const deviceID  = event.detail.value;
       const bridge    = event.target.querySelector(`ion-select-option[value="${deviceID}"]`)?.getAttribute("data-bridge");
       await this.loadDataActionDeviceProperties(bridge, deviceID);
       this.actionEnabledDisable();
     });
 
-    this.querySelector("ion-select[name='editActionProperty']")?.addEventListener("ionChange", async (event) => {
+    /**
+     * Event listener for action property select change
+     */    
+    this.querySelector("ion-select[name='editActionProperty']").addEventListener("ionChange", async (event) => {
       const propertyName  = event.detail.value;
       await this.loadDataActionDevicePropertiesValues(propertyName);
       this.actionEnabledDisable();
     });
   }
 
+  /**
+   * Reset action edit modal fields
+   */
+  async resetActionEditModalFields() {
+    const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
+    const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
+    const valueContainer = document.querySelector("#edit-action-value-container");
+    const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
+
+    deviceSelect.value    = "";
+    propertySelect.value  = "";
+    delayInput.value      = "";
+
+    valueContainer.innerHTML = `
+      <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
+    `;
+  }
+
+  /**
+   * Enable/Disable action edit modal fields based on selections
+   */
   async actionEnabledDisable() {
     const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
     const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
+    const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
 
     let valueSelect;
     if ((document.querySelector("ion-input[name='editActionValue']")) && (document.querySelector("ion-input[name='editActionValue']") !== undefined)) {
@@ -136,10 +186,6 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
 
     const submitButton   = document.querySelector("#action-submit-button");
-
-    if (!deviceSelect || !propertySelect || !valueSelect || !submitButton) {
-      return;
-    }
 
     propertySelect.disabled = true;
     valueSelect.disabled    = true;
@@ -158,6 +204,11 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Load action devices into the select dropdown
+   * @param {number|null} selectedDeviceID - Device ID to pre-select (optional)
+   * @returns {Promise<void>}
+   */
   async loadDataActionDevices(selectedDeviceID = null) {
     try {
       const data = await apiGET("/devices/all");
@@ -182,12 +233,18 @@ export const ScenarioEditActions = (Base) => class extends Base {
     }
   }
 
+  /**
+   * Load action device properties into the select dropdown
+   * @param {String} bridge 
+   * @param {String} deviceID 
+   * @param {String} selectedProperty - Property to pre-select (optional)
+   */  
   async loadDataActionDeviceProperties(bridge, deviceID, selectedProperty = null) {
     try {
       const data = await apiGET("/devices/" + bridge + "/" + deviceID);
       console.log("API call - Output:", data);
       if (data.status === "ok") {
-        this.actionSelectedDevice = data.device;
+        this.actionSelectedDevice = data.device; // Store selected device
 
         const selectProperty = document.querySelector("ion-select[name='editActionProperty']");
         if (selectedProperty !== null) {
@@ -195,11 +252,13 @@ export const ScenarioEditActions = (Base) => class extends Base {
         }
 
         selectProperty.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + data.device.properties.map(item => {
-          if (item.translation != null && item.translation !== "") {
-            return `<ion-select-option value="${item.name}">${item.translation[window.appConfig.CONF_language]}</ion-select-option>`;
-          }
-          else {
-            return `<ion-select-option value="${item.name}">${item.name}</ion-select-option>`;
+          if (item.write === true) { // Only show writable properties          
+            if (item.translation != null && item.translation !== "") {
+              return `<ion-select-option value="${item.name}">${item.translation[window.appConfig.CONF_language]}</ion-select-option>`;
+            }
+            else {
+              return `<ion-select-option value="${item.name}">${item.name}</ion-select-option>`;
+            }
           }
         }).join("");
       }
@@ -212,6 +271,8 @@ export const ScenarioEditActions = (Base) => class extends Base {
       toastShow("Error: " + error.message, "danger");
     }
   }
+
+  -------
 
   async translateActionPropertiesAndValue() {
     for (const item of this.scenarioData.actions) {

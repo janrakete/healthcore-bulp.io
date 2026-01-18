@@ -100,7 +100,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
       if (this.triggerID !== null) { // If editing an existing trigger, remove the old one
         this.scenarioData.triggers = this.scenarioData.triggers.filter(item => item.triggerID !== this.triggerID);
-        this.triggerID = null; // Reset triggerID after editing
+        this.triggerID             = null; // Reset triggerID after editing
       }
       
       this.triggerRenderList();
@@ -258,7 +258,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       if (data.status === "ok") {
         this.triggerSelectedDevice = data.device; // Store selected device
 
-        const selectProperty     = document.querySelector("ion-select[name='editTriggerProperty']");
+        const selectProperty = document.querySelector("ion-select[name='editTriggerProperty']");
         if (selectedProperty !== null) {
           selectProperty.value = selectedProperty;
         }
