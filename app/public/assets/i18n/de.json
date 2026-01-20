@@ -72,5 +72,7 @@
     "And" : "und",
     "SetTo" : "ändern auf",
     "Seconds" : "Sekunden",
-    "Delay" : "Verzögerung"
+    "Delay" : "Verzögerung",
+    "Run" : "Ausführen",
+    "ScenarioExecuted" : "Szenario ausgeführt."
 }

@@ -9,7 +9,7 @@ const appConfig = require("../../config");
 class ScenarioEngine {
   constructor() {
     this.executionCooldowns = new Map(); // prevent rapid re-execution
-    this.pushEngine = null; // push notifications engine
+    this.pushEngine         = null; // push notifications engine
   }
 
   /**
@@ -169,7 +169,6 @@ class ScenarioEngine {
   async executeScenario(scenario, triggerData) {
     try {
       const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID); // get all actions for this scenario
-
       
       database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run( // log execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 1
@@ -194,6 +193,37 @@ class ScenarioEngine {
       this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success, errorMessage) VALUES (?, ?, ?, ?, ?, ?)").run( // log failed execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 0, error.message
       );
+    }
+  }
+
+  /**
+   * Execute all actions for a scenario manually (for testing)
+   * @param {number} scenarioID - Scenario ID
+   */
+  async executeScenarioActionsManually(scenarioID) {
+    try {
+      const scenario = database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
+      if (scenario) {
+        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run( // log execution
+          scenario.scenarioID, "manually", "manually", "manually", 1
+        );
+
+        const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenarioID); // get all actions for this scenario
+
+        for (const action of actions) { // execute actions with delays
+          setTimeout(() => {
+            this.executeAction(action);
+          }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
+        }
+
+        common.conLog("Scenario Engine: Manually executed actions for scenario " + scenario.name, "gre");
+      }
+      else {
+        common.conLog("Scenario Engine: Scenario ID " + scenarioID + " not found for manual execution.", "red");
+      }
+    }
+    catch (error) {
+      common.conLog("Scenario Engine: Error manually executing scenario " + scenarioID + ": " + error.message, "red");
     }
   }
 

@@ -103,7 +103,7 @@ async function startServer() {
    * Scenario Engine
    */
   const ScenarioEngine = require("./libs/ScenarioEngine");
-  const scenarios      = new ScenarioEngine();
+  global.scenarios     = new ScenarioEngine();
 
   /**
    * Anomaly detection

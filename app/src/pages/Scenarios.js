@@ -2,7 +2,7 @@
  * Scenarios Page
  */
 
-import { apiGET, apiDELETE } from "../services/api.js";
+import { apiGET, apiDELETE, apiPOST } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { showSpinner } from "../services/helper.js";
 
@@ -117,9 +117,10 @@ class Scenarios extends HTMLElement {
                   </ion-col>
                 </ion-row>
               </ion-card-content>
-              <ion-button data-id="${item.scenarioID}" id="edit-${item.scenarioID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-              <ion-button data-id="${item.scenarioID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
-            </ion-card>
+                <ion-button data-id="${item.scenarioID}" id="edit-${item.scenarioID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+                <ion-button data-id="${item.scenarioID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+                <ion-button data-id="${item.scenarioID}" id="run-${item.scenarioID}" class="action-run-option"><ion-icon slot="start" name="play-sharp" color="success"></ion-icon><ion-text color="light">${window.Translation.get("Run")}</ion-text></ion-button>
+              </ion-card>
           `).join("");
           
           this.querySelectorAll(".action-edit-option").forEach(button => { // Add event listeners for edit buttons
@@ -134,6 +135,22 @@ class Scenarios extends HTMLElement {
               this.querySelector("#action-sheet").isOpen      = true;
             });
           });
+
+          this.querySelectorAll(".action-run-option").forEach(button => { // Add event listeners for run buttons
+            button.addEventListener("click", async () => {
+              const scenarioID      = button.getAttribute("data-id");
+              const executionData   = await apiPOST("/scenarios/" + scenarioID + "/execute");
+              console.log("API call - Execute Scenario Output:", executionData);
+              
+              if (executionData.status === "ok") {
+                toastShow(window.Translation.get("ScenarioExecuted"), "success");
+              }
+              else {
+                toastShow("Error: " + executionData.error, "danger");
+              }
+            });
+          });
+
         }
       }
       else {

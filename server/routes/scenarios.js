@@ -675,4 +675,79 @@ router.delete("/:scenarioID", async function (request, response) {
   }
 });
 
+/**
+ * @swagger
+ * /scenarios/{scenarioID}/execute:
+ *   post:
+ *     summary: Execute all actions for a scenario
+ *     description: Manually trigger the execution of all actions for a specific scenario
+ *     tags:
+ *       - Scenarios
+ *     parameters:
+ *       - in: path
+ *         name: scenarioID
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       "200":
+ *         description: Successfully executed scenario actions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *       "400":
+ *         description: Bad request. The request was invalid or cannot be served.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
+ */
+router.post("/:scenarioID/execute", async function (request, response) {
+    const scenarioID = parseInt(request.params.scenarioID);
+    let data         = {};
+
+    try {
+        const scenario = await database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
+        if (scenario) {
+            await global.scenarios.executeScenarioActionsManually(scenarioID);
+
+            data.status = "ok";
+            common.conLog("POST Request: execute actions for scenario '" + scenarioID + "'", "gre");
+        }
+        else {
+            data.status = "error";
+            data.error  = "Scenario not found";
+        }
+    }
+    catch (error) {
+        data.status = "error";
+        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+    }
+
+    if (data.status === "error") {
+        common.conLog("POST Request: an error occured", "red");
+    }
+
+    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
+
+    if (data.status === "ok") {
+        return response.status(200).json(data);
+    }
+    else {
+        return response.status(400).json(data);
+    }
+});
+
 module.exports = router;
