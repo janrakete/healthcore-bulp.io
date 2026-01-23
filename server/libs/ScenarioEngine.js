@@ -180,7 +180,7 @@ class ScenarioEngine {
         }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
       }
 
-      database.prepare("INSERT INTO notifications (text, description, scenarioID) VALUES (?, ?, ?)").run(scenario.name, scenario.description, scenario.scenarioID); // insert into notifications table
+      database.prepare("INSERT INTO notifications (text, description, scenarioID, icon) VALUES (?, ?, ?, ?)").run(scenario.name, scenario.description, scenario.scenarioID, scenario.icon); // insert into notifications table
       common.conLog("Scenario Engine: Notification logged.", "gre");
 
       if ((this.pushEngine) && (scenario.pushNotification === 1)) { // send push notification if enabled

@@ -66,7 +66,7 @@ router.get("/all", async function (request, response) {
           for (const trigger of result.triggers) {
               if (trigger.deviceProperties) {
                   try {
-                      trigger.deviceProperties = JSON.parse(trigger.deviceProperties);
+                      trigger.deviceProperties = JSON.parse(trigger.deviceProperties); // Parse JSON string to object
                   }
                   catch (error) {
                       data.status              = "error";
@@ -79,7 +79,7 @@ router.get("/all", async function (request, response) {
           for (const action of result.actions) {
               if (action.deviceProperties) {
                   try {
-                      action.deviceProperties = JSON.parse(action.deviceProperties);
+                      action.deviceProperties = JSON.parse(action.deviceProperties); // Parse JSON string to object
                   }
                   catch (error) {
                       data.status             = "error";
@@ -169,7 +169,7 @@ router.get("/:scenarioID", async function (request, response) {
             for (const trigger of result.triggers) {
                 if (trigger.deviceProperties) {
                     try {
-                        trigger.deviceProperties = JSON.parse(trigger.deviceProperties);
+                        trigger.deviceProperties = JSON.parse(trigger.deviceProperties); // Parse JSON string to object
                     }
                     catch (error) {
                         data.status              = "error";
@@ -182,7 +182,7 @@ router.get("/:scenarioID", async function (request, response) {
             for (const action of result.actions) {
                 if (action.deviceProperties) {
                     try {
-                        action.deviceProperties = JSON.parse(action.deviceProperties);
+                        action.deviceProperties = JSON.parse(action.deviceProperties); // Parse JSON string to object
                     }
                     catch (error) {
                         data.status             = "error";
@@ -254,6 +254,15 @@ router.get("/:scenarioID", async function (request, response) {
  *               priority:
  *                 type: integer
  *                 default: 0
+ *               icon:
+ *                 type: string
+ *                 example: "heart"
+ *               roomID:
+ *                 type: integer
+ *                 example: 3
+ *               individualID:
+ *                 type: integer
+ *                 example: 5
  *               triggers:
  *                 type: array
  *                 items:
@@ -338,7 +347,7 @@ router.post("/", async function (request, response) {
             if (Array.isArray(payload.triggers) && Array.isArray(payload.actions)) {
                 data.status = "ok";
                 
-                const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, pushNotification, priority) VALUES (?, ?, ?, ?, ?)");
+                const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, pushNotification, priority, icon, roomID, individualID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                 const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
@@ -349,7 +358,10 @@ router.post("/", async function (request, response) {
                         payload.description || "",
                         payload.enabled === true ? 1 : 0,
                         payload.pushNotification === true ? 1 : 0,
-                        payload.priority || 0
+                        payload.priority || 0,
+                        payload.icon || "",
+                        payload.roomID || null,
+                        payload.individualID || null
                     );
 
                     const scenarioID = result.lastInsertRowid;
@@ -453,6 +465,15 @@ router.post("/", async function (request, response) {
  *               priority:
  *                 type: integer
  *                 example: 1
+ *               icon:    
+ *                 type: string
+ *                 example: "star"
+ *               roomID:
+ *                 type: integer
+ *                 example: 2
+ *               individualID:
+ *                 type: integer
+ *                 example: 4
  *               triggers:
  *                 type: array
  *                 items:
@@ -474,7 +495,7 @@ router.post("/", async function (request, response) {
  *                       type: string
  *                       example: "100"
  *                     valueType:
- *                       type: integer
+ *                       type: string
  *                       enum: ["String", "Numeric", "Boolean"]
  *               actions:
  *                 type: array
@@ -535,21 +556,20 @@ router.patch("/:scenarioID", async function (request, response) {
       data.status = "ok";
 
       const transaction = database.transaction(() => {
-        if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined) { // Update scenario
-          if (payload.enabled !== undefined) { // Convert boolean to 0/1
+        if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined || payload.icon !== undefined || payload.roomID !== undefined || payload.individualID !== undefined) { // Update scenario
             payload.enabled           = payload.enabled === true ? 1 : 0;
             payload.pushNotification  = payload.pushNotification === true ? 1 : 0;
-          }
+            payload.icon              = payload.icon || "";
+            payload.roomID            = payload.roomID || null;
+            payload.individualID      = payload.individualID || null;
           
-          database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), pushNotification = COALESCE(?, pushNotification), priority = COALESCE(?, priority) WHERE scenarioID = ?").run(
-            payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.pushNotification !== undefined ? payload.pushNotification : null, payload.priority !== undefined ? payload.priority : null, scenarioID
-          );
-          common.conLog("PATCH Request: access table 'scenarios'", "gre");
+            database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), pushNotification = COALESCE(?, pushNotification), priority = COALESCE(?, priority), icon = COALESCE(?, icon), roomID = COALESCE(?, roomID), individualID = COALESCE(?, individualID) WHERE scenarioID = ?").run(
+                payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.pushNotification !== undefined ? payload.pushNotification : null, payload.priority !== undefined ? payload.priority : null, payload.icon || null, payload.roomID || null, payload.individualID || null, scenarioID
+            );
+            common.conLog("PATCH Request: access table 'scenarios'", "gre");
         }
 
-
-        if (payload.triggers) {  // Update triggers if provided
-          
+        if (payload.triggers) {  // Update triggers if provided 
           database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID); // Delete existing triggers
 
           const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"); // Insert new triggers
@@ -654,6 +674,10 @@ router.delete("/:scenarioID", async function (request, response) {
     else {
       data.status = "ok";
       common.conLog("DELETE Request: scenario '" + scenarioID + "' deleted successfully", "gre");
+
+      database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID);
+      database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID);
+      common.conLog("DELETE Request: associated triggers and actions for scenario '" + scenarioID + "' deleted successfully", "gre");
     }
   }
   catch (error) {

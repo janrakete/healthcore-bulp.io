@@ -103,7 +103,7 @@ class Scenarios extends HTMLElement {
           listElement.innerHTML = items.map(item => `
             <ion-card color="primary" data-id="${item.scenarioID}">
               <ion-card-header>
-                  <ion-card-title>${item.name}</ion-card-title> 
+                  <ion-card-title>${item.icon ? `<ion-icon name="${item.icon}" color="light"></ion-icon>` : ""} ${item.name}</ion-card-title> 
               </ion-card-header>
               <ion-card-content>
                 <ion-row>

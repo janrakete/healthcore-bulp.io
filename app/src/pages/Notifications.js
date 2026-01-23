@@ -52,9 +52,9 @@ class Notifications extends HTMLElement {
         }
         else {
             listElement.innerHTML = items.map(item => `
-            <ion-card color="primary" data-id="${item.notificationID}">
+            <ion-card color="primary" data-id="${item.notificationID}" class="small">
               <ion-card-header>
-                <ion-card-title>${item.text}</ion-card-title>
+                <ion-card-title>${item.icon ? `<ion-icon name="${item.icon}" color="light"></ion-icon>` : ""} ${item.text}</ion-card-title>
                 <ion-card-subtitle>${dateFormat(item.dateTime, window.appConfig.CONF_dateLocale)}</ion-card-subtitle>
               </ion-card-header>
               ${item.description !== null ? `<ion-card-content><ion-text color="light">${item.description}</ion-text></ion-card-content>` : ""}
