@@ -173,6 +173,10 @@ ion-input.custom, ion-select.custom {
     --padding-end: 10px;
 }
 
+ion-label.custom {
+    padding-left: 10px;
+}
+
 ion-toggle.custom {
     padding-left: 10px;
 }
@@ -187,6 +191,12 @@ ion-fab {
 
 #edit-trigger-value-container, #edit-action-value-container {
     width: 100%
+}
+
+ion-card.small {
+    ion-card-title {
+        font-size: 1.2em;
+    }
 }
 
 /*

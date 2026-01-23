@@ -41,16 +41,41 @@ export function barLoadingStop(loadingInterval, element, attribute="textContent"
  * @param {string} locale - The locale code for formatting, e.g. "en-US" or "de-DE"
  * @returns {string} - The formatted date string.
  */
-export function dateFormat(dateString, locale = "en-US") {
+export function dateFormat(dateString, locale = "en-US", pastTime = true) {
     const date = new Date(dateString);
-    return date.toLocaleString(locale, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-    });
+
+    if (pastTime === true) {
+        const now               = new Date();
+        const diffInMs          = now - date;
+        const diffInSeconds     = Math.floor(diffInMs / 1000);
+        const diffInMinutes     = Math.floor(diffInSeconds / 60);
+        const diffInHours       = Math.floor(diffInMinutes / 60);
+        const diffInDays        = Math.floor(diffInHours / 24);
+
+        if (diffInDays > 0) {
+            const translationKey = diffInDays === 1 ? "DayAgo" : "DaysAgo";
+            return window.Translation.get(translationKey).replace("{0}", diffInDays);
+        } else if (diffInHours > 0) {
+            const translationKey = diffInHours === 1 ? "HourAgo" : "HoursAgo";
+            return window.Translation.get(translationKey).replace("{0}", diffInHours);
+        } else if (diffInMinutes > 0) {
+            const translationKey = diffInMinutes === 1 ? "MinuteAgo" : "MinutesAgo";
+            return window.Translation.get(translationKey).replace("{0}", diffInMinutes);
+        } else {
+            const translationKey = diffInSeconds === 1 ? "SecondAgo" : "SecondsAgo";
+            return window.Translation.get(translationKey).replace("{0}", diffInSeconds);
+        }
+    }
+    else {
+        return date.toLocaleString(locale, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        });
+    }
 }
 
 /**
