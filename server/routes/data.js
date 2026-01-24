@@ -92,6 +92,12 @@ async function conditionBuild(table, payload) {
       delete payload.orderBy;
    }
 
+   let limitString = ""; // if payload contains limit block, remove it from payload and save it for later processing
+   if (payload.limit !== undefined) {
+      limitString = payload.limit;
+      delete payload.limit;
+   }
+
    response.condition = "";   
    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
       for (const [key, value] of Object.entries(payload)) { // loop through all keys of the JSON payload
@@ -129,7 +135,43 @@ async function conditionBuild(table, payload) {
             response.error  = orderByResponse.error;
          }
       }
+
+      if (limitString !== "") { // ... process limit block
+         const limitResponse = await limitBuild(limitString);
+         if (limitResponse.status === "ok") { 
+            response.condition = response.condition + limitResponse.statement;
+         }
+         else {
+            response.status = "error";
+            response.error  = limitResponse.error;
+         }
+      }
    }
+
+   return (response);
+}
+
+/**
+ * This function builds a LIMIT clause for SQL queries based on the provided limit value.
+ * @async
+ * @function limitBuild
+ * @param {string|number} limitValue - The limit value for the SQL query.
+ * @returns {object} - An object containing the status of the operation, any error messages, and the constructed LIMIT clause.
+ * @description This function checks if the provided limit value is a valid positive integer. If it is, it constructs a LIMIT clause for SQL queries. If not, it returns an error.
+ */
+async function limitBuild(limitValue) {
+   let response = {};
+   const limitNumber = parseInt(limitValue, 10);
+
+   if (!isNaN(limitNumber) && limitNumber > 0) { // if limit is a valid positive integer ...
+      response.status    = "ok"; // ... return ok and ...
+      response.statement = " LIMIT " + limitNumber;
+   }  
+   else { // if limit is not a valid positive integer
+      response.statement   = "";
+      response.status      = "error"; // ... return error
+      response.error       = "Given limit value '" + limitValue + "' is not a valid positive integer";
+   }  
    return (response);
 }
 
@@ -328,13 +370,18 @@ router.get("/:table", async function (request, response) {
    const payload  = request.query; // GET values are for condition
    let data       = {};
 
-   if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
+   if (tablesAllowed.includes(table)) { // check, if table name is in allowed list
       try {
          data.status = "ok";
 
          const condition = await conditionBuild(table, payload);
          if (condition.status === "ok") {
-            const statement = "SELECT * FROM " + table + condition.condition + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
+            let statement = "SELECT * FROM " + table + condition.condition;
+
+            if (!statement.toUpperCase().includes(" LIMIT ")) { // if statement contains no LIMIT clause, add a default one to avoid overload
+               statement = statement + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
+            }
+
             common.conLog("GET Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + statement, "std", false);
 
