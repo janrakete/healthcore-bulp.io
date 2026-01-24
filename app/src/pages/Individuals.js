@@ -12,7 +12,7 @@ class Individuals extends HTMLElement {
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/"></ion-back-button>
+            <ion-back-button default-href="/settings"></ion-back-button>
           </ion-buttons>
           <ion-title>${window.Translation.get("PageIndividualsHeadline")}</ion-title>
         </ion-toolbar>
