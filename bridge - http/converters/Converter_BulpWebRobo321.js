@@ -23,7 +23,7 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
         this.properties[1] = {
             name:       "switch",
             read:       true,
-            anyValue:   ["tapped", "not_tapped", "long_tapped"],
+            anyValue:   ["pressed", "not_pressed", "long_pressed"],
             valueType:  "Options"
         };
     }

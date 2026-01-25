@@ -256,8 +256,8 @@ async function startServer() {
           message.error       = "Device already registered";
         }
         else {
-          await database.prepare("INSERT INTO devices (deviceID, bridge, powerType, productName, name, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))").run(
-            data.deviceID, data.bridge, data.powerType, data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
+          await database.prepare("INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, name, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))").run(
+            data.deviceID, data.bridge, data.powerType, data.vendorName || "", data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -410,6 +410,7 @@ async function startServer() {
           delete data.updates.powerType;
           delete data.updates.properties;
           delete data.updates.productName;
+          delete data.updates.vendorName;
           
           const fields        = Object.keys(data.updates);
           const placeholders  = fields.map(field => field + " = ?").join(", ");

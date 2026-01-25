@@ -98,5 +98,10 @@
     "DayAgo" : "Vor {0} Tag:",
     "Icon" : "Symbol",
     "PageSettingsHeadline" : "Einstellungen",
-    "ServerNotFound" : "bulp.station nicht gefunden."
+    "ServerNotFound" : "bulp.station nicht gefunden.",
+    "DevicesScanFoundAndAdded" : "Gerät gefunden und hinzugefügt.",
+    "DevicesScanFinished" : "Geräte-Suche beendet.",
+    "DeviceID": "Geräte-ID",
+    "ProductName": "Produktname",
+    "VendorName": "Hersteller"
 }
