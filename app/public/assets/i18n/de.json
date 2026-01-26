@@ -103,5 +103,6 @@
     "DevicesScanFinished" : "Geräte-Suche beendet.",
     "DeviceID": "Geräte-ID",
     "ProductName": "Produktname",
-    "VendorName": "Hersteller"
+    "VendorName": "Hersteller",
+    "EntriesNoneAddNew": "Um etwas Neues hinzuzufügen, tippe auf die Schaltfläche."
 }

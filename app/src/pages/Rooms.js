@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { showSpinner } from "../services/helper.js";
+import { spinnerShow, entriesNoDataMessage } from "../services/helper.js";
 
 class Rooms extends HTMLElement {
   connectedCallback() {
@@ -24,6 +24,9 @@ class Rooms extends HTMLElement {
         </ion-refresher>
 
         <div id="rooms-list"></div>
+
+        <div id="rooms-list-no-data"></div>        
+
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="success" id="room-edit-button">
@@ -85,19 +88,17 @@ class Rooms extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = showSpinner("#rooms-list");        
+    const spinner = spinnerShow("#rooms-list");        
     try {
       const data = await apiGET("/data/rooms");
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {
         const listElement = this.querySelector("#rooms-list");
-        const items = data.results;
+        const items       = data.results;
 
         if (!items || items.length === 0) {
-          listElement.innerHTML = `
-            <center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
-          `;
+          entriesNoDataMessage("#rooms-list-no-data");
         }
         else {
           listElement.innerHTML = items.map(item => `

@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { showSpinner, bridgeTranslate } from "../services/helper.js";
+import { spinnerShow, bridgeTranslate, entriesNoDataMessage } from "../services/helper.js";
 
 class Devices extends HTMLElement {
   connectedCallback() {
@@ -40,7 +40,11 @@ class Devices extends HTMLElement {
             <ion-label>${window.Translation.get("Wifi")}</ion-label>
           </ion-segment-button>
         </ion-segment>
+
         <div id="devices-list"></div>
+
+        <div id="devices-list-no-data"></div>            
+
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="success" id="device-edit-button">
@@ -106,7 +110,7 @@ class Devices extends HTMLElement {
   }
 
   async dataLoad(filters = ["zigbee","bluetooth","lora","http"]) {
-    const spinner = showSpinner("#devices-list");
+    const spinner = spinnerShow("#devices-list");
 
     let resultsRegistered = [];
     let resultsConnected  = [];
@@ -206,7 +210,7 @@ class Devices extends HTMLElement {
       });
 
       if (resultsRegistered.length === 0) {
-        this.querySelector("#devices-list").innerHTML = `<br /><center><ion-text>${window.Translation.get("EntriesNone")}</ion-text></center>`;
+          entriesNoDataMessage("#devices-list-no-data");
       }
     }
     catch (error) {

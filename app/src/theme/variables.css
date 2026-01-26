@@ -185,8 +185,8 @@ ion-segment {
     --background: var(--ion-color-tertiary);
 }
 
-ion-fab {
-  margin-bottom: var(--ion-safe-area-bottom, 0);
+ion-content::part(scroll), ion-fab {
+    margin-bottom: var(--ion-safe-area-bottom, 0);
 }
 
 #edit-trigger-value-container, #edit-action-value-container {
@@ -197,6 +197,10 @@ ion-card.small {
     ion-card-title {
         font-size: 1.2em;
     }
+}
+
+ion-img.image-arrow {
+    width: 50%;
 }
 
 /*

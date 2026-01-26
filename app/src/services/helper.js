@@ -83,14 +83,17 @@ export function dateFormat(dateString, locale = "en-US", pastTime = true) {
  * @param {String} containerSelector 
  * @returns {HTMLElement} - The spinner element created.
  */
-export function showSpinner(containerSelector) {
+export function spinnerShow(containerSelector) {
     document.querySelector(containerSelector).innerHTML = "";
+    
     const spinner = document.createElement("ion-spinner");
     spinner.name = "dots";
     spinner.color = "warning";
+
     const center = document.createElement("center");
     center.appendChild(spinner);
     document.querySelector(containerSelector).prepend(center);
+    
     return spinner;
 }
 
@@ -118,4 +121,22 @@ export function bridgeTranslate(bridge) {
             bridgeInfo = window.Translation.get("Unknown");
     }
     return bridgeInfo;
+}
+
+/**
+ * Displays a "no data" message inside the specified container element.
+ * @param {String} containerSelector 
+ * @return {void}
+ */
+export function entriesNoDataMessage(containerSelector) {
+    document.querySelector(containerSelector).innerHTML = `
+        <div class="no-data-container">
+            <br />
+            <ion-text><center>${window.Translation.get("EntriesNone")}</center></ion-text>
+            <br />
+            <ion-text><center>${window.Translation.get("EntriesNoneAddNew")}</center></ion-text> 
+            <br />
+            <center><ion-img class="image-arrow" src="./assets/backgrounds/arrow.svg"></ion-img></center>
+        </div>
+      `;
 }
