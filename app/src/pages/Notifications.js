@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { dateFormat, showSpinner } from "../services/helper.js";
+import { dateFormat, spinnerShow } from "../services/helper.js";
 
 class Notifications extends HTMLElement {
   connectedCallback() {
@@ -36,18 +36,18 @@ class Notifications extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = showSpinner("#notifications-list");    
+    const spinner = spinnerShow("#notifications-list");    
     try {
       const data = await apiGET("/data/notifications?orderBy=dateTime,DESC");
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {
         const listElement = this.querySelector("#notifications-list");
-        const items = data.results;
+        const items       = data.results;
 
         if (!items || items.length === 0) {
           listElement.innerHTML = `
-            <center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
+            <center><ion-text>${window.Translation.get("EntriesNone")}</ion-text></center>
           `;
         }
         else {

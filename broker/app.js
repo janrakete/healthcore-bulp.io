@@ -104,14 +104,14 @@ async function startServer() {
             const callID    = JSON.parse(message).callID !== undefined ? JSON.parse(message).callID : null;
 
             try {
-                await database.prepare("INSERT INTO mqtt_history (topic, message, callID) VALUES (?, ?, ?)").run(topic, message, callID);
+                await database.prepare("INSERT INTO mqtt_history (topic, message, callID, dateTime) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(topic, message, callID);
                 if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for anomaly detection
                     const data          = JSON.parse(message);
 
                     const timeFeatures  = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
                     for (const valueData in data.values) { // iterate over each property
                         const value = data.values[valueData];
-                        await database.prepare("INSERT INTO mqtt_history_devices_values (deviceID, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+                        await database.prepare("INSERT INTO mqtt_history_devices_values (deviceID, dateTime, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
                             data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, valueData, value.value, value.valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
                     }
                     common.conLog("Broker: MQTT device values inserted into database", "gre");

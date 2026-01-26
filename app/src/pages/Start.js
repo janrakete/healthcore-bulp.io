@@ -4,7 +4,7 @@
 
 import { toastShow } from "../services/toast.js";
 import { Zeroconf } from "@ionic-native/zeroconf";
-import { barLoadingStart, barLoadingStop, showSpinner, dateFormat } from "../services/helper.js";
+import { barLoadingStart, barLoadingStop, spinnerShow, dateFormat } from "../services/helper.js";
 import { apiGET, apiPOST } from "../services/api.js";
 
 class Start extends HTMLElement {
@@ -82,7 +82,7 @@ class Start extends HTMLElement {
 
   async dataLoad() {
     if (window.appConfig.CONF_serverURL !== undefined) { // only load data if server URL is known, so server is connected
-      const spinner = showSpinner("#notifications-list");        
+      const spinner = spinnerShow("#notifications-list");        
       try {
         const data = await apiGET("/data/notifications?orderBy=dateTime,DESC&limit=3");
         console.log("API call - Output:", data);
