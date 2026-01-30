@@ -106,5 +106,13 @@
     "no": {
         "de": "Nein",
         "en": "No"
-    }   
+    },
+    "hue": {
+        "de": "Farbton",
+        "en": "Hue"
+    },
+    "saturation": {
+        "de": "Sättigung",
+        "en": "Saturation"
+    }
 }
