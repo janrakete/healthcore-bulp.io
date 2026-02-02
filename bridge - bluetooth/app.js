@@ -360,7 +360,7 @@ async function startBridgeAndServer() {
     let message     = {};  
     message.bridge  = BRIDGE_PREFIX;
 
-    if (state == "poweredOn") { // only if Bluetooth is powered on ...
+    if (state === "poweredOn") { // only if Bluetooth is powered on ...
       message.status = "online"; // ... set status to online
       mqttBridgeStatus(message);
     }
@@ -692,7 +692,7 @@ async function startBridgeAndServer() {
                       if (error) {
                         common.conLog("Bluetooth: Error while writing characteristic:", "red");
                         common.conLog(error, "std", false);
-                        reject(error);
+                        resolve();
                       }
                       else {
                         resolve();
@@ -758,7 +758,7 @@ async function startBridgeAndServer() {
                 if (error) {
                   common.conLog("Bluetooth: Error while reading characteristic:", "red");
                   common.conLog(error, "std", false);
-                  reject(error);
+                  resolve();
                 }
                 else {
                   if (property.valueType === "Subproperties") { // if property has multiple subproperties

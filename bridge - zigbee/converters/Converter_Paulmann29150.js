@@ -13,7 +13,6 @@ class Converter_Paulmann29150 extends ConverterStandard {
 
         this.powerType = "MAINS";
 
-        // On/Off Cluster
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {
             name:        "state",
@@ -25,7 +24,6 @@ class Converter_Paulmann29150 extends ConverterStandard {
             valueType:   "Options"
         };
 
-        // Level Control (Dimming) Cluster
         this.properties["genLevelCtrl"] = {};
         this.properties["genLevelCtrl"]["currentLevel"] = {
             name:        "brightness",
@@ -37,7 +35,6 @@ class Converter_Paulmann29150 extends ConverterStandard {
             valueType:   "Numeric"
         };
 
-        // Color Control Cluster (Hue)
         this.properties["lightingColorCtrl"] = {};
         this.properties["lightingColorCtrl"]["currentHue"] = {
             name:        "hue",
@@ -49,7 +46,6 @@ class Converter_Paulmann29150 extends ConverterStandard {
             valueType:   "Numeric"
         };
 
-        // Color Control Cluster (Saturation)
         this.properties["lightingColorCtrl"]["currentSaturation"] = {
             name:        "saturation",
             standard:    false,
@@ -72,8 +68,7 @@ class Converter_Paulmann29150 extends ConverterStandard {
             else {
                 switch (property.name) {
                     case "state":
-                        // Standard conversion for On/Off
-                         if (anyValue === 1 || anyValue === "on") {
+                        if (anyValue === 1 || anyValue === "on") {
                             return {"value": "on", "valueAsNumeric": 1};
                         } else {
                             return {"value": "off", "valueAsNumeric": 0};
