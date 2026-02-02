@@ -72,6 +72,14 @@ async function startBridgeAndServer() {
         common.conLog("MQTT: Error while subscribing:", "red");
         common.conLog(error, "std", false);
       }
+
+      /**
+       * If MQTT is started, request all registered devices from server
+       */
+      common.conLog("Bluetooth: Bridge is online - request all registered Bluetooth devices from server", "yel");
+      let message     = {};
+      message.bridge  = BRIDGE_PREFIX;
+      mqttClient.publish("server/devices/refresh", JSON.stringify(message)); // then request all registered Bluetooth devices from server via MQTT broker 
     });
   }
   mqttClient.on("connect", mqttConnect);
@@ -83,6 +91,19 @@ async function startBridgeAndServer() {
    */
 
   /**
+   * Generic function to search for a device by a specific property in an array of devices.
+   * @param {string} searchKey - The property key to search for (e.g., "deviceID", "productName").
+   * @param {any} searchValue - The value to search for.
+   * @param {Object[]} devices - The array of known device objects.
+   * @returns {Object|undefined} The matching device object, or `undefined` if not found.
+   * @description This function iterates through the array of devices and returns the first device that matches the provided property key and value. If no matching device is found, it returns `undefined`.
+   */
+  function deviceSearchInArray(searchKey, searchValue, devices) {
+    const deviceFound = devices.find(device => device[searchKey] === searchValue);
+    return deviceFound || undefined;
+  }
+
+  /**
    * Searches for a device by its ID within a given array of devices.
    * @param {string} deviceID - The device ID to search for.
    * @param {Object[]} devices - The array of known device objects.
@@ -90,16 +111,7 @@ async function startBridgeAndServer() {
    * @description This function iterates through the array of devices and returns the first device that matches the provided ID. If no matching device is found, it returns `undefined`.
    */
   function deviceSearchInArrayByID(deviceID, devices) {
-    let device = {};  
-
-    const deviceFound = devices.find(device => device.deviceID === deviceID);
-    if (deviceFound) { 
-      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
-    }
-    else {
-      device = undefined; // if device is not in array, set device to undefined
-    }
-    return device;
+    return deviceSearchInArray("deviceID", deviceID, devices);
   }
 
   /**
@@ -110,16 +122,7 @@ async function startBridgeAndServer() {
    * @description This function iterates through the array of devices and returns the first device that matches the provided product name. If no matching device is found, it returns `undefined`.
    */
   function deviceSearchInArrayByProductName(productName, devices) {
-    let device = {};  
-
-    const deviceFound = devices.find(device => device.productName === productName);
-    if (deviceFound) { 
-      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
-    }
-    else {
-      device = undefined; // if device is not in array, set device to undefined
-    }
-    return device;
+    return deviceSearchInArray("productName", productName, devices);
   }
 
   /**
@@ -360,22 +363,22 @@ async function startBridgeAndServer() {
     let message     = {};  
     message.bridge  = BRIDGE_PREFIX;
 
-    if (state == "poweredOn") { // only if Bluetooth is powered on ...
+    if (state === "poweredOn") { // only if Bluetooth is powered on ...
       message.status = "online"; // ... set status to online
+      bridgeStatus.status = message.status; // save status in bridge status object
       mqttBridgeStatus(message);
     }
     else {
       bluetooth.stopScanning();    
       message.status                            = "offline";
+      bridgeStatus.status                       = message.status; // save status in bridge status object
       bridgeStatus.devicesRegisteredReconnect   = false;
       bridgeStatus.devicesConnected             = [];
       bridgeStatus.devicesRegisteredAtServer    = [];
       bridgeStatus.devicesFoundViaScan          = [];
       bridgeStatus.deviceScanCallID             = undefined;
+      mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
     }
-
-    bridgeStatus.status = message.status; // save status in bridge status object
-    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
   });
 
   /**
@@ -675,6 +678,11 @@ async function startBridgeAndServer() {
       const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
       if (device) { // if device is in array of connected devices, try do set desired values
+        if (!device.deviceRaw || !device.deviceRaw.services) {
+          common.conLog("Bluetooth: Device " + data.deviceID + " has no services available (possibly disconnected)", "red");
+          return;
+        }
+
         const services    = device.deviceRaw.services; // get services of device
         const promises = []; // array to store promises for writing characteristics
   
@@ -692,7 +700,7 @@ async function startBridgeAndServer() {
                       if (error) {
                         common.conLog("Bluetooth: Error while writing characteristic:", "red");
                         common.conLog(error, "std", false);
-                        reject(error);
+                        resolve(); // resolve instead of reject to allow other writes to complete
                       }
                       else {
                         resolve();
@@ -740,6 +748,11 @@ async function startBridgeAndServer() {
     const device = deviceSearchInArrayByID(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
 
     if (device) { // if device is in array of connected devices, try do get desired values
+      if (!device.deviceRaw || !device.deviceRaw.services) {
+        common.conLog("Bluetooth: Device " + data.deviceID + " has no services available (possibly disconnected)", "red");
+        return;
+      }
+
       let message                      = {};
       message.deviceID                 = data.deviceID;
       message.callID                   = data.callID;
@@ -758,7 +771,7 @@ async function startBridgeAndServer() {
                 if (error) {
                   common.conLog("Bluetooth: Error while reading characteristic:", "red");
                   common.conLog(error, "std", false);
-                  reject(error);
+                  resolve(); // resolve instead of reject to allow other reads to complete
                 }
                 else {
                   if (property.valueType === "Subproperties") { // if property has multiple subproperties
