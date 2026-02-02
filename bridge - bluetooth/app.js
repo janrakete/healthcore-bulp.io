@@ -12,7 +12,7 @@ const BRIDGE_PREFIX   = "bluetooth";
 /**
  * Load  converters for devices
  */
-const { Converters } = require("./Converters.js");
+const { Converters } = require("./converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**
@@ -90,16 +90,8 @@ async function startBridgeAndServer() {
    * @description This function iterates through the array of devices and returns the first device that matches the provided ID. If no matching device is found, it returns `undefined`.
    */
   function deviceSearchInArrayByID(deviceID, devices) {
-    let device = {};  
-
     const deviceFound = devices.find(device => device.deviceID === deviceID);
-    if (deviceFound) { 
-      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
-    }
-    else {
-      device = undefined; // if device is not in array, set device to undefined
-    }
-    return device;
+    return deviceFound || undefined;
   }
 
   /**
@@ -110,16 +102,8 @@ async function startBridgeAndServer() {
    * @description This function iterates through the array of devices and returns the first device that matches the provided product name. If no matching device is found, it returns `undefined`.
    */
   function deviceSearchInArrayByProductName(productName, devices) {
-    let device = {};  
-
     const deviceFound = devices.find(device => device.productName === productName);
-    if (deviceFound) { 
-      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
-    }
-    else {
-      device = undefined; // if device is not in array, set device to undefined
-    }
-    return device;
+    return deviceFound || undefined;
   }
 
   /**
@@ -360,7 +344,7 @@ async function startBridgeAndServer() {
     let message     = {};  
     message.bridge  = BRIDGE_PREFIX;
 
-    if (state == "poweredOn") { // only if Bluetooth is powered on ...
+    if (state === "poweredOn") { // only if Bluetooth is powered on ...
       message.status = "online"; // ... set status to online
       mqttBridgeStatus(message);
     }
