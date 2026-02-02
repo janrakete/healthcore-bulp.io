@@ -68,7 +68,7 @@ class Converter_BulpSensorBLE extends ConverterStandard {
             else {
                 switch (property.name) {
                     case "rotary_switch":
-                        if (!value || !Buffer.isBuffer(value) && typeof value.length === 'undefined') {
+                        if (!value || (!Buffer.isBuffer(value) && typeof value.length === 'undefined')) {
                             return undefined;
                         }
                         const buf = Buffer.from(value);
