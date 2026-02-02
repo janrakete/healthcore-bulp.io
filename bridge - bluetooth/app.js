@@ -143,8 +143,17 @@ async function startBridgeAndServer() {
           common.conLog(error, "std", false);
         }
         else {
+          // Store characteristic event listeners for cleanup on disconnect
+          const characteristicListeners = [];
+
           deviceRaw.once("disconnect", function (error) { // if device is connect, set event handler for disconnecting
             common.conLog("Bluetooth: Device disconnected: " + device.deviceID + " (" + device.productName + ")", "red");
+            
+            // Clean up all characteristic event listeners to prevent memory leaks
+            characteristicListeners.forEach(({ characteristic, listener }) => {
+              characteristic.removeListener("data", listener);
+            });
+
             bridgeStatus.devicesConnected = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== device.deviceID); // remove device from array of connected devices
 
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
@@ -179,7 +188,8 @@ async function startBridgeAndServer() {
                           }
                           else {
                             common.conLog("Bluetooth: Subscribed to characteristic " + characteristic.uuid, "gre");
-                            characteristic.on("data", function (value) { // if value is received from device, log it
+                            // Create named listener function for proper cleanup
+                            const dataListener = function (value) { // if value is received from device, log it
                               let message                     = {};
                               message.deviceID                = device.deviceID;
                               message.values                  = {}; // create empty array for properties
@@ -196,7 +206,11 @@ async function startBridgeAndServer() {
                               }
 
                               mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker    
-                            }); 
+                            };
+                            
+                            // Store listener reference for cleanup
+                            characteristicListeners.push({ characteristic, listener: dataListener });
+                            characteristic.on("data", dataListener);
                           }
                         });
                       }
