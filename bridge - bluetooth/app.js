@@ -100,7 +100,7 @@ async function startBridgeAndServer() {
    */
   function deviceSearchInArray(searchKey, searchValue, devices) {
     const deviceFound = devices.find(device => device[searchKey] === searchValue);
-    return deviceFound || undefined;
+    return deviceFound;
   }
 
   /**
@@ -384,13 +384,13 @@ async function startBridgeAndServer() {
     }
     else {
       bluetooth.stopScanning();    
-      message.status                            = "offline";
-      bridgeStatus.status                       = message.status; // save status in bridge status object
-      bridgeStatus.devicesRegisteredReconnect   = false;
-      bridgeStatus.devicesConnected             = [];
-      bridgeStatus.devicesRegisteredAtServer    = [];
-      bridgeStatus.devicesFoundViaScan          = [];
-      bridgeStatus.deviceScanCallID             = undefined;
+      message.status = "offline";
+      bridgeStatus.status = message.status; // save status in bridge status object
+      bridgeStatus.devicesRegisteredReconnect = false;
+      bridgeStatus.devicesConnected = [];
+      bridgeStatus.devicesRegisteredAtServer = [];
+      bridgeStatus.devicesFoundViaScan = [];
+      bridgeStatus.deviceScanCallID = undefined;
       mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
     }
   });
