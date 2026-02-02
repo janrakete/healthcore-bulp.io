@@ -91,7 +91,7 @@ async function startBridgeAndServer() {
    */
   function deviceSearchInArrayByID(deviceID, devices) {
     const deviceFound = devices.find(device => device.deviceID === deviceID);
-    return deviceFound || undefined;
+    return deviceFound;
   }
 
   /**
@@ -103,7 +103,7 @@ async function startBridgeAndServer() {
    */
   function deviceSearchInArrayByProductName(productName, devices) {
     const deviceFound = devices.find(device => device.productName === productName);
-    return deviceFound || undefined;
+    return deviceFound;
   }
 
   /**
