@@ -1473,23 +1473,45 @@ class ConverterStandard {
             return undefined;
         }   
         else {
+            if (!value) {
+                return { "value": undefined, "valueAsNumeric": undefined };
+            }
+            
             const buffer = Buffer.from(value);
             
             switch(property.dataFormat) {
                 case "String":
                     return { "value": buffer.toString(), "valueAsNumeric": undefined };
                 case "UInt8":
+                    if (buffer.length < 1) {
+                        return { "value": undefined, "valueAsNumeric": undefined };
+                    }
                     return { "value": buffer.readUInt8(0), "valueAsNumeric": buffer.readUInt8(0) };
                 case "UInt16":
+                    if (buffer.length < 2) {
+                        return { "value": undefined, "valueAsNumeric": undefined };
+                    }
                     return { "value": buffer.readUInt16LE(0), "valueAsNumeric": buffer.readUInt16LE(0) };
                 case "UInt32":
+                    if (buffer.length < 4) {
+                        return { "value": undefined, "valueAsNumeric": undefined };
+                    }
                     return { "value": buffer.readUInt32LE(0), "valueAsNumeric": buffer.readUInt32LE(0) };
                 case "SInt8":
+                    if (buffer.length < 1) {
+                        return { "value": undefined, "valueAsNumeric": undefined };
+                    }
                     return { "value": buffer.readInt8(0), "valueAsNumeric": buffer.readInt8(0) };
                 case "SInt16":
+                    if (buffer.length < 2) {
+                        return { "value": undefined, "valueAsNumeric": undefined };
+                    }
                     return { "value": buffer.readInt16LE(0), "valueAsNumeric": buffer.readInt16LE(0) };
                 case "SInt24":
                     // Read 24-bit signed integer (3 bytes)
+                    if (buffer.length < 3) {
+                        return { "value": undefined, "valueAsNumeric": undefined };
+                    }
                     const val24 = buffer.readUIntLE(0, 3);
                     const signed24 = val24 > 0x7FFFFF ? val24 - 0x1000000 : val24;
                     return { "value": signed24, "valueAsNumeric": signed24 };
@@ -1499,6 +1521,18 @@ class ConverterStandard {
                     return { "value": buffer.toString('hex'), "valueAsNumeric": undefined };
             }
         }
+    }
+
+    /**
+     * Converts a subproperty value from the BLE device to a standard format.
+     * This is a base implementation that returns undefined.
+     * Subclasses should override this method if they need to handle subproperties.
+     * @param {Object} property - Subproperty metadata
+     * @param {Buffer|any} value - Raw value from the device
+     * @return {Object|undefined}
+     */
+    getSubproperty(property, value) {
+        return undefined;
     }
 }
 
