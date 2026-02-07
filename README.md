@@ -239,7 +239,7 @@ Example coming soon.
 
 If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
 
-## 🛡️ Security
+## 🔐 Security
 By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey` and/or `CONF_corsURL` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
 
 1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
