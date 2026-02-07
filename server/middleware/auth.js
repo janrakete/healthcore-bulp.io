@@ -15,8 +15,8 @@ const appConfig = require("../../config");
  * @description Checks the 'x-api-key' header against the configured API key. If no API key is configured, requests pass through (development mode).
  */
 function apiKeyAuth(request, response, next) {
-  if (!appConfig.CONF_apiKey || appConfig.CONF_apiKey === "CHANGE-ME-TO-A-SECURE-KEY") { // if no key configured, log warning and allow (development mode)
-    common.conLog("Auth: No API key configured. All requests are allowed. Set CONF_apiKey in .env", "red");
+  if (!appConfig.CONF_apiKey) { // if no key configured, log warning and allow (development mode)
+    common.conLog("Auth: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
     return next();
   }
 

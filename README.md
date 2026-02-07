@@ -31,6 +31,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 📈 [Healthcheck - a monitor for Healthcore](#-healthcheck---a-monitor-for-healthcore)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
+- 🛡️ [Security](#-security)
 - 📱 [App](#-app)
 
 
@@ -138,7 +139,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
    ```js
     const { ConverterStandard } = require("./ConverterStandard.js");
 
-    class Converter_BulpAZ123 extends ConverterStandard { // always extend "ConverterStandard"
+    class Converter_MyConverter extends ConverterStandard { // always extend "ConverterStandard"
       static productName = "bulp-AZ-123"; // static property to identify the product name this converter is for
 
       constructor() { 
@@ -237,6 +238,13 @@ Example coming soon.
 ```
 
 If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
+
+## 🛡️ Security
+By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey` and/or `CONF_corsURL` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
+
+1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
+
+2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key header` containing the specified key.
 
 ## 📱 App
 Yes, there is also an app in this repository. More specifically, it is the official bulp.io app or rather the source code for it.

@@ -33,10 +33,9 @@ async function startHealtcheck() {
     cors({
       origin: function (origin, callback) {
         if (!origin)
-          return callback(null, true);
-        if (appConfig.CONF_corsURL.includes(origin))
-          return callback(null, true);
-        
+          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)       
+        if ((!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") || appConfig.CONF_corsURL.includes(origin))
+          return callback(null, true);       
         callback(new Error("CORS: Origin '" + origin + "' not allowed"));
       }
     }),
@@ -44,6 +43,10 @@ async function startHealtcheck() {
       extended: true,
     })
   );
+
+  if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") {
+   common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
+  }
 
   app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {

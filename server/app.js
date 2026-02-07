@@ -46,10 +46,9 @@ async function startServer() {
     cors({
       origin: function (origin, callback) {
         if (!origin)
-          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)
-        if (appConfig.CONF_corsURL.includes(origin))
-          return callback(null, true);
-        
+          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)       
+        if ((!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") || appConfig.CONF_corsURL.includes(origin))
+          return callback(null, true);       
         callback(new Error("CORS: Origin '" + origin + "' not allowed"));
       }
     }),
@@ -91,11 +90,21 @@ async function startServer() {
    * Server
    */
   const server = require("http").createServer(app);
-  server.listen(appConfig.CONF_portServer, function () {
-    common.logoShow("Server",             appConfig.CONF_portServer); // show logo
-    common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
-    common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
+  await new Promise((resolve) => {
+    server.listen(appConfig.CONF_portServer, function () {
+      common.logoShow("Server",             appConfig.CONF_portServer); // show logo
+      common.conLog("  Server ID: " +       appConfig.CONF_serverID, "mag", false);
+      common.conLog("  Server version: " +  appConfig.CONF_serverVersion, "mag", false);
+      resolve();
+    });
   });
+
+  /**
+   * Just a small hint about CORS
+   */
+  if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") {
+   common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
+  }
 
   /**
    * Bonjour service
