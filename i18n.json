@@ -34,5 +34,85 @@
     "red": {
         "de": "Rot",
         "en": "Red"
+    },
+    "green": {
+        "de": "Grün",
+        "en": "Green"
+    },
+    "yellow": {
+        "de": "Gelb",
+        "en": "Yellow"
+    },
+    "light": {
+        "de": "Licht",
+        "en": "Light"
+    },
+    "Alarm": {
+        "de": "Alarm",
+        "en": "Alarm"
+    },
+    "heartrate": {
+        "de": "Herzfrequenz",
+        "en": "Heart rate"
+    },
+    "rotary_switch": {
+        "de": "Drehschalter",
+        "en": "Rotary switch"
+    },
+    "pressed": {
+        "de": "Gedrückt",
+        "en": "Pressed"
+    },
+    "not_pressed": {
+        "de": "Nicht gedrückt",
+        "en": "Not pressed"
+    },
+    "speaker": {
+        "de": "Lautsprecher",
+        "en": "Speaker"
+    },
+    "led": {
+        "de": "LED",
+        "en": "LED"
+    },
+    "long_pressed": {
+        "de": "Lange gedrückt",
+        "en": "Long pressed"
+    },
+    "double_pressed": {
+        "de": "Doppelt gedrückt",
+        "en": "Double pressed"
+    },
+    "voltage": {
+        "de": "Spannung",
+        "en": "Voltage"
+    },
+    "state": {
+        "de": "Status",
+        "en": "State"
+    },
+    "illuminance": {
+        "de": "Beleuchtungsstärke",
+        "en": "Illuminance"
+    },
+    "power": {
+        "de": "Leistung",
+        "en": "Power"
+    },
+    "yes": {
+        "de": "Ja",
+        "en": "Yes"
+    },
+    "no": {
+        "de": "Nein",
+        "en": "No"
+    },
+    "hue": {
+        "de": "Farbton",
+        "en": "Hue"
+    },
+    "saturation": {
+        "de": "Sättigung",
+        "en": "Saturation"
     }
 }

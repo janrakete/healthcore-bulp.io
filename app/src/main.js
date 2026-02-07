@@ -85,20 +85,6 @@ window.toastController = toastController;
 window.createAnimation = createAnimation;
 
 /**
- * Load translations and initialize global translations object
- */
-await fetch("./assets/i18n/de.json")
-  .then(res => res.json())
-  .then(translations => {
-    console.log("App: Loading Translations JSON:");
-    window.appTranslations = translations;
-    console.log(window.appTranslations);
- });
-import { Translation  } from "./services/translations.js";
-window.Translation                  = Translation;
-window.Ionic.config.backButtonText  = window.Translation.get("Back"); // Set back button text globally
-
-/**
  * Load config
  */
 await fetch("./assets/config.json")
@@ -108,6 +94,20 @@ await fetch("./assets/config.json")
     window.appConfig = config;
     console.log(window.appConfig);
  });
+
+/**
+ * Load translations and initialize global translations object
+ */
+await fetch("./assets/i18n/" + window.appConfig.CONF_language + ".json")
+  .then(res => res.json())
+  .then(translations => {
+    console.log("App: Loading Translations JSON:");
+    window.appTranslations = translations;
+    console.log(window.appTranslations);
+ });
+import { Translation  } from "./services/translations.js";
+window.Translation                  = Translation;
+window.Ionic.config.backButtonText  = window.Translation.get("Back"); // Set back button text globally
 
 /**
  * Push Notifications setup

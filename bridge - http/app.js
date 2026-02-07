@@ -44,12 +44,12 @@ async function startBridgeAndServer() {
     })
   );
 
-  app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
+  app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
       let data    = {};
       data.status = "error";
       data.error  = "JSON in request is invalid";
-      res.json(data);
+      response.json(data);
     }
   });
 

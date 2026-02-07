@@ -19,7 +19,7 @@ const appConfig = {
   CONF_portBridgeThread                  : parseInt(process.env.CONF_portBridgeThread),
   CONF_brokerAddress                     : process.env.CONF_brokerAddress,
   CONF_dbPort                            : parseInt(process.env.CONF_dbPort),
-  CONF_corsURL                           : process.env.CONF_corsURL,
+  CONF_corsURL                           : process.env.CONF_corsURL.split(",").map(url => url.trim()),
   CONF_serverID                          : process.env.CONF_serverID,
   CONF_serverVersion                     : process.env.CONF_serverVersion,
   CONF_zigBeeAdapterPort                 : process.env.CONF_zigBeeAdapterPort,
@@ -39,12 +39,14 @@ const appConfig = {
   CONF_anomalyDetectionThreshold         : parseFloat(process.env.CONF_anomalyDetectionThreshold),
   CONF_anomalyDetectionHistorySize       : parseInt(process.env.CONF_anomalyDetectionHistorySize),
   CONF_anomalyDetectionActive            : process.env.CONF_anomalyDetectionActive,
-  CONF_tablesAllowedForAPI               : process.env.CONF_tablesAllowedForAPI.split(","),
+  CONF_tablesAllowedForAPI               : process.env.CONF_tablesAllowedForAPI.split(",").map(table => table.trim()),
   CONF_tablesMaxEntriesReturned          : parseInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds        : parseInt(process.env.CONF_apiCallTimeoutMilliseconds),
   CONF_scenarioCooldownMilliseconds      : parseInt(process.env.CONF_scenarioCooldownMilliseconds),
   CONF_zigBeeReportingTimeout            : parseInt(process.env.CONF_zigBeeReportingTimeout),
   CONF_serverIDBonjour                   : process.env.CONF_serverIDBonjour,
+  CONF_apiKey                            : process.env.CONF_apiKey,
+  CONF_firebaseKeyPath                   : process.env.CONF_firebaseKeyPath,
 };
 
 module.exports = appConfig;

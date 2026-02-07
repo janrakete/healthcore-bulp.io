@@ -25,6 +25,9 @@ class DeviceEdit extends HTMLElement {
             <ion-input type="text" label-placement="stacked" label="${window.Translation.get("DeviceID")}" name="editDeviceID" required="true" ${this.ID !== "[new]" ? 'disabled="true"' : ''} shape="round" fill="outline" class="custom"></ion-input>
           </ion-item>         
           <ion-item color="light">
+            <ion-input type="text" label-placement="stacked" label="${window.Translation.get("VendorName")}" name="editVendorName" required="true" ${this.ID !== "[new]" ? 'disabled="true"' : ''} shape="round" fill="outline" class="custom"></ion-input>
+          </ion-item>           
+          <ion-item color="light">
             <ion-input type="text" label-placement="stacked" label="${window.Translation.get("ProductName")}" name="editProductName" required="true" ${this.ID !== "[new]" ? 'disabled="true"' : ''} shape="round" fill="outline" class="custom"></ion-input>
           </ion-item>           
           <ion-item color="light">
@@ -63,6 +66,7 @@ class DeviceEdit extends HTMLElement {
     if (this.ID === "[new]") {
       formData.deviceID     = this.querySelector("ion-input[name='editDeviceID']").value;
       formData.productName  = this.querySelector("ion-input[name='editProductName']").value;
+      formData.vendorName   = this.querySelector("ion-input[name='editVendorName']").value;
     }
 
     let data = {};
@@ -99,7 +103,8 @@ class DeviceEdit extends HTMLElement {
         this.querySelector("ion-input[name='editName']").value        = item.name;
         this.querySelector("ion-input[name='editDescription']").value = item.description;
         this.querySelector("ion-input[name='editDeviceID']").value    = item.deviceID;
-        this.querySelector("ion-input[name='editProductName']").value = item.productName;      
+        this.querySelector("ion-input[name='editProductName']").value = item.productName;     
+        this.querySelector("ion-input[name='editVendorName']").value  = item.vendorName; 
       }
       else {
         toastShow("Error: " + data.error, "danger");

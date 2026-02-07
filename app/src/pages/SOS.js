@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { showSpinner } from "../services/helper.js";
+import { spinnerShow, entriesNoDataMessage } from "../services/helper.js";
 
 class SOS extends HTMLElement {
   connectedCallback() {
@@ -24,7 +24,10 @@ class SOS extends HTMLElement {
         </ion-refresher>
 
         <div id="sos-refresher"></div>
+
         <ion-list id="sos-list" inset="true"></ion-list>
+
+        <div id="sos-list-no-data"></div>
 
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
@@ -87,24 +90,17 @@ class SOS extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = showSpinner("#sos-refresher");        
+    const spinner = spinnerShow("#sos-refresher");        
     try {
       const data = await apiGET("/data/sos");
       console.log("API call - Output:", data);
       
       if (data.status === "ok") {
         const listElement = this.querySelector("#sos-list");
-
-        console.log(listElement);
-
-        const items = data.results;
+        const items       = data.results;
 
         if (!items || items.length === 0) {
-          listElement.innerHTML = `
-            <ion-item color="light">
-              <ion-label>${window.Translation.get("EntriesNone")}</ion-label>
-            </ion-item>
-          `;
+          entriesNoDataMessage("#sos-list-no-data");
         }
         else {
           listElement.innerHTML = items.map(item => `

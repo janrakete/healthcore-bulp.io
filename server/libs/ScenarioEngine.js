@@ -170,7 +170,7 @@ class ScenarioEngine {
     try {
       const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID); // get all actions for this scenario
       
-      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run( // log execution
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 1
       );
 
@@ -180,7 +180,7 @@ class ScenarioEngine {
         }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
       }
 
-      database.prepare("INSERT INTO notifications (text, description, scenarioID, icon) VALUES (?, ?, ?, ?)").run(scenario.name, scenario.description, scenario.scenarioID, scenario.icon); // insert into notifications table
+      database.prepare("INSERT INTO notifications (text, description, scenarioID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(scenario.name, scenario.description, scenario.scenarioID, scenario.icon); // insert into notifications table
       common.conLog("Scenario Engine: Notification logged.", "gre");
 
       if ((this.pushEngine) && (scenario.pushNotification === 1)) { // send push notification if enabled
@@ -190,7 +190,7 @@ class ScenarioEngine {
     catch (error) {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
           
-      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success, errorMessage) VALUES (?, ?, ?, ?, ?, ?)").run( // log failed execution
+      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success,dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log failed execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 0, error.message
       );
     }
@@ -204,7 +204,7 @@ class ScenarioEngine {
     try {
       const scenario = database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
       if (scenario) {
-        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success) VALUES (?, ?, ?, ?, ?)").run( // log execution
+        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log execution
           scenario.scenarioID, "manually", "manually", "manually", 1
         );
 

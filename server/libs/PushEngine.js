@@ -5,12 +5,14 @@
  */
 
 const appConfig = require("../../config");
+const path = require("path");
 
 const firebaseAdmin = require("firebase-admin");
 
 class PushEngine {
   constructor() {
-    const serviceAccount = require("../../push-firebase-admin.json");
+    const keyPath = path.resolve(__dirname, appConfig.CONF_firebaseKeyPath);
+    const serviceAccount = require(keyPath);
     firebaseAdmin.initializeApp({credential: firebaseAdmin.credential.cert(serviceAccount)});  
     
     this.permanentInvalidTokenErrors = [
