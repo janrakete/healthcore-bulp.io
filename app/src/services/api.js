@@ -18,6 +18,7 @@ async function apiRequest(endpoint, options = {}) {
   const config = {
     headers: {
       "Content-Type": "application/json",
+      ...(window.appConfig.CONF_apiKey ? { "x-api-key": window.appConfig.CONF_apiKey } : {}),
       ...options.headers,
     },
     ...options,

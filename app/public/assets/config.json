@@ -1,5 +1,6 @@
 {
     "CONF_serverURLStatic": "http://localhost:9998",
+    "CONF_apiKey": "",
     "CONF_toastDuration": 1000,
     "CONF_serverIDBonjour" : "healthcore",
     "CONF_pushTopic": "Information",

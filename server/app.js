@@ -58,21 +58,25 @@ async function startServer() {
     }
   });
 
+  /**
+   * API Key Authentication
+   */
+  const apiKeyAuth = require("./middleware/auth");
 
   const infoData = require("./routes/info"); // import routes for server info
-  app.use("/info", infoData);
+  app.use("/info", infoData); // public - no auth required
   const routesData = require("./routes/data"); // import routes for data manipulation
-  app.use("/data", routesData);
+  app.use("/data", apiKeyAuth, routesData); // protected
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
-  app.use("/devices", routesDevices);
+  app.use("/devices", apiKeyAuth, routesDevices); // protected
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
-  app.use("/scenarios", routesScenarios);
+  app.use("/scenarios", apiKeyAuth, routesScenarios); // protected
   
   /**
    * Swagger
    */
   const swaggerDocs = require("./routes/_swagger");
-  swaggerDocs(app);
+  swaggerDocs(app); // public - no auth required
 
   /**
    * Server
