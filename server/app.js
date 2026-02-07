@@ -43,18 +43,27 @@ async function startServer() {
   app.use(bodyParser.json());
 
   app.use(
-    cors(),
+    cors({
+      origin: function (origin, callback) {
+        if (!origin)
+          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)
+        if (appConfig.CONF_corsURL.includes(origin))
+          return callback(null, true);
+        
+        callback(new Error("CORS: Origin '" + origin + "' not allowed"));
+      }
+    }),
     bodyParser.urlencoded({
       extended: true,
     })
   );
 
-  app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
+  app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
       let data           = {};
       data.status        = "error";
       data.errorMessage  = "JSON in request is invalid";
-      res.json(data);
+      response.json(data);
     }
   });
 
