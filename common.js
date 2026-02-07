@@ -112,12 +112,7 @@ function logoShow(bridge, port) {
  * @description This function creates a random alphanumeric string of the specified length, which can be used for unique identifiers or tokens.
  */
 function randomHash(length = 16) {
-    const characters    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result          = "";
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    return crypto.randomBytes(length).toString("hex").slice(0, length);
 }
 
 /**

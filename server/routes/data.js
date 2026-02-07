@@ -188,9 +188,7 @@ async function orderByBuild(orderByString, table) {
    const column   = orderByString.split(",")[0]; // first part column name
    let direction  = orderByString.split(",")[1]; // second part direction (ASC or DESC)
 
-   if (direction === undefined) {
-      direction = "ASC"; // default direction
-   }
+   direction = (direction && direction.toUpperCase() === "DESC") ? "DESC" : "ASC"; // default direction
 
    let response      = {};
    const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
