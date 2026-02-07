@@ -112,12 +112,7 @@ function logoShow(bridge, port) {
  * @description This function creates a random alphanumeric string of the specified length, which can be used for unique identifiers or tokens.
  */
 function randomHash(length = 16) {
-    const characters    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result          = "";
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    return crypto.randomBytes(length).toString("hex").slice(0, length);
 }
 
 /**
@@ -145,22 +140,36 @@ function devicePropertiesToArray(properties) {
     const Translations = require("./i18n.json");
 
     for (const key of Object.keys(properties)) {
-        const property = properties[key];
+        const rootProperty = properties[key];
+        let propertiesToProcess = [];
 
-        const { subproperties, ...base } = property; // extract subproperties and base properties
-        
-        base.notify         = base.notify || false; // ... ensure notify, read, write are defined
-        base.read           = base.read || false;
-        base.write          = base.write || false;
+        if (rootProperty.name) { // single property
+            propertiesToProcess.push(rootProperty);
+        }
+        else if (typeof rootProperty === "object" && rootProperty !== null) { // multiple properties
+            propertiesToProcess = Object.values(rootProperty);
+        }
 
-        result.push({ ...base });
+        for (const property of propertiesToProcess) {
+            if (!property || typeof property !== "object") {
+                continue;
+            }
 
-        if (subproperties && typeof subproperties === "object") { // add subproperties if exist
-            for (const subKey of Object.keys(subproperties)) {
-                subproperties[subKey].notify = subproperties[subKey].notify || false;  // ... ensure notify, read, write are defined
-                subproperties[subKey].read   = subproperties[subKey].read || false;
-                subproperties[subKey].write  = subproperties[subKey].write || false;
-                result.push({ ...subproperties[subKey] });
+            const { subproperties, ...base } = property; // extract subproperties and base properties
+            
+            base.notify         = base.notify || false; // ... ensure notify, read, write are defined
+            base.read           = base.read || false;
+            base.write          = base.write || false;
+
+            result.push({ ...base });
+
+            if (subproperties && typeof subproperties === "object") { // add subproperties if exist
+                for (const subKey of Object.keys(subproperties)) {
+                    subproperties[subKey].notify = subproperties[subKey].notify || false;  // ... ensure notify, read, write are defined
+                    subproperties[subKey].read   = subproperties[subKey].read || false;
+                    subproperties[subKey].write  = subproperties[subKey].write || false;
+                    result.push({ ...subproperties[subKey] });
+                }
             }
         }
     }

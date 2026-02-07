@@ -594,7 +594,7 @@ async function startBridgeAndServer() {
 
       common.conLog("ZigBee: Check if device converter has setupReporting function ...", "yel");
       if (device.deviceConverter !== undefined && device.deviceConverter.setupReporting !== undefined ) {
-        common.conLog("ZigBee: Device converter has setupReporting function, trying to call it", "gre", false);
+        common.conLog("ZigBee: Device converter has setupReporting function, trying to call it ...", "gre", false);
 
         try {
           const coordinatorDevice   = zigBee.getDevices().find(d => d.type === "Coordinator");

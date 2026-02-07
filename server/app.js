@@ -43,36 +43,49 @@ async function startServer() {
   app.use(bodyParser.json());
 
   app.use(
-    cors(),
+    cors({
+      origin: function (origin, callback) {
+        if (!origin)
+          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)
+        if (appConfig.CONF_corsURL.includes(origin))
+          return callback(null, true);
+        
+        callback(new Error("CORS: Origin '" + origin + "' not allowed"));
+      }
+    }),
     bodyParser.urlencoded({
       extended: true,
     })
   );
 
-  app.use(function (error, req, res, next) { // if request contains JSON and the JSON is invalid
+  app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
       let data           = {};
       data.status        = "error";
       data.errorMessage  = "JSON in request is invalid";
-      res.json(data);
+      response.json(data);
     }
   });
 
+  /**
+   * API Key Authentication
+   */
+  const apiKeyAuth = require("./middleware/auth");
 
   const infoData = require("./routes/info"); // import routes for server info
-  app.use("/info", infoData);
+  app.use("/info", infoData); // public - no auth required
   const routesData = require("./routes/data"); // import routes for data manipulation
-  app.use("/data", routesData);
+  app.use("/data", apiKeyAuth, routesData); // protected
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
-  app.use("/devices", routesDevices);
+  app.use("/devices", apiKeyAuth, routesDevices); // protected
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
-  app.use("/scenarios", routesScenarios);
+  app.use("/scenarios", apiKeyAuth, routesScenarios); // protected
   
   /**
    * Swagger
    */
   const swaggerDocs = require("./routes/_swagger");
-  swaggerDocs(app);
+  swaggerDocs(app); // public - no auth required
 
   /**
    * Server
@@ -256,8 +269,8 @@ async function startServer() {
           message.error       = "Device already registered";
         }
         else {
-          await database.prepare("INSERT INTO devices (deviceID, bridge, powerType, productName, name, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))").run(
-            data.deviceID, data.bridge, data.powerType, data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
+          await database.prepare("INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, name, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))").run(
+            data.deviceID, data.bridge, data.powerType, data.vendorName || "", data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -410,6 +423,7 @@ async function startServer() {
           delete data.updates.powerType;
           delete data.updates.properties;
           delete data.updates.productName;
+          delete data.updates.vendorName;
           
           const fields        = Object.keys(data.updates);
           const placeholders  = fields.map(field => field + " = ?").join(", ");

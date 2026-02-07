@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { showSpinner } from "../services/helper.js";
+import { spinnerShow, entriesNoDataMessage } from "../services/helper.js";
 
 class Individuals extends HTMLElement {
   connectedCallback() {
@@ -12,7 +12,7 @@ class Individuals extends HTMLElement {
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/"></ion-back-button>
+            <ion-back-button default-href="/settings"></ion-back-button>
           </ion-buttons>
           <ion-title>${window.Translation.get("PageIndividualsHeadline")}</ion-title>
         </ion-toolbar>
@@ -24,6 +24,9 @@ class Individuals extends HTMLElement {
         </ion-refresher>
 
         <div id="individuals-list"></div>
+
+        <div id="individuals-list-no-data"></div>        
+
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="success" id="individual-edit-button">
@@ -85,7 +88,7 @@ class Individuals extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = showSpinner("#individuals-list");        
+    const spinner = spinnerShow("#individuals-list");        
     try {
       const roomData = await apiGET("/data/rooms"); // load rooms for select
       console.log("API call - Output:", roomData);
@@ -95,12 +98,10 @@ class Individuals extends HTMLElement {
         
         if (data.status === "ok") {
           const listElement = this.querySelector("#individuals-list");
-          const items = data.results;
+          const items       = data.results;
 
           if (!items || items.length === 0) {
-            listElement.innerHTML = `
-              <center><ion-text color="light">${window.Translation.get("EntriesNone")}</ion-text></center>
-            `;
+            entriesNoDataMessage("#individuals-list-no-data");
           }
           else {
             listElement.innerHTML = items.map(item => `

@@ -96,5 +96,13 @@
     "HourAgo" : "Vor {0} Stunde:",
     "DaysAgo" : "Vor {0} Tagen:",
     "DayAgo" : "Vor {0} Tag:",
-    "Icon" : "Symbol"
+    "Icon" : "Symbol",
+    "PageSettingsHeadline" : "Einstellungen",
+    "ServerNotFound" : "bulp.station nicht gefunden.",
+    "DevicesScanFoundAndAdded" : "Gerät gefunden und hinzugefügt.",
+    "DevicesScanFinished" : "Geräte-Suche beendet.",
+    "DeviceID": "Geräte-ID",
+    "ProductName": "Produktname",
+    "VendorName": "Hersteller",
+    "EntriesNoneAddNew": "Um etwas Neues hinzuzufügen, tippe auf die Schaltfläche."
 }

@@ -347,7 +347,7 @@ router.post("/", async function (request, response) {
             if (Array.isArray(payload.triggers) && Array.isArray(payload.actions)) {
                 data.status = "ok";
                 
-                const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, pushNotification, priority, icon, roomID, individualID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, pushNotification, priority, icon, roomID, individualID, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))");
                 const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
