@@ -45,6 +45,7 @@ const appConfig = {
   CONF_scenarioCooldownMilliseconds      : parseInt(process.env.CONF_scenarioCooldownMilliseconds),
   CONF_zigBeeReportingTimeout            : parseInt(process.env.CONF_zigBeeReportingTimeout),
   CONF_serverIDBonjour                   : process.env.CONF_serverIDBonjour,
+  CONF_apiKey                            : process.env.CONF_apiKey,
 };
 
 module.exports = appConfig;
