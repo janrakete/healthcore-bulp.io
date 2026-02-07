@@ -46,6 +46,7 @@ const appConfig = {
   CONF_zigBeeReportingTimeout            : parseInt(process.env.CONF_zigBeeReportingTimeout),
   CONF_serverIDBonjour                   : process.env.CONF_serverIDBonjour,
   CONF_apiKey                            : process.env.CONF_apiKey,
+  CONF_firebaseKeyPath                   : process.env.CONF_firebaseKeyPath,
 };
 
 module.exports = appConfig;
