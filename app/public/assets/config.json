@@ -8,5 +8,5 @@
     "CONF_dateLocale": "de-DE",
     "CONF_scanRefreshInterval": 2000,
     "CONF_serverFindTimeout": 10,
-    "CONF_language": "en"
+    "CONF_language": "de"
 }
