@@ -30,6 +30,26 @@ async function startServer() {
     });
 
     /**
+     * Validates client credentials against configured username and password. If no credentials are configured, all clients are allowed (development mode).
+     */
+    aedes.authenticate = function (client, username, password, callback) {
+        if (!appConfig.CONF_brokerUsername && !appConfig.CONF_brokerPassword) {
+            return callback(null, true);
+        }
+
+        const passwordString = password ? password.toString() : "";
+        if (username === appConfig.CONF_brokerUsername && passwordString === appConfig.CONF_brokerPassword) {
+            common.conLog("Broker: Client '" + client.id + "' authenticated successfully", "gre");
+            return callback(null, true);
+        }
+
+        common.conLog("Broker: Client '" + client.id + "' authentication failed", "red");
+        const error      = new Error("Authentication failed");
+        error.returnCode = 4; // CONNACK return code: bad username or password
+        return callback(error, false);
+    };
+
+    /**
      * =============================================================================================
      * Helper functions
      * ================

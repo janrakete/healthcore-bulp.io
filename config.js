@@ -18,6 +18,8 @@ const appConfig = {
   CONF_portBridgeLoRa                    : parseInt(process.env.CONF_portBridgeLoRa),
   CONF_portBridgeThread                  : parseInt(process.env.CONF_portBridgeThread),
   CONF_brokerAddress                     : process.env.CONF_brokerAddress,
+  CONF_brokerUsername                    : process.env.CONF_brokerUsername,
+  CONF_brokerPassword                    : process.env.CONF_brokerPassword,
   CONF_dbPort                            : parseInt(process.env.CONF_dbPort),
   CONF_corsURL                           : process.env.CONF_corsURL.split(",").map(url => url.trim()),
   CONF_serverID                          : process.env.CONF_serverID,
