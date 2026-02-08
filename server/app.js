@@ -87,9 +87,29 @@ async function startServer() {
   swaggerDocs(app); // public - no auth required
 
   /**
-   * Server
+   * Server (HTTPS if TLS is configured, otherwise HTTP)
    */
-  const server = require("http").createServer(app);
+  let server;
+  if (appConfig.CONF_tlsPath) {
+    const fs    = require("fs");
+    const https = require("https");
+    try {
+      const tlsOptions = {
+        cert: fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem"),
+        key:  fs.readFileSync(appConfig.CONF_tlsPath + "key.pem"),
+      };
+      server = https.createServer(tlsOptions, app);
+      common.conLog("Server: TLS enabled (HTTPS)", "gre");
+    }
+    catch (error) {
+      common.conLog("Server: TLS files not found, falling back to HTTP", "red");
+      server = require("http").createServer(app);
+    }
+  }
+  else {
+    server = require("http").createServer(app);
+  }
+
   await new Promise((resolve) => {
     server.listen(appConfig.CONF_portServer, function () {
       common.logoShow("Server",             appConfig.CONF_portServer); // show logo
@@ -100,18 +120,22 @@ async function startServer() {
   });
 
   /**
-   * Just small hints about CORS, API and MQTT
+   * Security hints (CORS, API, MQTT, HTTPS)
    */
   if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") { // if no CORS URLs configured, log warning and allow (development mode)
-   common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
+   common.conLog("Security: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
   }
 
   if (!appConfig.CONF_apiKey) { // if no key configured, log warning and allow (development mode)
-    common.conLog("Auth: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
+    common.conLog("Security: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
   }
 
   if (!appConfig.CONF_brokerUsername && !appConfig.CONF_brokerPassword) { // if no MQTT credentials configured, log warning and allow (development mode)
-    common.conLog("Auth: No MQTT broker credentials configured. All clients are allowed. Set CONF_brokerUsername and CONF_brokerPassword in .env.local", "red");
+    common.conLog("Security: No MQTT broker credentials configured. All clients are allowed. Set CONF_brokerUsername and CONF_brokerPassword in .env.local", "red");
+  }
+
+  if (!appConfig.CONF_tlsPath) { // if TLS not configured, log warning and use HTTP (development mode)
+    common.conLog("Security: TLS certificate or key path not configured. Using HTTP. Set CONF_tlsPath in .env.local", "red");
   }
 
   /**

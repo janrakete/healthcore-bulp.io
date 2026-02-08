@@ -90,7 +90,6 @@ async function pause(milliseconds) {
  * 
  */
 function logoShow(bridge, port) {
-    console.clear();
     conLog("================================================================     ", "mag", false);
     conLog("   _   _ _____    _    _   _____ _   _  ____ ___  ____  _____        ", "mag", false);
     conLog("  | | | | ____|  / \\  | | |_   _| | | |/ ___/ _ \\|  _ \\| ____|    ", "mag", false);
