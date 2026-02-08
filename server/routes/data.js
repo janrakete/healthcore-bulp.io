@@ -10,6 +10,16 @@ const sqlStringEscape = require("sqlstring");
 const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
 
 /**
+ * Validates that a name (table or column) contains only safe characters.
+ * @param {string} name - The name to validate.
+ * @returns {boolean} - Returns true if the name is safe, false otherwise.
+ * @description Only allows alphanumeric characters and underscores. Prevents SQL injection through table or column names.
+ */
+function sqlCheckValidName(name) {
+   return typeof name === "string" && /^[a-zA-Z0-9_]+$/.test(name);
+}
+
+/**
  * This function builds an SQL statement for INSERT or UPDATE operations based on the provided payload.
  * @async
  * @function statementBuild
@@ -21,6 +31,12 @@ const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which ta
  */
 async function statementBuild(table, payload, type="INSERT") {
    let response = {};
+
+   if (!sqlCheckValidName(table)) {
+      response.status = "error";
+      response.error  = "Invalid table name";
+      return response;
+   }
 
    const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
@@ -82,6 +98,12 @@ async function statementBuild(table, payload, type="INSERT") {
  */
 async function conditionBuild(table, payload) {
    let response = {};
+
+   if (!sqlCheckValidName(table)) {
+      response.status = "error";
+      response.error  = "Invalid table name";
+      return response;
+   }
 
    const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
@@ -191,6 +213,13 @@ async function orderByBuild(orderByString, table) {
    direction = (direction && direction.toUpperCase() === "DESC") ? "DESC" : "ASC"; // default direction
 
    let response      = {};
+
+   if (!sqlCheckValidName(column)) {
+      response.status = "error";
+      response.error  = "Invalid column name in orderBy";
+      return response;
+   }
+
    const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
 
