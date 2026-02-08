@@ -21,9 +21,32 @@ async function startServer() {
     /**
      * Initialize the MQTT broker and the server
      */
-    const aedes     = require("aedes")();
-    const net       = require("net");
-    const server    = net.createServer(aedes.handle);
+    const aedes = require("aedes")();
+    let server;
+
+    if (appConfig.CONF_tlsPath) {
+        const tls = require("tls");
+        const fs  = require("fs");
+
+        try {
+            const options = {
+              key:  fs.readFileSync(appConfig.CONF_tlsPath + "key.pem"),
+              cert: fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem")
+            };
+            server = tls.createServer(options, aedes.handle);
+            common.conLog("Broker: TLS enabled", "gre");
+        }
+        catch (error) {
+             common.conLog("Broker: Error loading TLS certs (" + error.message + "). Check CONF_tlsPath.", "red");
+             common.conLog("Broker: Falling back to non-TLS (TCP)", "yel");
+             const net = require("net");
+             server    = net.createServer(aedes.handle);
+        }
+    }
+    else {
+        const net = require("net");
+        server = net.createServer(aedes.handle);
+    }
 
     server.listen(appConfig.CONF_portBroker, function() {
         common.logoShow("MQTT Broker", appConfig.CONF_portBroker); // show logo
