@@ -183,7 +183,9 @@ async function startHealtcheck() {
    * Server
    * ======
    */
-  app.listen(appConfig.CONF_portHealthcheck); // start the server on the configured port
+  app.listen(appConfig.CONF_portHealthcheck, "127.0.0.1", function () { // bind to localhost only
+    common.conLog("Healthcheck server listening only on 127.0.0.1:" + appConfig.CONF_portHealthcheck, "gre");
+  });
 }
 
 startHealtcheck();

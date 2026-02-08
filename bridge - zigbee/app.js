@@ -58,7 +58,7 @@ async function startBridgeAndServer() {
    * ==========================================
    */
   const mqtt       = require("mqtt");
-  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: BRIDGE_PREFIX }); // connect to broker ...
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword }); // connect to broker ...
 
   /**
    * Connects the MQTT client and subscribes to ZigBee-related topics.

@@ -115,7 +115,7 @@ production-start.sh uses the process manager, so that a service is restarted if 
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
 ## 📈 Healthcheck - a monitor for Healthcore
-Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. All outputs are displayed in a console.
+Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. All outputs are displayed in a console. Healthcheck only works locally.
 
 How to start healthcheck:
 ```bash
@@ -245,6 +245,8 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
 
 2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key header` containing the specified key.
+
+3. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
 
 ## 📱 App
 Yes, there is also an app in this repository. More specifically, it is the official bulp.io app or rather the source code for it.

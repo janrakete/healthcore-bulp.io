@@ -100,9 +100,9 @@ async function startServer() {
   });
 
   /**
-   * Just small hints about CORS and API
+   * Just small hints about CORS, API and MQTT
    */
-  if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") {
+  if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") { // if no CORS URLs configured, log warning and allow (development mode)
    common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
   }
 
@@ -110,6 +110,9 @@ async function startServer() {
     common.conLog("Auth: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
   }
 
+  if (!appConfig.CONF_brokerUsername && !appConfig.CONF_brokerPassword) { // if no MQTT credentials configured, log warning and allow (development mode)
+    common.conLog("Auth: No MQTT broker credentials configured. All clients are allowed. Set CONF_brokerUsername and CONF_brokerPassword in .env.local", "red");
+  }
 
   /**
    * Bonjour service
@@ -149,7 +152,7 @@ async function startServer() {
    * MQTT client
    */
   const mqtt       = require("mqtt");
-  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: "server" }); // connect to broker ...
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: "server", username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword }); // connect to broker ...
 
   /**
   * Connects the MQTT client and subscribes to all topics.
