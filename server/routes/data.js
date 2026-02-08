@@ -5,7 +5,6 @@
  */
 const appConfig       = require("../../config");
 const router          = require("express").Router();
-const sqlStringEscape = require("sqlstring");
 
 const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
 
@@ -41,42 +40,40 @@ async function statementBuild(table, payload, type="INSERT") {
    const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
 
-   let dataList = [];
+   let parameters = {};
+   let fields     = [];
+   let values     = [];
+   let updates    = [];
    
    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
       for (const [key, value] of Object.entries(payload)) { // loop through all keys of the JSON payload
          if (columnsList.includes(key)) { // if key is an existing table column ... 
-            response.status = "ok"; // ... return ok       
-            let data   = {};
-            data[key]  = value;
-            dataList.push(data);
+            response.status = "ok"; // ... return ok
+            
+            parameters[key] = value; // add to parameters
+            
+            if (type === "INSERT") {
+               fields.push(key);
+               values.push("@" + key);
+            } else {
+               updates.push(key + "=@" + key);
+            }
          }
          else { // if key is not an existing table column ...
             response.status = "error"; // ... return error
             response.error  = "Given column '" + key + "' does not exists in table";
+            parameters = {}; // reset
             break;
          }
       }
 
       if (response.status === "ok") {
-         response.statement = "";
+         response.parameters = parameters;
          if (type === "INSERT") { // build INSERT statement
-            let fields = "";
-            let values = "";
-            for (let data of dataList) {
-               fields = fields + Object.keys(data)[0] + ", "
-               values = values + sqlStringEscape.escape(data[Object.keys(data)[0]]) + ", ";
-            }
-
-            fields = fields.substring(0, fields.length - 2);  // remove the last ", "
-            values = values.substring(0, values.length - 2);  // remove the last ", "
-            response.statement = " (" + fields + ") VALUES (" + values + ")";
+             response.statement = " (" + fields.join(", ") + ") VALUES (" + values.join(", ") + ")";
          }
          else { // build UPDATE statement
-            for (let data of dataList) {
-               response.statement = response.statement + " " + Object.keys(data)[0] + "=" + sqlStringEscape.escape(data[Object.keys(data)[0]]) + ", ";
-            }
-            response.statement = response.statement.substring(0, response.statement.length - 2);  // remove the last ", "
+             response.statement = updates.join(", ");
          }
       }
    }
@@ -120,26 +117,35 @@ async function conditionBuild(table, payload) {
       delete payload.limit;
    }
 
-   response.condition = "";   
+   response.condition  = "";   
+   response.parameters = {};
+
+   let conditions = [];
+
    if ((payload !== undefined) && (Object.keys(payload).length > 0)) {
       for (const [key, value] of Object.entries(payload)) { // loop through all keys of the JSON payload
          if (columnsList.includes(key)) { // if key is an existing table column ...
-            response.status = "ok"; // ... return ok and ...                
-            if (response.condition === undefined) {
-               response.condition = "";
-            }
-            response.condition = response.condition + " " + key + "=" + sqlStringEscape.escape(value) + " AND"; // ... build WHERE condition
+            response.status = "ok"; // ... return ok
+            
+            const paramKey = "cond_" + key; // unique param name for condition
+            conditions.push(key + "=@" + paramKey);
+            response.parameters[paramKey] = value;
          }
          else { // if key is not an existing table column
-            response.condition = "";
             response.status    = "error"; // ... return error
             response.error     = "Given column '" + key + "' in condition block does not exists in table";
+            response.parameters = {}; // reset
             break;
          }
       }
       
-      if (response.condition !== "") { // remove the last " AND"
-         response.condition = " WHERE " + response.condition.substring(0, response.condition.length - 4); 
+      if (response.status === "ok" && conditions.length > 0) {
+         response.condition = " WHERE " + conditions.join(" AND ");
+      } else if (response.status === "error") {
+         // error already set
+      } else {
+          // empty loop but keys present? Should be ok.
+          response.status = "ok";
       }
    }  
    else {
@@ -297,13 +303,13 @@ router.post("/:table", async function (request, response) {
 
          const statement = await statementBuild(table, payload, "INSERT");
          if (statement.status === "ok") {
-            statement.statement = "INSERT INTO " + table + statement.statement;
+            const sql = "INSERT INTO " + table + statement.statement;
             common.conLog("POST Request: access table '" + table + "'", "gre");
-            common.conLog("Execute statement: " + statement.statement, "std", false);
+            common.conLog("Execute statement: " + sql, "std", false);
 
             data.status = "ok";
 
-            const result = await database.prepare(statement.statement).run();
+            const result = await database.prepare(sql).run(statement.parameters);
             data.ID = result.lastInsertRowid; // return last insert id
          }
          else {
@@ -403,16 +409,16 @@ router.get("/:table", async function (request, response) {
 
          const condition = await conditionBuild(table, payload);
          if (condition.status === "ok") {
-            let statement = "SELECT * FROM " + table + condition.condition;
+            let sql = "SELECT * FROM " + table + condition.condition;
 
-            if (!statement.toUpperCase().includes(" LIMIT ")) { // if statement contains no LIMIT clause, add a default one to avoid overload
-               statement = statement + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
+            if (!sql.toUpperCase().includes(" LIMIT ")) { // if statement contains no LIMIT clause, add a default one to avoid overload
+               sql = sql + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
             }
 
             common.conLog("GET Request: access table '" + table + "'", "gre");
-            common.conLog("Execute statement: " + statement, "std", false);
+            common.conLog("Execute statement: " + sql, "std", false);
 
-            const results = await database.prepare(statement).all();
+            const results = await database.prepare(sql).all(condition.parameters);
             data.results = results;
 
          }
@@ -506,12 +512,12 @@ router.delete("/:table", async function (request, response) {
       try {
          const condition = await conditionBuild(table, payload);
          if (condition.status === "ok") {
-            if (condition.condition.trim() !== "") {
-               const statement = "DELETE FROM " + table + condition.condition + " LIMIT 1";
+            if (condition.condition && condition.condition.trim() !== "") {
+               const sql = "DELETE FROM " + table + condition.condition + " LIMIT 1";
                common.conLog("DELETE Request: access table '" + table + "'", "gre");
-               common.conLog("Execute statement: " + statement, "std", false);
+               common.conLog("Execute statement: " + sql, "std", false);
       
-               const result = await database.prepare(statement).run();
+               const result = await database.prepare(sql).run(condition.parameters);
 
                if (result.changes === 0) {
                   data.status = "error";
@@ -628,15 +634,16 @@ router.patch("/:table", async function (request, response) {
 
          const condition = await conditionBuild(table, query);
          if (condition.status === "ok") {
-            if (condition.condition.trim() !== "") {
+            if (condition.condition && condition.condition.trim() !== "") {
 
                const statement = await statementBuild(table, payload, "UPDATE");
                if (statement.status === "ok") {
-                  statement.statement = "UPDATE " + table + " SET " + statement.statement + condition.condition + " LIMIT 1";
+                  const sql = "UPDATE " + table + " SET " + statement.statement + condition.condition + " LIMIT 1";
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
-                  common.conLog("Execute statement: " + statement.statement, "std", false);
+                  common.conLog("Execute statement: " + sql, "std", false);
 
-                  const result = await database.prepare(statement.statement).run();
+                  const params = { ...statement.parameters, ...condition.parameters };
+                  const result = await database.prepare(sql).run(params);
 
                   if (result.changes === 0) {
                      data.status = "error";

@@ -31,7 +31,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 📈 [Healthcheck - a monitor for Healthcore](#-healthcheck---a-monitor-for-healthcore)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
-- 🛡️ [Security](#-security)
+- 🔐 [Security](#-security)
 - 📱 [App](#-app)
 
 
