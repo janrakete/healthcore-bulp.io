@@ -272,8 +272,8 @@ Installing and compiling the app:
    1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
 
    2. If you want to use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
-      1. `google-services.json` to `app/android/app/` (https://support.google.com/firebase/answer/7015592?hl=en)
-      2. `push-firebase-admin.json` to Healthcore root directory (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments)
+      1. `google-services.json` (https://support.google.com/firebase/answer/7015592?hl=en) to `app/android/app/` 
+      2. `push-firebase-admin.json` (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments) **outside** the repository, so there is no chance to commit it accidentally. You can change the path in `.env.local` via `CONF_pushFirebaseKeyPath`. Default is same level as the repository.
 
    3. Build:
       ```bash
