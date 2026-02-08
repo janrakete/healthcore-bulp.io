@@ -100,11 +100,16 @@ async function startServer() {
   });
 
   /**
-   * Just a small hint about CORS
+   * Just small hints about CORS and API
    */
   if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") {
    common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
   }
+
+  if (!appConfig.CONF_apiKey) { // if no key configured, log warning and allow (development mode)
+    common.conLog("Auth: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
+  }
+
 
   /**
    * Bonjour service
