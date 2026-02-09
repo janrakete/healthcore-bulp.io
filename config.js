@@ -49,6 +49,7 @@ const appConfig = {
   CONF_serverIDBonjour                   : process.env.CONF_serverIDBonjour,
   CONF_apiKey                            : process.env.CONF_apiKey,
   CONF_tlsPath                           : process.env.CONF_tlsPath,
+  CONF_tlsRejectUnauthorized             : process.env.CONF_tlsRejectUnauthorized,
   CONF_pushFirebaseKeyPath               : process.env.CONF_pushFirebaseKeyPath,
 };
 

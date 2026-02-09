@@ -61,12 +61,13 @@ async function startBridgeAndServer() {
   let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
-      const fs = require("fs");
-      mqttOptions.ca = [ fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem") ];
-      mqttOptions.rejectUnauthorized = false; 
+      const fs                       = require("fs");
+      mqttOptions.ca                 = [ fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem") ];
+      mqttOptions.rejectUnauthorized = appConfig.CONF_tlsRejectUnauthorized; 
+      common.conLog("MQTT: TLS certificate loaded, using secure connection to broker", "gre");  
     }
     catch (error) {
-      common.conLog("MQTT: TLS certificate not found, ignoring...", "yel");
+      common.conLog("MQTT: TLS certificate not found, ignoring ...", "yel");
     }
   }
   const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, mqttOptions); // connect to broker ...
