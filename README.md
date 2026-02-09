@@ -126,7 +126,7 @@ Then open a browser und type:
 ```bash
 http://localhost:9990
 ```
-(9990 is the standard port healthcheck and localhost the standard base URL, configured in `.env`)
+(9990 is the standard port healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want) 
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
@@ -230,7 +230,7 @@ You can explore all APIs using Swagger:
 ```bash
 http://localhost:9998/api-docs/
 ```
-(9998 is the standard server port and localhost the standard base URL, configured in .env)
+(9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
 
 **Example for ZigBee:**
 ```js
@@ -246,7 +246,9 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 
 2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key header` containing the specified key.
 
-3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The files created must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository.
+3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository.
+
+If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
 
 4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
 
