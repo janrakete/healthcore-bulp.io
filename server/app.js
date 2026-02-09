@@ -176,7 +176,19 @@ async function startServer() {
    * MQTT client
    */
   const mqtt       = require("mqtt");
-  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: "server", username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword }); // connect to broker ...
+  let mqttOptions  = { clientId: "server", username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
+  if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
+    try {
+      const fs = require("fs");
+      mqttOptions.ca = [ fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem") ];
+      mqttOptions.rejectUnauthorized = false; 
+    }
+    catch (error) {
+      common.conLog("MQTT: TLS certificate not found, ignoring...", "yel");
+    }
+  }
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, mqttOptions); // connect to broker ...
+
 
   /**
   * Connects the MQTT client and subscribes to all topics.

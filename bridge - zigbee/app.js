@@ -16,13 +16,13 @@ const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**
- * Starts the LoRa bridge and MQTT server.
- * Initializes the HTTP server, MQTT client, serial port for the LoRa adapter, 
+ * Starts the ZigBee bridge and MQTT server.
+ * Initializes the HTTP server, MQTT client, serial port for the ZigBee adapter, 
  * and defines all MQTT message handlers.
  * Automatically invoked on script startup.
  * @async
  * @function startBridgeAndServer
- * @description This function sets up the LoRa bridge to listen for device discovery, connection, and disconnection events.
+ * @description This function sets up the ZigBee bridge to listen for device discovery, connection, and disconnection events.
  */
 async function startBridgeAndServer() {
   /**
@@ -58,7 +58,19 @@ async function startBridgeAndServer() {
    * ==========================================
    */
   const mqtt       = require("mqtt");
-  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword }); // connect to broker ...
+  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
+  if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
+    try {
+      const fs = require("fs");
+      mqttOptions.ca = [ fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem") ];
+      mqttOptions.rejectUnauthorized = false; 
+    }
+    catch (error) {
+      common.conLog("MQTT: TLS certificate not found, ignoring...", "yel");
+    }
+  }
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, mqttOptions); // connect to broker ...
+
 
   /**
    * Connects the MQTT client and subscribes to ZigBee-related topics.
@@ -66,7 +78,7 @@ async function startBridgeAndServer() {
    * @description This function is called when the MQTT client successfully connects to the broker.
    */
   function mqttConnect() {
-    mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to zigbee topics
+    mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to ZigBee topics
       common.conLog("MQTT: Subscribed to ZigBee topics from broker", "yel"); 
       if (error) {
         common.conLog("MQTT: Error while subscribing:", "red");
