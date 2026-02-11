@@ -195,6 +195,32 @@ async function startBridgeAndServer() {
   });
 
   /**
+   * If the serial port is closed, log message and set portOpened to false.
+   * @event close
+   * @description This event is triggered when the serial port for the LoRa adapter is closed (e.g. USB adapter disconnected).
+   */
+  loRa.on("close", () => {
+    common.conLog("LoRa: serial port for LoRa Adapter closed", "red");
+    bridgeStatus.portOpened = false; // set port opened to false
+    bridgeStatus.status     = "offline"; // set status to offline
+  });
+
+  /**
+   * Auto-reconnect: periodically try to reopen the serial port if it is closed.
+   * @description This interval checks every X seconds whether the serial port is closed and attempts to reopen it. On success, the "open" event fires and reconfigures the adapter.
+   */
+  setInterval(() => {
+    if (bridgeStatus.portOpened === false) {
+      common.conLog("LoRa: Attempting to reconnect to LoRa Adapter ...", "yel");
+      loRa.open((error) => {
+        if (error) {
+          common.conLog("LoRa: Reconnect failed - " + error.message, "red");
+        }
+      });
+    }
+  }, appConfig.CONF_loRaAdapterReconnectIntervalSeconds * 1000);
+
+  /**
    * If the serial port is receiving data
    * @event data
    * @description This event is triggered when the serial port for the LoRa adapter receives data.
@@ -208,28 +234,47 @@ async function startBridgeAndServer() {
       common.conLog(data, "std", false);
 
       if (data.startsWith("Data: (HEX:) ")) { // if data starts with "Data: (HEX:) ", its a message
-        common.conLog("LoRa: data is from device", "yel");
-        data = data.replace("Data: (HEX:) ", ""); // remove "Data: (HEX:) " from data
-        data = data.replace(/ /g,""); // remove spaces from hex string
-        data = Buffer.from(data, "hex").toString("utf8");
+        try {
+          common.conLog("LoRa: data is from device", "yel");
+          data = data.replace("Data: (HEX:) ", ""); // remove "Data: (HEX:) " from data
+          data = data.replace(/ /g,""); // remove spaces from hex string
+          
+          if (!/^[0-9a-fA-F]*$/.test(data)) { // validate that the remaining string is valid hex
+            common.conLog("LoRa: Invalid hex data received, ignoring packet", "red");
+            common.conLog("LoRa: Raw data: " + data, "std", false);
+            return;
+          }
 
-        const deviceID = data.substring(0, 16); // get device ID from data (first 16 characters)
-        const device = deviceSearchInArray(deviceID, bridgeStatus.devicesConnected); 
+          data = Buffer.from(data, "hex").toString("utf8");
+          
+          if (data.length < 17) { // validate minimum payload length (16 chars device ID + at least 1 char value)
+            common.conLog("LoRa: Payload too short (expected at least 17 chars, got " + data.length + "), ignoring packet", "red");
+            common.conLog("LoRa: Decoded data: " + data, "std", false);
+          }
+          else {
+            const deviceID = data.substring(0, 16); // get device ID from data (first 16 characters)
+            const device   = deviceSearchInArray(deviceID, bridgeStatus.devicesConnected); 
 
-        if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
-          common.conLog("LoRa: Device " + deviceID + " is connected - trying to convert data", "yel");
+            if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
+              common.conLog("LoRa: Device " + deviceID + " is connected - trying to convert data", "yel");
 
-          let message        = {};
-          message.deviceID   = deviceID;
-          message.bridge     = BRIDGE_PREFIX;
-          message.values     = data.substring(16);
+              let message        = {};
+              message.deviceID   = deviceID;
+              message.bridge     = BRIDGE_PREFIX;
+              message.values     = data.substring(16);
 
-          common.conLog("LoRa: Request for sending values of device " + deviceID, "yel", false);
+              common.conLog("LoRa: Request for sending values of device " + deviceID, "yel", false);
 
-          mqttDevicesValuesGet(message); 
+              mqttDevicesValuesGet(message); 
+            }
+            else { // if device is not in array of connected devices, send error message
+              common.conLog("LoRa: Device is not connected or registered at server", "red");
+            }
+          }
         }
-        else { // if device is not in array of connected devices, send error message
-          common.conLog("LoRa: Device is not connected or registered at server", "red");
+        catch (error) {
+          common.conLog("LoRa: Error while parsing incoming data, ignoring packet", "red");
+          common.conLog(error.message, "std", false);
         }
       }
     }
@@ -412,15 +457,32 @@ async function startBridgeAndServer() {
 
     mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
   }
+
+  /**
+   * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
+   * Logs a message indicating that the server is closed and exits the process.
+   */  
+  process.on("SIGINT", function () {
+    common.conLog("LoRa: Graceful shutdown initiated ...", "yel");
+
+    loRa.close(); // close serial port for LoRa adapter
+
+    const message = {};
+    message.bridge  = BRIDGE_PREFIX;
+    message.status = "offline";
+    
+    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // publish offline status to MQTT broker
+
+    mqttClient.end(false, {}, function () {
+      common.conLog("LoRa: MQTT connection closed, shutdown complete", "mag");
+      process.exit(0);
+    });
+
+    setTimeout(function () {  // fallback exit in case MQTT end callback never fires
+      common.conLog("LoRa: Shutdown timeout - forcing exit", "red");
+      process.exit(1);
+    }, appConfig.CONF_bridgesWaitShutdownSeconds * 1000);
+  });
 }
   
 startBridgeAndServer();
-
-/**
- * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
- * Logs a message indicating that the server is closed and exits the process.
- */  
-process.on("SIGINT", function () {
-    common.conLog("Server closed.", "mag", true);
-    process.exit(0);
-});

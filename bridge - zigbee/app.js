@@ -790,5 +790,6 @@ startBridgeAndServer();
  */  
 process.on("SIGINT", function () {
   common.conLog("Server closed.", "mag", true);
+  GRTACEFULL SHZTWIODSN
   process.exit(0);
 });
