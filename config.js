@@ -58,7 +58,8 @@ const appConfig = {
   CONF_devicesBluetoothBatteryThresholdPercent   : parseInt(process.env.CONF_devicesBluetoothBatteryThresholdPercent),
   CONF_devicesBluetoothBatteryAlertCooldownHours : parseInt(process.env.CONF_devicesBluetoothBatteryAlertCooldownHours),
   CONF_devicesBluetoothRSSIMonIntervalSeconds    : parseInt(process.env.CONF_devicesBluetoothRSSIMonIntervalSeconds),
-  CONF_bridgesWaitShutdownSeconds                : parseInt(process.env.CONF_bridgesWaitShutdownSeconds)
+  CONF_bridgesWaitShutdownSeconds                : parseInt(process.env.CONF_bridgesWaitShutdownSeconds),
+  CONF_loRaAdapterReconnectIntervalSeconds       : parseInt(process.env.CONF_loRaAdapterReconnectIntervalSeconds)  
 };
 
 module.exports = appConfig;

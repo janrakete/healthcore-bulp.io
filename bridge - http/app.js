@@ -283,24 +283,38 @@ async function startBridgeAndServer() {
         data.status = "error";
         data.error  = "No payload given";
       }
-      else {// if payload exists, check if device is in array of connected devices
-        const device = deviceSearchInArray(payload.deviceID, bridgeStatus.devicesConnected);  
-        if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
-          common.conLog("HTTP: Device " + payload.deviceID + " is connected - trying to get and convert data", "yel");
-
-          message.deviceID     = payload.deviceID;
-          message.bridge       = BRIDGE_PREFIX;
-          message.values       = payload.values;
-
-          common.conLog("HTTP: Request for sending values of device " + message.deviceID, "yel", false);
-
-          mqttDevicesValuesGet(message);
-          data.status = "ok";
-        }
-        else { // if device is not in array of connected devices, send error message
-          common.conLog("HTTP: Device is not connected or registered at server", "red");
+      else {// if payload exists, validate payload structure first
+        if (!payload.deviceID || typeof payload.deviceID !== "string") {
           data.status = "error";
-          data.error  = "Device " + payload.deviceID + " is not registered at server";
+          data.error  = "deviceID must be a non-empty string";
+        }
+        else if (!payload.values || typeof payload.values !== "object" || Array.isArray(payload.values)) {
+          data.status = "error";
+          data.error  = "Values must be a non-empty object";
+        }
+        else if (Object.keys(payload.values).length === 0) {
+          data.status = "error";
+          data.error  = "Values must contain at least one property";
+        }
+        else { // payload structure is valid, check if device is in array of connected devices
+          const device = deviceSearchInArray(payload.deviceID, bridgeStatus.devicesConnected);  
+          if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
+            common.conLog("HTTP: Device " + payload.deviceID + " is connected - trying to get and convert data", "yel");
+
+            message.deviceID     = payload.deviceID;
+            message.bridge       = BRIDGE_PREFIX;
+            message.values       = payload.values;
+
+            common.conLog("HTTP: Request for sending values of device " + message.deviceID, "yel", false);
+
+            mqttDevicesValuesGet(message);
+            data.status = "ok";
+          }
+          else { // if device is not in array of connected devices, send error message
+            common.conLog("HTTP: Device is not connected or registered at server", "red");
+            data.status = "error";
+            data.error  = "Device " + payload.deviceID + " is not registered at server";
+          }
         }
       }
     }
@@ -482,10 +496,26 @@ async function startBridgeAndServer() {
     message.callID     = data.callID;
     message.values     = {};
 
+    if (!data.values || typeof data.values !== "object" || Array.isArray(data.values) || Object.keys(data.values).length === 0) {
+      common.conLog("HTTP: Invalid or empty values object for device " + message.deviceID, "red");
+      mqttClient.publish("server/devices/values/get", JSON.stringify(message));
+      return;
+    }
+
     const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
-    if (device) { // if device is in array of connected devices, convert values
-      for (const [property, value] of Object.entries(data.values)) { // for each value key in data      
-        message.values[property]  = device.deviceConverter.get(property, value); // add property to array of properties for return
+    if (device) { // if device is in array of connected devices, validate and convert values
+      if (!device.deviceConverter) {
+        common.conLog("HTTP: No converter available for device " + message.deviceID + ", skipping value conversion", "red");
+      }
+      else {
+        for (const [property, value] of Object.entries(data.values)) {
+          const validation = device.deviceConverter.validate(property, value);
+          if (!validation.valid) {
+            common.conLog("HTTP: Validation failed for device " + message.deviceID + ", property \"" + property + "\": " + validation.error, "red");
+            continue; // skip invalid values
+          }
+          message.values[property] = device.deviceConverter.get(property, value);
+        }
       }
     }
     else { // if device is not in array of connected devices, send error message
@@ -494,15 +524,31 @@ async function startBridgeAndServer() {
 
     mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
   }
+
+  /**
+   * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
+   * Logs a message indicating that the server is closed and exits the process.
+   */  
+  process.on("SIGINT", function () {
+    common.conLog("HTTP: Graceful shutdown initiated ...", "yel");
+
+    const message = {};
+    message.bridge  = BRIDGE_PREFIX;
+    message.status = "offline";
+    
+    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // publish offline status to MQTT broker
+
+    mqttClient.end(false, {}, function () {
+      common.conLog("HTTP: MQTT connection closed, shutdown complete", "mag");
+      process.exit(0);
+    });
+
+    setTimeout(function () {  // fallback exit in case MQTT end callback never fires
+      common.conLog("HTTP: Shutdown timeout - forcing exit", "red");
+      process.exit(1);
+    }, appConfig.CONF_bridgesWaitShutdownSeconds * 1000);
+  });
 }
 
 startBridgeAndServer();
 
-/**
- * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
- * Logs a message indicating that the server is closed and exits the process.
- */  
-process.on("SIGINT", function () {
-  common.conLog("Server closed.", "mag", true);
-  process.exit(0);
-});

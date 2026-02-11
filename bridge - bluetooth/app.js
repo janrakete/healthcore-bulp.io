@@ -1161,7 +1161,7 @@ async function startBridgeAndServer() {
               common.conLog("Bluetooth: Error disconnecting " + device.deviceID + ": " + error.message, "red");
             }
             else {
-              common.conLog("Bluetooth: Disconnected " + device.deviceID, "gre");
+              common.conLog("Bluetooth: Disconnected " + device.deviceID, "mag");
             }
             resolve();
           });
@@ -1181,7 +1181,7 @@ async function startBridgeAndServer() {
     mqttClient.publish("server/bridge/status", JSON.stringify(message)); // publish offline status to MQTT broker
 
     mqttClient.end(false, {}, function () {
-      common.conLog("Bluetooth: MQTT connection closed", "gre");
+      common.conLog("Bluetooth: MQTT connection closed, shutdown complete", "mag");
       process.exit(0);
     });
 
