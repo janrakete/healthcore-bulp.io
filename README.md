@@ -1,4 +1,4 @@
-# healthcore.dev by bulp.io
+# Healthcore by bulp.io
 
 ▷ **Current status:** 0% ████████████████████████████▒▒ 100% (= first running version)
 
