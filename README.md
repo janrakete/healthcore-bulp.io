@@ -4,11 +4,11 @@
 
 Hi.
 
-Welcome to healthcore.dev❗️
+Welcome to Healthcore❗️
 
-But wait: **what the hell is healthcore.dev**❓
+But wait: **what the hell is Healthcore**❓
 
-healthcore.dev (or simply Healthcore) is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members. bulp.io follows the **open-core approach**: the software core is open source, while revenue is generated through hardware and services.
+The Healthcore is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members. bulp.io follows the **open-core approach**: the software core is open source, while revenue is generated through hardware and services.
 
 The software core is called "Healthcore" (obviously!) and it **standardizes** the data from various devices, processes scenarios, and triggers actions. A simple API allows interfaces such as apps to visualize the device data.
 
