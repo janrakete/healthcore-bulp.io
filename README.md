@@ -90,6 +90,7 @@ production-start.sh uses the process manager, so that a service is restarted if 
 ├── broker/               # MQTT broker
 ├── server/               # Server
 │   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
+│   ├── middleware/       # Middleware features 
 │   └── libs/             # Additionally libraries
 ├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
 │   └── converters/       # Common and own converters
