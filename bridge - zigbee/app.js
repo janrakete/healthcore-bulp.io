@@ -96,34 +96,24 @@ async function startBridgeAndServer() {
    */
 
   /**
-   * Searches for a device by its ID within a given array of devices.
+   * Searches for a device by its ID within a given Map of devices.
    * @param {string} deviceID - The device ID to search for.
-   * @param {Object[]} devices - The array of known device objects.
+   * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
    * @returns {Object|undefined} The matching device object, or `undefined` if not found.
-   * @description This function iterates through the array of devices and returns the first device that matches the provided ID. If no matching device is found, it returns `undefined`.
    */
-  function deviceSearchInArray(deviceID, devices) {
-    let device = {};  
-
-    const deviceFound = devices.find(device => device.deviceID === deviceID);
-    if (deviceFound) { 
-      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
-    }
-    else {
-      device = undefined; // if device is not in array, set device to undefined
-    }
-    return device;
+  function deviceSearchInMap(deviceID, devices) {
+    return devices.get(deviceID);
   }
 
   /**
    * Get all information about a device
    * @param {string} deviceID - The ID of the device to get information for.
-   * @param {Object[]} devices - The array of known device objects.
+   * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
    * @returns {Object|undefined} The device object with additional properties, or `undefined` if the device is not found or has no converter.
-   * @description This function searches for a device by its ID in the provided array of devices. If the device is found, it retrieves its converter from the converters list and checks if the device has a raw object and endpoints. If all checks pass, it returns the device object with additional properties; otherwise, it returns `undefined`.
+   * @description This function searches for a device by its ID in the provided Map of devices. If the device is found, it retrieves its converter from the converters list and checks if the device has a raw object and endpoints. If all checks pass, it returns the device object with additional properties; otherwise, it returns `undefined`.
   */
   function deviceGetInfo(deviceID, devices) {
-    let device = deviceSearchInArray(deviceID, devices);
+    let device = deviceSearchInMap(deviceID, devices);
     if (device === undefined) {
       common.conLog("ZigBee: Device " + deviceID + " not found list", "red");
       return undefined; // if device is not in array, return undefined
@@ -187,16 +177,16 @@ async function startBridgeAndServer() {
   /**
    * Class representing the status of the ZigBee bridge. Contains arrays for connected devices and registered devices at the server.
    * @class
-   * @property {Object[]} devicesConnected - Array of currently connected ZigBee devices.
-   * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
+   * @property {Map<string, Object>} devicesConnected - Map of currently connected ZigBee devices (keyed by deviceID).
+   * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by deviceID)
    * @property {string|null} deviceScanCallID - ID of the current device scan call, if any.
    * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the ZigBee bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
-      this.devicesConnected          = [];
-      this.devicesRegisteredAtServer = [];
+      this.devicesConnected          = new Map();
+      this.devicesRegisteredAtServer = new Map();
       this.deviceScanCallID          = undefined;
       this.status                    = "offline";
     }
@@ -304,7 +294,8 @@ async function startBridgeAndServer() {
     common.conLog("ZigBee: device has left", "yel");
     common.conLog(data, "std", false);
 
-    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.ieeeAddr); // remove device from array of connected and registered devices
+    bridgeStatus.devicesConnected.delete(data.ieeeAddr); // remove device from map of connected devices
+    bridgeStatus.devicesRegisteredAtServer.delete(data.ieeeAddr); // remove device from map of registered devices
 
     let message      = {};
     message.deviceID = data.ieeeAddr;
@@ -323,7 +314,7 @@ async function startBridgeAndServer() {
 
     const deviceID = data.device.ieeeAddr;
     
-    let device = deviceSearchInArray(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in array of registered devices
+    let device = deviceSearchInMap(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in map of registered devices
     if (device) { // if device is in array of registered devices, add to array connected devices
       common.conLog("ZigBee: Device " + device.deviceID + " is registered at server - trying to connect", "yel");
       
@@ -332,10 +323,10 @@ async function startBridgeAndServer() {
         common.conLog("ZigBee: Device " + deviceID + " NOT added to list of connected devices", "red");
       }
       else {
-        const deviceConnected = deviceSearchInArray(deviceID, bridgeStatus.devicesConnected); // check if device is already in array of connected devices
-        if (deviceConnected === undefined) { // if device is not in array of connected devices, add it
+        const deviceConnected = bridgeStatus.devicesConnected.get(deviceID); // check if device is already in map of connected devices
+        if (deviceConnected === undefined) { // if device is not in map of connected devices, add it
           common.conLog("ZigBee: Device " + data.deviceID + " added to list of connected devices", "gre");
-          bridgeStatus.devicesConnected.push(data); // add device to array of connected devices
+          bridgeStatus.devicesConnected.set(data.deviceID, data); // add device to map of connected devices
         }
       }
     }
@@ -517,8 +508,8 @@ async function startBridgeAndServer() {
     message.bridge                = BRIDGE_PREFIX;
     message.callID                = data.callID;
 
-    message.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer; 
-    message.devicesConnected           = bridgeStatus.devicesConnected;
+    message.devicesRegisteredAtServer  = [...bridgeStatus.devicesRegisteredAtServer.values()]; 
+    message.devicesConnected           = [...bridgeStatus.devicesConnected.values()];
 
     mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
   }
@@ -529,7 +520,10 @@ async function startBridgeAndServer() {
    * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
-    bridgeStatus.devicesRegisteredAtServer = data.devices; // save all devices registered at server in array
+    bridgeStatus.devicesRegisteredAtServer.clear();
+    for (const device of data.devices) {
+      bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
+    }
   }
 
   /**
@@ -538,11 +532,14 @@ async function startBridgeAndServer() {
    * @description This function handles the request to connect to registered devices by scanning for them and publishing
    */
   function mqttDevicesReconnect(data) {
-    bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
-    bridgeStatus.devicesConnected            = []; // reset array of connected devices
+    bridgeStatus.devicesRegisteredAtServer.clear(); // reset map of registered devices
+    for (const device of data.devices) {
+      bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
+    }
+    bridgeStatus.devicesConnected.clear(); // reset map of connected devices
     common.conLog("ZigBee: Request to connect to devices", "yel");
     
-    for (const device of bridgeStatus.devicesRegisteredAtServer) {
+    for (const device of bridgeStatus.devicesRegisteredAtServer.values()) {
       mqttDevicesConnect(device); // try to connect to each device
     }
   }
@@ -556,18 +553,14 @@ async function startBridgeAndServer() {
     common.conLog("ZigBee: Request to update device " + data.deviceID, "yel");
     
     if (data && typeof data.updates === "object") {
-      bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesRegisteredAtServer.map(deviceRegistered => {
-        if (deviceRegistered.deviceID === data.deviceID) {
-          return { ...deviceRegistered, ...data.updates }; // update device with new data
-        }
-        return deviceRegistered;
-      });
-      bridgeStatus.devicesConnected = bridgeStatus.devicesConnected.map(deviceConnected => {
-        if (deviceConnected.deviceID === data.deviceID) {
-          return { ...deviceConnected, ...data.updates }; // update device with new data
-        }
-        return deviceConnected;
-      });
+      const deviceToUpdateReg = bridgeStatus.devicesRegisteredAtServer.get(data.deviceID);
+      if (deviceToUpdateReg) {
+        bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
+      }
+      const deviceToUpdate = bridgeStatus.devicesConnected.get(data.deviceID);
+      if (deviceToUpdate) {
+        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdate, ...data.updates }); // update device with new data
+      }
 
       common.conLog("ZigBee: Updated bridge status (registered and connected devices)", "gre", false);
     }
@@ -592,8 +585,8 @@ async function startBridgeAndServer() {
       if (deviceIsWired(device)) { // if device is wired, then it's pingable
         common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
         if (await deviceIsPingable(device)) {
-          common.conLog("... and added " + device.deviceID + " to list to list of connected devices", "gre", false);
-          bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
+          common.conLog("... and added " + device.deviceID + " to list of connected devices", "gre", false);
+          bridgeStatus.devicesConnected.set(device.deviceID, device); // add device to map of connected devices
         }
         else {
           common.conLog("... but " + device.deviceID + " was not pingable and added not to list of connected devices", "red", false);
@@ -601,8 +594,8 @@ async function startBridgeAndServer() {
       }
       else {
         common.conLog("... Device " + device.deviceID + " is not wired and not pingable ...", "std", false);
-        common.conLog("... so just added to list to list of connected devices", "gre", false);
-        bridgeStatus.devicesConnected.push(device); // add device to array of connected devices
+        common.conLog("... so just added to list of connected devices", "gre", false);
+        bridgeStatus.devicesConnected.set(device.deviceID, device); // add device to map of connected devices
       }
 
       common.conLog("ZigBee: Check if device converter has setupReporting function ...", "yel");
@@ -636,13 +629,13 @@ async function startBridgeAndServer() {
     common.conLog("ZigBee: Request for removing " + data.deviceID, "yel");
     
     data.bridge  = BRIDGE_PREFIX;
-    const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
+    const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
-    if (device) { // if device is in array of connected devices, try do disconnect
+    if (device) { // if device is in map of connected devices, try do disconnect
       device.deviceRaw.removeFromNetwork();
       device.deviceRaw.removeFromDatabase();
-      bridgeStatus.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of devices registed at server
-      bridgeStatus.devicesConnected           = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected devices
+      bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of devices registered at server
+      bridgeStatus.devicesConnected.delete(data.deviceID); // remove device from map of connected devices
       common.conLog("ZigBee: Device disconnected and removed: " + data.deviceID, "gre");
 
       mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
@@ -656,7 +649,7 @@ async function startBridgeAndServer() {
    */
   async function mqttDevicesValuesGet(data) {
     common.conLog("ZigBee: Request for getting properties and values of " + data.deviceID, "yel");
-    const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
+    const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
     let message                   = {};
     message.deviceID              = data.deviceID;
@@ -714,9 +707,9 @@ async function startBridgeAndServer() {
     common.conLog("ZigBee: Request for setting values of " + data.deviceID, "yel");
 
     if (data.values) {
-      const device = deviceSearchInArray(data.deviceID, bridgeStatus.devicesConnected); // search device in array of connected devices
+      const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
-      if (device) { // if device is in array of connected devices, try do get desired values
+      if (device) { // if device is in map of connected devices, try do get desired values
         if (deviceIsWired(device)) { // if device is wired, then it's pingable and able to read values
           common.conLog("... Device " + device.deviceID + " is wired and pingable ...", "std", false);
           if (await deviceIsPingable(device)) {
@@ -790,6 +783,6 @@ startBridgeAndServer();
  */  
 process.on("SIGINT", function () {
   common.conLog("Server closed.", "mag", true);
-  GRTACEFULL SHZTWIODSN
+  //GRTACEFULL SHZTWIODSN
   process.exit(0);
 });

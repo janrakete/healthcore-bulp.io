@@ -128,37 +128,27 @@ async function startBridgeAndServer() {
    */
 
   /**
-   * Searches for a device by its ID within a given array of devices.
+   * Searches for a device by its ID within a given Map of devices.
    * @param {string} deviceID - The device ID to search for.
-   * @param {Object[]} devices - The array of known device objects.
+   * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
    * @returns {Object|undefined} The matching device object, or `undefined` if not found.
-   * @description This function iterates through the array of devices and returns the first device that matches the provided ID. If no matching device is found, it returns `undefined`.
    */
-  function deviceSearchInArray(deviceID, devices) {
-    let device = {};  
-
-    const deviceFound = devices.find(device => device.deviceID === deviceID);
-    if (deviceFound) { 
-      device = deviceFound; // if device is in array, get first device (because there should be only one device with this ID)
-    }
-    else {
-      device = undefined; // if device is not in array, set device to undefined
-    }
-    return device;
+  function deviceSearchInMap(deviceID, devices) {
+    return devices.get(deviceID);
   }
 
   /**
    * Class representing the status of the HTTP bridge. Contains arrays for connected devices and registered devices at the server.
    * @class
-   * @property {Object[]} devicesConnected - Array of currently connected HTTP devices.
-   * @property {Object[]} devicesRegisteredAtServer - Array of devices registered at the server
+   * @property {Map<string, Object>} devicesConnected - Map of currently connected HTTP devices (keyed by deviceID).
+   * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by deviceID)
    * @propery {string} status - The current status of the bridge (e.g., "online", "offline").
    * @description This class is used to manage the status of the HTTP bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
-      this.devicesConnected          = [];
-      this.devicesRegisteredAtServer = [];
+      this.devicesConnected          = new Map();
+      this.devicesRegisteredAtServer = new Map();
       this.status                    = "offline";
     }
   }
@@ -188,9 +178,9 @@ async function startBridgeAndServer() {
         data.error  = "No payload given";
       }
       else { // if payload exists, check if device is in array of connected devices
-        const device = deviceSearchInArray(payload.deviceID, bridgeStatus.devicesConnected);  
+        const device = bridgeStatus.devicesConnected.get(payload.deviceID);  
         
-        if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
+        if (device) { // if device is in map of connected devices, build message and send it to MQTT broker
           common.conLog("HTTP: Device " + payload.deviceID + " is connected - trying to remove", "yel");
 
           message.productName  = payload.productName;
@@ -297,8 +287,8 @@ async function startBridgeAndServer() {
           data.error  = "Values must contain at least one property";
         }
         else { // payload structure is valid, check if device is in array of connected devices
-          const device = deviceSearchInArray(payload.deviceID, bridgeStatus.devicesConnected);  
-          if (device) { // if device is in array of connected devices, build message and send it to MQTT broker
+          const device = bridgeStatus.devicesConnected.get(payload.deviceID);  
+          if (device) { // if device is in map of connected devices, build message and send it to MQTT broker
             common.conLog("HTTP: Device " + payload.deviceID + " is connected - trying to get and convert data", "yel");
 
             message.deviceID     = payload.deviceID;
@@ -404,7 +394,8 @@ async function startBridgeAndServer() {
    * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
-    bridgeStatus.devicesConnected = bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesConnected.filter(deviceConnected => deviceConnected.deviceID !== data.deviceID); // remove device from array of connected and registered devices (because HTTP bridge is not a bridge like BLE, connected devices are the same as registered devices)
+    bridgeStatus.devicesConnected.delete(data.deviceID); // remove device from map of connected devices
+    bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of registered devices
       mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
   }
 
@@ -417,18 +408,14 @@ async function startBridgeAndServer() {
     common.conLog("HTTP: Request to update device " + data.deviceID, "yel");
     
     if (data && typeof data.updates === "object") {
-      bridgeStatus.devicesRegisteredAtServer = bridgeStatus.devicesRegisteredAtServer.map(deviceRegistered => {
-        if (deviceRegistered.deviceID === data.deviceID) {
-          return { ...deviceRegistered, ...data.updates }; // update device with new data
-        }
-        return deviceRegistered;
-      });
-      bridgeStatus.devicesConnected = bridgeStatus.devicesConnected.map(deviceConnected => {
-        if (deviceConnected.deviceID === data.deviceID) {
-          return { ...deviceConnected, ...data.updates }; // update device with new data
-        }
-        return deviceConnected;
-      });
+      const deviceToUpdateReg = bridgeStatus.devicesRegisteredAtServer.get(data.deviceID);
+      if (deviceToUpdateReg) {
+        bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
+      }
+      const deviceToUpdate = bridgeStatus.devicesConnected.get(data.deviceID);
+      if (deviceToUpdate) {
+        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdate, ...data.updates }); // update device with new data
+      }
 
       common.conLog("HTTP: Updated bridge status (registered and connected devices)", "gre", false);
     }
@@ -445,10 +432,16 @@ async function startBridgeAndServer() {
    * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
-    bridgeStatus.devicesRegisteredAtServer   = data.devices; // save all devices registered at server in array
-    bridgeStatus.devicesConnected            = data.devices; // save all devices connected in array
+    bridgeStatus.devicesRegisteredAtServer.clear();
+    for (const device of data.devices) {
+      bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
+    }
+    bridgeStatus.devicesConnected.clear(); // reset map of connected devices
+    for (const device of bridgeStatus.devicesRegisteredAtServer.values()) { // rebuild map of connected devices
+      bridgeStatus.devicesConnected.set(device.deviceID, device);
+    }
 
-    for (let device of bridgeStatus.devicesConnected) { // for each device in array of connected devices
+    for (let device of bridgeStatus.devicesConnected.values()) { // for each device in map of connected devices
       device.deviceConverter = convertersList.find(device.productName); // get converter for device from list of converters
 
       if (device.deviceConverter === undefined) { 
@@ -472,8 +465,8 @@ async function startBridgeAndServer() {
     message.bridge                = BRIDGE_PREFIX;
     message.callID                = data.callID;
 
-    message.devicesRegisteredAtServer  = bridgeStatus.devicesRegisteredAtServer; 
-    message.devicesConnected           = bridgeStatus.devicesConnected;
+    message.devicesRegisteredAtServer  = [...bridgeStatus.devicesRegisteredAtServer.values()]; 
+    message.devicesConnected           = [...bridgeStatus.devicesConnected.values()];
     message.devicesConnected = message.devicesConnected.map(device => { // delete deviceConverter from devicesConnected, because they cannot be stringified
       const deviceCopy = { ...device };
       delete deviceCopy.deviceConverter;
@@ -502,8 +495,8 @@ async function startBridgeAndServer() {
       return;
     }
 
-    const device = deviceSearchInArray(message.deviceID, bridgeStatus.devicesConnected);  
-    if (device) { // if device is in array of connected devices, validate and convert values
+    const device = bridgeStatus.devicesConnected.get(message.deviceID);  
+    if (device) { // if device is in map of connected devices, validate and convert values
       if (!device.deviceConverter) {
         common.conLog("HTTP: No converter available for device " + message.deviceID + ", skipping value conversion", "red");
       }
