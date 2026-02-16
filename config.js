@@ -63,7 +63,8 @@ const appConfig = {
   CONF_devicesZigBeeReconnectBaseDelaySeconds         : parseInt(process.env.CONF_devicesZigBeeReconnectBaseDelaySeconds),
   CONF_devicesZigBeeReconnectMaxDelaySeconds          : parseInt(process.env.CONF_devicesZigBeeReconnectMaxDelaySeconds),
   CONF_devicesZigBeeWatchdogTimeoutSeconds            : parseInt(process.env.CONF_devicesZigBeeWatchdogTimeoutSeconds),
-  CONF_devicesZigBeeWatchdogIntervalSeconds           : parseInt(process.env.CONF_devicesZigBeeWatchdogIntervalSeconds)
+  CONF_devicesZigBeeWatchdogIntervalSeconds           : parseInt(process.env.CONF_devicesZigBeeWatchdogIntervalSeconds),
+  CONF_healthcheckMaxLogs                             : parseInt(process.env.CONF_healthcheckMaxLogs)
 };
 
 module.exports = appConfig;
