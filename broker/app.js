@@ -12,16 +12,27 @@ const common    = require("../common");
 const database = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 
 /**
+ * Prepared SQLite statements (hoisted to avoid re-compilation on every publish)
+ */
+const statementInsertHistory = database.prepare(
+    "INSERT INTO mqtt_history (topic, message, callID, dateTime) VALUES (?, ?, ?, datetime('now', 'localtime'))"
+);
+
+const statementInsertValue = database.prepare(
+    "INSERT INTO mqtt_history_devices_values (deviceID, dateTime, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+);
+
+/**
  * Starts and initializes the MQTT broker server.
- * @async
  * @function startServer
  * @description This function initializes the MQTT broker server.
  */
-async function startServer() {
+function startServer() {
     /**
      * Initialize the MQTT broker and the server
      */
     const aedes = require("aedes")();
+    const net   = require("net");
     let server;
 
     if (appConfig.CONF_tlsPath) {
@@ -39,12 +50,10 @@ async function startServer() {
         catch (error) {
              common.conLog("Broker: Error loading TLS certs (" + error.message + "). Check CONF_tlsPath.", "red");
              common.conLog("Broker: Falling back to non-TLS (TCP)", "yel");
-             const net = require("net");
-             server    = net.createServer(aedes.handle);
+             server = net.createServer(aedes.handle);
         }
     }
     else {
-        const net = require("net");
         server = net.createServer(aedes.handle);
     }
 
@@ -85,8 +94,8 @@ async function startServer() {
      * @description This function extracts various time-related features from a given date object.
      */
     function timeFeaturesExtract(date) {
-    if (!(date instanceof Date))
-        date = new Date(date);
+        if (!(date instanceof Date))
+            date = new Date(date);
 
         const dateTimeAsNumeric = date.getTime();
         const weekday           = date.getDay();
@@ -140,22 +149,29 @@ async function startServer() {
         }
     });
 
-    aedes.authorizePublish = async function (client, packet, callback) { // execute SQL statements before MQTT messages are published
+    aedes.authorizePublish = function (client, packet, callback) { // execute SQL statements before MQTT messages are published
         if (client) {
-            const topic     = packet.topic.toString();
-            const message   = packet.payload.toString();
-            const callID    = JSON.parse(message).callID !== undefined ? JSON.parse(message).callID : null;
+            const topic   = packet.topic.toString();
+            const message = packet.payload.toString();
+
+            let data;
+            try {
+                data = JSON.parse(message);
+            }
+            catch { // non-JSON message — allow it to pass through without DB insertion
+                return callback(null, true);
+            }
+
+            const callID = data.callID ?? null;
 
             try {
-                await database.prepare("INSERT INTO mqtt_history (topic, message, callID, dateTime) VALUES (?, ?, ?, datetime('now', 'localtime'))").run(topic, message, callID);
-                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for anomaly detection
-                    const data          = JSON.parse(message);
+                statementInsertHistory.run(topic, message, callID);
 
-                    const timeFeatures  = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
-                    for (const valueData in data.values) { // iterate over each property
-                        const value = data.values[valueData];
-                        await database.prepare("INSERT INTO mqtt_history_devices_values (deviceID, dateTime, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
-                            data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, valueData, value.value, value.valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
+                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for anomaly detection
+                    const timeFeatures = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
+                    for (const [property, value] of Object.entries(data.values)) { // iterate over each property
+                        statementInsertValue.run(
+                            data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, property, value.value, value.valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
                     }
                     common.conLog("Broker: MQTT device values inserted into database", "gre");
                 }
@@ -167,15 +183,20 @@ async function startServer() {
         }
         callback(null, true);
     };
+
+    /**
+     * Graceful shutdown: close aedes broker, server, and database on SIGINT.
+     */
+    process.on("SIGINT", function () {
+        common.conLog("Broker: Shutting down ...", "mag", true);
+        aedes.close(function () {
+            server.close(function () {
+                database.close();
+                common.conLog("Server closed.", "mag", true);
+                process.exit(0);
+            });
+        });
+    });
 }
 
 startServer();
-
-/**
- * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
- * Logs a message indicating that the server is closed and exits the process.
- */
-process.on("SIGINT", function () {
-        common.conLog("Server closed.", "mag", true);
-        process.exit(0);
-});
