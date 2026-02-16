@@ -20,7 +20,6 @@ function sqlCheckValidName(name) {
 
 /**
  * This function builds an SQL statement for INSERT or UPDATE operations based on the provided payload.
- * @async
  * @function statementBuild
  * @param {string} table - The name of the table to build the statement for.
  * @param {object} payload - The JSON payload containing the data to be inserted or updated.
@@ -28,7 +27,7 @@ function sqlCheckValidName(name) {
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed SQL statement.
  * @description This function checks if the keys in the payload match the columns of the specified table. If the keys are valid, it constructs an SQL statement for either inserting or updating data in the table.
  */
-async function statementBuild(table, payload, type="INSERT") {
+function statementBuild(table, payload, type="INSERT") {
    let response = {};
 
    if (!sqlCheckValidName(table)) {
@@ -37,7 +36,7 @@ async function statementBuild(table, payload, type="INSERT") {
       return response;
    }
 
-   const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   const results     = database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
 
    let parameters = {};
@@ -86,14 +85,13 @@ async function statementBuild(table, payload, type="INSERT") {
 
 /**
  * This function builds a WHERE condition for SQL queries based on the provided payload.
- * @async
  * @function conditionBuild
  * @param {string} table - The name of the table to build the condition for.
  * @param {object} payload - The JSON payload containing the conditions to be applied.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed WHERE condition.
  * @description This function checks if the keys in the payload match the columns of the specified table. If they do, it constructs a WHERE condition string for use in SQL queries. If any key does not match, it returns an error.
  */
-async function conditionBuild(table, payload) {
+function conditionBuild(table, payload) {
    let response = {};
 
    if (!sqlCheckValidName(table)) {
@@ -102,7 +100,7 @@ async function conditionBuild(table, payload) {
       return response;
    }
 
-   const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   const results     = database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
    
    let orderByString = ""; // if payload contains orderBy block, remove it from payload and save it for later processing
@@ -154,7 +152,7 @@ async function conditionBuild(table, payload) {
 
    if (response.status === "ok") { // if status is ok ...
       if (orderByString !== "") { // ... process orderBy block
-         const orderByResponse = await orderByBuild(orderByString, table);
+         const orderByResponse = orderByBuild(orderByString, table);
          if (orderByResponse.status === "ok") { 
             response.condition = response.condition + orderByResponse.statement;
          }
@@ -165,7 +163,7 @@ async function conditionBuild(table, payload) {
       }
 
       if (limitString !== "") { // ... process limit block
-         const limitResponse = await limitBuild(limitString);
+         const limitResponse = limitBuild(limitString);
          if (limitResponse.status === "ok") { 
             response.condition = response.condition + limitResponse.statement;
          }
@@ -181,13 +179,12 @@ async function conditionBuild(table, payload) {
 
 /**
  * This function builds a LIMIT clause for SQL queries based on the provided limit value.
- * @async
  * @function limitBuild
  * @param {string|number} limitValue - The limit value for the SQL query.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed LIMIT clause.
  * @description This function checks if the provided limit value is a valid positive integer. If it is, it constructs a LIMIT clause for SQL queries. If not, it returns an error.
  */
-async function limitBuild(limitValue) {
+function limitBuild(limitValue) {
    let response = {};
    const limitNumber = parseInt(limitValue, 10);
 
@@ -205,14 +202,13 @@ async function limitBuild(limitValue) {
 
 /**
  * This function builds an ORDER BY clause for SQL queries based on the provided orderBy string.
- * @async
  * @function orderByBuild
  * @param {string} orderByString - The orderBy string in the format "column,direction" (e.g., "dateTime,DESC").
  * @param {string} table - The name of the table to validate the column against.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed ORDER BY clause.
  * @description This function checks if the specified column exists in the table. If it does, it constructs an ORDER BY clause with the specified direction (ASC or DESC). If the column does not exist, it returns an error.
  */
-async function orderByBuild(orderByString, table) {
+function orderByBuild(orderByString, table) {
    const column   = orderByString.split(",")[0]; // first part column name
    let direction  = orderByString.split(",")[1]; // second part direction (ASC or DESC)
 
@@ -226,7 +222,7 @@ async function orderByBuild(orderByString, table) {
       return response;
    }
 
-   const results     = await database.pragma("table_info('" + table + "')"); // get all columns for the table
+   const results     = database.pragma("table_info('" + table + "')"); // get all columns for the table
    const columnsList = results.map(result => result.name);
 
    if (columnsList.includes(column)) { // if key is an existing table column ...
@@ -327,18 +323,7 @@ router.post("/:table", async function (request, response) {
       data.error  = "Access to table '" + table + "' not allowed";
    }
 
-   if (data.status === "error") {
-      common.conLog("POST Request: an error occured", "red");
-   }
-
-   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-
-   if (data.status === "ok") {
-      return response.status(200).json(data);
-   }
-   else {
-      return response.status(400).json(data);
-   }
+   return common.sendResponse(response, data, "Server route 'Data'", "POST Request");
 });
 
 /**
@@ -437,18 +422,7 @@ router.get("/:table", async function (request, response) {
       data.error  = "Access to table '" + table + "' not allowed";
    }
 
-   if (data.status === "error") {
-      common.conLog("GET Request: an error occured", "red");
-   }
-
-   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-
-   if (data.status === "ok") {
-      return response.status(200).json(data);
-   }
-   else {
-      return response.status(400).json(data);
-   }
+   return common.sendResponse(response, data, "Server route 'Data'", "GET Request");
 });
 
 /**
@@ -513,7 +487,7 @@ router.delete("/:table", async function (request, response) {
          const condition = await conditionBuild(table, payload);
          if (condition.status === "ok") {
             if (condition.condition && condition.condition.trim() !== "") {
-               const sql = "DELETE FROM " + table + condition.condition + " LIMIT 1";
+               const sql = "DELETE FROM " + table + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
                common.conLog("DELETE Request: access table '" + table + "'", "gre");
                common.conLog("Execute statement: " + sql, "std", false);
       
@@ -548,18 +522,7 @@ router.delete("/:table", async function (request, response) {
       data.error  = "Access to table '" + table + "' not allowed";
    }
 
-   if (data.status === "error") {
-      common.conLog("DELETE Request: an error occured", "red");
-   }
-
-   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-
-   if (data.status === "ok") {
-      return response.status(200).json(data);
-   }
-   else {
-      return response.status(400).json(data);
-   }
+   return common.sendResponse(response, data, "Server route 'Data'", "DELETE Request");
 });
 
 /**
@@ -679,18 +642,7 @@ router.patch("/:table", async function (request, response) {
       data.error  = "Access to table '" + table + "' not allowed";
    }
 
-   if (data.status === "error") {
-      common.conLog("PATCH Request: an error occured", "red");
-   }
-
-   common.conLog("Server route 'Data' HTTP response: " + JSON.stringify(data), "std", false);
-   
-   if (data.status === "ok") {
-      return response.status(200).json(data);
-   }
-   else {
-      return response.status(400).json(data);
-   }
+   return common.sendResponse(response, data, "Server route 'Data'", "PATCH Request");
 });
 
  module.exports = router;

@@ -67,9 +67,9 @@ router.get("/", async function (request, response) {
         bridgeStatus.port   = port;
 
         try {
-            const response      = await fetch(appConfig.CONF_baseURL +  ":" + port + "/info");
-            const responseData  = await response.json();
-            bridgeStatus.status = responseData.status;
+            const answer        = await fetch(appConfig.CONF_baseURL +  ":" + port + "/info");
+            const answerData    = await answer.json();
+            bridgeStatus.status = answerData.status;
         }
         catch (error) {
           bridgeStatus.status = "offline";
