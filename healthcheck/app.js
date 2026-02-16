@@ -6,17 +6,15 @@
 const appConfig   = require("../config");
 const common      = require("../common");
 
-const moment      = require("moment");
-
 /**
  * Start the healthcheck server
  * This server monitors the status of various services and allows starting/stopping them.
  * It provides a web interface to view the status and logs of these services.
  * @async
- * @function startHealtcheck
+ * @function startHealthcheck
  * @description This function initializes an Express server, sets up routes for service status and logs.
  */
-async function startHealtcheck() {
+async function startHealthcheck() {
   /**
    * Server
    */
@@ -79,6 +77,10 @@ async function startHealtcheck() {
    */
   function appendLog(service, log) {
     if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
+      if (logs.length >= appConfig.CONF_healthcheckMaxLogs) {
+        logs.shift();
+      }
+
       logs.push(log);
     } 
   }
@@ -126,10 +128,12 @@ async function startHealtcheck() {
         const proc = spawn(services[service], { shell: true }); // start the service
         processes[service] = proc;
         proc.stdout.on("data", chunk => appendLog(service, chunk.toString())); // log the output of standard output
-        proc.stderr.on("data", chunk => appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m")); // log the output of standard error
+        proc.stderr.on("data", chunk => appendLog(service, "[" + new Date().toTimeString().slice(0, 8) + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m")); // log the output of standard error
         proc.on("exit", function () {
-          delete processes[service];
-          appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[32mExited " + service + "\x1B[39m");
+          if (processes[service] === proc) { // only clean up if this is still the active process (guards against race with stop+restart)
+            delete processes[service];
+          }
+          appendLog(service, "[" + new Date().toTimeString().slice(0, 8) + "] " + "\x1B[32mExited " + service + "\x1B[39m");
         });
         return res.json({ status: "started" });
     }
@@ -146,7 +150,7 @@ async function startHealtcheck() {
         proc.kill("SIGINT");
       }
 
-      delete processes[service];
+      delete processes[service]; // allow immediate restart; exit callback has a PID guard to avoid clobbering
       return res.json({ status: "stopped" });
     }
     res.status(400).json({ error: "Invalid action" });
@@ -188,7 +192,7 @@ async function startHealtcheck() {
   });
 }
 
-startHealtcheck();
+startHealthcheck();
 
 /**
  * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.

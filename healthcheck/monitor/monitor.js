@@ -74,6 +74,8 @@ async function update() {
 
   for (let log of logs) {
     const line  = document.createElement("div");
+   
+    log = log.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); // escape HTML entities first to prevent XSS from service output
 
     const replacements = [ // replace ANSI escape codes with HTML spans for color formatting
       { search: "\\x1B\\[35m", replace: "<span style='color: #311B92'>" },
@@ -98,10 +100,6 @@ async function update() {
     }
   }
 }
-
-document.getElementById("calls-button").onclick = function() {
-  window.open("http://localhost:9998/api-docs/", "_blank");
-};
 
 update();
 setInterval(update, 2000); // update the UI every 2 seconds
