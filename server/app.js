@@ -14,11 +14,6 @@ const database  = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 global.database = database; // make SQLite database global
 
 /**
- * Cron jobs
- */
-const cronJobs = require("node-cron");
-
-/**
  * Start server
  * @async
  * @function startServer
@@ -59,9 +54,9 @@ async function startServer() {
 
   app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-      let data           = {};
-      data.status        = "error";
-      data.errorMessage  = "JSON in request is invalid";
+      let data    = {};
+      data.status = "error";
+      data.error  = "JSON in request is invalid";
       response.json(data);
     }
   });
@@ -198,11 +193,16 @@ async function startServer() {
   */
   function mqttConnect() {
     mqttClient.subscribe("server/#", function (error, granted) { // ... and subscribe to all topics
-    common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
-    if (error) {
-      common.conLog("MQTT: Error while subscribing:", "red");
-      common.conLog(error, "std", false);
-    }
+      common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
+
+      const message   = {};
+      message.status  = "online";
+      mqttClient.publish("server/status", JSON.stringify(message)); // publish online status to MQTT broker
+
+      if (error) {
+        common.conLog("MQTT: Error while subscribing:", "red");
+        common.conLog(error, "std", false);
+      }
     });
   }
   mqttClient.on("connect", mqttConnect);
@@ -350,6 +350,8 @@ async function startServer() {
         message.status      = "error";
         message.error       = "Bridge missing";        
     }
+
+    mqttClient.publish(data.bridge + "/devices/create/response", JSON.stringify(message));
   }   
 
   /**
@@ -393,6 +395,7 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
+    mqttClient.publish(data.bridge + "/devices/remove/response", JSON.stringify(message));
   }   
 
   /**
@@ -458,6 +461,8 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
+
+    mqttClient.publish(data.bridge + "/devices/values/get/response", JSON.stringify(message));
   }
 
   /**
@@ -483,7 +488,7 @@ async function startServer() {
           const placeholders  = fields.map(field => field + " = ?").join(", ");
           const values        = Object.values(data.updates);
 
-          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(values, data.deviceID, data.bridge);
+          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(...values, data.deviceID, data.bridge);
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -510,16 +515,31 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
+    mqttClient.publish(data.bridge + "/devices/update/response", JSON.stringify(message));
   }
+
+  /**
+   * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
+   * Logs a message indicating that the server is closed and exits the process.
+   */    
+  process.on("SIGINT", function () {
+    common.conLog("Server: Graceful shutdown initiated ...", "yel");
+
+    const message   = {};
+    message.status  = "offline";
+    mqttClient.publish("server/status", JSON.stringify(message)); // publish offline status to MQTT broker
+
+    mqttClient.end(false, {}, function () {
+      database.close();
+      common.conLog("Server: MQTT and database connection closed, shutdown complete", "mag");
+      process.exit(0);
+    });
+
+    setTimeout(function () {  // fallback exit in case MQTT end callback never fires
+      common.conLog("Server: Shutdown timeout - forcing exit", "red");
+      process.exit(1);
+    }, appConfig.CONF_bridgesWaitShutdownSeconds * 1000);
+  });
 }
 
 startServer();
-
-/**
- * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
- * Logs a message indicating that the server is closed and exits the process.
- */
-process.on("SIGINT", function () {
-  common.conLog("Server closed.", "mag", true);
-  process.exit(0);
-});

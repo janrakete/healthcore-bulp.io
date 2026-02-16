@@ -201,4 +201,21 @@ function devicePropertiesToArray(properties) {
     return result;
 }
 
-module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray };
+/**
+ * Sends a standardized HTTP response and logs the result.
+ * @param {Object} response - Express response object.
+ * @param {Object} data - The response data object (must have a "status" field).
+ * @param {string} routeName - Name of the route for logging (e.g., "Server route 'Data'").
+ * @param {string} errorLabel - Label for the error log message (e.g., "GET Request", "POST request for device scan").
+ * @returns {Object} - The Express response.
+ */
+function sendResponse(response, data, routeName, errorLabel = "Request") {
+    if (data.status === "error") {
+        common.conLog(errorLabel + ": an error occured", "red");
+    }
+    common.conLog(routeName + " HTTP response: " + JSON.stringify(data), "std", false);
+    const statusCode = data.status === "ok" ? 200 : 400;
+    return (response.status(statusCode).json(data));
+}
+
+module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray, sendResponse };

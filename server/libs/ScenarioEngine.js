@@ -135,7 +135,7 @@ class ScenarioEngine {
   convertValue(value, valueType) {
     switch (valueType) {
       case "Numeric":
-        return parseInt(value);
+        return parseFloat(value);
       case "Boolean":
         return Boolean(value === true || value === "true" || value === "1");
       case "String":
@@ -153,7 +153,7 @@ class ScenarioEngine {
    */
   async getCurrentDeviceValue(deviceID, bridge, property) {
     try {
-      const result = this.database.prepare("SELECT valueAsNumeric, valueAsString FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
+      const result = database.prepare("SELECT valueAsNumeric, valueAsString FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
       return result ? (result.valueAsNumeric || result.valueAsString) : null;
     }
     catch (error) {
