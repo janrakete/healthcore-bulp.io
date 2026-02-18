@@ -64,6 +64,8 @@ const appConfig = {
   CONF_devicesZigBeeReconnectMaxDelaySeconds          : parseInt(process.env.CONF_devicesZigBeeReconnectMaxDelaySeconds),
   CONF_devicesZigBeeWatchdogTimeoutSeconds            : parseInt(process.env.CONF_devicesZigBeeWatchdogTimeoutSeconds),
   CONF_devicesZigBeeWatchdogIntervalSeconds           : parseInt(process.env.CONF_devicesZigBeeWatchdogIntervalSeconds),
+  CONF_devicesZigBeeBatteryThresholdPercent            : parseInt(process.env.CONF_devicesZigBeeBatteryThresholdPercent),
+  CONF_devicesZigBeeBatteryAlertCooldownHours          : parseInt(process.env.CONF_devicesZigBeeBatteryAlertCooldownHours),
   CONF_healthcheckMaxLogs                             : parseInt(process.env.CONF_healthcheckMaxLogs)
 };
 
