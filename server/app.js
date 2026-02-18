@@ -270,6 +270,9 @@ async function startServer() {
         case "server/devices/values/get":
           mqttDevicesValuesGet(data);
           break;
+        case "server/devices/strength":
+          mqttDevicesStrength(data);
+          break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
       }
@@ -516,6 +519,47 @@ async function startServer() {
       message.error       = "Bridge missing";
     }
     mqttClient.publish(data.bridge + "/devices/update/response", JSON.stringify(message));
+  }
+
+  /**
+   * Update device signal strength
+   * @param {*} data - The data object containing the device information. 
+   * @description This function updates the signal strength of a device in the database and publishes a message to the MQTT topic for that device.
+   */
+  async function mqttDevicesStrength(data) {
+    let message = {};
+    if (data.bridge) {
+      if (data.deviceID) {
+        if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
+          message.status     = "ok";
+          message.deviceID   = data.deviceID;
+          message.bridge     = data.bridge;
+          message.strength   = data.strength;
+          common.conLog("Server: Updated signal strength for device with ID " + data.deviceID + ": " + data.strength + "%", "gre");
+
+          await database.prepare("UPDATE devices SET strength = ? WHERE deviceID = ? AND bridge = ? LIMIT 1").run(data.strength, data.deviceID, data.bridge);
+        }
+        else {
+          common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
+          message.error       = "Device not registered";
+        }
+      }
+      else {
+        common.conLog("Server: Device ID is missing in message for device strength", "red");
+        message.status      = "error";
+        message.bridge      = data.bridge;
+        message.error       = "Device ID missing";
+      }
+    }
+    else {
+      common.conLog("Server: Bridge is missing in message for device strength", "red");
+      message.status      = "error";
+      message.error       = "Bridge missing";
+    }
+    mqttClient.publish(data.bridge + "/devices/strength/response", JSON.stringify(message));
   }
 
   /**

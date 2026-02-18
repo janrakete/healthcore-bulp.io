@@ -207,6 +207,7 @@ async function startBridgeAndServer() {
       this.devicesRegisteredAtServer = new Map();
       this.lastKnownValues           = new Map(); // cache of last known values per device (keyed by deviceID)
       this.deviceLastSeen            = new Map(); // Map of deviceID -> timestamp of last data received (for watchdog)
+      this.batteryAlertsSent         = new Map(); // Map of deviceID -> timestamp of last battery alert (to prevent alert spam)
       this.maintenanceInterval       = undefined; // Interval timer for the maintenance loop (watchdog + signal strength)
       this.deviceScanCallID          = undefined;
       this.status                    = "offline";
@@ -220,6 +221,49 @@ async function startBridgeAndServer() {
    */
   function deviceUpdateLastSeen(deviceID) {
     bridgeStatus.deviceLastSeen.set(deviceID, Date.now());
+  }
+
+  /**
+   * Checks if the given values contain a battery level reading and publishes a low-battery alert if the level is at or below the threshold. Alerts are rate-limited per device to avoid spam.
+   * @param {string} deviceID - The device ID.
+   * @param {Object} values - The values object (property name -> { value, valueAsNumeric }).
+   */
+  function deviceBatteryCheck(deviceID, values) {
+    if (!values || !values.battery) {
+      return;
+    }
+
+    const batteryValue = values.battery.valueAsNumeric !== null ? values.battery.valueAsNumeric : values.battery.value; // prefer numeric value if available, otherwise use raw value
+    if (typeof batteryValue !== "number") { // safety check
+      return;
+    }
+
+    common.conLog("ZigBee: Battery level for " + deviceID + ": " + batteryValue + "%", "std", false);
+
+    if (batteryValue <= appConfig.CONF_devicesZigBeeBatteryThresholdPercent) {
+      const lastAlert = bridgeStatus.batteryAlertsSent.get(deviceID); // check when the last alert for this device was sent to prevent alert spam
+      const now       = Date.now();
+
+      if (lastAlert && (now - lastAlert) < appConfig.CONF_devicesZigBeeBatteryAlertCooldownHours * 60 * 60 * 1000) {
+        common.conLog("ZigBee: Low battery alert for " + deviceID + " suppressed (cooldown active)", "std", false);
+        return;
+      }
+
+      bridgeStatus.batteryAlertsSent.set(deviceID, now);
+
+      const alert = {
+        bridge:      BRIDGE_PREFIX,
+        deviceID:    deviceID,
+        type:        "low_battery",
+        value:       batteryValue,
+        threshold:   appConfig.CONF_devicesZigBeeBatteryThresholdPercent,
+        timestamp:   now
+      };
+
+      mqttClient.publish("server/devices/alert", JSON.stringify(alert));
+
+      common.conLog("ZigBee: Low battery alert for " + deviceID + ": " + batteryValue + "% (threshold: " + appConfig.CONF_devicesZigBeeBatteryThresholdPercent + "%)", "red");
+    }
   }
 
   /**
@@ -551,6 +595,8 @@ async function startBridgeAndServer() {
     }
 
     mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
+
+    deviceBatteryCheck(message.deviceID, message.values); // check for low battery and publish alert if needed
     
     if (message.values && Object.keys(message.values).length > 0) { // cache last known values for this device (useful for battery-powered devices that sleep)
       const cached = bridgeStatus.lastKnownValues.get(message.deviceID) || {};
