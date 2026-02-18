@@ -119,7 +119,7 @@ async function startBridgeAndServer() {
    * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
    * @returns {Object|undefined} The matching device object, or `undefined` if not found.
    */
-  function deviceSearchInMap(deviceID, devices) {
+  function deviceFindByID(deviceID, devices) {
     return devices.get(deviceID);
   }
 
@@ -131,7 +131,7 @@ async function startBridgeAndServer() {
    * @description This function searches for a device by its ID in the provided Map of devices. If the device is found, it retrieves its converter from the converters list and checks if the device has a raw object and endpoints. If all checks pass, it returns the device object with additional properties; otherwise, it returns `undefined`.
   */
   function deviceGetInfo(deviceID, devices) {
-    let device = deviceSearchInMap(deviceID, devices);
+    let device = deviceFindByID(deviceID, devices);
     if (device === undefined) {
       common.conLog("ZigBee: Device " + deviceID + " not found list", "red");
       return undefined; // if device is not in array, return undefined
@@ -207,7 +207,7 @@ async function startBridgeAndServer() {
       this.devicesRegisteredAtServer = new Map();
       this.lastKnownValues           = new Map(); // cache of last known values per device (keyed by deviceID)
       this.deviceLastSeen            = new Map(); // Map of deviceID -> timestamp of last data received (for watchdog)
-      this.maintenanceInterval       = undefined; // Interval timer for the maintenance loop (watchdog + LQI)
+      this.maintenanceInterval       = undefined; // Interval timer for the maintenance loop (watchdog + signal strength)
       this.deviceScanCallID          = undefined;
       this.status                    = "offline";
     }
@@ -226,7 +226,7 @@ async function startBridgeAndServer() {
    * Starts the unified device maintenance loop that periodically performs ZigBee housekeeping
    * tasks sequentially in a single interval:
    *   1. Watchdog check (in-memory only) — alerts on unresponsive devices
-   *   2. LQI polling for all connected mains-powered devices
+   *   2. Signal strength polling for all connected mains-powered devices (LQI → normalized 0–100 %)
    */
   function deviceMaintenanceStart() {
     if (bridgeStatus.maintenanceInterval) { // already running
@@ -273,26 +273,28 @@ async function startBridgeAndServer() {
         }
       }
 
-      // Phase 2: LQI polling for connected mains-powered devices
+      // Phase 2: Signal strength polling for connected mains-powered devices (LQI → normalized 0–100 %)
       for (const device of bridgeStatus.devicesConnected.values()) {
         if (deviceIsWired(device) && device.deviceRaw) {
           try {
             const lqi = device.deviceRaw.lqi;
 
             if (lqi !== undefined && lqi !== null) {
+              const strength = Math.round((lqi / 255) * 100); // normalize LQI (0–255) to percentage (0–100)
+
               const message = {
                 deviceID:    device.deviceID,
                 bridge:      BRIDGE_PREFIX,
-                lqi:         lqi,
+                strength:    strength,
                 timestamp:   Date.now()
               };
 
-              mqttClient.publish("server/devices/lqi", JSON.stringify(message));
-              common.conLog("ZigBee: LQI for " + device.deviceID + ": " + lqi, "std", false);
+              mqttClient.publish("server/devices/strength", JSON.stringify(message));
+              common.conLog("ZigBee: Signal strength for " + device.deviceID + ": " + strength + "% (LQI: " + lqi + ")", "std", false);
             }
           }
           catch (error) {
-            common.conLog("ZigBee: Error reading LQI for " + device.deviceID + ": " + error.message, "red");
+            common.conLog("ZigBee: Error reading signal strength for " + device.deviceID + ": " + error.message, "red");
           }
         }
       }
@@ -346,7 +348,7 @@ async function startBridgeAndServer() {
       zigBeeReconnectAttempt = 0; // reset backoff on success
       common.conLog("ZigBee: Bridge started" + (isReconnect ? " (reconnected)" : ""), "gre");
 
-      deviceMaintenanceStart(); // start watchdog + LQI maintenance loop
+      deviceMaintenanceStart(); // start watchdog + signal strength maintenance loop
 
       if (isReconnect === true) { // after a successful reconnect, re-request device list and reconnect all devices
         let refreshMsg            = {};
@@ -479,7 +481,7 @@ async function startBridgeAndServer() {
 
     deviceUpdateLastSeen(deviceID);  // Update last-seen timestamp — device just announced, so it's alive
     
-    let device = deviceSearchInMap(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in map of registered devices
+    let device = deviceFindByID(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in map of registered devices
     if (device) { // if device is in array of registered devices, add to array connected devices
       common.conLog("ZigBee: Device " + device.deviceID + " is registered at server - trying to connect", "yel");
       
@@ -549,9 +551,8 @@ async function startBridgeAndServer() {
     }
 
     mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-
-    // Cache last known values for this device (useful for battery-powered devices that sleep)
-    if (message.values && Object.keys(message.values).length > 0) {
+    
+    if (message.values && Object.keys(message.values).length > 0) { // cache last known values for this device (useful for battery-powered devices that sleep)
       const cached = bridgeStatus.lastKnownValues.get(message.deviceID) || {};
       bridgeStatus.lastKnownValues.set(message.deviceID, { ...cached, ...message.values, _lastUpdated: Date.now() });
     }
@@ -666,8 +667,6 @@ async function startBridgeAndServer() {
    * @description This function is called when a message is received on the "zigbee/devices/scan" topic. It allows the ZigBee bridge to permit joining of devices for a specified duration.
    */
   function mqttDevicesScan(data) {
-    let message = {};
-
     bridgeStatus.deviceScanCallID = data.callID;
 
     const duration = Math.max(0, Math.min(parseInt(data.duration) || 0, 254)); // ensure duration is a valid integer between 0 and 254 (ZigBee spec limit)
@@ -741,9 +740,9 @@ async function startBridgeAndServer() {
       if (deviceToUpdateReg) {
         bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
       }
-      const deviceToUpdate = bridgeStatus.devicesConnected.get(data.deviceID);
-      if (deviceToUpdate) {
-        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdate, ...data.updates }); // update device with new data
+      const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.deviceID);
+      if (deviceToUpdateCon) {
+        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
       }
 
       common.conLog("ZigBee: Updated bridge status (registered and connected devices)", "gre", false);
@@ -1020,7 +1019,7 @@ async function startBridgeAndServer() {
 
     bridgeStatus.devicesConnected.clear();
 
-    const message = {};
+    const message  = {};
     message.bridge = BRIDGE_PREFIX;
     message.status = "offline";
     
