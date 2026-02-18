@@ -28,15 +28,7 @@ async function startHealthcheck() {
   app.use(bodyParser.json());
 
   app.use(
-    cors({
-      origin: function (origin, callback) {
-        if (!origin)
-          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)       
-        if ((!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") || appConfig.CONF_corsURL.includes(origin))
-          return callback(null, true);       
-        callback(new Error("CORS: Origin '" + origin + "' not allowed"));
-      }
-    }),
+    cors(),
     bodyParser.urlencoded({
       extended: true,
     })
@@ -58,7 +50,6 @@ async function startHealthcheck() {
   /**
    * Variables, services and calls
    */
-  const baseURLAndPort  = appConfig.CONF_baseURL + ":" + appConfig.CONF_portServer + "/";
   const logs            = [];
   const processes       = {};
   const services        = {
@@ -78,7 +69,7 @@ async function startHealthcheck() {
   function appendLog(service, log) {
     if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
       if (logs.length >= appConfig.CONF_healthcheckMaxLogs) {
-        logs.shift();
+        logs.shift(); // remove the oldest log entry if we have reached the maximum number of logs
       }
 
       logs.push(log);
@@ -100,7 +91,7 @@ async function startHealthcheck() {
   app.get("/api/status", (req, res) => {
     const status = {};
     for (let service in services) { // iterate over each service
-      status[service] = !!processes[service];
+      status[service] = !!processes[service]; // check if the service is running by looking for its process in the processes object; double negation converts it to a boolean
     }
     res.json(status);
   }); 

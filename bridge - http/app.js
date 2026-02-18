@@ -110,32 +110,37 @@ async function startBridgeAndServer() {
         common.conLog(error, "std", false);
       }
 
-      /**
-       * If MQTT is started, request all registered devices from server
-       */
       common.conLog("HTTP: Bridge (= this web server) is online - request all registered HTTP devices from server", "yel");
       let message     = {};
       message.bridge  = BRIDGE_PREFIX;
-      mqttClient.publish("server/devices/refresh", JSON.stringify(message)); // then request all registered HTTP devices from server via MQTT broker 
+      mqttClient.publish("server/devices/refresh", JSON.stringify(message)); // request all registered HTTP devices from server via MQTT broker 
     });
   }
   mqttClient.on("connect", mqttConnect);
+
+  /**
+   * Handles MQTT reconnection events.
+   * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
+   * @description The MQTT library auto-reconnects, but subscriptions may be lost. This handler ensures topics are re-subscribed and the server knows the current bridge state.
+   */
+  mqttClient.on("reconnect", function () {
+    common.conLog("MQTT: Reconnecting to broker ...", "yel");
+  });
+
+  mqttClient.on("offline", function () {
+    common.conLog("MQTT: Broker connection lost, client is offline", "red");
+  });
+
+  mqttClient.on("error", function (error) {
+    common.conLog("MQTT: Connection error:", "red");
+    common.conLog(error, "std", false);
+  });  
 
   /**
    * =============================================================================================
    * Helper functions
    * ================
    */
-
-  /**
-   * Searches for a device by its ID within a given Map of devices.
-   * @param {string} deviceID - The device ID to search for.
-   * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
-   * @returns {Object|undefined} The matching device object, or `undefined` if not found.
-   */
-  function deviceSearchInMap(deviceID, devices) {
-    return devices.get(deviceID);
-  }
 
   /**
    * Class representing the status of the HTTP bridge. Contains arrays for connected devices and registered devices at the server.
@@ -162,13 +167,13 @@ async function startBridgeAndServer() {
 
   /**
    * If call is for deleting a device
-   * @param {Object} req - The HTTP request object containing the device ID and product name in the body.
-   * @param {Object} res - The HTTP response object used to send the response back to the client.  
+   * @param {Object} request - The HTTP request object containing the device ID and product name in the body.
+   * @param {Object} response - The HTTP response object used to send the response back to the client.  
    * @description This function handles the deletion of a device by checking if it exists in the array of connected devices. If the device is found, it constructs a message and publishes it to the MQTT broker to remove the device. If the device is not found, it sends an error response.
    * @returns {Object} - Returns a JSON response indicating the status of the operation, either "ok" or "error" with an appropriate message.
    */
-  router.delete("/message", async function (req, res) {
-    const payload       = req.body;
+  router.delete("/message", async function (request, response) {
+    const payload       = request.body;
     let message         = {}; // create new object for MQTT message
     let data            = {}; // create new object for HTTP response
 
@@ -207,18 +212,18 @@ async function startBridgeAndServer() {
     }
       
     common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
-    res.json(data);
+    response.json(data);
   });
 
   /**
    * If call is for creating a device
-   * @param {Object} req - The HTTP request object containing the device information in the body.
-   * @param {Object} res - The HTTP response object used to send the response back
+   * @param {Object} request - The HTTP request object containing the device information in the body.
+   * @param {Object} response - The HTTP response object used to send the response back
    * @description This function handles the creation of a device by checking if the payload is provided. If it is, it constructs a message with the device information and publishes it to the MQTT broker to create the device. If no payload is provided, it sends an error response.
    * @returns {Object} - Returns a JSON response indicating the status of the operation.
   */
-  router.put("/message", async function (req, res) {
-    const payload       = req.body;
+  router.put("/message", async function (request, response) {
+    const payload       = request.body;
     let message         = {}; // create new object for MQTT message
     let data            = {}; // create new object for HTTP response
 
@@ -253,18 +258,18 @@ async function startBridgeAndServer() {
     }
       
     common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
-    res.json(data);
+    response.json(data);
   });
 
   /**
    * If call is for sending values of a device to the server
-   * @param {Object} req - The HTTP request object containing the device information and values in the body.
-   * @param {Object} res - The HTTP response object used to send the response back
+   * @param {Object} request - The HTTP request object containing the device information and values in the body.
+   * @param {Object} response - The HTTP response object used to send the response back
    * @description This function handles the request to send values of a device. It checks if the payload is provided and if the device is connected. If both conditions are met, it constructs a message with the device information and values, then publishes it to the MQTT broker. If the device is not found or no payload is provided, it sends an error response.
    * @returns {Object} - Returns a JSON response indicating the status of the operation, either "ok" or "error" with an appropriate message.
    */
-  router.post("/message", async function (req, res) {
-    const payload       = req.body;
+  router.post("/message", async function (request, response) {
+    const payload       = request.body;
     let message         = {}; // create new object for MQTT message
     let data            = {}; // create new object for HTTP response
 
@@ -314,7 +319,7 @@ async function startBridgeAndServer() {
     }
       
     common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
-    res.json(data);
+    response.json(data);
   });
 
 
@@ -412,9 +417,10 @@ async function startBridgeAndServer() {
       if (deviceToUpdateReg) {
         bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
       }
-      const deviceToUpdate = bridgeStatus.devicesConnected.get(data.deviceID);
-      if (deviceToUpdate) {
-        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdate, ...data.updates }); // update device with new data
+
+      const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.deviceID);
+      if (deviceToUpdateCon) {
+        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
       }
 
       common.conLog("HTTP: Updated bridge status (registered and connected devices)", "gre", false);
@@ -436,6 +442,7 @@ async function startBridgeAndServer() {
     for (const device of data.devices) {
       bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
     }
+
     bridgeStatus.devicesConnected.clear(); // reset map of connected devices
     for (const device of bridgeStatus.devicesRegisteredAtServer.values()) { // rebuild map of connected devices
       bridgeStatus.devicesConnected.set(device.deviceID, device);

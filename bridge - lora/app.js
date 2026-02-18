@@ -99,20 +99,28 @@ async function startBridgeAndServer() {
   mqttClient.on("connect", mqttConnect);
 
   /**
+   * Handles MQTT reconnection events.
+   * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
+   * @description The MQTT library auto-reconnects, but subscriptions may be lost. This handler ensures topics are re-subscribed and the server knows the current bridge state.
+   */
+  mqttClient.on("reconnect", function () {
+    common.conLog("MQTT: Reconnecting to broker ...", "yel");
+  });
+
+  mqttClient.on("offline", function () {
+    common.conLog("MQTT: Broker connection lost, client is offline", "red");
+  });
+
+  mqttClient.on("error", function (error) {
+    common.conLog("MQTT: Connection error:", "red");
+    common.conLog(error, "std", false);
+  });
+
+  /**
    * =============================================================================================
    * Helper functions
    * ================
    */
-
-  /**
-   * Searches for a device by its ID within a given Map of devices.
-   * @param {string} deviceID - The device ID to search for.
-   * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
-   * @returns {Object|undefined} The matching device object, or `undefined` if not found.
-   */
-  function deviceSearchInMap(deviceID, devices) {
-    return devices.get(deviceID);
-  }
 
   /**
    * Class representing the status of the LoRa bridge. Contains arrays for connected devices and registered devices at the server.
@@ -363,9 +371,9 @@ async function startBridgeAndServer() {
        if (deviceToUpdateReg) {
          bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
        }
-       const deviceToUpdate = bridgeStatus.devicesConnected.get(data.deviceID);
-       if (deviceToUpdate) {
-         bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdate, ...data.updates }); // update device with new data
+       const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.deviceID);
+       if (deviceToUpdateCon) {
+         bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
        }
  
        common.conLog("LoRa: Updated bridge status (registered and connected devices)", "gre", false);

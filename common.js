@@ -43,7 +43,7 @@ function conLog(anyValue, color = "std", showSeparators = true, cutString = true
         console.log(dateTime);
         console.log(util.inspect(anyValue, { showHidden: false, depth: null, colors: true }));
     }
-    else {  // if given value is a string
+    else { // if given value is a string
         let output = anyValue;
 
         if (cutString === true) {

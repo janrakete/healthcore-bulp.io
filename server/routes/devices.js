@@ -276,9 +276,10 @@ router.post("/:bridge/scan", async function (request, response) {
  *                             bridge:
  *                               type: string
  *                               example: "bluetooth"
- *                             rssi:
+ *                             strength:
  *                               type: integer
- *                               example: -60
+ *                               description: Signal strength in percent (0–100)
+ *                               example: 57
  *                             connectable:
  *                               type: boolean
  *                               example: true
