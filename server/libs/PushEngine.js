@@ -39,8 +39,8 @@ class PushEngine {
         if (this.initialized === true) {
             common.conLog("Push Engine: Starting to send push notification with title '" + pushTitle + "'", "yel");
             
-            const results   = database.prepare("SELECT token FROM push_tokens").all(); // get all registered push tokens
-            const tokens    = results.map(result => result.token);
+            const results = database.prepare("SELECT token FROM push_tokens").all(); // get all registered push tokens
+            const tokens  = results.map(result => result.token);
             
             if (tokens.length > 0) {
                 const message               = {}; // build push message

@@ -67,19 +67,19 @@ async function startServer() {
   const apiKeyAuth = require("./middleware/auth");
 
   const infoData = require("./routes/info"); // import routes for server info
-  app.use("/info", infoData); // public - no auth required
+  app.use("/info", infoData);
   const routesData = require("./routes/data"); // import routes for data manipulation
-  app.use("/data", apiKeyAuth, routesData); // protected
+  app.use("/data", apiKeyAuth, routesData);
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
-  app.use("/devices", apiKeyAuth, routesDevices); // protected
+  app.use("/devices", apiKeyAuth, routesDevices);
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
-  app.use("/scenarios", apiKeyAuth, routesScenarios); // protected
+  app.use("/scenarios", apiKeyAuth, routesScenarios);
   
   /**
    * Swagger
    */
   const swaggerDocs = require("./routes/_swagger");
-  swaggerDocs(app); // public - no auth required
+  swaggerDocs(app);
 
   /**
    * Server (HTTPS if TLS is configured, otherwise HTTP)
@@ -368,10 +368,8 @@ async function startServer() {
     if (data.bridge) {
       if (data.deviceID) {
         if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
-          // remove device from database
-          await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(
-            data.deviceID, data.bridge
-          );
+          
+          await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(data.deviceID, data.bridge); // remove device from database
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -421,7 +419,7 @@ async function startServer() {
           /**
            * Check for anomalies in the fetched values
            */
-          if (appConfig.CONF_anomalyDetectionActive) {
+          if (appConfig.CONF_anomalyDetectionActive === true) { 
             if (data.values !== undefined) { // Check for anomalies in the fetched values
               anomalies.check(data);
             }

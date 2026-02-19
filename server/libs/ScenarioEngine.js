@@ -17,9 +17,8 @@ class ScenarioEngine {
    * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
    */
   async evaluateScenarios(deviceData) {
-
-    try {
-      // get all enabled scenarios with triggers that match this device/property
+    try { // get all enabled scenarios with triggers that match this device/property
+      
       const scenarios = database.prepare("SELECT DISTINCT s.*, st.triggerID, st.operator, st.value AS triggerValue, st.valueType AS triggerValueType FROM scenarios AS s JOIN scenarios_triggers AS st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.deviceID = ? AND st.bridge = ?  AND st.property = ? ORDER BY s.priority DESC").all(deviceData.deviceID, deviceData.bridge, deviceData.property);
 
       for (const scenario of scenarios) {
@@ -154,7 +153,16 @@ class ScenarioEngine {
   async getCurrentDeviceValue(deviceID, bridge, property) {
     try {
       const result = database.prepare("SELECT valueAsNumeric, valueAsString FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
-      return result ? (result.valueAsNumeric || result.valueAsString) : null;
+
+      if (!result) {  // no row found for this device/bridge/property
+        return null;
+      }
+      
+      if (result.valueAsNumeric !== null && result.valueAsNumeric !== undefined) { // prefer numeric value, fall back to string (using ?? to correctly handle 0 as a valid numeric value)
+        return result.valueAsNumeric;
+      }
+
+      return result.valueAsString ?? null;
     }
     catch (error) {
       return null;
