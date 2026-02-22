@@ -65,7 +65,7 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 │   └── converters/       # Common and own converters
 ├── bridge - http/        # HTTP ↔ MQTT bridge
 │   └── converters/       # Common and own converters
-├── tests/                # Example device firmware (for Arduino) and other testing scripts
+├── tests/                # Jest tests, manual tests and example device firmware
 ├── healthcheck/          # Healthcheck (see below)
 └── app/                  # App
 ```
