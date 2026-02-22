@@ -25,8 +25,8 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 ## 👉 Read more about ...
 
 - 🏗️ [Architecture](#%EF%B8%8F-architecture)
-- 💻 [Installation (software)](#-installation-software)
 - 📁 [Folder structure](#-folder-structure)
+- 💻 [Installation (software)](#-installation-software)
 - 🔧 [Installation (hardware)](#-installation-hardware)
 - 📈 [Healthcheck - a monitor for Healthcore](#-healthcheck---a-monitor-for-healthcore)
 - 🧩 [Own converters](#-own-converters)
@@ -49,6 +49,26 @@ In the middle — that’s the Healthcore. The Healthcore consists of several No
 And now the best part: you can **add your own devices to the Healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
 
 On the left, you can see how various interfaces communicate bi-directionally with the Healthcore via a standardized API and visualize the data, for example. Just **bring your own interface** (or use the bulp.io app - see below).
+
+## 📁 Folder structure
+```plaintext
+├── broker/               # MQTT broker
+├── server/               # Server
+│   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
+│   ├── middleware/       # Middleware features 
+│   └── libs/             # Additionally libraries
+├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── bridge - lora/        # LoRa ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── bridge - http/        # HTTP ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── tests/                # Example device firmware (for Arduino) and other testing scripts
+├── healthcheck/          # Healthcheck (see below)
+└── app/                  # App
+```
 
 ## 💻 Installation (software)
 
@@ -84,26 +104,6 @@ If you want to use it for production, just run
 .\production-start.sh
 ```
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
-
-## 📁 Folder structure
-```plaintext
-├── broker/               # MQTT broker
-├── server/               # Server
-│   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
-│   ├── middleware/       # Middleware features 
-│   └── libs/             # Additionally libraries
-├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - lora/        # LoRa ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - http/        # HTTP ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── tests/                # Example device firmware (for Arduino) and other testing scripts
-├── healthcheck/          # Healthcheck (see below)
-└── app/                  # App
-```
 
 ## 🔧 Installation (hardware)
 - **Host platform**  
