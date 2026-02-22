@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "author": "Jan Uhlenbrok",
+  "scripts": {
+    "test": "jest --verbose",
+    "test:unit": "jest --verbose tests/unit/",
+    "test:integration": "jest --verbose --runInBand tests/integration/"
+  },
   "dependencies": {
     "@abandonware/noble": "^1.9.2-26",
     "aedes": "^0.51.3",
@@ -27,5 +32,9 @@
     "uri-js": "^4.4.1",
     "util": "^0.12.5",
     "zigbee-herdsman": "^4.2.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "supertest": "^7.2.2"
   }
 }

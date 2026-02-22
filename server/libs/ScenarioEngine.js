@@ -97,8 +97,28 @@ class ScenarioEngine {
    */
   compareValues(actualValue, operator, expectedValue, valueType) {
     try {
-      // convert values based on type
-      let actual   = this.convertValue(actualValue, valueType);
+      let actual = this.convertValue(actualValue, valueType);
+      
+      if (operator === "between" && valueType === "Numeric") { // Handle "between" separately: expectedValue is an array (or JSON string of an array) and must not be passed through convertValue() which would destroy it via parseFloat()
+        let range = expectedValue;
+        if (typeof range === "string") {
+          try {
+            range = JSON.parse(range);
+          }
+          catch (error)           
+          {
+            return false;
+          }
+        }
+
+        if (Array.isArray(range) && range.length === 2) { // ensure it's an array of two values
+          const low  = parseFloat(range[0]);
+          const high = parseFloat(range[1]);
+          return actual >= low && actual <= high;
+        }
+        return false;
+      }
+
       let expected = this.convertValue(expectedValue, valueType);
 
       switch (operator) {
@@ -108,11 +128,6 @@ class ScenarioEngine {
           return valueType === "Numeric" ? actual > expected : false;
         case "less":
           return valueType === "Numeric" ? actual < expected : false;
-        case "between":
-          if (valueType === "Numeric" && Array.isArray(expected) && expected.length === 2) {
-            return actual >= expected[0] && actual <= expected[1];
-          }
-          return false;
         case "contains":
           return String(actual).toLowerCase().includes(String(expected).toLowerCase());
         default:
@@ -152,17 +167,18 @@ class ScenarioEngine {
    */
   async getCurrentDeviceValue(deviceID, bridge, property) {
     try {
-      const result = database.prepare("SELECT valueAsNumeric, valueAsString FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
+      const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
 
       if (!result) {  // no row found for this device/bridge/property
         return null;
       }
       
-      if (result.valueAsNumeric !== null && result.valueAsNumeric !== undefined) { // prefer numeric value, fall back to string (using ?? to correctly handle 0 as a valid numeric value)
+      if (result.valueAsNumeric !== null && result.valueAsNumeric !== undefined) { // prefer numeric value
         return result.valueAsNumeric;
       }
-
-      return result.valueAsString ?? null;
+      else { // fallback to string value
+        return result.value ?? null;
+      }
     }
     catch (error) {
       return null;
