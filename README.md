@@ -33,7 +33,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 🔌 [API communication](#-api-communication)
 - 🔐 [Security](#-security)
 - 📱 [App](#-app)
-
+- 🔎 [Testing](#-testing)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
@@ -247,13 +247,9 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 
 2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key header` containing the specified key.
 
-3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository.
-
-If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
+3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository. If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
 
 4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
-
-
 
 ## 📱 App
 Yes, there is also an app in this repository. More specifically, it is the official bulp.io app or rather the source code for it.
@@ -309,3 +305,23 @@ Installing and compiling the app:
    See `app/public/assets/config.json`
 
 That's it. Basically, it is of course advisable to familiarize yourself with Ionic and Capacitor. Many problems encountered during compilation have already been discussed and, in the best case, solved somewhere in those forums.
+
+## 🔎 Testing
+You can test Healtcore in two different ways: automated tests and manual tests.
+
+### Automated tests
+The automated tests live in the `tests/` folder and are powered by [Jest](https://jestjs.io/). They cover converters for all bridges, data CRUD operations, device management, scenario logic, SQL validation, and authentication. Everything runs against an **in-memory SQLite database**, so no real hardware or running services are needed.
+
+To run all automated tests:
+```bash
+npm test
+```
+
+That's it. If something breaks, you'll know immediately.
+
+### Manual tests
+Some things simply can't be automated — real Bluetooth adapters, physical ZigBee devices, push notifications on actual phones, network resilience, and end-to-end flows through the entire system. That's where the manual test plan comes in.
+
+The full manual test plan is documented in [`tests/manual.md`](tests/manual.md).
+
+The rule is simple: **first run `npm test`** to make sure all automated tests pass, **then** work through the manual tests when you have the hardware connected.
