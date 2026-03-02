@@ -51,8 +51,6 @@ const appConfig = {
   CONF_tlsPath                                        : process.env.CONF_tlsPath,
   CONF_tlsRejectUnauthorized                          : process.env.CONF_tlsRejectUnauthorized,
   CONF_pushFirebaseKeyPath                            : process.env.CONF_pushFirebaseKeyPath,
-  CONF_devicesBluetoothReconnectMaxAttempts           : parseInt(process.env.CONF_devicesBluetoothReconnectMaxAttempts),
-  CONF_devicesBluetoothReconnectScanTime              : parseInt(process.env.CONF_devicesBluetoothReconnectScanTime),
   CONF_devicesBluetoothMaintenanceIntervalSeconds     : parseInt(process.env.CONF_devicesBluetoothMaintenanceIntervalSeconds),
   CONF_devicesBluetoothMaintenanceScanDurationSeconds : parseInt(process.env.CONF_devicesBluetoothMaintenanceScanDurationSeconds),
   CONF_devicesBluetoothWatchdogTimeoutSeconds         : parseInt(process.env.CONF_devicesBluetoothWatchdogTimeoutSeconds),

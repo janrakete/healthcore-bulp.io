@@ -1,16 +1,16 @@
 # Manual Test Plan
 
-These tests require real hardware, running services, or the mobile app and cannot be automated. Run `npm test` first to verify all 168 automated tests pass before proceeding with manual testing.
+These tests require real hardware, running services, or the mobile app and cannot be automated. Run `npm test` first to verify all automated tests pass before proceeding with manual testing.
 
 ---
 
-## 1 — Device Communication (Bridges)
+## 1 - Device communication (bridges)
 
 | # | Test | Explanation |
 |---|------|-------------|
 | 1 | **Bluetooth bridge discovers BLE devices** | Start a scan via `POST /devices/bluetooth/scan` with a real BLE adapter plugged in. Verify that nearby BLE devices appear in the scan results via `GET /devices/bluetooth/scan/info?callID=...`. |
 | 2 | **Bluetooth connect/disconnect cycle** | Use `POST /devices/bluetooth/{deviceID}/connect` to pair with a discovered device, then `POST .../disconnect` to unpair. Confirm the device status updates correctly in both the bridge and the server. |
-| 3 | **Bluetooth reconnect after power loss** | Connect a BLE device, then physically turn it off or move it out of range. Verify the bridge detects the loss and automatically attempts reconnection (up to `CONF_devicesBluetoothReconnectMaxAttempts` times). |
+| 3 | **Bluetooth reconnect after power loss** | Connect a BLE device, then physically turn it off or move it out of range. Verify the bridge detects the loss and automatically attempts reconnection. |
 | 4 | **ZigBee bridge discovers devices** | Put a ZigBee device (IKEA TRADFRI, SONOFF, etc.) into pairing mode and run `POST /devices/zigbee/scan`. Confirm the device appears in the scan results with its correct product name, vendor, and properties. |
 | 5 | **ZigBee connect/disconnect cycle** | Use `POST /devices/zigbee/{deviceID}/connect` to add a paired ZigBee device to the network, then `DELETE /devices/zigbee/{deviceID}` to remove it. Verify the device is added to and removed from the `devices` table. |
 | 6 | **ZigBee pairing mode / permit join** | Trigger a scan which enables "permit join" on the ZigBee coordinator. Verify that the coordinator accepts new devices only during the scan window (`CONF_scanTimeDefaultSeconds`) and rejects them afterwards. |
@@ -21,7 +21,7 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 2 — App Frontend (Ionic/Capacitor)
+## 2 - App frontend (Ionic/Capacitor)
 
 | # | Test | Explanation |
 |---|------|-------------|
@@ -34,7 +34,7 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 3 — End-to-End Flows
+## 3 - End-to-End flows
 
 | # | Test | Explanation |
 |---|------|-------------|
@@ -47,7 +47,7 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 4 — Resilience & Watchdogs
+## 4 - Resilience and watchdogs
 
 | # | Test | Explanation |
 |---|------|-------------|
@@ -59,7 +59,7 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 5 — Battery & Signal Monitoring
+## 5 - Battery and signal monitoring
 
 | # | Test | Explanation |
 |---|------|-------------|
@@ -70,7 +70,7 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 6 — System & Infrastructure
+## 6 - System and infrastructure
 
 | # | Test | Explanation |
 |---|------|-------------|
@@ -85,7 +85,7 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 7 — Healthcheck & Swagger
+## 7 - Healthcheck and Swagger
 
 | # | Test | Explanation |
 |---|------|-------------|
