@@ -208,6 +208,7 @@ async function startBridgeAndServer() {
       this.lastKnownValues           = new Map(); // cache of last known values per device (keyed by deviceID)
       this.deviceLastSeen            = new Map(); // Map of deviceID -> timestamp of last data received (for watchdog)
       this.batteryAlertsSent         = new Map(); // Map of deviceID -> timestamp of last battery alert (to prevent alert spam)
+      this.devicesBlocklist          = new Map(); // Map of IEEE address -> timestamp, blocked from re-joining the network after removal
       this.maintenanceInterval       = undefined; // Interval timer for the maintenance loop (watchdog + signal strength)
       this.deviceScanCallID          = undefined;
       this.status                    = "offline";
@@ -370,7 +371,11 @@ async function startBridgeAndServer() {
   });
 
   const {Controller: ZigBeeController}  = require("zigbee-herdsman"); 
-  const zigBee = new ZigBeeController({ serialPort: {path: appConfig.CONF_zigBeeAdapterPort, adapter: appConfig.CONF_zigBeeAdapterName}, databasePath: "./devices.db" }); // create new ZigBee controller
+  const zigBee = new ZigBeeController({
+    serialPort: { path: appConfig.CONF_zigBeeAdapterPort, adapter: appConfig.CONF_zigBeeAdapterName },
+    databasePath: "./devices.db",
+    acceptJoiningDeviceHandler: (ieeeAddr) => !bridgeStatus.devicesBlocklist.has(ieeeAddr) // reject devices on blocklist
+  });
 
   /**
    * Reconnection state for the ZigBee adapter. Uses exponential backoff with a maximum delay.
@@ -721,6 +726,8 @@ async function startBridgeAndServer() {
       common.conLog("ZigBee: Invalid scan duration requested (only 1-254 seconds allowed), ignoring", "red");
       return;
     }
+   
+    bridgeStatus.devicesBlocklist.clear(); // Clear the blocklist so previously removed devices can be re-added during this scan
 
     common.conLog("ZigBee: Joining possible for " + duration + " seconds", "yel");
     zigBee.permitJoin(duration);
@@ -861,6 +868,9 @@ async function startBridgeAndServer() {
     const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
     if (device) { // if device is in map of connected devices, try do disconnect
+      bridgeStatus.devicesBlocklist.set(data.deviceID, Date.now()); // Block device from re-joining BEFORE sending the leave command.
+      common.conLog("ZigBee: Device " + data.deviceID + " added to blocklist", "yel");
+
       try {
         await device.deviceRaw.removeFromNetwork();
       }
