@@ -153,15 +153,17 @@ async function startBridgeAndServer() {
             common.conLog("Bluetooth: Device disconnected: " + device.deviceID + " (" + device.productName + ")", "red");
             bridgeStatus.devicesConnected.delete(device.deviceID); // remove device from map of connected devices
             
-            const deviceInfoForReconnect = { deviceID: device.deviceID, productName: device.productName, connectable: true, bridge: BRIDGE_PREFIX }; // save device info for reconnect before cleaning up non-serializable properties
-
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
             delete device.deviceConverter; // remove device converter from device, because stringify will not work with object
             mqttClient.publish("server/devices/disconnect", JSON.stringify(device)); // publish disconnected device to MQTT broker
            
-            if (bridgeStatus.devicesRegisteredAtServer.get(device.deviceID) !== undefined && bridgeStatus.status === "online") { // if device is registered at server and bridge is online, try to reconnect with backoff strategy
-              common.conLog("Bluetooth: Will attempt automatic reconnection for " + device.deviceID, "yel");
-              deviceReconnectWithBackoff(deviceInfoForReconnect);
+            if (bridgeStatus.devicesRegisteredAtServer.get(device.deviceID) !== undefined && bridgeStatus.status === "online" && bluetooth.state === "poweredOn") { // if device is registered at server and bridge is online, trigger an immediate scan so the maintenance loop doesn't have to wait for the next cycle
+              common.conLog("Bluetooth: Device lost - triggering immediate scan for " + device.deviceID, "yel");
+              bluetooth.startScanning([], true);
+              setTimeout(() => {
+                bluetooth.stopScanning();
+                common.conLog("Bluetooth: Immediate reconnect scan finished for " + device.deviceID, "gre");
+              }, appConfig.CONF_devicesBluetoothMaintenanceScanDurationSeconds * 1000);
             }
           });
 
@@ -257,84 +259,7 @@ async function startBridgeAndServer() {
     }
   }
 
-  /**
-   * Cancels a pending reconnect timer for a specific device.
-   * @param {string} deviceID - The device ID to cancel reconnection for.
-   */
-  function deviceReconnectCancel(deviceID) {
-    const pending = bridgeStatus.reconnectTimers.get(deviceID);
-    if (pending !== undefined) {
-      clearTimeout(pending.timer);
-      bridgeStatus.reconnectTimers.delete(deviceID);
-      common.conLog("Bluetooth: Cancelled reconnect for " + deviceID, "yel");
-    }
-  }
 
-  /**
-   * Cancels all pending reconnect timers.
-   */
-  function deviceReconnectCancelAll() {
-    for (const [deviceID, pending] of bridgeStatus.reconnectTimers) {
-      clearTimeout(pending.timer);
-      common.conLog("Bluetooth: Cancelled reconnect for " + deviceID, "yel");
-    }
-    bridgeStatus.reconnectTimers.clear();
-  }
-
-  /**
-   * Attempts to reconnect to a Bluetooth device using exponential backoff. Triggers a short BLE scan to rediscover the device and connect to it.
-   * @param {Object} device - Device metadata (deviceID, bridge, etc.).
-   * @param {number} attempt - Current attempt number (used internally for backoff calculation).
-   * @description On each attempt, a scan is started for a short duration with registeredReconnect enabled so the discover handler will automatically connect the device if found. The delay between attempts grows exponentially: 5s, 10s, 20s, 40s, 60s (capped).
-   */
-  function deviceReconnectWithBackoff(device, attempt = 1) {
-    if (attempt > appConfig.CONF_devicesBluetoothReconnectMaxAttempts) {
-      common.conLog("Bluetooth: Max reconnect attempts (" + appConfig.CONF_devicesBluetoothReconnectMaxAttempts + ") reached for " + device.deviceID + " - giving up", "red");
-      bridgeStatus.reconnectTimers.delete(device.deviceID);
-      return;
-    }
-
-    const delay = Math.min(5000 * Math.pow(2, attempt - 1), 60000); // 5s, 10s, 20s, 40s, 60s (capped at 60s)
-    common.conLog("Bluetooth: Scheduling reconnect attempt " + attempt + "/" + appConfig.CONF_devicesBluetoothReconnectMaxAttempts + " for " + device.deviceID + " in " + (delay / 1000) + "s", "yel");
-
-    const timer = setTimeout(() => {
-      if (bridgeStatus.devicesConnected.get(device.deviceID) !== undefined) { // check if device got connected in the meantime
-        common.conLog("Bluetooth: Device " + device.deviceID + " already reconnected - cancelling backoff", "gre");
-        bridgeStatus.reconnectTimers.delete(device.deviceID);
-        return;
-      }
-      
-      if (bridgeStatus.devicesRegisteredAtServer.get(device.deviceID) === undefined) { // check if device is still registered at server, if not cancel reconnect
-        common.conLog("Bluetooth: Device " + device.deviceID + " no longer registered at server - cancelling backoff", "yel");
-        bridgeStatus.reconnectTimers.delete(device.deviceID);
-        return;
-      }
-      
-      if (bluetooth.state !== "poweredOn") { // check if Bluetooth is still powered on
-        common.conLog("Bluetooth: Adapter not powered on - cancelling reconnect for " + device.deviceID, "red");
-        bridgeStatus.reconnectTimers.delete(device.deviceID);
-        return;
-      }
-
-      common.conLog("Bluetooth: Reconnect attempt " + attempt + "/" + appConfig.CONF_devicesBluetoothReconnectMaxAttempts + " for " + device.deviceID + " - scanning ...", "yel");
-
-      bluetooth.startScanning([], true);
-
-      setTimeout(() => {
-        bluetooth.stopScanning();
-       
-        if (bridgeStatus.devicesConnected.get(device.deviceID) !== undefined) { // if device got connected, cancel any pending reconnect attempts and exit
-          common.conLog("Bluetooth: Successfully reconnected to " + device.deviceID, "gre");
-          bridgeStatus.reconnectTimers.delete(device.deviceID);
-        }
-        else {
-          deviceReconnectWithBackoff(device, attempt + 1); // schedule next attempt with incremented counter
-        }
-      }, appConfig.CONF_devicesBluetoothReconnectScanTime * 1000); // scan for X seconds per attempt
-    }, delay);
-
-    bridgeStatus.reconnectTimers.set(device.deviceID, { timer, attempt });
-  }
 
   /**
    * Creates a fingerprint object from the Bluetooth device advertisement.
@@ -374,7 +299,6 @@ async function startBridgeAndServer() {
       this.devicesFoundViaScan           = new Map(); // Map of devices found via scanning (keyed by deviceID)
       this.deviceScanCallID              = undefined; // ID of call if scanning is initiated
       this.status                        = "offline"; // Status of the bridge
-      this.reconnectTimers               = new Map(); // Map of deviceID -> { timer, attempt } for pending reconnect attempts
       this.maintenanceInterval           = undefined; // Interval timer for the unified maintenance loop (watchdog + signal strength + background scan)
       this.batteryAlertsSent             = new Map(); // Map of deviceID -> timestamp of last battery alert (to prevent alert spam)
       this.deviceLastSeen                = new Map(); // Map of deviceID -> timestamp of last data received (for watchdog)
@@ -481,7 +405,7 @@ async function startBridgeAndServer() {
 
         setTimeout(() => {
           bluetooth.stopScanning();
-          common.conLog("Bluetooth: Maintenance - background scan finished", "gre", false);
+          common.conLog("Bluetooth: Maintenance - background scan finished", "gre");
         }, appConfig.CONF_devicesBluetoothMaintenanceScanDurationSeconds * 1000);
       }
     }, appConfig.CONF_devicesBluetoothMaintenanceIntervalSeconds * 1000);
@@ -611,7 +535,6 @@ async function startBridgeAndServer() {
 
       if (registeredDevice && !alreadyConnected) {
         common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") is registered at server - trying to connect", "yel");
-        deviceReconnectCancel(data.deviceID); // cancel any pending backoff reconnect since we found the device now
         deviceConnectAndDiscover(data, deviceRaw);
       }
 
@@ -663,7 +586,6 @@ async function startBridgeAndServer() {
       bridgeStatus.devicesRegisteredAtServer.clear();
       bridgeStatus.devicesFoundViaScan.clear();
       bridgeStatus.deviceScanCallID             = undefined;
-      deviceReconnectCancelAll();  // cancel all pending reconnect attempts when adapter goes offline
       deviceMaintenanceStop();    // stop unified maintenance loop when adapter goes offline
       bridgeStatus.deviceLastSeen.clear(); // clear all last-seen timestamps
     }
@@ -806,18 +728,7 @@ async function startBridgeAndServer() {
       bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
     }
 
-    if (bridgeStatus.status === "online" && bluetooth.state === "poweredOn") { // only attempt reconnects if bridge is online and Bluetooth is powered on
-      for (const device of data.devices) {
-        const alreadyConnected = bridgeStatus.devicesConnected.get(device.deviceID);
-        const alreadyReconnecting = bridgeStatus.reconnectTimers.get(device.deviceID);
-
-        if (alreadyConnected === undefined && alreadyReconnecting === undefined) { // device is registered but not connected and no reconnect already pending
-          common.conLog("Bluetooth: Registered device " + device.deviceID + " is not connected - initiating reconnect", "yel");
-          const deviceInfoForReconnect = { deviceID: device.deviceID, productName: device.productName, connectable: true, bridge: BRIDGE_PREFIX };
-          deviceReconnectWithBackoff(deviceInfoForReconnect);
-        }
-      }
-    }
+    // Reconnection of disconnected registered devices is handled by the maintenance loop (Phase 3).
   }
 
   /**
@@ -875,13 +786,11 @@ async function startBridgeAndServer() {
    * @description This function handles the request to connect to registered devices by scanning for them and publishing
    */
   function mqttDevicesReconnect(data) {
-    deviceReconnectCancelAll(); // cancel all pending individual reconnect attempts since we're doing a full reconnect
-
     bridgeStatus.devicesRegisteredAtServer.clear(); // reset map of registered devices
     for (const device of data.devices) {
       bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
     }
-    bridgeStatus.devicesConnected.clear(); // reset map of connected devices
+
     bridgeStatus.devicesFoundViaScan.clear(); // reset map of devices found via scan
 
     common.conLog("Bluetooth: Request to connect to devices", "yel");
@@ -931,8 +840,6 @@ async function startBridgeAndServer() {
   function mqttDevicesRemove(data) {
     common.conLog("Bluetooth: Request for removing " + data.deviceID, "yel");
 
-    deviceReconnectCancel(data.deviceID); // cancel any pending reconnect for this device
-
     const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
     if (device) { // if device is in map of connected devices, try do disconnect
@@ -963,7 +870,7 @@ async function startBridgeAndServer() {
   function mqttDevicesDisconnect(data) {
     common.conLog("Bluetooth: Request for disconnecting " + data.deviceID, "yel");
 
-    deviceReconnectCancel(data.deviceID); // cancel any pending reconnect for this device (manual disconnect = no auto-reconnect)
+
   
     const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
@@ -1142,7 +1049,6 @@ async function startBridgeAndServer() {
   process.on("SIGINT", async function () {
     common.conLog("Bluetooth: Graceful shutdown initiated ...", "yel");
     deviceMaintenanceStop();
-    deviceReconnectCancelAll();
 
     const disconnectPromises = [...bridgeStatus.devicesConnected.values()].map(device => {
       return new Promise(function (resolve) {
