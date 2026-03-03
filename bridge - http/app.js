@@ -233,11 +233,22 @@ async function startBridgeAndServer() {
         data.error   = "No payload given";
       }
       else { // if payload exists, fill message and send it to MQTT broker
-        if (payload.deviceID !== undefined && payload.productName !== undefined && payload.powerType !== undefined) {
+        if (payload.deviceID !== undefined && payload.productName !== undefined) {
           message.productName  = payload.productName;
           message.deviceID     = payload.deviceID;
-          message.powerType    = payload.powerType;
+          message.vendorName   = payload.vendorName || "";
           message.bridge       = BRIDGE_PREFIX;
+          
+          const deviceConverter = convertersList.find(message.productName);
+          if (deviceConverter === undefined) { 
+            common.conLog("HTTP: No converter found for " + message.productName, "red");
+            message.powerType   = "?";
+          }
+          else {
+            common.conLog("HTTP: Converter found for " + message.productName, "gre");
+            message.powerType    = deviceConverter.powerType;
+            message.properties   = common.devicePropertiesToArray(deviceConverter.properties);
+          }
 
           message.forceReconnect = false; // because this is HTTP, just refresh devices after creation and do not reconnect
 
@@ -248,7 +259,7 @@ async function startBridgeAndServer() {
         }
         else {
           data.status  = "error";
-          data.error   = "No deviceID or productName or powerType given";
+          data.error   = "No deviceID or productName given";
         }
       }
     }
@@ -300,7 +311,7 @@ async function startBridgeAndServer() {
             message.bridge       = BRIDGE_PREFIX;
             message.values       = payload.values;
 
-            common.conLog("HTTP: Request for sending values of device " + message.deviceID, "yel", false);
+            common.conLog("HTTP: Request for sending values of device " + message.deviceID, "yel");
 
             mqttDevicesValuesGet(message);
             data.status = "ok";
