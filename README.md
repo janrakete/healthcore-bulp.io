@@ -1,5 +1,7 @@
 # Healthcore by bulp.io
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
 ▷ **Current status:** 0% ████████████████████████████▒▒ 100% (= first running version)
 
 Hi.
@@ -102,7 +104,7 @@ node "bridge - http/app.js"
 If you want to use it for production (only macOS / Linux), just run
 ```bash
 chmod +x production-start.sh
-.\production-start.sh
+./production-start.sh
 ```
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
@@ -221,7 +223,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
       }
     }
 
-    module.exports = { Converter_BulpAZ123 };
+    module.exports = { Converter_MyConverter };
     ```
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
@@ -246,7 +248,7 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 
 1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
 
-2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key header` containing the specified key.
+2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key` header containing the specified key.
 
 3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository. If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
 
@@ -308,7 +310,7 @@ Installing and compiling the app:
 That's it. Basically, it is of course advisable to familiarize yourself with Ionic and Capacitor. Many problems encountered during compilation have already been discussed and, in the best case, solved somewhere in those forums.
 
 ## 🔎 Testing
-You can test Healtcore in two different ways: automated tests and manual tests.
+You can test Healthcore in two different ways: automated tests and manual tests.
 
 ### Automated tests
 The automated tests live in the `tests/` folder and are powered by [Jest](https://jestjs.io/). They cover converters for all bridges, data CRUD operations, device management, scenario logic, SQL validation, and authentication. Everything runs against an **in-memory SQLite database**, so no real hardware or running services are needed.
