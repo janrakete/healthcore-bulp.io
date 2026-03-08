@@ -89,7 +89,6 @@ These tests require real hardware, running services, or the mobile app and canno
 
 | # | Test | Explanation |
 |---|------|-------------|
-| 40 | **Healthcheck returns status of all processes** | With all services running, open `http://localhost:{CONF_portHealthcheck}/` in a browser. It should return the status of the broker, server, and each bridge (online/offline) in a structured JSON response. |
-| 41 | **Healthcheck detects crashed bridge** | Stop one bridge (e.g. kill the ZigBee bridge process). Then query the healthcheck endpoint again. The stopped bridge should now show as "offline" while all other services remain "online". |
-| 42 | **Swagger UI loads** | Open `http://localhost:9998/api-docs` in a browser. The Swagger UI should render with all documented endpoints grouped by tag (Data, Devices, Scenarios). Verify you can expand each endpoint and see its parameters, request body, and response schema. |
-| 43 | **Swagger JSON spec is valid** | Open `http://localhost:9998/swagger.json` and paste the output into [editor.swagger.io](https://editor.swagger.io). It should parse without errors and match the actually implemented routes. |
+| 40 | **Healthcheck returns status of all processes** | Open `http://localhost:{CONF_portHealthcheck}/` in a browser. Start and stop several bridges, server and broker. See output in terminal. |
+| 41 | **Swagger UI loads** | Open `http://localhost:9998/api-docs` in a browser. The Swagger UI should render with all documented endpoints grouped by tag (Data, Devices, Scenarios). Verify you can expand each endpoint and see its parameters, request body, and response schema. |
+| 42 | **Swagger JSON spec is valid** | Open `http://localhost:9998/swagger.json` and paste the output into [editor.swagger.io](https://editor.swagger.io). It should parse without errors and match the actually implemented routes. |

@@ -99,8 +99,9 @@ node "bridge - lora/app.js"
 node "bridge - http/app.js"
 ```
 
-If you want to use it for production, just run
+If you want to use it for production (only macOS / Linux), just run
 ```bash
+chmod +x production-start.sh
 .\production-start.sh
 ```
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
