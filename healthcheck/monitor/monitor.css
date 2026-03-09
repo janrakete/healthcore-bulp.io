@@ -73,17 +73,40 @@ button:active {
     text-align: center;
 }
 
-#logs {
+#terminals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+}
+
+.terminal {
+    display: flex;
+    flex-direction: column;
+}
+
+.terminal-header {
+    background-color: #673ab7;
+    color: #FFFFFF;
+    font-weight: bold;
+    text-align: center;
+    padding: 5px;
+    text-transform: uppercase;
+}
+
+.terminal-logs {
     background-color: #000000;
     border: dashed 2px #AAAAAA;
     width: 100%;
     padding: 10px;
     overflow-y: auto;
-    height: 90vh;
+    height: 28vh;
     scrollbar-color: #311B92 #FFFFFF;
     display: block;
     unicode-bidi: embed;
-    white-space: pre;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    box-sizing: border-box;
 }
 
 .panel-header {
