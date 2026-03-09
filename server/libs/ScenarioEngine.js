@@ -214,7 +214,7 @@ class ScenarioEngine {
     catch (error) {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
           
-      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success,dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log failed execution
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success,dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log failed execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 0, error.message
       );
     }

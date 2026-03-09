@@ -5,8 +5,8 @@
  */
 
 const util      = require("util");
-const colors    = require("colors");
-const moment    = require("moment");
+const chalk     = new (require("chalk").Instance)({ level: 1 });
+const dayjs     = require("dayjs");
 const sleep     = require("sleep-promise");
 const crypto    = require('crypto');
 
@@ -21,22 +21,24 @@ const crypto    = require('crypto');
  */
 function conLog(anyValue, color = "std", showSeparators = true, cutString = true) {
     const colorMap = {
-        red: "red",
-        yel: "yellow",
-        gre: "green",
-        mag: "magenta",
-        high: "bgRed",
-        std: "reset",
+        red: chalk.red,
+        yel: chalk.yellow,
+        gre: chalk.green,
+        mag: chalk.magenta,
+        high: chalk.bgRed,
+        std: (s) => s,
     };
 
+    const colorFunction = colorMap[color] || colorMap.std;
+
     const separator = "---------------------------------------------";
-    const dateTime = "[" + moment().format("HH:mm:ss") +  "]";
+    const dateTime = "[" + dayjs().format("HH:mm:ss") +  "]";
 
     if (typeof anyValue === "object" && anyValue !== null) { // if given value is an object
         if (showSeparators === true) {
             let separatorString = separator;
             if (color === "high") {
-                separatorString = separatorString[colorMap.high];
+                separatorString = colorMap.high(separatorString);
             }
             console.log(separatorString);    
         }
@@ -50,7 +52,7 @@ function conLog(anyValue, color = "std", showSeparators = true, cutString = true
             output = output.slice(0, 512);
         }
     
-        output = output[colorMap[color] || colorMap.std];
+        output = colorFunction(output);
     
         if (color === "high")
         {
@@ -211,9 +213,9 @@ function devicePropertiesToArray(properties) {
  */
 function sendResponse(response, data, routeName, errorLabel = "Request") {
     if (data.status === "error") {
-        common.conLog(errorLabel + ": an error occured", "red");
+        conLog(errorLabel + ": an error occured", "red");
     }
-    common.conLog(routeName + " HTTP response: " + JSON.stringify(data), "std", false);
+    conLog(routeName + " HTTP response: " + JSON.stringify(data), "std", false);
     const statusCode = data.status === "ok" ? 200 : 400;
     return (response.status(statusCode).json(data));
 }

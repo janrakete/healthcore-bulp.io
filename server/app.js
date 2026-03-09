@@ -23,8 +23,8 @@ async function startServer() {
   /**
    * Date and time
    */
-  const moment  = require("moment");
-  global.moment = moment;   
+  const dayjs   = require("dayjs");
+  global.dayjs  = dayjs;   
 
   /**
    * Middleware
@@ -485,11 +485,20 @@ async function startServer() {
           delete data.updates.productName;
           delete data.updates.vendorName;
           
-          const fields        = Object.keys(data.updates);
-          const placeholders  = fields.map(field => field + " = ?").join(", ");
-          const values        = Object.values(data.updates);
+          const safeNameRegex = /^[a-zA-Z0-9_]+$/;
+          const fields        = Object.keys(data.updates).filter(field => safeNameRegex.test(field));
 
-          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(...values, data.deviceID, data.bridge);
+          if (fields.length === 0) {
+            message.status = "error";
+            message.error  = "No valid fields to update";
+            mqttClient.publish(data.bridge + "/devices/update/response", JSON.stringify(message));
+            return;
+          }
+
+          const placeholders  = fields.map(field => field + " = ?").join(", ");
+          const values        = fields.map(field => data.updates[field]);
+
+          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ?").run(...values, data.deviceID, data.bridge);
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -535,7 +544,7 @@ async function startServer() {
           message.strength   = data.strength;
           common.conLog("Server: Updated signal strength for device with ID " + data.deviceID + ": " + data.strength + "%", "gre");
 
-          await database.prepare("UPDATE devices SET strength = ? WHERE deviceID = ? AND bridge = ? LIMIT 1").run(data.strength, data.deviceID, data.bridge);
+          await database.prepare("UPDATE devices SET strength = ? WHERE deviceID = ? AND bridge = ?").run(data.strength, data.deviceID, data.bridge);
         }
         else {
           common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");

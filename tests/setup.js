@@ -167,7 +167,7 @@ function setupGlobals(db) {
     devicePropertiesToArray: jest.fn((properties) => properties),
   };
 
-  global.moment = require("moment");
+  global.dayjs = require("dayjs");
 
   global.mqttClient = {
     publish: jest.fn(),
