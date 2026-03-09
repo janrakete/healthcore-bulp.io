@@ -47,15 +47,34 @@ async function statusToggle(service) {
  * @async
  * @function update
  * @returns {Promise<void>} A promise that resolves when the UI has been updated.
- * @description This function fetches the current status of all services and their logs, then updates the UI elements to reflect the current state of each service. It creates buttons for starting or stopping services and displays their logs in a formatted manner.
+ * @description This function fetches the current status of all services and their logs, then updates the UI elements to reflect the current state of each service. It creates buttons for starting or stopping services and displays their logs in individual terminal panels.
  */
 async function update() {
   const [status, logs] = await Promise.all([statusFetch(), logsFetch()]);
   
   const containerControls   = document.getElementById("controls");
-  const containerLogs       = document.getElementById("logs");
+  const containerTerminals  = document.getElementById("terminals");
 
   containerControls.innerHTML = "";
+  
+  for (let service of Object.keys(status)) { // Create terminal containers for each service on first run
+    if (!document.getElementById("terminal-" + service)) {
+      const terminal = document.createElement("div");
+      terminal.className = "terminal";
+
+      const header = document.createElement("div");
+      header.className = "terminal-header";
+      header.textContent = service;
+      terminal.appendChild(header);
+
+      const logContainer = document.createElement("div");
+      logContainer.className = "terminal-logs";
+      logContainer.id = "terminal-" + service;
+      terminal.appendChild(logContainer);
+
+      containerTerminals.appendChild(terminal);
+    }
+  }
 
   for (let service of Object.keys(status)) {
     const linebreak = document.createElement("br");
@@ -72,31 +91,38 @@ async function update() {
     containerControls.appendChild(linebreak);    
   }
 
-  for (let log of logs) {
-    const line  = document.createElement("div");
-   
-    log = log.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); // escape HTML entities first to prevent XSS from service output
-
-    const replacements = [ // replace ANSI escape codes with HTML spans for color formatting
-      { search: "\\x1B\\[35m", replace: "<span style='color: #311B92'>" },
-      { search: "\\x1B\\[32m", replace: "<span style='color: #4caf50'>" },
-      { search: "\\x1B\\[33m", replace: "<span style='color: #ffc107'>" },
-      { search: "\\x1B\\[31m", replace: "<span style='color: #ff5722'>" },
-      { search: "\\x1B\\[0m",  replace: "<span style='color: #ffffff'>" },
-      { search: "\\x1B\\[39m", replace: "</span>" },
-    ];
-
-    for (const { search, replace } of replacements) {
-      const regex = new RegExp(search, "g");
-      log = log.replace(regex, replace);
+  for (let service of Object.keys(logs)) {
+    const logContainer = document.getElementById("terminal-" + service);
+    if (!logContainer) {
+      continue;
     }
-    
-    line.innerHTML = log;
-    containerLogs.appendChild(line);
 
-    // Scroll to the bottom of the logs container only if the last log is visible
-    if (containerLogs.scrollHeight - containerLogs.clientHeight <= containerLogs.scrollTop + line.offsetHeight) {
-      containerLogs.scrollTop = containerLogs.scrollHeight;
+    for (let log of logs[service]) {
+      const line  = document.createElement("div");
+    
+      log = log.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); // escape HTML entities first to prevent XSS from service output
+
+      const replacements = [ // replace ANSI escape codes with HTML spans for color formatting
+        { search: "\\x1B\\[35m", replace: "<span style='color: #311B92'>" },
+        { search: "\\x1B\\[32m", replace: "<span style='color: #4caf50'>" },
+        { search: "\\x1B\\[33m", replace: "<span style='color: #ffc107'>" },
+        { search: "\\x1B\\[31m", replace: "<span style='color: #ff5722'>" },
+        { search: "\\x1B\\[0m",  replace: "<span style='color: #ffffff'>" },
+        { search: "\\x1B\\[39m", replace: "</span>" },
+      ];
+
+      for (const { search, replace } of replacements) {
+        const regex = new RegExp(search, "g");
+        log = log.replace(regex, replace);
+      }
+      
+      line.innerHTML = log;
+      logContainer.appendChild(line);
+
+      // Scroll to the bottom of the terminal only if the last log is visible
+      if (logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + line.offsetHeight) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
     }
   }
 }
