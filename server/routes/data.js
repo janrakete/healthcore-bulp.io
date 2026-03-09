@@ -601,7 +601,7 @@ router.patch("/:table", async function (request, response) {
 
                const statement = await statementBuild(table, payload, "UPDATE");
                if (statement.status === "ok") {
-                  const sql = "UPDATE " + table + " SET " + statement.statement + condition.condition + " LIMIT 1";
+                  const sql = "UPDATE " + table + " SET " + statement.statement + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
                   common.conLog("Execute statement: " + sql, "std", false);
 

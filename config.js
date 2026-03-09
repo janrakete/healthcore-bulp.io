@@ -9,7 +9,7 @@ dotenv.config({path: "../.env"});
 dotenv.config({path: "../.env.local", override: true});
 
 const appConfig = {
-  CONF_bridges                                        : process.env.CONF_bridges.split(","),
+  CONF_bridges                                        : (process.env.CONF_bridges || "").split(",").filter(Boolean),
   CONF_portBroker                                     : parseInt(process.env.CONF_portBroker),
   CONF_portServer                                     : parseInt(process.env.CONF_portServer),
   CONF_portBridgeZigBee                               : parseInt(process.env.CONF_portBridgeZigBee),
@@ -21,7 +21,7 @@ const appConfig = {
   CONF_brokerUsername                                 : process.env.CONF_brokerUsername,
   CONF_brokerPassword                                 : process.env.CONF_brokerPassword,
   CONF_dbPort                                         : parseInt(process.env.CONF_dbPort),
-  CONF_corsURL                                        : process.env.CONF_corsURL.split(",").map(url => url.trim()),
+  CONF_corsURL                                        : (process.env.CONF_corsURL || "").split(",").map(url => url.trim()).filter(Boolean),
   CONF_serverID                                       : process.env.CONF_serverID,
   CONF_serverVersion                                  : process.env.CONF_serverVersion,
   CONF_zigBeeAdapterPort                              : process.env.CONF_zigBeeAdapterPort,
@@ -41,7 +41,7 @@ const appConfig = {
   CONF_anomalyDetectionThreshold                      : parseFloat(process.env.CONF_anomalyDetectionThreshold),
   CONF_anomalyDetectionHistorySize                    : parseInt(process.env.CONF_anomalyDetectionHistorySize),
   CONF_anomalyDetectionActive                         : process.env.CONF_anomalyDetectionActive,
-  CONF_tablesAllowedForAPI                            : process.env.CONF_tablesAllowedForAPI.split(",").map(table => table.trim()),
+  CONF_tablesAllowedForAPI                            : (process.env.CONF_tablesAllowedForAPI || "").split(",").map(table => table.trim()).filter(Boolean),
   CONF_tablesMaxEntriesReturned                       : parseInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds                     : parseInt(process.env.CONF_apiCallTimeoutMilliseconds),
   CONF_scenarioCooldownMilliseconds                   : parseInt(process.env.CONF_scenarioCooldownMilliseconds),

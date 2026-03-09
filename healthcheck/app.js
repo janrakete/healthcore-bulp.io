@@ -50,7 +50,7 @@ async function startHealthcheck() {
   /**
    * Variables, services and calls
    */
-  const logs            = [];
+  const logs            = {};
   const processes       = {};
   const services        = {
       broker:         'node "../broker/app.js"',
@@ -61,6 +61,10 @@ async function startHealthcheck() {
       http:           'node "../bridge - http/app.js"'
   };
 
+  for (let service in services) {
+    logs[service] = [];
+  }
+
   /**
    * This function adds a log entry to the logs array, ensuring it does not exceed the maximum
    * @param {*} service 
@@ -68,11 +72,11 @@ async function startHealthcheck() {
    */
   function appendLog(service, log) {
     if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
-      if (logs.length >= appConfig.CONF_healthcheckMaxLogs) {
-        logs.shift(); // remove the oldest log entry if we have reached the maximum number of logs
+      if (logs[service].length >= appConfig.CONF_healthcheckMaxLogs) {
+        logs[service].shift(); // remove the oldest log entry if we have reached the maximum number of logs
       }
 
-      logs.push(log);
+      logs[service].push(log);
     } 
   }
 
@@ -156,8 +160,12 @@ async function startHealthcheck() {
    * @description This route simply returns the logs array, which contains the output of all services. The logs are appended to this array as the services run, and it is limited to a maximum number of lines defined in the configuration.
    */
   app.get("/api/logs", (req, res) => {
-    res.json(logs);
-    logs.length = 0; // clear the logs after sending them to the client
+    const snapshot = {};
+    for (let service in logs) {
+      snapshot[service] = logs[service].slice(); // copy the logs for each service
+      logs[service].length = 0; // clear the logs after copying
+    }
+    res.json(snapshot);
   });
 
   /**

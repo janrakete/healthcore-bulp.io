@@ -71,7 +71,7 @@ class PushEngine {
                                 common.conLog(response.error, "std", false);
 
                                 if (this.permanentInvalidTokenErrors.includes(response.error.errorInfo.code)) {
-                                    database.prepare("DELETE FROM push_tokens WHERE token = ? LIMIT 1").run(tokens[tokenIndex]);
+                                    database.prepare("DELETE FROM push_tokens WHERE rowid IN (SELECT rowid FROM push_tokens WHERE token = ? LIMIT 1)").run(tokens[tokenIndex]);
                                     common.conLog("Push Engine: Removed invalid push token '" + tokens[tokenIndex] + "' from database", "std", false);
                                 }
                             }
