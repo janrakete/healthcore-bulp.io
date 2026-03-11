@@ -14,23 +14,23 @@ const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which ta
  * @returns {boolean} - Returns true if the name is safe, false otherwise.
  * @description Only allows alphanumeric characters and underscores. Prevents SQL injection through table or column names.
  */
-function sqlCheckValidName(name) {
+function validateSqlIdentifier(name) {
    return typeof name === "string" && /^[a-zA-Z0-9_]+$/.test(name);
 }
 
 /**
  * This function builds an SQL statement for INSERT or UPDATE operations based on the provided payload.
- * @function statementBuild
+ * @function buildSqlMutationFragment
  * @param {string} table - The name of the table to build the statement for.
  * @param {object} payload - The JSON payload containing the data to be inserted or updated.
  * @param {string} [type="INSERT"] - The type of SQL statement to build, either "INSERT" or "UPDATE".
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed SQL statement.
  * @description This function checks if the keys in the payload match the columns of the specified table. If the keys are valid, it constructs an SQL statement for either inserting or updating data in the table.
  */
-function statementBuild(table, payload, type="INSERT") {
+function buildSqlMutationFragment(table, payload, type="INSERT") {
    let response = {};
 
-   if (!sqlCheckValidName(table)) {
+   if (!validateSqlIdentifier(table)) {
       response.status = "error";
       response.error  = "Invalid table name";
       return response;
@@ -85,16 +85,16 @@ function statementBuild(table, payload, type="INSERT") {
 
 /**
  * This function builds a WHERE condition for SQL queries based on the provided payload.
- * @function conditionBuild
+ * @function buildWhereClause
  * @param {string} table - The name of the table to build the condition for.
  * @param {object} payload - The JSON payload containing the conditions to be applied.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed WHERE condition.
  * @description This function checks if the keys in the payload match the columns of the specified table. If they do, it constructs a WHERE condition string for use in SQL queries. If any key does not match, it returns an error.
  */
-function conditionBuild(table, payload) {
+function buildWhereClause(table, payload) {
    let response = {};
 
-   if (!sqlCheckValidName(table)) {
+   if (!validateSqlIdentifier(table)) {
       response.status = "error";
       response.error  = "Invalid table name";
       return response;
@@ -152,7 +152,7 @@ function conditionBuild(table, payload) {
 
    if (response.status === "ok") { // if status is ok ...
       if (orderByString !== "") { // ... process orderBy block
-         const orderByResponse = orderByBuild(orderByString, table);
+         const orderByResponse = buildOrderByClause(orderByString, table);
          if (orderByResponse.status === "ok") { 
             response.condition = response.condition + orderByResponse.statement;
          }
@@ -163,7 +163,7 @@ function conditionBuild(table, payload) {
       }
 
       if (limitString !== "") { // ... process limit block
-         const limitResponse = limitBuild(limitString);
+         const limitResponse = buildLimitClause(limitString);
          if (limitResponse.status === "ok") { 
             response.condition = response.condition + limitResponse.statement;
          }
@@ -179,12 +179,12 @@ function conditionBuild(table, payload) {
 
 /**
  * This function builds a LIMIT clause for SQL queries based on the provided limit value.
- * @function limitBuild
+ * @function buildLimitClause
  * @param {string|number} limitValue - The limit value for the SQL query.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed LIMIT clause.
  * @description This function checks if the provided limit value is a valid positive integer. If it is, it constructs a LIMIT clause for SQL queries. If not, it returns an error.
  */
-function limitBuild(limitValue) {
+function buildLimitClause(limitValue) {
    let response = {};
    const limitNumber = parseInt(limitValue, 10);
 
@@ -202,13 +202,13 @@ function limitBuild(limitValue) {
 
 /**
  * This function builds an ORDER BY clause for SQL queries based on the provided orderBy string.
- * @function orderByBuild
+ * @function buildOrderByClause
  * @param {string} orderByString - The orderBy string in the format "column,direction" (e.g., "dateTime,DESC").
  * @param {string} table - The name of the table to validate the column against.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed ORDER BY clause.
  * @description This function checks if the specified column exists in the table. If it does, it constructs an ORDER BY clause with the specified direction (ASC or DESC). If the column does not exist, it returns an error.
  */
-function orderByBuild(orderByString, table) {
+function buildOrderByClause(orderByString, table) {
    const column   = orderByString.split(",")[0]; // first part column name
    let direction  = orderByString.split(",")[1]; // second part direction (ASC or DESC)
 
@@ -216,7 +216,7 @@ function orderByBuild(orderByString, table) {
 
    let response      = {};
 
-   if (!sqlCheckValidName(column)) {
+   if (!validateSqlIdentifier(column)) {
       response.status = "error";
       response.error  = "Invalid column name in orderBy";
       return response;
@@ -297,7 +297,7 @@ router.post("/:table", async function (request, response) {
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
 
-         const statement = await statementBuild(table, payload, "INSERT");
+         const statement = await buildSqlMutationFragment(table, payload, "INSERT");
          if (statement.status === "ok") {
             const sql = "INSERT INTO " + table + statement.statement;
             common.conLog("POST Request: access table '" + table + "'", "gre");
@@ -392,7 +392,7 @@ router.get("/:table", async function (request, response) {
       try {
          data.status = "ok";
 
-         const condition = await conditionBuild(table, payload);
+         const condition = await buildWhereClause(table, payload);
          if (condition.status === "ok") {
             let sql = "SELECT * FROM " + table + condition.condition;
 
@@ -484,7 +484,7 @@ router.delete("/:table", async function (request, response) {
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
-         const condition = await conditionBuild(table, payload);
+         const condition = await buildWhereClause(table, payload);
          if (condition.status === "ok") {
             if (condition.condition && condition.condition.trim() !== "") {
                const sql = "DELETE FROM " + table + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
@@ -595,11 +595,11 @@ router.patch("/:table", async function (request, response) {
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
 
-         const condition = await conditionBuild(table, query);
+         const condition = await buildWhereClause(table, query);
          if (condition.status === "ok") {
             if (condition.condition && condition.condition.trim() !== "") {
 
-               const statement = await statementBuild(table, payload, "UPDATE");
+               const statement = await buildSqlMutationFragment(table, payload, "UPDATE");
                if (statement.status === "ok") {
                   const sql = "UPDATE " + table + " SET " + statement.statement + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
                   common.conLog("PATCH Request: access table '" + table + "'", "gre");
