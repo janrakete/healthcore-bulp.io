@@ -10,7 +10,7 @@ const common          = require("../common");
 const BRIDGE_PREFIX   = "bluetooth"; 
 
 /**
- * Load  converters for devices
+ * Load converters for devices
  */
 const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
@@ -47,7 +47,7 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeBluetooth;
-    common.conLog("Bridge info send!", "gre");
+    common.conLog("Bridge info sent!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });
@@ -292,7 +292,7 @@ async function startBridgeAndServer() {
    * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
-  class BridgeStatusClass {
+  class BridgeStatus {
     constructor() {
       this.devicesConnected              = new Map(); // Map of currently connected Bluetooth devices (keyed by deviceID)
       this.devicesRegisteredAtServer     = new Map(); // Map of devices registered at the server (keyed by deviceID)
@@ -304,7 +304,7 @@ async function startBridgeAndServer() {
       this.deviceLastSeen                = new Map(); // Map of deviceID -> timestamp of last data received (for watchdog)
     }
   }
-  const bridgeStatus = new BridgeStatusClass(); // create new object for bridge status
+  const bridgeStatus = new BridgeStatus(); // create new object for bridge status
 
   /**
    * Updates the last-seen timestamp for a device. Called whenever data is received from or read for a device.
@@ -461,7 +461,7 @@ async function startBridgeAndServer() {
 
       mqttClient.publish("server/devices/alert", JSON.stringify(alert));
 
-      common.conLog("Bluetooth: low battery alert for " + deviceID + ": " + batteryValue + "% (threshold: " + appConfig.CONF_devicesBluetoothBatteryThresholdPercent + "%)", "red");
+      common.conLog("Bluetooth: Low battery alert for " + deviceID + ": " + batteryValue + "% (threshold: " + appConfig.CONF_devicesBluetoothBatteryThresholdPercent + "%)", "red");
     }
   }
 
@@ -832,7 +832,7 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * If message is for removing a connected device (this message ist sent AFTER server removed device)
+   * If message is for removing a connected device (this message is sent AFTER server removed device)
    * @param {Object} data - The data object containing the device ID to remove.
    * @description This function handles the request to remove a connected device by disconnecting it and removing it from the list of connected devices.
    * If the device is successfully disconnected, it publishes a message to the MQTT broker indicating that the device has been removed.
@@ -1012,7 +1012,7 @@ async function startBridgeAndServer() {
       mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
       
       deviceUpdateLastSeen(data.deviceID); // update watchdog timestamp since we just successfully read from the device
-      deviceBatteryCheck(data.deviceID, device.productName, message.values); // check for low battery and publish alert if needed
+      deviceBatteryCheck(data.deviceID, message.values); // check for low battery and publish alert if needed
     }
     else { 
       common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
