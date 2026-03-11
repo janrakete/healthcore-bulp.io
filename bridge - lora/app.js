@@ -10,7 +10,7 @@ const common          = require("../common");
 const BRIDGE_PREFIX   = "lora"; 
 
 /**
- * Load  converters for devices
+ * Load converters for devices
  */
 const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
@@ -47,7 +47,7 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeLoRa;
-    common.conLog("Bridge info send!", "gre");
+    common.conLog("Bridge info sent!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });  
@@ -74,7 +74,7 @@ async function startBridgeAndServer() {
 
 
   /**
-   * Connects the MQTT client and subscribes to Bluetooth-related topics.
+   * Connects the MQTT client and subscribes to LoRa-related topics.
    * @function
    * @description This function is called when the MQTT client successfully connects to the broker.
    */
@@ -292,26 +292,26 @@ async function startBridgeAndServer() {
     common.conLog("Message: " + message, "std", false);
 
     try {
-      message = JSON.parse(message); // parse message to JSON
+      const data = JSON.parse(message); // parse message to JSON
 
       switch (topic) {
         case "lora/devices/create":
-          mqttDevicesCreate(message);
+          mqttDevicesCreate(data);
           break;
         case "lora/devices/remove":
-          mqttDevicesRemove(message);
+          mqttDevicesRemove(data);
           break;
         case "lora/devices/values/get":
-          mqttDevicesValuesGet(message);
+          mqttDevicesValuesGet(data);
           break;
         case "lora/devices/refresh":
-          mqttDevicesRefresh(message);
+          mqttDevicesRefresh(data);
           break;
         case "lora/devices/list":
-          mqttDevicesList(message);
+          mqttDevicesList(data);
           break;
         case "lora/devices/update":
-          mqttDevicesUpdate(message);
+          mqttDevicesUpdate(data);
           break;
         default:
           common.conLog("LoRa: NOT found matching message handler for " + topic, "red");
@@ -348,14 +348,14 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * If message is for removing devices (this message ist sent AFTER server removed device)
+   * If message is for removing devices (this message is sent AFTER server removed device)
    * @param {Object} data
    * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
     bridgeStatus.devicesConnected.delete(data.deviceID); // remove device from map of connected devices
     bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of registered devices
-      mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
+    mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
   }
 
   /**

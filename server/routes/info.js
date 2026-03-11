@@ -78,7 +78,7 @@ router.get("/", async function (request, response) {
         data.bridges.push(bridgeStatus);
     }
    
-    common.conLog("Server info send!", "gre");
+    common.conLog("Server info sent!", "gre");
     common.conLog("Server route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
 
     return response.status(200).json(data);

@@ -213,7 +213,7 @@ function devicePropertiesToArray(properties) {
  */
 function sendResponse(response, data, routeName, errorLabel = "Request") {
     if (data.status === "error") {
-        conLog(errorLabel + ": an error occured", "red");
+        conLog(errorLabel + ": an error occurred", "red");
     }
     conLog(routeName + " HTTP response: " + JSON.stringify(data), "std", false);
     const statusCode = data.status === "ok" ? 200 : 400;

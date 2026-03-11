@@ -10,7 +10,7 @@ const common          = require("../common");
 const BRIDGE_PREFIX = "zigbee"; 
 
 /**
- * Load  converters for devices
+ * Load converters for devices
  */
 const { Converters } = require("./Converters.js");
 const convertersList = new Converters(); // create new object for converters
@@ -47,7 +47,7 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeZigBee;
-    common.conLog("Bridge info send!", "gre");
+    common.conLog("Bridge info sent!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });  
@@ -133,7 +133,7 @@ async function startBridgeAndServer() {
   function deviceGetInfo(deviceID, devices) {
     let device = deviceFindByID(deviceID, devices);
     if (device === undefined) {
-      common.conLog("ZigBee: Device " + deviceID + " not found list", "red");
+      common.conLog("ZigBee: Device " + deviceID + " not found in list", "red");
       return undefined; // if device is not in array, return undefined
     }
     else {
@@ -746,8 +746,16 @@ async function startBridgeAndServer() {
 
     message.devicesRegisteredAtServer  = [...bridgeStatus.devicesRegisteredAtServer.values()]; 
     message.devicesConnected           = [...bridgeStatus.devicesConnected.values()];
+    message.devicesConnected = message.devicesConnected.map(device => { // delete deviceRaw, deviceConverter and endpoint from devicesConnected, because they cannot be stringified
+      const deviceCopy = { ...device };
+      delete deviceCopy.deviceRaw;
+      delete deviceCopy.deviceConverter;
+      delete deviceCopy.endpoint;
+      return deviceCopy;
+    });
 
     mqttClient.publish("server/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
+    common.conLog("ZigBee: Listed all registered and connected devices from server", "gre");
   }
 
   /**
@@ -857,7 +865,7 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * If message is for removing a connected device (this message ist sent AFTER server removed device)
+   * If message is for removing a connected device (this message is sent AFTER server removed device)
    * @param {Object} data - The data object containing the device ID to remove.
    * @description This function is called when a message is received on the "zigbee/device/remove" topic. It searches for the device in the array of connected devices and attempts to remove it from the network and database. 
    */

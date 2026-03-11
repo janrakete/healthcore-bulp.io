@@ -71,7 +71,7 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeHTTP;
-    common.conLog("Bridge info send!", "gre");
+    common.conLog("Bridge info sent!", "gre");
     common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });
@@ -147,7 +147,7 @@ async function startBridgeAndServer() {
    * @class
    * @property {Map<string, Object>} devicesConnected - Map of currently connected HTTP devices (keyed by deviceID).
    * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by deviceID)
-   * @propery {string} status - The current status of the bridge (e.g., "online", "offline").
+   * @property {string} status - The current status of the bridge (e.g., "online", "offline").
    * @description This class is used to manage the status of the HTTP bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
@@ -348,26 +348,26 @@ async function startBridgeAndServer() {
     common.conLog("Message: " + message, "std", false);
 
     try {
-      message = JSON.parse(message); // parse message to JSON
+      const data = JSON.parse(message); // parse message to JSON
 
       switch (topic) {
         case "http/devices/create":
-          mqttDevicesCreate(message);
+          mqttDevicesCreate(data);
           break;
         case "http/devices/remove":
-          mqttDevicesRemove(message);
+          mqttDevicesRemove(data);
           break;
         case "http/devices/values/get":
-          mqttDevicesValuesGet(message);
+          mqttDevicesValuesGet(data);
           break;
         case "http/devices/refresh":
-          mqttDevicesRefresh(message);
+          mqttDevicesRefresh(data);
           break;
         case "http/devices/list":
-          mqttDevicesList(message);
+          mqttDevicesList(data);
           break;
         case "http/devices/update":
-          mqttDevicesUpdate(message);
+          mqttDevicesUpdate(data);
           break;
         default:
           common.conLog("HTTP: NOT found matching message handler for " + topic, "red");
@@ -405,14 +405,14 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * If message is for removing devices (this message ist sent AFTER server removed device)
+   * If message is for removing devices (this message is sent AFTER server removed device)
    * @param {Object} data
    * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
     bridgeStatus.devicesConnected.delete(data.deviceID); // remove device from map of connected devices
     bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of registered devices
-      mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
+    mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
   }
 
   /**

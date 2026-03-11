@@ -1,6 +1,6 @@
 /**
  * =============================================================================================
- * Converter for the Paulmann 291.50 Bulb   
+ * Converter for the Paulmann 291.50 Bulb
  * ======================================
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
