@@ -6,17 +6,15 @@
 const appConfig   = require("../config");
 const common      = require("../common");
 
-const moment      = require("moment");
-
 /**
  * Start the healthcheck server
  * This server monitors the status of various services and allows starting/stopping them.
  * It provides a web interface to view the status and logs of these services.
  * @async
- * @function startHealtcheck
+ * @function startHealthcheck
  * @description This function initializes an Express server, sets up routes for service status and logs.
  */
-async function startHealtcheck() {
+async function startHealthcheck() {
   /**
    * Server
    */
@@ -30,15 +28,7 @@ async function startHealtcheck() {
   app.use(bodyParser.json());
 
   app.use(
-    cors({
-      origin: function (origin, callback) {
-        if (!origin)
-          return callback(null, true); // allow requests with no origin (native apps, curl, server-to-server)       
-        if ((!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") || appConfig.CONF_corsURL.includes(origin))
-          return callback(null, true);       
-        callback(new Error("CORS: Origin '" + origin + "' not allowed"));
-      }
-    }),
+    cors(),
     bodyParser.urlencoded({
       extended: true,
     })
@@ -60,8 +50,7 @@ async function startHealtcheck() {
   /**
    * Variables, services and calls
    */
-  const baseURLAndPort  = appConfig.CONF_baseURL + ":" + appConfig.CONF_portServer + "/";
-  const logs            = [];
+  const logs            = {};
   const processes       = {};
   const services        = {
       broker:         'node "../broker/app.js"',
@@ -72,6 +61,10 @@ async function startHealtcheck() {
       http:           'node "../bridge - http/app.js"'
   };
 
+  for (let service in services) {
+    logs[service] = [];
+  }
+
   /**
    * This function adds a log entry to the logs array, ensuring it does not exceed the maximum
    * @param {*} service 
@@ -79,7 +72,11 @@ async function startHealtcheck() {
    */
   function appendLog(service, log) {
     if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
-      logs.push(log);
+      if (logs[service].length >= appConfig.CONF_healthcheckMaxLogs) {
+        logs[service].shift(); // remove the oldest log entry if we have reached the maximum number of logs
+      }
+
+      logs[service].push(log);
     } 
   }
 
@@ -98,7 +95,7 @@ async function startHealtcheck() {
   app.get("/api/status", (req, res) => {
     const status = {};
     for (let service in services) { // iterate over each service
-      status[service] = !!processes[service];
+      status[service] = !!processes[service]; // check if the service is running by looking for its process in the processes object; double negation converts it to a boolean
     }
     res.json(status);
   }); 
@@ -126,10 +123,12 @@ async function startHealtcheck() {
         const proc = spawn(services[service], { shell: true }); // start the service
         processes[service] = proc;
         proc.stdout.on("data", chunk => appendLog(service, chunk.toString())); // log the output of standard output
-        proc.stderr.on("data", chunk => appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m")); // log the output of standard error
+        proc.stderr.on("data", chunk => appendLog(service, "[" + new Date().toTimeString().slice(0, 8) + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m")); // log the output of standard error
         proc.on("exit", function () {
-          delete processes[service];
-          appendLog(service, "[" + moment().format("HH:mm:ss") + "] " + "\x1B[32mExited " + service + "\x1B[39m");
+          if (processes[service] === proc) { // only clean up if this is still the active process (guards against race with stop+restart)
+            delete processes[service];
+          }
+          appendLog(service, "[" + new Date().toTimeString().slice(0, 8) + "] " + "\x1B[32mExited " + service + "\x1B[39m");
         });
         return res.json({ status: "started" });
     }
@@ -146,7 +145,7 @@ async function startHealtcheck() {
         proc.kill("SIGINT");
       }
 
-      delete processes[service];
+      delete processes[service]; // allow immediate restart; exit callback has a PID guard to avoid clobbering
       return res.json({ status: "stopped" });
     }
     res.status(400).json({ error: "Invalid action" });
@@ -161,8 +160,12 @@ async function startHealtcheck() {
    * @description This route simply returns the logs array, which contains the output of all services. The logs are appended to this array as the services run, and it is limited to a maximum number of lines defined in the configuration.
    */
   app.get("/api/logs", (req, res) => {
-    res.json(logs);
-    logs.length = 0; // clear the logs after sending them to the client
+    const snapshot = {};
+    for (let service in logs) {
+      snapshot[service] = logs[service].slice(); // copy the logs for each service
+      logs[service].length = 0; // clear the logs after copying
+    }
+    res.json(snapshot);
   });
 
   /**
@@ -183,10 +186,12 @@ async function startHealtcheck() {
    * Server
    * ======
    */
-  app.listen(appConfig.CONF_portHealthcheck); // start the server on the configured port
+  app.listen(appConfig.CONF_portHealthcheck, "127.0.0.1", function () { // bind to localhost only
+    common.conLog("Healthcheck server listening only on 127.0.0.1:" + appConfig.CONF_portHealthcheck, "gre");
+  });
 }
 
-startHealtcheck();
+startHealthcheck();
 
 /**
  * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.

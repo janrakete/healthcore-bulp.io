@@ -67,9 +67,9 @@ router.get("/", async function (request, response) {
         bridgeStatus.port   = port;
 
         try {
-            const response      = await fetch(appConfig.CONF_baseURL +  ":" + port + "/info");
-            const responseData  = await response.json();
-            bridgeStatus.status = responseData.status;
+            const answer        = await fetch(appConfig.CONF_baseURL +  ":" + port + "/info");
+            const answerData    = await answer.json();
+            bridgeStatus.status = answerData.status;
         }
         catch (error) {
           bridgeStatus.status = "offline";
@@ -78,7 +78,7 @@ router.get("/", async function (request, response) {
         data.bridges.push(bridgeStatus);
     }
    
-    common.conLog("Server info send!", "gre");
+    common.conLog("Server info sent!", "gre");
     common.conLog("Server route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
 
     return response.status(200).json(data);

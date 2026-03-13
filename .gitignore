@@ -1,6 +1,8 @@
 /logs
 /node_modules
 .env.local
+cert.pem
+key.pem
 ./vscode
 .DS_Store
 *.log

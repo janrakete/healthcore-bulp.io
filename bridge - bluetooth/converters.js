@@ -1,8 +1,8 @@
-/*
+/**
  * =============================================================================================
  * Converters list class
  * =====================
-*/
+ */
 
 const fs                    = require("fs");
 const path                  = require("path");
@@ -34,13 +34,11 @@ class Converters {
                     const filePath          = path.join(convertersDir, file);
                     const converterModule   = require(filePath);
                     
-                    // Get the first exported class from the module
-                    const className         = Object.keys(converterModule)[0];
+                    const className         = Object.keys(converterModule)[0]; // get the first exported class from the module
                     const ConverterClass    = converterModule[className];
                     
                     if (ConverterClass && typeof ConverterClass === "function") {
-                        // Check if class has static productName property
-                        if (ConverterClass.productName) {
+                        if (ConverterClass.productName) { // check if class has static productName property
                             this.converterMap.set(ConverterClass.productName, ConverterClass);
                             common.conLog("Converter: Loaded converter: " + className, "gre");
                         } else {
