@@ -106,6 +106,12 @@ If you want to use it for production (only macOS / Linux), just run
 chmod +x production-start.sh
 ./production-start.sh
 ```
+or
+```bash
+chmod +x production-stop.sh
+./production-stop.sh
+```
+
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
 ## 🔧 Installation (hardware)
@@ -281,7 +287,7 @@ Installing and compiling the app:
 
    2. If you want to use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
       1. `google-services.json` (https://support.google.com/firebase/answer/7015592?hl=en) to `app/android/app/` 
-      2. `push-firebase-admin.json` (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments) **outside** the repository, so there is no chance to commit it accidentally. You can change the path in `.env.local` via `CONF_pushFirebaseKeyPath`. Default is same level as the repository.
+      2. `push-firebase-admin.json` (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments). Keep this file **outside** the repository, so there is no chance to commit it accidentally. You can change the path in `.env.local` via `CONF_pushFirebaseKeyPath`. Default is same level as the repository.
 
    3. Build:
       ```bash
