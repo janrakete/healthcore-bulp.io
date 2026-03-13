@@ -1,14 +1,16 @@
-# healthcore.dev by bulp.io
+# Healthcore by bulp.io
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 ▷ **Current status:** 0% ████████████████████████████▒▒ 100% (= first running version)
 
 Hi.
 
-Welcome to healthcore.dev❗️
+Welcome to Healthcore❗️
 
-But wait: **what the hell is healthcore.dev**❓
+But wait: **what the hell is Healthcore**❓
 
-healthcore.dev (or simply Healthcore) is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members. bulp.io follows the **open-core approach**: the software core is open source, while revenue is generated through hardware and services.
+The Healthcore is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members. bulp.io follows the **open-core approach**: the software core is open source, while revenue is generated through hardware and services.
 
 The software core is called "Healthcore" (obviously!) and it **standardizes** the data from various devices, processes scenarios, and triggers actions. A simple API allows interfaces such as apps to visualize the device data.
 
@@ -25,15 +27,15 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 ## 👉 Read more about ...
 
 - 🏗️ [Architecture](#%EF%B8%8F-architecture)
-- 💻 [Installation (software)](#-installation-software)
 - 📁 [Folder structure](#-folder-structure)
+- 💻 [Installation (software)](#-installation-software)
 - 🔧 [Installation (hardware)](#-installation-hardware)
 - 📈 [Healthcheck - a monitor for Healthcore](#-healthcheck---a-monitor-for-healthcore)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
-- 🛡️ [Security](#-security)
+- 🔐 [Security](#-security)
 - 📱 [App](#-app)
-
+- 🔎 [Testing](#-testing)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
@@ -49,6 +51,26 @@ In the middle — that’s the Healthcore. The Healthcore consists of several No
 And now the best part: you can **add your own devices to the Healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
 
 On the left, you can see how various interfaces communicate bi-directionally with the Healthcore via a standardized API and visualize the data, for example. Just **bring your own interface** (or use the bulp.io app - see below).
+
+## 📁 Folder structure
+```plaintext
+├── broker/               # MQTT broker
+├── server/               # Server
+│   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
+│   ├── middleware/       # Middleware features 
+│   └── libs/             # Additionally libraries
+├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── bridge - lora/        # LoRa ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── bridge - http/        # HTTP ↔ MQTT bridge
+│   └── converters/       # Common and own converters
+├── tests/                # Jest tests, manual tests and example device firmware
+├── healthcheck/          # Healthcheck (see below)
+└── app/                  # App
+```
 
 ## 💻 Installation (software)
 
@@ -79,30 +101,12 @@ node "bridge - lora/app.js"
 node "bridge - http/app.js"
 ```
 
-If you want to use it for production, just run
+If you want to use it for production (only macOS / Linux), just run
 ```bash
-.\production-start.sh
+chmod +x production-start.sh
+./production-start.sh
 ```
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
-
-## 📁 Folder structure
-```plaintext
-├── broker/               # MQTT broker
-├── server/               # Server
-│   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
-│   └── libs/             # Additionally libraries
-├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - lora/        # LoRa ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - http/        # HTTP ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── tests/                # Example device firmware (for Arduino) and other testing scripts
-├── healthcheck/          # Healthcheck (see below)
-└── app/                  # App
-```
 
 ## 🔧 Installation (hardware)
 - **Host platform**  
@@ -115,7 +119,7 @@ production-start.sh uses the process manager, so that a service is restarted if 
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
 ## 📈 Healthcheck - a monitor for Healthcore
-Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. All outputs are displayed in a console.
+Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. All outputs are displayed in a console. Healthcheck only works locally.
 
 How to start healthcheck:
 ```bash
@@ -126,7 +130,7 @@ Then open a browser und type:
 ```bash
 http://localhost:9990
 ```
-(9990 is the standard port healthcheck and localhost the standard base URL, configured in `.env`)
+(9990 is the standard port healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want) 
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
@@ -219,7 +223,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
       }
     }
 
-    module.exports = { Converter_BulpAZ123 };
+    module.exports = { Converter_MyConverter };
     ```
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
@@ -230,7 +234,7 @@ You can explore all APIs using Swagger:
 ```bash
 http://localhost:9998/api-docs/
 ```
-(9998 is the standard server port and localhost the standard base URL, configured in .env)
+(9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
 
 **Example for ZigBee:**
 ```js
@@ -240,11 +244,15 @@ Example coming soon.
 If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
 
 ## 🔐 Security
-By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey` and/or `CONF_corsURL` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
+By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey`, `CONF_corsURL`, `CONF_brokerUsername`/`CONF_brokerPassword` and/or `CONF_tlsPath` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
 
 1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
 
-2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key header` containing the specified key.
+2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key` header containing the specified key.
+
+3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository. If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
+
+4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
 
 ## 📱 App
 Yes, there is also an app in this repository. More specifically, it is the official bulp.io app or rather the source code for it.
@@ -272,8 +280,8 @@ Installing and compiling the app:
    1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
 
    2. If you want to use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
-      1. `google-services.json` to `app/android/app/` (https://support.google.com/firebase/answer/7015592?hl=en)
-      2. `push-firebase-admin.json` to Healthcore root directory (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments)
+      1. `google-services.json` (https://support.google.com/firebase/answer/7015592?hl=en) to `app/android/app/` 
+      2. `push-firebase-admin.json` (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments) **outside** the repository, so there is no chance to commit it accidentally. You can change the path in `.env.local` via `CONF_pushFirebaseKeyPath`. Default is same level as the repository.
 
    3. Build:
       ```bash
@@ -300,3 +308,23 @@ Installing and compiling the app:
    See `app/public/assets/config.json`
 
 That's it. Basically, it is of course advisable to familiarize yourself with Ionic and Capacitor. Many problems encountered during compilation have already been discussed and, in the best case, solved somewhere in those forums.
+
+## 🔎 Testing
+You can test Healthcore in two different ways: automated tests and manual tests.
+
+### Automated tests
+The automated tests live in the `tests/` folder and are powered by [Jest](https://jestjs.io/). They cover converters for all bridges, data CRUD operations, device management, scenario logic, SQL validation, and authentication. Everything runs against an **in-memory SQLite database**, so no real hardware or running services are needed.
+
+To run all automated tests:
+```bash
+npm test
+```
+
+That's it. If something breaks, you'll know immediately.
+
+### Manual tests
+Some things simply can't be automated — real Bluetooth adapters, physical ZigBee devices, push notifications on actual phones, network resilience, and end-to-end flows through the entire system. That's where the manual test plan comes in.
+
+The full manual test plan is documented in [`tests/manual.md`](tests/manual.md).
+
+The rule is simple: **first run `npm test`** to make sure all automated tests pass, **then** work through the manual tests when you have the hardware connected.

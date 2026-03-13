@@ -68,7 +68,7 @@ module.exports = {
       watch: false,
       env: {
         NODE_ENV: "production",
-        PORT: process.env.CONF_portBridgeZigbBee
+        PORT: process.env.CONF_portBridgeZigbee
       },
       cwd: "./bridge - zigbee",
       error_file: "../logs/bridge - zigbee - errors.log",

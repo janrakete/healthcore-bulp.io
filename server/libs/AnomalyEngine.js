@@ -18,7 +18,7 @@ class AnomalyEngine {
    * @param {Object} data
    * @description This function checks for anomalies in the data values using the Isolation Forest algorithm.
    */
-  check(data) { // TODO: convert to cron job
+  check(data) { // TODO: run this periodically via a dedicated cron/scheduler job
     const propertyKeys = Object.keys(data.values);
     propertyKeys.forEach((property, index) => { // iterate over each property
       const results = database.prepare( // prepare SQL query to get historical data

@@ -5,8 +5,8 @@
  */
 
 const util      = require("util");
-const colors    = require("colors");
-const moment    = require("moment");
+const chalk     = new (require("chalk").Instance)({ level: 1 });
+const dayjs     = require("dayjs");
 const sleep     = require("sleep-promise");
 const crypto    = require('crypto');
 
@@ -21,36 +21,38 @@ const crypto    = require('crypto');
  */
 function conLog(anyValue, color = "std", showSeparators = true, cutString = true) {
     const colorMap = {
-        red: "red",
-        yel: "yellow",
-        gre: "green",
-        mag: "magenta",
-        high: "bgRed",
-        std: "reset",
+        red: chalk.red,
+        yel: chalk.yellow,
+        gre: chalk.green,
+        mag: chalk.magenta,
+        high: chalk.bgRed,
+        std: (s) => s,
     };
 
+    const colorFunction = colorMap[color] || colorMap.std;
+
     const separator = "---------------------------------------------";
-    const dateTime = "[" + moment().format("HH:mm:ss") +  "]";
+    const dateTime = "[" + dayjs().format("HH:mm:ss") +  "]";
 
     if (typeof anyValue === "object" && anyValue !== null) { // if given value is an object
         if (showSeparators === true) {
             let separatorString = separator;
             if (color === "high") {
-                separatorString = separatorString[colorMap.high];
+                separatorString = colorMap.high(separatorString);
             }
             console.log(separatorString);    
         }
         console.log(dateTime);
         console.log(util.inspect(anyValue, { showHidden: false, depth: null, colors: true }));
     }
-    else {  // if given value is a string
+    else { // if given value is a string
         let output = anyValue;
 
         if (cutString === true) {
             output = output.slice(0, 512);
         }
     
-        output = output[colorMap[color] || colorMap.std];
+        output = colorFunction(output);
     
         if (color === "high")
         {
@@ -90,7 +92,6 @@ async function pause(milliseconds) {
  * 
  */
 function logoShow(bridge, port) {
-    console.clear();
     conLog("================================================================     ", "mag", false);
     conLog("   _   _ _____    _    _   _____ _   _  ____ ___  ____  _____        ", "mag", false);
     conLog("  | | | | ____|  / \\  | | |_   _| | | |/ ___/ _ \\|  _ \\| ____|    ", "mag", false);
@@ -202,4 +203,21 @@ function devicePropertiesToArray(properties) {
     return result;
 }
 
-module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray };
+/**
+ * Sends a standardized HTTP response and logs the result.
+ * @param {Object} response - Express response object.
+ * @param {Object} data - The response data object (must have a "status" field).
+ * @param {string} routeName - Name of the route for logging (e.g., "Server route 'Data'").
+ * @param {string} errorLabel - Label for the error log message (e.g., "GET Request", "POST request for device scan").
+ * @returns {Object} - The Express response.
+ */
+function sendResponse(response, data, routeName, errorLabel = "Request") {
+    if (data.status === "error") {
+        conLog(errorLabel + ": an error occurred", "red");
+    }
+    conLog(routeName + " HTTP response: " + JSON.stringify(data), "std", false);
+    const statusCode = data.status === "ok" ? 200 : 400;
+    return (response.status(statusCode).json(data));
+}
+
+module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray, sendResponse };

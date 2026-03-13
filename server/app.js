@@ -14,11 +14,6 @@ const database  = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 global.database = database; // make SQLite database global
 
 /**
- * Cron jobs
- */
-const cronJobs = require("node-cron");
-
-/**
  * Start server
  * @async
  * @function startServer
@@ -28,8 +23,8 @@ async function startServer() {
   /**
    * Date and time
    */
-  const moment  = require("moment");
-  global.moment = moment;   
+  const dayjs   = require("dayjs");
+  global.dayjs  = dayjs;   
 
   /**
    * Middleware
@@ -59,9 +54,9 @@ async function startServer() {
 
   app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-      let data           = {};
-      data.status        = "error";
-      data.errorMessage  = "JSON in request is invalid";
+      let data    = {};
+      data.status = "error";
+      data.error  = "JSON in request is invalid";
       response.json(data);
     }
   });
@@ -72,24 +67,44 @@ async function startServer() {
   const apiKeyAuth = require("./middleware/auth");
 
   const infoData = require("./routes/info"); // import routes for server info
-  app.use("/info", infoData); // public - no auth required
+  app.use("/info", infoData);
   const routesData = require("./routes/data"); // import routes for data manipulation
-  app.use("/data", apiKeyAuth, routesData); // protected
+  app.use("/data", apiKeyAuth, routesData);
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
-  app.use("/devices", apiKeyAuth, routesDevices); // protected
+  app.use("/devices", apiKeyAuth, routesDevices);
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
-  app.use("/scenarios", apiKeyAuth, routesScenarios); // protected
+  app.use("/scenarios", apiKeyAuth, routesScenarios);
   
   /**
    * Swagger
    */
   const swaggerDocs = require("./routes/_swagger");
-  swaggerDocs(app); // public - no auth required
+  swaggerDocs(app);
 
   /**
-   * Server
+   * Server (HTTPS if TLS is configured, otherwise HTTP)
    */
-  const server = require("http").createServer(app);
+  let server;
+  if (appConfig.CONF_tlsPath) {
+    const fs    = require("fs");
+    const https = require("https");
+    try {
+      const tlsOptions = {
+        cert: fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem"),
+        key:  fs.readFileSync(appConfig.CONF_tlsPath + "key.pem"),
+      };
+      server = https.createServer(tlsOptions, app);
+      common.conLog("Server: TLS enabled (HTTPS)", "gre");
+    }
+    catch (error) {
+      common.conLog("Server: TLS files not found, falling back to HTTP", "red");
+      server = require("http").createServer(app);
+    }
+  }
+  else {
+    server = require("http").createServer(app);
+  }
+
   await new Promise((resolve) => {
     server.listen(appConfig.CONF_portServer, function () {
       common.logoShow("Server",             appConfig.CONF_portServer); // show logo
@@ -100,10 +115,22 @@ async function startServer() {
   });
 
   /**
-   * Just a small hint about CORS
+   * Security hints (CORS, API, MQTT, HTTPS)
    */
-  if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") {
-   common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
+  if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") { // if no CORS URLs configured, log warning and allow (development mode)
+   common.conLog("Security: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
+  }
+
+  if (!appConfig.CONF_apiKey) { // if no key configured, log warning and allow (development mode)
+    common.conLog("Security: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
+  }
+
+  if (!appConfig.CONF_brokerUsername && !appConfig.CONF_brokerPassword) { // if no MQTT credentials configured, log warning and allow (development mode)
+    common.conLog("Security: No MQTT broker credentials configured. All clients are allowed. Set CONF_brokerUsername and CONF_brokerPassword in .env.local", "red");
+  }
+
+  if (!appConfig.CONF_tlsPath) { // if TLS not configured, log warning and use HTTP (development mode)
+    common.conLog("Security: TLS certificate or key path not configured. Using HTTP. Set CONF_tlsPath in .env.local", "red");
   }
 
   /**
@@ -144,7 +171,20 @@ async function startServer() {
    * MQTT client
    */
   const mqtt       = require("mqtt");
-  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, { clientId: "server" }); // connect to broker ...
+  let mqttOptions  = { clientId: "server", username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
+  if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
+    try {
+      const fs                       = require("fs");
+      mqttOptions.ca                 = [ fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem") ];
+      mqttOptions.rejectUnauthorized = appConfig.CONF_tlsRejectUnauthorized; 
+      common.conLog("MQTT: TLS certificate loaded, using secure connection to broker", "gre");  
+    }
+    catch (error) {
+      common.conLog("MQTT: TLS certificate not found, ignoring ...", "yel");
+    }
+  }
+  const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, mqttOptions); // connect to broker ...
+
 
   /**
   * Connects the MQTT client and subscribes to all topics.
@@ -153,11 +193,16 @@ async function startServer() {
   */
   function mqttConnect() {
     mqttClient.subscribe("server/#", function (error, granted) { // ... and subscribe to all topics
-    common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
-    if (error) {
-      common.conLog("MQTT: Error while subscribing:", "red");
-      common.conLog(error, "std", false);
-    }
+      common.conLog("MQTT: Subscribed to all topics from broker", "yel"); 
+
+      const message   = {};
+      message.status  = "online";
+      mqttClient.publish("server/status", JSON.stringify(message)); // publish online status to MQTT broker
+
+      if (error) {
+        common.conLog("MQTT: Error while subscribing:", "red");
+        common.conLog(error, "std", false);
+      }
     });
   }
   mqttClient.on("connect", mqttConnect);
@@ -224,6 +269,9 @@ async function startServer() {
           break;
         case "server/devices/values/get":
           mqttDevicesValuesGet(data);
+          break;
+        case "server/devices/strength":
+          mqttDevicesStrength(data);
           break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
@@ -305,6 +353,8 @@ async function startServer() {
         message.status      = "error";
         message.error       = "Bridge missing";        
     }
+
+    mqttClient.publish(data.bridge + "/devices/create/response", JSON.stringify(message));
   }   
 
   /**
@@ -318,10 +368,8 @@ async function startServer() {
     if (data.bridge) {
       if (data.deviceID) {
         if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
-          // remove device from database
-          await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(
-            data.deviceID, data.bridge
-          );
+          
+          await database.prepare("DELETE FROM devices WHERE deviceID = ? AND bridge = ?").run(data.deviceID, data.bridge); // remove device from database
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -348,6 +396,7 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
+    mqttClient.publish(data.bridge + "/devices/remove/response", JSON.stringify(message));
   }   
 
   /**
@@ -370,7 +419,7 @@ async function startServer() {
           /**
            * Check for anomalies in the fetched values
            */
-          if (appConfig.CONF_anomalyDetectionActive) {
+          if (appConfig.CONF_anomalyDetectionActive === true) { 
             if (data.values !== undefined) { // Check for anomalies in the fetched values
               anomalies.check(data);
             }
@@ -413,6 +462,8 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
+
+    mqttClient.publish(data.bridge + "/devices/values/get/response", JSON.stringify(message));
   }
 
   /**
@@ -434,11 +485,20 @@ async function startServer() {
           delete data.updates.productName;
           delete data.updates.vendorName;
           
-          const fields        = Object.keys(data.updates);
-          const placeholders  = fields.map(field => field + " = ?").join(", ");
-          const values        = Object.values(data.updates);
+          const safeNameRegex = /^[a-zA-Z0-9_]+$/;
+          const fields        = Object.keys(data.updates).filter(field => safeNameRegex.test(field));
 
-          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ? LIMIT 1").run(values, data.deviceID, data.bridge);
+          if (fields.length === 0) {
+            message.status = "error";
+            message.error  = "No valid fields to update";
+            mqttClient.publish(data.bridge + "/devices/update/response", JSON.stringify(message));
+            return;
+          }
+
+          const placeholders  = fields.map(field => field + " = ?").join(", ");
+          const values        = fields.map(field => data.updates[field]);
+
+          await database.prepare("UPDATE devices SET " + placeholders + " WHERE deviceID = ? AND bridge = ?").run(...values, data.deviceID, data.bridge);
 
           message.status    = "ok";
           message.deviceID  = data.deviceID;
@@ -465,16 +525,72 @@ async function startServer() {
       message.status      = "error";
       message.error       = "Bridge missing";
     }
+    mqttClient.publish(data.bridge + "/devices/update/response", JSON.stringify(message));
   }
+
+  /**
+   * Update device signal strength
+   * @param {*} data - The data object containing the device information. 
+   * @description This function updates the signal strength of a device in the database and publishes a message to the MQTT topic for that device.
+   */
+  async function mqttDevicesStrength(data) {
+    let message = {};
+    if (data.bridge) {
+      if (data.deviceID) {
+        if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
+          message.status     = "ok";
+          message.deviceID   = data.deviceID;
+          message.bridge     = data.bridge;
+          message.strength   = data.strength;
+          common.conLog("Server: Updated signal strength for device with ID " + data.deviceID + ": " + data.strength + "%", "gre");
+
+          await database.prepare("UPDATE devices SET strength = ? WHERE deviceID = ? AND bridge = ?").run(data.strength, data.deviceID, data.bridge);
+        }
+        else {
+          common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
+          message.error       = "Device not registered";
+        }
+      }
+      else {
+        common.conLog("Server: Device ID is missing in message for device strength", "red");
+        message.status      = "error";
+        message.bridge      = data.bridge;
+        message.error       = "Device ID missing";
+      }
+    }
+    else {
+      common.conLog("Server: Bridge is missing in message for device strength", "red");
+      message.status      = "error";
+      message.error       = "Bridge missing";
+    }
+    mqttClient.publish(data.bridge + "/devices/strength/response", JSON.stringify(message));
+  }
+
+  /**
+   * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
+   * Logs a message indicating that the server is closed and exits the process.
+   */    
+  process.on("SIGINT", function () {
+    common.conLog("Server: Graceful shutdown initiated ...", "yel");
+
+    const message   = {};
+    message.status  = "offline";
+    mqttClient.publish("server/status", JSON.stringify(message)); // publish offline status to MQTT broker
+
+    mqttClient.end(false, {}, function () {
+      database.close();
+      common.conLog("Server: MQTT and database connection closed, shutdown complete", "mag");
+      process.exit(0);
+    });
+
+    setTimeout(function () {  // fallback exit in case MQTT end callback never fires
+      common.conLog("Server: Shutdown timeout - forcing exit", "red");
+      process.exit(1);
+    }, appConfig.CONF_bridgesWaitShutdownSeconds * 1000);
+  });
 }
 
 startServer();
-
-/**
- * Handles the SIGINT signal (Ctrl+C) to gracefully shut down the server.
- * Logs a message indicating that the server is closed and exits the process.
- */
-process.on("SIGINT", function () {
-  common.conLog("Server closed.", "mag", true);
-  process.exit(0);
-});

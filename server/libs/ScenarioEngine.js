@@ -17,9 +17,8 @@ class ScenarioEngine {
    * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
    */
   async evaluateScenarios(deviceData) {
-
-    try {
-      // get all enabled scenarios with triggers that match this device/property
+    try { // get all enabled scenarios with triggers that match this device/property
+      
       const scenarios = database.prepare("SELECT DISTINCT s.*, st.triggerID, st.operator, st.value AS triggerValue, st.valueType AS triggerValueType FROM scenarios AS s JOIN scenarios_triggers AS st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.deviceID = ? AND st.bridge = ?  AND st.property = ? ORDER BY s.priority DESC").all(deviceData.deviceID, deviceData.bridge, deviceData.property);
 
       for (const scenario of scenarios) {
@@ -98,8 +97,28 @@ class ScenarioEngine {
    */
   compareValues(actualValue, operator, expectedValue, valueType) {
     try {
-      // convert values based on type
-      let actual   = this.convertValue(actualValue, valueType);
+      let actual = this.convertValue(actualValue, valueType);
+      
+      if (operator === "between" && valueType === "Numeric") { // Handle "between" separately: expectedValue is an array (or JSON string of an array) and must not be passed through convertValue() which would destroy it via parseFloat()
+        let range = expectedValue;
+        if (typeof range === "string") {
+          try {
+            range = JSON.parse(range);
+          }
+          catch (error)           
+          {
+            return false;
+          }
+        }
+
+        if (Array.isArray(range) && range.length === 2) { // ensure it's an array of two values
+          const low  = parseFloat(range[0]);
+          const high = parseFloat(range[1]);
+          return actual >= low && actual <= high;
+        }
+        return false;
+      }
+
       let expected = this.convertValue(expectedValue, valueType);
 
       switch (operator) {
@@ -109,11 +128,6 @@ class ScenarioEngine {
           return valueType === "Numeric" ? actual > expected : false;
         case "less":
           return valueType === "Numeric" ? actual < expected : false;
-        case "between":
-          if (valueType === "Numeric" && Array.isArray(expected) && expected.length === 2) {
-            return actual >= expected[0] && actual <= expected[1];
-          }
-          return false;
         case "contains":
           return String(actual).toLowerCase().includes(String(expected).toLowerCase());
         default:
@@ -135,7 +149,7 @@ class ScenarioEngine {
   convertValue(value, valueType) {
     switch (valueType) {
       case "Numeric":
-        return parseInt(value);
+        return parseFloat(value);
       case "Boolean":
         return Boolean(value === true || value === "true" || value === "1");
       case "String":
@@ -153,8 +167,18 @@ class ScenarioEngine {
    */
   async getCurrentDeviceValue(deviceID, bridge, property) {
     try {
-      const result = this.database.prepare("SELECT valueAsNumeric, valueAsString FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
-      return result ? (result.valueAsNumeric || result.valueAsString) : null;
+      const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
+
+      if (!result) {  // no row found for this device/bridge/property
+        return null;
+      }
+      
+      if (result.valueAsNumeric !== null && result.valueAsNumeric !== undefined) { // prefer numeric value
+        return result.valueAsNumeric;
+      }
+      else { // fallback to string value
+        return result.value ?? null;
+      }
     }
     catch (error) {
       return null;
@@ -190,7 +214,7 @@ class ScenarioEngine {
     catch (error) {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
           
-      this.database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success,dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log failed execution
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success,dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log failed execution
         scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 0, error.message
       );
     }

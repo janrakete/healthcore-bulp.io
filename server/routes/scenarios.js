@@ -97,18 +97,7 @@ router.get("/all", async function (request, response) {
         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
 
-    if (data.status === "error") {
-        common.conLog("GET Request: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-    }
-    else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Scenarios'", "GET Request");
 });
 
 /**
@@ -205,19 +194,7 @@ router.get("/:scenarioID", async function (request, response) {
         data.status = "error";
         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
-    if (data.status === "error") {
-        common.conLog("GET Request: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-
-    }
-    else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Scenarios'", "GET Request");
 });
 
 /**
@@ -415,18 +392,7 @@ router.post("/", async function (request, response) {
         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
     
-    if (data.status === "error") {
-        common.conLog("POST Request: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-    }
-    else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Scenarios'", "POST Request");
 });
 
 /**
@@ -607,18 +573,7 @@ router.patch("/:scenarioID", async function (request, response) {
     data.error  = "Fatal error: " + (error.stack).slice(0, 128);
   }
 
-  if (data.status === "error") {
-      common.conLog("PATCH Request: an error occured", "red");
-  }
-
-  common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
-
-  if (data.status === "ok") {
-      return response.status(200).json(data);
-  }
-  else {
-      return response.status(400).json(data);
-  }
+  return common.sendResponse(response, data, "Server route 'Scenarios'", "PATCH Request");
 });
 
 /**
@@ -685,18 +640,7 @@ router.delete("/:scenarioID", async function (request, response) {
     data.error  = "Fatal error: " + (error.stack).slice(0, 128);
   }
 
-  if (data.status === "error") {
-    common.conLog("DELETE Request: an error occured", "red");
-  }
-
-  common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);
-
-  if (data.status === "ok") {
-      return response.status(200).json(data);
-  }
-  else {
-      return response.status(400).json(data);
-  }
+  return common.sendResponse(response, data, "Server route 'Scenarios'", "DELETE Request");
 });
 
 /**
@@ -760,18 +704,7 @@ router.post("/:scenarioID/execute", async function (request, response) {
         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
     }
 
-    if (data.status === "error") {
-        common.conLog("POST Request: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Scenarios' HTTP response: " + JSON.stringify(data), "std", false);    
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-    }
-    else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Scenarios'", "POST Request");
 });
 
 module.exports = router;

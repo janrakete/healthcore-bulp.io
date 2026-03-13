@@ -19,7 +19,7 @@ const router        = require("express").Router();
  * @returns {void}
  * @description This function handles pending MQTT responses by setting a timeout for the response and storing the callback in a map.
  */
-function mqttPendingResponsesHandler(callID, response) { 
+function handlePendingMqttResponse(callID, response) { 
     const data = {};
     
     const responseTimeout = setTimeout(() => {
@@ -124,17 +124,7 @@ router.get("/all", async function (request, response) {
     }
 
 
-    if (data.status === "error") {
-        common.conLog("GET Request: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-    }
-    else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Devices'", "GET Request");
 });
 
 /**
@@ -229,17 +219,7 @@ router.post("/:bridge/scan", async function (request, response) {
         data.error  = "No payload provided";
     }
 
-    if (data.status === "error") {
-        common.conLog("POST request for device scan: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-    } else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device scan");
 });
 
 /**
@@ -296,9 +276,10 @@ router.post("/:bridge/scan", async function (request, response) {
  *                             bridge:
  *                               type: string
  *                               example: "bluetooth"
- *                             rssi:
+ *                             strength:
  *                               type: integer
- *                               example: -60
+ *                               description: Signal strength in percent (0–100)
+ *                               example: 57
  *                             connectable:
  *                               type: boolean
  *                               example: true
@@ -341,7 +322,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
         data.data.callID    = payload.callID;
 
         data.status = "ok";
-        common.conLog("POST request for device scan info", "gre");
+        common.conLog("GET request for device scan info", "gre");
     }
     else {
         data.status = "error";
@@ -349,17 +330,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
     }
 
 
-    if (data.status === "error") {
-        common.conLog("GET request for device scan info: an error occured", "red");
-    }
-
-    common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-
-    if (data.status === "ok") {
-        return response.status(200).json(data);
-    } else {
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device scan info");
 });
 
 /**
@@ -457,20 +428,8 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
             mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(message.callID, response);
+            handlePendingMqttResponse(message.callID, response);
         }
-        /*else if ((payload.productName !== undefined) && (payload.productName.trim() !== "")) { // else if productName is provided
-            data.status         = "ok";
-            message.productName = payload.productName.trim();
-            message.callID      = common.randomHash(); // create a unique call ID to identify the request
-
-            data.callID         = message.callID; // return the call ID also in the response
-
-            mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("POST request for device connect via product name " + message.productName + " forwarded via MQTT", "gre");
-
-            mqttPendingResponsesHandler(data, response);                
-        }*/
         else {
             data.status = "error";
             data.error  = "No ID or product name provided";
@@ -483,9 +442,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
 
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("POST request for device connect: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device connect");
     }
 });
 
@@ -568,7 +525,7 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
             mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(message.callID, response);
+            handlePendingMqttResponse(message.callID, response);
         }
         else {
             data.status = "error";
@@ -581,9 +538,7 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("POST request for device disconnect: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device disconnect");
     }
 });
 
@@ -666,7 +621,7 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
             mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-            mqttPendingResponsesHandler(message.callID, response);
+            handlePendingMqttResponse(message.callID, response);
         }
         else {
             data.status = "error";
@@ -679,9 +634,7 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("DELETE request for device remove: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "DELETE request for device remove");
     }
 });
 
@@ -786,7 +739,7 @@ router.post("/:bridge/:deviceID", async function (request, response) {
                 mqttClient.publish(bridge + "/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for device add via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(message.callID, response);
+                handlePendingMqttResponse(message.callID, response);
             }
             else {
                 data.status = "error";
@@ -804,9 +757,7 @@ router.post("/:bridge/:deviceID", async function (request, response) {
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("POST request for device add: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device add");
     }
 });
 
@@ -914,7 +865,7 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
                 mqttClient.publish(bridge + "/devices/update", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(message.callID, response);
+                handlePendingMqttResponse(message.callID, response);
             }
             else {
                 data.status = "error";
@@ -932,9 +883,7 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("PATCH request for device update: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
     }
 });
 
@@ -1020,7 +969,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
             message.bridge      = bridge;
             message.values      = {};
 
-            mqttPendingResponsesHandler(message.callID, response);
+            handlePendingMqttResponse(message.callID, response);
 
             if (message.bridge === "bluetooth" || message.bridge === "zigbee") { // Request latest values from the device via MQTT, i.e. Bluetooth or Zigbee
                 mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
@@ -1048,9 +997,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
 
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("GET request for device values: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device values");
     }
 });
 
@@ -1146,7 +1093,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
                 mqttClient.publish(bridge + "/devices/values/set", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for setting device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
 
-                mqttPendingResponsesHandler(message.callID, response);
+                handlePendingMqttResponse(message.callID, response);
             }
             else {
                 data.status = "error";
@@ -1164,9 +1111,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
     }
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("POST request for setting device values: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "POST request for setting device values");
     }
 });
 
@@ -1264,7 +1209,7 @@ router.get("/:bridge/list", async function (request, response) {
         mqttClient.publish(bridge + "/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
         common.conLog("GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
 
-        mqttPendingResponsesHandler(message.callID, response);
+        handlePendingMqttResponse(message.callID, response);
     }
     else {
         data.status = "error";
@@ -1272,9 +1217,7 @@ router.get("/:bridge/list", async function (request, response) {
     }
  
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
-        common.conLog("GET request for registered and connected device list: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
+        return common.sendResponse(response, data, "Server route 'Devices'", "GET request for registered and connected device list");
     }
 });
 
@@ -1379,15 +1322,7 @@ router.get("/:bridge/:deviceID", async function (request, response) {
         data.error  = "No bridge provided";
     }
 
-    if (data.status === "ok") {
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(200).json(data);
-    }
-    else {
-        common.conLog("GET request for device info: an error occured", "red");
-        common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
-        return response.status(400).json(data);
-    }
+    return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device info");
 });
 
 module.exports = router;
