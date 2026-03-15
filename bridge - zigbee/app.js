@@ -278,7 +278,7 @@ async function startBridgeAndServer() {
       return; 
     }
 
-    common.conLog("ZigBee: Maintenance loop started (every " + appConfig.CONF_devicesZigBeeWatchdogIntervalSeconds + "s)", "gre");
+    common.conLog("ZigBee: Maintenance loop started (every " + appConfig.CONF_devicesZigBeeMaintenanceIntervalSeconds + "s)", "gre");
 
     bridgeStatus.maintenanceInterval = setInterval(async () => {
       if (bridgeStatus.status !== "online") {
@@ -343,7 +343,7 @@ async function startBridgeAndServer() {
           }
         }
       }
-    }, appConfig.CONF_devicesZigBeeWatchdogIntervalSeconds * 1000);
+    }, appConfig.CONF_devicesZigBeeMaintenanceIntervalSeconds * 1000);
   }
 
   /**
