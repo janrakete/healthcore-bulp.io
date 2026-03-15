@@ -172,7 +172,7 @@ class ConverterStandard {
 
         // Current battery charge level in percentage (0-100)
         this.properties["2a19"] = {
-            name:       "batteryLevel",
+            name:       "battery",
             standard:   true,
             notify:     true,
             read:       true,

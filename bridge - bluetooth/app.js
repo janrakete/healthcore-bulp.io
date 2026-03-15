@@ -428,11 +428,11 @@ async function startBridgeAndServer() {
    * @param {Object} values - The values object (property name -> { value, valueAsNumeric }).
    */
   function deviceBatteryCheck(deviceID, values) {
-    if (!values || !values.batteryLevel) {
+    if (!values || !values.battery) {
       return;
     }
 
-    const batteryValue = values.batteryLevel.valueAsNumeric !== null ? values.batteryLevel.valueAsNumeric : values.batteryLevel.value; // prefer numeric value if available, otherwise use raw value
+    const batteryValue = values.battery.valueAsNumeric !== null ? values.battery.valueAsNumeric : values.battery.value; // prefer numeric value if available, otherwise use raw value
     if (typeof batteryValue !== "number") { // safety check
       return; 
     }
