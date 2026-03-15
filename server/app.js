@@ -120,15 +120,21 @@ async function startServer() {
   if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") { // if no CORS URLs configured, log warning and allow (development mode)
    common.conLog("Security: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
   }
+  else {
+    common.conLog("Security: CORS allowed for: " + appConfig.CONF_corsURL, "gre");
+  }
 
   if (!appConfig.CONF_apiKey) { // if no key configured, log warning and allow (development mode)
     common.conLog("Security: No API key configured. All requests are allowed. Set CONF_apiKey in .env.local", "red");
+  }
+  else {
+    common.conLog("Security: API key authentication enabled", "gre");
   }
 
   if (!appConfig.CONF_brokerUsername && !appConfig.CONF_brokerPassword) { // if no MQTT credentials configured, log warning and allow (development mode)
     common.conLog("Security: No MQTT broker credentials configured. All clients are allowed. Set CONF_brokerUsername and CONF_brokerPassword in .env.local", "red");
   }
-
+  
   if (!appConfig.CONF_tlsPath) { // if TLS not configured, log warning and use HTTP (development mode)
     common.conLog("Security: TLS certificate or key path not configured. Using HTTP. Set CONF_tlsPath in .env.local", "red");
   }
