@@ -426,7 +426,7 @@ async function startBridgeAndServer() {
     if (zigBeeReconnectTimer) {
       clearTimeout(zigBeeReconnectTimer); // clear any existing timer
     }
-    const delay = Math.min(appConfig.CONF_devicesZigBeeReconnectBaseDelaySeconds * 1000 * Math.pow(2, zigBeeReconnectAttempt), appConfig.CONF_devicesZigBeeReconnectMaxDelaySeconds * 1000);
+    const delay = Math.min(appConfig.CONF_devicesZigBeeAdapterReconnectBaseDelaySeconds * 1000 * Math.pow(2, zigBeeReconnectAttempt), appConfig.CONF_devicesZigBeeAdapterReconnectMaxDelaySeconds * 1000);
     zigBeeReconnectAttempt++;
     common.conLog("ZigBee: Scheduling reconnect attempt #" + zigBeeReconnectAttempt + " in " + (delay / 1000) + " seconds", "yel");
     zigBeeReconnectTimer = setTimeout(async function () {
