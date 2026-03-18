@@ -322,9 +322,9 @@ async function startBridgeAndServer() {
       for (const device of bridgeStatus.devicesConnected.values()) {
         if (deviceIsWired(device) && device.deviceRaw) {
           try {
-            const lqi = device.deviceRaw.lqi;
+            const lqi = device.deviceRaw.linkquality; // zigbee-herdsman getter: cached numeric LQI (0–255)
 
-            if (lqi !== undefined && lqi !== null) {
+            if (typeof lqi === "number" && Number.isFinite(lqi)) {
               const strength = Math.round((lqi / 255) * 100); // normalize LQI (0–255) to percentage (0–100)
 
               const message = {
