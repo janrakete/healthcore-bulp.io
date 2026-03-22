@@ -28,7 +28,7 @@ These tests require real hardware, running services, or the mobile app and canno
 | 11 | **App connects to server and loads devices** | Open the app, enter the server URL, and verify it discovers the server (via Bonjour or manual entry). The device list should load showing all registered devices with their names, bridges, and connection status. |
 | 12 | **App shows live device values** | Open a connected device's detail view in the app. Change a sensor value physically (e.g. press a BangleJS2 button). The app should update the displayed value in real-time without needing to refresh manually. |
 | 13 | **App can create/edit/delete scenarios** | Use the app's scenario UI to create a new scenario with triggers and actions. Verify it appears in `GET /scenarios/all`. Edit its name and triggers, then delete it. Confirm the database reflects each change. |
-| 14 | **App receives push notifications** | With the app installed on a real device and a valid FCM token registered, trigger a scenario. The phone should display a push notification with the scenario name and description, even when the app is in the background. |
+| 14 | **App receives push notifications** | With the app installed on a real device and a valid FCM token registered, trigger a scenario that has a `push_notification` action. The phone should display a push notification with the configured title and body, even when the app is in the background. |
 | 15 | **App handles server offline gracefully** | While the app is connected, stop the server. The app should display an offline indicator or error message rather than crashing. When the server comes back, the app should reconnect automatically. |
 | 16 | **App works on iOS and Android** | Build and deploy the app on both platforms using Capacitor (`npx cap run ios` / `npx cap run android`). Test basic flows (login, device list, scenario creation) on each platform to check for platform-specific rendering or behavior issues. |
 
@@ -39,7 +39,7 @@ These tests require real hardware, running services, or the mobile app and canno
 | # | Test | Explanation |
 |---|------|-------------|
 | 17 | **Device value → Scenario trigger → Action** | Create a scenario (e.g. "heartrate > 100 → turn on light"), then send a device value that exceeds the threshold. Verify the entire chain: MQTT message arrives at server, ScenarioEngine evaluates triggers, action is published to the target bridge, and the target device receives the command. |
-| 18 | **Push notifications delivered via Firebase** | Register a push token via `POST /data/push_tokens` with a real FCM token from the mobile app. Then trigger a scenario with `pushNotification: true`. Check that the notification arrives on the mobile device with the correct title and description. |
+| 18 | **Push notifications delivered via Firebase** | Register a push token via `POST /data/push_tokens` with a real FCM token from the mobile app. Then trigger a scenario that includes a `push_notification` action (type: `push_notification`, value: title, property: body). Check that the notification arrives on the mobile device with the correct title and body text. |
 | 19 | **Delayed scenario actions execute correctly** | Create a scenario with an action that has `delay: 5` (seconds). Trigger it and measure the time until the action's MQTT message is published. It should fire approximately 5 seconds after the trigger, not immediately. |
 | 20 | **Anomaly detection flags abnormal values** | With `CONF_anomalyDetectionActive` enabled, send ~200 normal heartrate values (60–80) to build a baseline. Then send an extreme value (e.g. 250). Check the server logs or MQTT for `server/devices/anomaly` messages with a score exceeding `CONF_anomalyDetectionThreshold`. |
 | 21 | **Anomaly detection publishes MQTT alert** | After triggering an anomaly (see above), subscribe to `server/devices/anomaly` with an MQTT client. Verify the published message contains the deviceID, property, value, and anomaly score. |
@@ -70,25 +70,38 @@ These tests require real hardware, running services, or the mobile app and canno
 
 ---
 
-## 6 - System and infrastructure
+## 6 - Event-based scenario triggers and action types
 
 | # | Test | Explanation |
 |---|------|-------------|
-| 32 | **Full system startup** | Run `./production-start.sh` (or `pm2 start production.config.js`) and verify that all processes launch: broker on port 9999, server on 9998, and all configured bridges on their respective ports. Check logs for "online" status messages. |
-| 33 | **MQTT broker accepts authenticated connections** | Set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`, restart the broker, and try connecting with `mosquitto_sub -u <user> -P <pass> -t "#"`. Valid credentials should connect successfully and show published messages. |
-| 34 | **MQTT broker rejects wrong credentials** | With broker authentication enabled, attempt to connect using incorrect credentials. The broker should reject the connection with return code 4 (bad credentials) and log the failed attempt. |
-| 35 | **MQTT TLS encryption works** | Set `CONF_tlsPath` to a directory containing `cert.pem` and `key.pem`, restart the broker. Connect using `mqtts://` protocol and verify the encrypted connection succeeds. Plain `mqtt://` connections should be refused. |
-| 36 | **HTTPS server with TLS certificates** | With `CONF_tlsPath` configured, restart the server. Open `https://localhost:9998/info` in a browser or curl. Verify the TLS certificate is served correctly and HTTP responses work over HTTPS. |
-| 37 | **MQTT persistence: messages saved to mqtt_history** | Send any MQTT message while the broker is running, then query the SQLite database: `SELECT * FROM mqtt_history ORDER BY historyID DESC LIMIT 5`. Every published message should have a corresponding row with topic, message, and timestamp. |
-| 38 | **Bonjour/mDNS service published** | Start the server and use a Bonjour browser (e.g. `dns-sd -B _http._tcp` on macOS, or Bonjour Browser app). Verify the server advertises itself with the name from `CONF_serverIDBonjour` and the correct port. |
-| 39 | **CORS rejects unauthorized origins** | Set `CONF_corsURL` to a specific URL (e.g. `http://localhost:5173`) in `.env.local`. Then make a request from a different origin (e.g. `curl -H "Origin: http://evil.com" http://localhost:9998/info`). The response should include a CORS error for the unauthorized origin. |
+| 32 | **device_disconnected trigger fires** | Create a scenario with a `device_disconnected` trigger for a specific device. Physically disconnect that device (e.g. power off a BLE device or remove a ZigBee device). Verify the scenario executes its actions when the bridge publishes the device status change to `server/devices/status`. |
+| 33 | **device_connected trigger fires** | Create a scenario with a `device_connected` trigger. Reconnect the device (power it back on or let the bridge auto-reconnect). Verify the scenario fires when the device comes back online. |
+| 34 | **battery_low trigger fires** | Create a scenario with a `battery_low` trigger (value = threshold, e.g. "20"). Have a battery-powered device report a battery level below the threshold. Verify the scenario executes. Also verify it does NOT fire when the battery is above the threshold. |
+| 35 | **notification action logs without push** | Create a scenario with a `notification` action (type: `notification`, value: text). Trigger the scenario and verify a row appears in the `notifications` table but no push notification is sent to devices. |
+| 36 | **push_notification action sends push** | Create a scenario with a `push_notification` action (type: `push_notification`, value: title, property: body). Trigger the scenario and verify the push notification arrives on registered devices via Firebase. |
+| 37 | **Mixed action types in one scenario** | Create a scenario with all three action types: `set_device_value`, `notification`, and `push_notification`. Trigger it and verify all three execute correctly with their respective delays. |
 
 ---
 
-## 7 - Healthcheck and Swagger
+## 7 - System and infrastructure
 
 | # | Test | Explanation |
 |---|------|-------------|
-| 40 | **Healthcheck returns status of all processes** | Open `http://localhost:{CONF_portHealthcheck}/` in a browser. Start and stop several bridges, server and broker. See output in terminal. |
-| 41 | **Swagger UI loads** | Open `http://localhost:9998/api-docs` in a browser. The Swagger UI should render with all documented endpoints grouped by tag (Data, Devices, Scenarios). Verify you can expand each endpoint and see its parameters, request body, and response schema. |
-| 42 | **Swagger JSON spec is valid** | Open `http://localhost:9998/swagger.json` and paste the output into [editor.swagger.io](https://editor.swagger.io). It should parse without errors and match the actually implemented routes. |
+| 38 | **Full system startup** | Run `./production-start.sh` (or `pm2 start production.config.js`) and verify that all processes launch: broker on port 9999, server on 9998, and all configured bridges on their respective ports. Check logs for "online" status messages. |
+| 39 | **MQTT broker accepts authenticated connections** | Set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`, restart the broker, and try connecting with `mosquitto_sub -u <user> -P <pass> -t "#"`. Valid credentials should connect successfully and show published messages. |
+| 40 | **MQTT broker rejects wrong credentials** | With broker authentication enabled, attempt to connect using incorrect credentials. The broker should reject the connection with return code 4 (bad credentials) and log the failed attempt. |
+| 41 | **MQTT TLS encryption works** | Set `CONF_tlsPath` to a directory containing `cert.pem` and `key.pem`, restart the broker. Connect using `mqtts://` protocol and verify the encrypted connection succeeds. Plain `mqtt://` connections should be refused. |
+| 42 | **HTTPS server with TLS certificates** | With `CONF_tlsPath` configured, restart the server. Open `https://localhost:9998/info` in a browser or curl. Verify the TLS certificate is served correctly and HTTP responses work over HTTPS. |
+| 43 | **MQTT persistence: messages saved to mqtt_history** | Send any MQTT message while the broker is running, then query the SQLite database: `SELECT * FROM mqtt_history ORDER BY historyID DESC LIMIT 5`. Every published message should have a corresponding row with topic, message, and timestamp. |
+| 44 | **Bonjour/mDNS service published** | Start the server and use a Bonjour browser (e.g. `dns-sd -B _http._tcp` on macOS, or Bonjour Browser app). Verify the server advertises itself with the name from `CONF_serverIDBonjour` and the correct port. |
+| 45 | **CORS rejects unauthorized origins** | Set `CONF_corsURL` to a specific URL (e.g. `http://localhost:5173`) in `.env.local`. Then make a request from a different origin (e.g. `curl -H "Origin: http://evil.com" http://localhost:9998/info`). The response should include a CORS error for the unauthorized origin. |
+
+---
+
+## 8 - Healthcheck and Swagger
+
+| # | Test | Explanation |
+|---|------|-------------|
+| 46 | **Healthcheck returns status of all processes** | Open `http://localhost:{CONF_portHealthcheck}/` in a browser. Start and stop several bridges, server and broker. See output in terminal. |
+| 47 | **Swagger UI loads** | Open `http://localhost:9998/api-docs` in a browser. The Swagger UI should render with all documented endpoints grouped by tag (Data, Devices, Scenarios). Verify you can expand each endpoint and see its parameters, request body, and response schema. |
+| 48 | **Swagger JSON spec is valid** | Open `http://localhost:9998/swagger.json` and paste the output into [editor.swagger.io](https://editor.swagger.io). It should parse without errors and match the actually implemented routes. |

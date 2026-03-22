@@ -35,7 +35,7 @@ describe("BLE ConverterStandard", () => {
   });
 
   test("getPropertyByName should return property for valid name", () => {
-    const prop = converter.getPropertyByName("batteryLevel");
+    const prop = converter.getPropertyByName("battery");
     expect(prop).toBeDefined();
     expect(prop.standard).toBe(true);
     expect(prop.dataFormat).toBe("UInt8");

@@ -103,7 +103,6 @@ function createTestDatabase() {
       description TEXT,
       enabled BOOLEAN DEFAULT 1,
       priority INTEGER DEFAULT 0,
-      pushNotification BOOLEAN DEFAULT 1,
       icon TEXT NOT NULL,
       roomID INTEGER,
       individualID INTEGER,
@@ -113,21 +112,23 @@ function createTestDatabase() {
     CREATE TABLE "scenarios_triggers" (
       triggerID INTEGER PRIMARY KEY AUTOINCREMENT,
       scenarioID INTEGER NOT NULL,
-      deviceID TEXT NOT NULL,
-      bridge TEXT NOT NULL,
-      property TEXT NOT NULL,
-      operator TEXT NOT NULL,
-      value TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'device_value',
+      deviceID TEXT,
+      bridge TEXT,
+      property TEXT,
+      operator TEXT,
+      value TEXT,
       valueType TEXT DEFAULT 'String'
     );
 
     CREATE TABLE "scenarios_actions" (
       actionID INTEGER PRIMARY KEY AUTOINCREMENT,
       scenarioID INTEGER NOT NULL,
-      deviceID TEXT NOT NULL,
-      bridge TEXT NOT NULL,
-      property TEXT NOT NULL,
-      value TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'set_device_value',
+      deviceID TEXT,
+      bridge TEXT,
+      property TEXT,
+      value TEXT,
       valueType TEXT DEFAULT 'String',
       delay INTEGER DEFAULT 0
     );

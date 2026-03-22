@@ -279,6 +279,9 @@ async function startServer() {
         case "server/devices/strength":
           mqttDevicesStrength(data);
           break;
+        case "server/devices/status":
+          mqttDevicesStatus(data);
+          break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
       }
@@ -434,17 +437,26 @@ async function startServer() {
           /**
            * Evaluate scenarios based on the fetched values
            */
-          if (data.values !== undefined) { // evaluate scenarios based on the fetched values
+          if (data.values !== undefined) {
             Object.keys(data.values).forEach((property) => {
               const valueData = data.values[property];
 
-              scenarios.evaluateScenarios({
+              scenarios.handleEvent("device_value", {
                 deviceID: data.deviceID,
                 bridge: data.bridge,
                 property: property,
                 value: valueData.value,
                 valueType: valueData.valueType || "string"
               });
+
+              if (property === "battery") { // if battery level is fetched, trigger battery_low event for scenarios if value is below threshold
+                scenarios.handleEvent("battery_low", {
+                  deviceID: data.deviceID,
+                  bridge: data.bridge,
+                  property: "battery",
+                  value: valueData.value
+                });
+              }
             });
           }            
         }
@@ -573,6 +585,59 @@ async function startServer() {
       message.error       = "Bridge missing";
     }
     mqttClient.publish(data.bridge + "/devices/strength/response", JSON.stringify(message));
+  }
+
+  /**
+   * Handle device status events (online/offline)
+   * @param {Object} data - { deviceID, bridge, status: "online"|"offline" }
+   * @description Triggers device_connected or device_disconnected scenarios
+   */
+  async function mqttDevicesStatus(data) {
+    let message = {};
+    if (data.bridge) {
+      if (data.deviceID) {
+        if (data.status) {
+          if (await deviceCheckRegistered(data.deviceID)) { // check if device is registered
+            const type        = data.status === "online" ? "device_connected" : "device_disconnected";
+            message.status    = "ok";
+            message.deviceID  = data.deviceID;
+            message.bridge    = data.bridge;
+            common.conLog("Server: Device " + data.deviceID + " status: " + data.status, "yel");
+
+            scenarios.handleEvent(type, {
+              deviceID: data.deviceID,
+              bridge:   data.bridge
+            });
+          }
+          else {
+            common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");
+            message.status      = "error";
+            message.deviceID    = data.deviceID;
+            message.bridge      = data.bridge;
+            message.error       = "Device not registered";
+          }
+        }
+        else {
+          common.conLog("Server: Status is missing in message for device status", "red");
+          message.status      = "error";
+          message.deviceID    = data.deviceID;
+          message.bridge      = data.bridge;
+          message.error       = "Status missing";
+        }
+      }
+      else {
+        common.conLog("Server: Device ID is missing in message for device status", "red");
+        message.status      = "error";
+        message.bridge      = data.bridge;
+        message.error       = "Device ID missing";
+      }
+    }
+    else {
+      common.conLog("Server: Bridge is missing in message for device status", "red");
+      message.status      = "error";
+      message.error       = "Bridge missing";
+    }
+    mqttClient.publish(data.bridge + "/devices/status/response", JSON.stringify(message));
   }
 
   /**

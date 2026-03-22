@@ -54,10 +54,10 @@ describe("Scenario CRUD", () => {
         name:             "High Heartrate Alert",
         description:      "Alert when heartrate exceeds 100",
         enabled:          true,
-        pushNotification: true,
         priority:         1,
         icon:             "heart",
         triggers: [{
+          type:      "device_value",
           deviceID:  "sensor_001",
           bridge:    "bluetooth",
           property:  "heartrate",
@@ -66,6 +66,7 @@ describe("Scenario CRUD", () => {
           valueType: "Numeric",
         }],
         actions: [{
+          type:      "set_device_value",
           deviceID:  "light_001",
           bridge:    "zigbee",
           property:  "state",
@@ -91,11 +92,12 @@ describe("Scenario CRUD", () => {
     expect(scenario).toBeDefined();
     expect(scenario.name).toBe("High Heartrate Alert");
     expect(scenario.enabled).toBe(true);
-    expect(scenario.pushNotification).toBe(true);
     expect(scenario.triggers.length).toBe(1);
     expect(scenario.actions.length).toBe(1);
+    expect(scenario.triggers[0].type).toBe("device_value");
     expect(scenario.triggers[0].operator).toBe("greater");
     expect(scenario.triggers[0].value).toBe("100");
+    expect(scenario.actions[0].type).toBe("set_device_value");
   });
 
   test("GET /scenarios/:id — returns single scenario with triggers & actions", async () => {
@@ -119,8 +121,8 @@ describe("Scenario CRUD", () => {
       .send({
         name: "Updated Alert",
         actions: [
-          { deviceID: "light_001", bridge: "zigbee", property: "state", value: "on", valueType: "String", delay: 0 },
-          { deviceID: "light_001", bridge: "zigbee", property: "brightness", value: "254", valueType: "Numeric", delay: 2 },
+          { type: "set_device_value", deviceID: "light_001", bridge: "zigbee", property: "state", value: "on", valueType: "String", delay: 0 },
+          { type: "set_device_value", deviceID: "light_001", bridge: "zigbee", property: "brightness", value: "254", valueType: "Numeric", delay: 2 },
         ],
       });
     expect(res.status).toBe(200);
@@ -179,8 +181,8 @@ describe("Scenario CRUD", () => {
       .post("/scenarios")
       .send({
         name: "ToDelete", icon: "trash",
-        triggers: [{ deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", operator: "equals", value: "0" }],
-        actions:  [{ deviceID: "light_001", bridge: "zigbee", property: "state", value: "off" }],
+        triggers: [{ type: "device_value", deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", operator: "equals", value: "0" }],
+        actions:  [{ type: "set_device_value", deviceID: "light_001", bridge: "zigbee", property: "state", value: "off" }],
       });
     const deleteID = Number(create.body.ID);
 
@@ -215,17 +217,17 @@ describe("ScenarioEngine", () => {
   beforeAll(() => {
     // Create a scenario in DB: heartrate > 50 → turn on light
     const result = db.prepare(
-      "INSERT INTO scenarios (name, description, enabled, pushNotification, priority, icon) VALUES (?, ?, 1, 0, 1, ?)"
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
     ).run("Engine Test", "Heartrate alert", "heart");
     scenarioID = result.lastInsertRowid;
 
     db.prepare(
-      "INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(scenarioID, "sensor_001", "bluetooth", "heartrate", "greater", "50", "Numeric");
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(scenarioID, "device_value", "sensor_001", "bluetooth", "heartrate", "greater", "50", "Numeric");
 
     db.prepare(
-      "INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(scenarioID, "light_001", "zigbee", "state", "on", "String", 0);
+      "INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(scenarioID, "set_device_value", "light_001", "zigbee", "state", "on", "String", 0);
   });
 
   beforeEach(() => {
@@ -308,8 +310,8 @@ describe("ScenarioEngine", () => {
     expect(global.scenarios.convertValue(42)).toBe("42");
   });
 
-  test("evaluateScenarios — triggers scenario when value > 50", async () => {
-    await global.scenarios.evaluateScenarios({
+  test("handleEvent — triggers scenario when value > 50", async () => {
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001",
       bridge:   "bluetooth",
       property: "heartrate",
@@ -330,11 +332,11 @@ describe("ScenarioEngine", () => {
     expect(publishedMsg.values.state).toBe("on");
   });
 
-  test("evaluateScenarios — does NOT trigger when value ≤ 50", async () => {
+  test("handleEvent — does NOT trigger when value ≤ 50", async () => {
     global.mqttClient.publish.mockClear();
     global.scenarios.executionCooldowns.clear();
 
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001",
       bridge:   "bluetooth",
       property: "heartrate",
@@ -347,17 +349,17 @@ describe("ScenarioEngine", () => {
     expect(setCalls.length).toBe(0);
   });
 
-  test("evaluateScenarios — cooldown prevents rapid re-execution", async () => {
+  test("handleEvent — cooldown prevents rapid re-execution", async () => {
     global.mqttClient.publish.mockClear();
     global.scenarios.executionCooldowns.clear();
 
     // First trigger
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
     });
 
     // Second trigger immediately
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "90",
     });
 
@@ -367,12 +369,12 @@ describe("ScenarioEngine", () => {
     expect(setCalls.length).toBe(1); // Only first one fires
   });
 
-  test("evaluateScenarios — cooldown expires, allows re-execution", async () => {
+  test("handleEvent — cooldown expires, allows re-execution", async () => {
     global.mqttClient.publish.mockClear();
     global.scenarios.executionCooldowns.clear();
 
     // First trigger
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
     });
 
@@ -381,7 +383,7 @@ describe("ScenarioEngine", () => {
     global.mqttClient.publish.mockClear();
 
     // Second trigger after cooldown
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "90",
     });
 
@@ -391,12 +393,12 @@ describe("ScenarioEngine", () => {
     expect(setCalls.length).toBe(1);
   });
 
-  test("evaluateScenarios — disabled scenario does NOT trigger", async () => {
+  test("handleEvent — disabled scenario does NOT trigger", async () => {
     db.prepare("UPDATE scenarios SET enabled = 0 WHERE scenarioID = ?").run(scenarioID);
     global.mqttClient.publish.mockClear();
     global.scenarios.executionCooldowns.clear();
 
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
     });
 
@@ -428,7 +430,7 @@ describe("ScenarioEngine", () => {
   test("Scenario execution logs to scenarios_executions", async () => {
     global.scenarios.executionCooldowns.clear();
 
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
     });
 
@@ -438,10 +440,22 @@ describe("ScenarioEngine", () => {
     expect(executions[executions.length - 1].success).toBe(1);
   });
 
-  test("Scenario execution creates notification", async () => {
-    const notifications = db.prepare("SELECT * FROM notifications WHERE scenarioID = ?").all(scenarioID);
+  test("Scenario execution creates notification via notification action", async () => {
+    // Add a notification action to the engine test scenario
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
+    ).run(scenarioID, "notification", "Engine Test Notification", 0);
+
+    global.scenarios.executionCooldowns.clear();
+
+    await global.scenarios.handleEvent("device_value", {
+      deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Engine Test Notification");
     expect(notifications.length).toBeGreaterThanOrEqual(1);
-    expect(notifications[notifications.length - 1].text).toBe("Engine Test");
   });
 });
 
@@ -454,21 +468,21 @@ describe("Multi-Trigger Scenarios", () => {
   beforeAll(() => {
     // Scenario: heartrate > 50 AND motion = yes → turn on light
     const result = db.prepare(
-      "INSERT INTO scenarios (name, description, enabled, pushNotification, priority, icon) VALUES (?, ?, 1, 0, 2, ?)"
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 2, ?)"
     ).run("Multi Trigger", "Both conditions must be met", "alert");
     multiScenarioID = result.lastInsertRowid;
 
     db.prepare(
-      "INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(multiScenarioID, "sensor_001", "bluetooth", "heartrate", "greater", "50", "Numeric");
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(multiScenarioID, "device_value", "sensor_001", "bluetooth", "heartrate", "greater", "50", "Numeric");
 
     db.prepare(
-      "INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(multiScenarioID, "sensor_001", "bluetooth", "motion", "equals", "yes", "String");
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(multiScenarioID, "device_value", "sensor_001", "bluetooth", "motion", "equals", "yes", "String");
 
     db.prepare(
-      "INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(multiScenarioID, "light_001", "zigbee", "state", "on", "String", 0);
+      "INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(multiScenarioID, "set_device_value", "light_001", "zigbee", "state", "on", "String", 0);
   });
 
   beforeEach(() => {
@@ -482,7 +496,7 @@ describe("Multi-Trigger Scenarios", () => {
       "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("sensor_001", "bluetooth", "motion", "yes", 0, Date.now());
 
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
     });
 
@@ -504,7 +518,7 @@ describe("Multi-Trigger Scenarios", () => {
       "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("sensor_001", "bluetooth", "motion", "no", 0, Date.now());
 
-    await global.scenarios.evaluateScenarios({
+    await global.scenarios.handleEvent("device_value", {
       deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
     });
 
@@ -516,5 +530,154 @@ describe("Multi-Trigger Scenarios", () => {
     for (const s of singleTriggerScenarios) {
       db.prepare("UPDATE scenarios SET enabled = 1 WHERE scenarioID = ?").run(s.scenarioID);
     }
+  });
+});
+
+// ─── Event-Based Triggers (device_disconnected, device_connected, battery_low) ──
+
+describe("Event-Based Triggers", () => {
+
+  beforeEach(() => {
+    global.mqttClient.publish.mockClear();
+    global.scenarios.executionCooldowns.clear();
+  });
+
+  test("device_disconnected trigger fires on disconnect event", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Disconnect Alert", "Device went offline", "wifi-off");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge) VALUES (?, ?, ?, ?)"
+    ).run(sid, "device_disconnected", "sensor_001", "bluetooth");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(sid, "set_device_value", "light_001", "zigbee", "state", "on", "String", 0);
+
+    await global.scenarios.handleEvent("device_disconnected", {
+      deviceID: "sensor_001", bridge: "bluetooth",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    const setCalls = global.mqttClient.publish.mock.calls.filter((c) => c[0] === "zigbee/devices/values/set");
+    expect(setCalls.length).toBe(1);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
+  });
+
+  test("device_connected trigger fires on connect event", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Reconnect Alert", "Device back online", "wifi");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge) VALUES (?, ?, ?, ?)"
+    ).run(sid, "device_connected", "sensor_001", "bluetooth");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(sid, "set_device_value", "light_001", "zigbee", "state", "off", "String", 0);
+
+    await global.scenarios.handleEvent("device_connected", {
+      deviceID: "sensor_001", bridge: "bluetooth",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    const setCalls = global.mqttClient.publish.mock.calls.filter((c) => c[0] === "zigbee/devices/values/set");
+    expect(setCalls.length).toBe(1);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
+  });
+
+  test("battery_low trigger fires when battery below threshold", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Low Battery", "Battery critical", "battery");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, value) VALUES (?, ?, ?, ?, ?)"
+    ).run(sid, "battery_low", "sensor_001", "bluetooth", "20");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value) VALUES (?, ?, ?)"
+    ).run(sid, "notification", "Battery is low!");
+
+    await global.scenarios.handleEvent("battery_low", {
+      deviceID: "sensor_001", bridge: "bluetooth", property: "battery", value: "15",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Battery is low!");
+    expect(notifications.length).toBeGreaterThanOrEqual(1);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
+  });
+
+  test("battery_low trigger does NOT fire when battery above threshold", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Low Battery No Fire", "Battery ok", "battery");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, value) VALUES (?, ?, ?, ?, ?)"
+    ).run(sid, "battery_low", "sensor_001", "bluetooth", "20");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value) VALUES (?, ?, ?)"
+    ).run(sid, "notification", "Should not appear");
+
+    await global.scenarios.handleEvent("battery_low", {
+      deviceID: "sensor_001", bridge: "bluetooth", property: "battery", value: "50",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Should not appear");
+    expect(notifications.length).toBe(0);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
+  });
+
+  test("push_notification action type works", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Push Test", "Push scenario", "bell");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(sid, "device_value", "sensor_001", "bluetooth", "heartrate", "greater", "50", "Numeric");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value, property) VALUES (?, ?, ?, ?)"
+    ).run(sid, "push_notification", "Alert!", "Heart rate too high");
+
+    // Mock pushEngine
+    const mockPushEngine = { sendAll: jest.fn() };
+    global.scenarios.pushEngine = mockPushEngine;
+
+    await global.scenarios.handleEvent("device_value", {
+      deviceID: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+    expect(mockPushEngine.sendAll).toHaveBeenCalledWith("Alert!", "Heart rate too high");
+
+    global.scenarios.pushEngine = null;
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
   });
 });

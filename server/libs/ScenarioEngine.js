@@ -1,56 +1,70 @@
 /**
  * =============================================================================================
- * Scenario Engine - Evaluates and executes scenarios based on device values
- * =========================================================================
+ * Scenario Engine - Evaluates and executes scenarios based on events
+ * ==================================================================
+ * 
+ * Supported trigger types:
+ *   - device_value:        A device property matches a condition (operator + value)
+ *   - device_disconnected: A device loses its connection
+ *   - device_connected:    A device reconnects
+ *   - battery_low:         A device's battery drops below a threshold (value = threshold %)
+ *
+ * Supported action types:
+ *   - set_device_value:    Set a property on a device via MQTT
+ *   - push_notification:   Send a push notification (value = title, property = body)
+ *   - notification:        Log a notification without push (value = text)
  */
 
+const e = require("express");
 const appConfig = require("../../config");
 
 class ScenarioEngine {
   constructor() {
     this.executionCooldowns = new Map(); // prevent rapid re-execution
-    this.pushEngine         = null; // push notifications engine
+    this.pushEngine         = null; // push notifications engine    
   }
 
   /**
-   * Evaluates all active scenarios when a device value changes
-   * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
+   * Central entry point for all events
+   * @param {string} eventType - Type of event (device_value, device_connected, device_disconnected, battery_low)
+   * @param {Object} eventData - { deviceID, bridge, property?, value?, valueType? }
    */
-  async evaluateScenarios(deviceData) {
-    try { // get all enabled scenarios with triggers that match this device/property
-      
-      const scenarios = database.prepare("SELECT DISTINCT s.*, st.triggerID, st.operator, st.value AS triggerValue, st.valueType AS triggerValueType FROM scenarios AS s JOIN scenarios_triggers AS st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.deviceID = ? AND st.bridge = ?  AND st.property = ? ORDER BY s.priority DESC").all(deviceData.deviceID, deviceData.bridge, deviceData.property);
+  async handleEvent(eventType, eventData) {
+    try {
+      const scenarios = database.prepare(
+        "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? AND st.bridge = ? ORDER BY s.priority DESC"
+      ).all(eventType, eventData.deviceID, eventData.bridge);
 
       for (const scenario of scenarios) {
-        await this.evaluateScenario(scenario, deviceData);
+        await this.evaluateScenario(scenario, eventType, eventData);
       }
     }
     catch (error) {
-      common.conLog("Scenario Engine: Error evaluating scenarios: " + error.message, "red");
+      common.conLog("Scenario Engine: Error handling event '" + eventType + "': " + error.message, "red");
     }
   }
 
   /**
-   * Evaluates a single scenario
+   * Evaluates a single scenario against an event
    * @param {Object} scenario - Scenario details from DB
-   * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
+   * @param {string} eventType - The event type that triggered evaluation
+   * @param {Object} eventData - { deviceID, bridge, property?, value?, valueType? }
    */
-  async evaluateScenario(scenario, deviceData) {
+  async evaluateScenario(scenario, eventType, eventData) {
     try {
-      const cooldownKey     = scenario.scenarioID + "-" + deviceData.deviceID + "-" + deviceData.property;  // check cooldown to prevent rapid re-execution
-      const lastExecution   = this.executionCooldowns.get(cooldownKey);
-      const now             = Date.now();
-      
+      const cooldownKey   = scenario.scenarioID + "-" + eventData.deviceID + "-" + (eventData.property || eventType); // check cooldown to prevent rapid re-execution
+      const lastExecution = this.executionCooldowns.get(cooldownKey);
+      const now           = Date.now();
+
       if (lastExecution && (now - lastExecution) < appConfig.CONF_scenarioCooldownMilliseconds) {
         return;
       }
 
       const triggers = database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID); // get all triggers for this scenario
-      
+
       let allTriggersSatisfied = true; // check if ALL triggers are satisfied
-      
       for (const trigger of triggers) {
-        const triggerSatisfied = await this.evaluateTrigger(trigger, deviceData);
+        const triggerSatisfied = await this.evaluateTrigger(trigger, eventType, eventData);
         if (!triggerSatisfied) {
           allTriggersSatisfied = false;
           break;
@@ -59,7 +73,7 @@ class ScenarioEngine {
 
       if (allTriggersSatisfied) {
         common.conLog("Scenario Engine: Executing scenario " + scenario.name, "gre");
-        await this.executeScenario(scenario, deviceData);
+        await this.executeScenario(scenario, eventData);
         this.executionCooldowns.set(cooldownKey, now);
       }
     }
@@ -70,21 +84,52 @@ class ScenarioEngine {
 
   /**
    * Evaluates a single trigger condition
-   * @param {Object} trigger - Trigger details from DB
-   * @param {Object} deviceData - { deviceID, bridge, property, value, valueType }
+   * @param {Object} trigger - Trigger row from DB 
+   * @param {string} eventType - The event type that triggered evaluation
+   * @param {Object} eventData - { deviceID, bridge, property?, value?, valueType? }
+   * @returns {boolean}
+   */
+  async evaluateTrigger(trigger, eventType, eventData) {
+    switch (trigger.type) {
+
+      case "device_value":
+        return this.evaluateDeviceValueTrigger(trigger, eventData);
+
+      case "device_disconnected":
+      case "device_connected":
+        return trigger.type === eventType && trigger.deviceID === eventData.deviceID && trigger.bridge === eventData.bridge;
+
+      case "battery_low":
+        return trigger.type === eventType && trigger.deviceID === eventData.deviceID && trigger.bridge === eventData.bridge && parseFloat(eventData.value) < parseFloat(trigger.value);
+
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Evaluates a device_value trigger
+   * @param {Object} trigger - Trigger row from DB
+   * @param {Object} eventData - { deviceID, bridge, property, value, valueType }
    * @returns {boolean} - Whether the trigger condition is satisfied
    */
-  async evaluateTrigger(trigger, deviceData) {
-    if (trigger.deviceID === deviceData.deviceID && trigger.bridge === deviceData.bridge &&  trigger.property === deviceData.property) {     // if this trigger is for the current device/property, use the incoming value
-      return this.compareValues(deviceData.value, trigger.operator, trigger.value, trigger.valueType);
-    }
+  async evaluateDeviceValueTrigger(trigger, eventData) {
+    const isSameDevice   = trigger.deviceID === eventData.deviceID; // check whether this trigger refers to the exact device, bridge and property that fired the current event
+    const isSameBridge   = trigger.bridge   === eventData.bridge;
+    const isSameProperty = trigger.property === eventData.property;
 
-    const currentValue = await this.getCurrentDeviceValue(trigger.deviceID, trigger.bridge, trigger.property); // for other triggers, get the current value from the database
-    if (currentValue === null) {
-      return false; // Device/property not found
+    if (isSameDevice && isSameBridge && isSameProperty) { // the trigger matches the event directly – use the value from the event payload without querying the database
+      return this.compareValues(eventData.value, trigger.operator, trigger.value, trigger.valueType);
     }
-
-    return this.compareValues(currentValue, trigger.operator, trigger.value, trigger.valueType);
+    else {
+      const currentValue = await this.getCurrentDeviceValue(trigger.deviceID, trigger.bridge, trigger.property); // the trigger refers to a different device or property (this happens in scenarios with multiple triggers (e.g. "If sensor A > 30 AND switch B = on"), so load current value from the database) 
+      if (currentValue === null) { // no stored value available – the trigger cannot be satisfied
+        return false;
+      }
+      else {
+        return this.compareValues(currentValue, trigger.operator, trigger.value, trigger.valueType);
+      }
+    }
   }
 
   /**
@@ -98,15 +143,14 @@ class ScenarioEngine {
   compareValues(actualValue, operator, expectedValue, valueType) {
     try {
       let actual = this.convertValue(actualValue, valueType);
-      
-      if (operator === "between" && valueType === "Numeric") { // Handle "between" separately: expectedValue is an array (or JSON string of an array) and must not be passed through convertValue() which would destroy it via parseFloat()
+
+      if (operator === "between" && valueType === "Numeric") {  // handle "between" separately: expectedValue is an array (or JSON string of an array) and must not be passed through convertValue() which would destroy it via parseFloat()
         let range = expectedValue;
         if (typeof range === "string") {
           try {
             range = JSON.parse(range);
           }
-          catch (error)           
-          {
+          catch (error) {
             return false;
           }
         }
@@ -169,11 +213,11 @@ class ScenarioEngine {
     try {
       const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
 
-      if (!result) {  // no row found for this device/bridge/property
+      if (!result) { // no row found for this device/bridge/property
         return null;
       }
-      
-      if (result.valueAsNumeric !== null && result.valueAsNumeric !== undefined) { // prefer numeric value
+
+      if (result.valueAsNumeric !== null && result.valueAsNumeric !== undefined) {
         return result.valueAsNumeric;
       }
       else { // fallback to string value
@@ -188,34 +232,27 @@ class ScenarioEngine {
   /**
    * Executes all actions for a scenario
    * @param {Object} scenario - Scenario details from DB
-   * @param {Object} triggerData - Data about the trigger that caused execution
+   * @param {Object} triggerData - Data about the event that caused execution
    */
   async executeScenario(scenario, triggerData) {
     try {
-      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID); // get all actions for this scenario
-      
-      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log execution
-        scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 1
+      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID);  // get all actions for this scenario
+
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(
+        scenario.scenarioID, triggerData.deviceID || "", triggerData.property || "", String(triggerData.value || ""), 1
       );
 
-      for (const action of actions) { // execute actions with delays
+      for (const action of actions) {
         setTimeout(() => {
-          this.executeAction(action);
-        }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
-      }
-
-      database.prepare("INSERT INTO notifications (text, description, scenarioID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(scenario.name, scenario.description, scenario.scenarioID, scenario.icon); // insert into notifications table
-      common.conLog("Scenario Engine: Notification logged.", "gre");
-
-      if ((this.pushEngine) && (scenario.pushNotification === 1)) { // send push notification if enabled
-        this.pushEngine.sendAll(scenario.name, scenario.description);
+          this.executeAction(action, scenario);
+        }, action.delay * 1000);
       }
     }
     catch (error) {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
-          
-      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success,dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log failed execution
-        scenario.scenarioID, triggerData.deviceID, triggerData.property, String(triggerData.value), 0, error.message
+
+      database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success, dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(
+        scenario.scenarioID, triggerData.deviceID || "", triggerData.property || "", String(triggerData.value || ""), 0, error.message
       );
     }
   }
@@ -228,15 +265,15 @@ class ScenarioEngine {
     try {
       const scenario = database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
       if (scenario) {
-        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run( // log execution
+        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(  // log execution
           scenario.scenarioID, "manually", "manually", "manually", 1
         );
 
-        const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenarioID); // get all actions for this scenario
+        const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenarioID);  // get all actions for this scenario
 
         for (const action of actions) { // execute actions with delays
           setTimeout(() => {
-            this.executeAction(action);
+            this.executeAction(action, scenario);
           }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
         }
 
@@ -252,21 +289,44 @@ class ScenarioEngine {
   }
 
   /**
-   * Executes a single action
-   * @param {Object} action - Action details from DB
+   * Executes a single action based on its type
+   * @param {Object} action - Action details from DB (includes type)
+   * @param {Object} scenario - Parent scenario (for context in notifications)
    */
-  async executeAction(action) {
+  async executeAction(action, scenario) {
     try {
-        const message = {};
-        message.deviceID                = action.deviceID;
-        message.bridge                  = action.bridge;
-        message.values                  = {};
-        message.values[action.property] = this.convertValue(action.value, action.valueType);
+      switch (action.type) {
 
-        const topic = action.bridge + "/devices/values/set";
-        mqttClient.publish(topic, JSON.stringify(message));
+        case "set_device_value":
+          const message                   = {};
+          message.deviceID                = action.deviceID;
+          message.bridge                  = action.bridge;
+          message.values                  = {};
+          message.values[action.property] = this.convertValue(action.value, action.valueType);
 
-        common.conLog("Scenario Engine: Executed action - Set " + action.deviceID + "/" + action.property + " = " + action.value, "yel");
+          const topic = action.bridge + "/devices/values/set";
+          mqttClient.publish(topic, JSON.stringify(message));
+
+          common.conLog("Scenario Engine: Action set_device_value - " + action.deviceID + "/" + action.property + " = " + action.value, "yel");
+          break;
+
+        case "push_notification":
+          if (this.pushEngine) {
+            this.pushEngine.sendAll(action.value || scenario.name, action.property || scenario.description || "");
+          }
+          common.conLog("Scenario Engine: Action push_notification - " + (action.value || scenario.name), "yel");
+          break;
+
+        case "notification":
+          database.prepare("INSERT INTO notifications (text, description, scenarioID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(
+            action.value || scenario.name, action.property || scenario.description || "", scenario.scenarioID, scenario.icon
+          );
+          common.conLog("Scenario Engine: Action notification - " + (action.value || scenario.name), "yel");
+          break;
+
+        default:
+          common.conLog("Scenario Engine: Unknown action type '" + action.type + "'", "red");
+      }
     }
     catch (error) {
       common.conLog("Scenario Engine: Error executing action: " + error.message, "red");

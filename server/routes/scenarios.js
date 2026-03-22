@@ -52,8 +52,7 @@ router.get("/all", async function (request, response) {
         const results   = await database.prepare(statement).all(appConfig.CONF_tablesMaxEntriesReturned);
 
         for (const result of results) {         
-            result.enabled          = result.enabled === 1 ? true : false; // Convert 0/1 to false/true ...
-            result.pushNotification = result.pushNotification === 1 ? true : false; // ... and here also
+            result.enabled          = result.enabled === 1 ? true : false;
         }
 
         common.conLog("GET Request: access table 'scenarios'", "gre");
@@ -149,8 +148,7 @@ router.get("/:scenarioID", async function (request, response) {
     try {
         const result = await database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
         if (result) {
-            result.enabled          = result.enabled === 1 ? true : false; // Convert 0/1 to false/true ...
-            result.pushNotification = result.pushNotification === 1 ? true : false; // ... and here also
+            result.enabled          = result.enabled === 1 ? true : false;
 
             result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
             result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
@@ -225,9 +223,6 @@ router.get("/:scenarioID", async function (request, response) {
  *               enabled:
  *                 type: boolean
  *                 default: true
- *               pushNotification:
- *                 type: boolean
- *                 default: true
  *               priority:
  *                 type: integer
  *                 default: 0
@@ -245,6 +240,9 @@ router.get("/:scenarioID", async function (request, response) {
  *                 items:
  *                   type: object
  *                   properties:
+ *                     type:
+ *                       type: string
+ *                       example: "device_value"
  *                     deviceID:
  *                       type: string
  *                       example: "12345"
@@ -269,6 +267,9 @@ router.get("/:scenarioID", async function (request, response) {
  *                 items:
  *                   type: object
  *                   properties:
+ *                     type:
+ *                       type: string
+ *                       example: "set_device_value"
  *                     deviceID:
  *                       type: string
  *                       example: "12345"
@@ -289,7 +290,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                       example: 3
  *     responses:
  *       "200":
- *         description: Successfully retrieved scenarios
+ *         description: Successfully created scenario
  *         content:
  *           application/json:
  *             schema:
@@ -324,9 +325,9 @@ router.post("/", async function (request, response) {
             if (Array.isArray(payload.triggers) && Array.isArray(payload.actions)) {
                 data.status = "ok";
                 
-                const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, pushNotification, priority, icon, roomID, individualID, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))");
-                const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))");
+                const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
                 const transaction = database.transaction(() => {
                     
@@ -334,7 +335,6 @@ router.post("/", async function (request, response) {
                         payload.name,
                         payload.description || "",
                         payload.enabled === true ? 1 : 0,
-                        payload.pushNotification === true ? 1 : 0,
                         payload.priority || 0,
                         payload.icon || "",
                         payload.roomID || null,
@@ -346,11 +346,12 @@ router.post("/", async function (request, response) {
                     for (const trigger of payload.triggers) { // Insert triggers
                         insertTrigger.run(
                         scenarioID,
-                        trigger.deviceID,
-                        trigger.bridge,
-                        trigger.property,
+                        trigger.type || "device_value",
+                        trigger.deviceID || null,
+                        trigger.bridge || null,
+                        trigger.property || null,
                         trigger.operator || "equals",
-                        typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value,
+                        typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null),
                         trigger.valueType || "String"
                         );
                     }
@@ -358,10 +359,11 @@ router.post("/", async function (request, response) {
                     for (const action of payload.actions) { // Insert actions
                         insertAction.run(
                         scenarioID,
-                        action.deviceID,
-                        action.bridge,
-                        action.property,
-                        typeof action.value === "object" ? JSON.stringify(action.value) : action.value,
+                        action.type || "set_device_value",
+                        action.deviceID || null,
+                        action.bridge || null,
+                        action.property || null,
+                        typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null),
                         action.valueType || "String",
                         action.delay || 0
                         );
@@ -425,9 +427,6 @@ router.post("/", async function (request, response) {
  *               enabled:
  *                 type: boolean
  *                 example: true
- *               pushNotification:
- *                 type: boolean
- *                 example: true
  *               priority:
  *                 type: integer
  *                 example: 1
@@ -445,6 +444,9 @@ router.post("/", async function (request, response) {
  *                 items:
  *                   type: object
  *                   properties:
+ *                     type:
+ *                       type: string
+ *                       example: "device_value"
  *                     deviceID:
  *                       type: string
  *                       example: "12345"
@@ -468,6 +470,9 @@ router.post("/", async function (request, response) {
  *                 items:
  *                   type: object
  *                   properties:
+ *                     type:
+ *                       type: string
+ *                       example: "set_device_value"
  *                     deviceID:
  *                       type: string
  *                       example: "12345"
@@ -524,13 +529,12 @@ router.patch("/:scenarioID", async function (request, response) {
       const transaction = database.transaction(() => {
         if (payload.name || payload.description !== undefined || payload.enabled !== undefined || payload.priority !== undefined || payload.icon !== undefined || payload.roomID !== undefined || payload.individualID !== undefined) { // Update scenario
             payload.enabled           = payload.enabled === true ? 1 : 0;
-            payload.pushNotification  = payload.pushNotification === true ? 1 : 0;
             payload.icon              = payload.icon || "";
             payload.roomID            = payload.roomID || null;
             payload.individualID      = payload.individualID || null;
           
-            database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), pushNotification = COALESCE(?, pushNotification), priority = COALESCE(?, priority), icon = COALESCE(?, icon), roomID = COALESCE(?, roomID), individualID = COALESCE(?, individualID) WHERE scenarioID = ?").run(
-                payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.pushNotification !== undefined ? payload.pushNotification : null, payload.priority !== undefined ? payload.priority : null, payload.icon || null, payload.roomID || null, payload.individualID || null, scenarioID
+            database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority), icon = COALESCE(?, icon), roomID = COALESCE(?, roomID), individualID = COALESCE(?, individualID) WHERE scenarioID = ?").run(
+                payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.priority !== undefined ? payload.priority : null, payload.icon || null, payload.roomID || null, payload.individualID || null, scenarioID
             );
             common.conLog("PATCH Request: access table 'scenarios'", "gre");
         }
@@ -538,10 +542,10 @@ router.patch("/:scenarioID", async function (request, response) {
         if (payload.triggers) {  // Update triggers if provided 
           database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID); // Delete existing triggers
 
-          const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"); // Insert new triggers
+          const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); // Insert new triggers
 
           for (const trigger of payload.triggers) {
-            insertTrigger.run(scenarioID, trigger.deviceID, trigger.bridge, trigger.property, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : trigger.value, trigger.valueType || "String");
+            insertTrigger.run(scenarioID, trigger.type || "device_value", trigger.deviceID || null, trigger.bridge || null, trigger.property || null, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null), trigger.valueType || "String");
           }
           common.conLog("PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
@@ -551,10 +555,10 @@ router.patch("/:scenarioID", async function (request, response) {
         if (payload.actions) { // Update actions if provided
           database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID); // Delete existing actions
 
-          const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)"); // Insert new actions
+          const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); // Insert new actions
 
           for (const action of payload.actions) {
-            insertAction.run(scenarioID, action.deviceID, action.bridge, action.property, typeof action.value === "object" ? JSON.stringify(action.value) : action.value, action.valueType || "String", action.delay || 0);
+            insertAction.run(scenarioID, action.type || "set_device_value", action.deviceID || null, action.bridge || null, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", action.delay || 0);
           }
           common.conLog("PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);
@@ -592,7 +596,7 @@ router.patch("/:scenarioID", async function (request, response) {
  *           type: integer
  *     responses:
  *       "200":
- *         description: Successfully updated scenario
+ *         description: Successfully deleted scenario
  *         content:
  *           application/json:
  *             schema:
