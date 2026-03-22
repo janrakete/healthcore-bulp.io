@@ -515,6 +515,12 @@ async function startBridgeAndServer() {
     message.deviceID = data.ieeeAddr;
     message.bridge   = BRIDGE_PREFIX;
     mqttClient.publish("server/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
+
+    message           = {}; // create message for MQTT broker about device status
+    message.deviceID  = data.ieeeAddr;
+    message.bridge    = BRIDGE_PREFIX;
+    message.status    = "offline";
+    mqttClient.publish("server/devices/status", JSON.stringify(message));
   });
 
   /**
@@ -554,6 +560,12 @@ async function startBridgeAndServer() {
     message.deviceID = deviceID;
     message.bridge   = BRIDGE_PREFIX;
     mqttClient.publish("zigbee/devices/announced", JSON.stringify(message)); // ... publish to MQTT broker
+
+    message           = {}; // create message for MQTT broker about device status
+    message.deviceID  = deviceID;
+    message.bridge    = BRIDGE_PREFIX;
+    message.status    = "online";
+    mqttClient.publish("server/devices/status", JSON.stringify(message));
   });
 
   /**

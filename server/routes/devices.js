@@ -62,23 +62,20 @@ function handlePendingMqttResponse(callID, response) {
  *                  status:
  *                    type: string
  *                    example: "ok"
- *                  data:
- *                    type: object
- *                    properties:
- *                      results:
- *                        type: array
- *                        items:
- *                          type: object
- *                          properties:
- *                            deviceID:
- *                              type: string
- *                              example: "12345"
- *                            productName:
- *                              type: string
- *                              example: "Product XYZ"
- *                            bridge:
- *                              type: string
- *                              example: "bluetooth"
+ *                  results:
+ *                    type: array
+ *                    items:
+ *                      type: object
+ *                      properties:
+ *                        deviceID:
+ *                          type: string
+ *                          example: "12345"
+ *                        productName:
+ *                          type: string
+ *                          example: "Product XYZ"
+ *                        bridge:
+ *                          type: string
+ *                          example: "bluetooth"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -677,6 +674,9 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
  *                productName:
  *                  type: string
  *                  example: "Product XYZ"
+ *                powerType:
+ *                  type: string
+ *                  example: "mains"
  *      responses:
  *        "200":
  *          description: Device added successfully

@@ -156,6 +156,12 @@ async function startBridgeAndServer() {
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
             delete device.deviceConverter; // remove device converter from device, because stringify will not work with object
             mqttClient.publish("server/devices/disconnect", JSON.stringify(device)); // publish disconnected device to MQTT broker
+
+            let message       = {}; // create message for MQTT broker about device status
+            message.deviceID  = device.deviceID;
+            message.bridge    = BRIDGE_PREFIX;
+            message.status    = "offline";
+            mqttClient.publish("server/devices/status", JSON.stringify(message));
            
             if (bridgeStatus.devicesRegisteredAtServer.get(device.deviceID) !== undefined && bridgeStatus.status === "online" && bluetooth.state === "poweredOn") { // if device is registered at server and bridge is online, trigger an immediate scan so the maintenance loop doesn't have to wait for the next cycle
               common.conLog("Bluetooth: Device lost - triggering immediate scan for " + device.deviceID, "yel");
@@ -229,6 +235,12 @@ async function startBridgeAndServer() {
 
               common.conLog("Bluetooth: Device connected: " + device.deviceID + " (" + device.productName + ")", "gre");
               mqttClient.publish("server/devices/connect", JSON.stringify(device)); // publish connected device to MQTT broker
+
+              let message       = {}; // create message for MQTT broker about device status
+              message.deviceID  = device.deviceID;
+              message.bridge    = BRIDGE_PREFIX;
+              message.status    = "online";
+              mqttClient.publish("server/devices/status", JSON.stringify(message));
 
               if (addDeviceToServer === true) { // if device should be added to server (only if it was connected via mqtt message with addDeviceToServer flag)
                   let message         = {};
