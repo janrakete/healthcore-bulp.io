@@ -104,5 +104,18 @@
     "DeviceID": "Device ID",
     "ProductName": "Product Name",
     "VendorName": "Manufacturer",
-    "EntriesNoneAddNew": "Tap the button to add something new."
+    "EntriesNoneAddNew": "Tap the button to add something new.",
+    "TriggerType": "Trigger type",
+    "ActionType": "Action type",
+    "TriggerTypeDeviceValue": "Device value",
+    "TriggerTypeDeviceDisconnected": "Device disconnected",
+    "TriggerTypeDeviceConnected": "Device connected",
+    "TriggerTypeBatteryLow": "Battery low",
+    "ActionTypeSetDeviceValue": "Set device value",
+    "ActionTypePushNotification": "Push notification",
+    "ActionTypeNotification": "Notification",
+    "Title": "Title",
+    "Message": "Message",
+    "Text": "Text",
+    "BatteryThreshold": "Battery threshold (%)"
 }       

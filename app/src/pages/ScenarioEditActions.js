@@ -28,21 +28,37 @@ export const ScenarioEditActions = (Base) => class extends Base {
               <ion-col>
                 <ion-list inset="true">     
                   <ion-item color="light">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editActionType" label="${window.Translation.get("ActionType")}" value="set_device_value">
+                      <ion-select-option value="set_device_value">${window.Translation.get("ActionTypeSetDeviceValue")}</ion-select-option>
+                      <ion-select-option value="push_notification">${window.Translation.get("ActionTypePushNotification")}</ion-select-option>
+                      <ion-select-option value="notification">${window.Translation.get("ActionTypeNotification")}</ion-select-option>
+                    </ion-select>
+                  </ion-item>  
+                  <ion-item color="light" id="action-field-device">
                     <ion-select interface="popover" class="custom" label-placement="stacked" name="editActionDevice" label="${window.Translation.get("Device")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
                       <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
                     </ion-select>
                   </ion-item>  
-                  <ion-item color="light">
+                  <ion-item color="light" id="action-field-property">
                     <ion-select interface="popover" class="custom" label-placement="stacked" name="editActionProperty" label="${window.Translation.get("Property")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
                       <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
                     </ion-select>
                   </ion-item>                                   
-                  <ion-item color="light">
+                  <ion-item color="light" id="action-field-value">
                     <div id ="edit-action-value-container">
                     </div>
                   </ion-item>                  
-                  <ion-item color="light">
+                  <ion-item color="light" id="action-field-delay">
                     <ion-input type="number" label="${window.Translation.get("Delay")}" label-placement="stacked" name="editActionDelay" placeholder="${window.Translation.get("Seconds")}" shape="round" fill="outline" class="custom"></ion-input>
+                  </ion-item>
+                  <ion-item color="light" id="action-field-push-title">
+                    <ion-input type="text" label="${window.Translation.get("Title")}" label-placement="stacked" name="editActionPushTitle" shape="round" fill="outline" class="custom"></ion-input>
+                  </ion-item>
+                  <ion-item color="light" id="action-field-push-message">
+                    <ion-input type="text" label="${window.Translation.get("Message")}" label-placement="stacked" name="editActionPushMessage" shape="round" fill="outline" class="custom"></ion-input>
+                  </ion-item>
+                  <ion-item color="light" id="action-field-notification-text">
+                    <ion-input type="text" label="${window.Translation.get("Text")}" label-placement="stacked" name="editActionNotificationText" shape="round" fill="outline" class="custom"></ion-input>
                   </ion-item>
                 </ion-list>
               </ion-col>
@@ -72,29 +88,59 @@ export const ScenarioEditActions = (Base) => class extends Base {
      * Event listener for action submit button
      */
     this.querySelector("#action-submit-button")?.addEventListener("click", () => {
-      const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
-      const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
-      const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
+      const typeSelect = document.querySelector("ion-select[name='editActionType']");
+      const type       = typeSelect.value;
 
-      let valueSelect;
-      if ((document.querySelector("ion-input[name='editActionValue']")) && (document.querySelector("ion-input[name='editActionValue']") !== undefined)) {
-        valueSelect = document.querySelector("ion-input[name='editActionValue']");
-      }
-      else {
-        valueSelect = document.querySelector("ion-select[name='editActionValue']");
-      }
+      let newAction;
 
-      const newAction = {
-        actionID:         Date.now(),
-        bridge:           this.actionSelectedDevice.bridge,
-        deviceID:         deviceSelect.value,
-        deviceName:       this.actionSelectedDevice.name,
-        property:         propertySelect.value,
-        value:            valueSelect.value,
-        valueType:        isNaN(valueSelect.value) ? "String" : "Numeric",
-        delay:            parseInt(delayInput.value) > 0 ? parseInt(delayInput.value) : 0,
-        deviceProperties: this.actionSelectedDevice.properties
-      };
+      if (type === "set_device_value") {
+        const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
+        const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
+        const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
+
+        let valueSelect;
+        if ((document.querySelector("ion-input[name='editActionValue']")) && (document.querySelector("ion-input[name='editActionValue']") !== undefined)) {
+          valueSelect = document.querySelector("ion-input[name='editActionValue']");
+        }
+        else {
+          valueSelect = document.querySelector("ion-select[name='editActionValue']");
+        }
+
+        newAction = {
+          actionID:         Date.now(),
+          type:             type,
+          bridge:           this.actionSelectedDevice.bridge,
+          deviceID:         deviceSelect.value,
+          deviceName:       this.actionSelectedDevice.name,
+          property:         propertySelect.value,
+          value:            valueSelect.value,
+          valueType:        isNaN(valueSelect.value) ? "String" : "Numeric",
+          delay:            parseInt(delayInput.value) > 0 ? parseInt(delayInput.value) : 0,
+          deviceProperties: this.actionSelectedDevice.properties
+        };
+      }
+      else if (type === "push_notification") {
+        const titleInput   = document.querySelector("ion-input[name='editActionPushTitle']");
+        const messageInput = document.querySelector("ion-input[name='editActionPushMessage']");
+
+        newAction = {
+          actionID:         Date.now(),
+          type:             type,
+          value:            titleInput.value,
+          property:         messageInput.value,
+          deviceProperties: []
+        };
+      }
+      else if (type === "notification") {
+        const textInput = document.querySelector("ion-input[name='editActionNotificationText']");
+
+        newAction = {
+          actionID:         Date.now(),
+          type:             type,
+          value:            textInput.value,
+          deviceProperties: []
+        };
+      }
 
       this.scenarioData.actions.push(newAction);
 
@@ -124,12 +170,40 @@ export const ScenarioEditActions = (Base) => class extends Base {
       this.actionID = null;
 
       this.resetActionEditModalFields();
+      this.actionUpdateFieldVisibility("set_device_value");
       this.actionEnabledDisable();
       this.loadDataActionDevices();
 
       const modal = document.querySelector("#action-edit-modal");
       await modal.present();
     });
+
+    /**
+     * Event listener for action type select change
+     */
+    this.querySelector("ion-select[name='editActionType']").addEventListener("ionChange", (event) => {
+      const type = event.detail.value;
+      document.querySelector("ion-select[name='editActionDevice']").value           = "";
+      document.querySelector("ion-select[name='editActionProperty']").value         = "";
+      document.querySelector("ion-input[name='editActionDelay']").value             = "";
+      document.querySelector("ion-input[name='editActionPushTitle']").value         = "";
+      document.querySelector("ion-input[name='editActionPushMessage']").value       = "";
+      document.querySelector("ion-input[name='editActionNotificationText']").value  = "";
+      
+      const valueContainer = document.querySelector("#edit-action-value-container");
+      valueContainer.innerHTML = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>`;
+      
+      this.actionSelectedDevice = null;
+      this.actionUpdateFieldVisibility(type);
+      this.actionEnabledDisable();
+    });
+
+    /**
+     * Event listeners for push/notification input fields
+     */
+    this.querySelector("ion-input[name='editActionPushTitle']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
+    this.querySelector("ion-input[name='editActionPushMessage']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
+    this.querySelector("ion-input[name='editActionNotificationText']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
 
     /**
      * Event listener for action device select change
@@ -155,14 +229,31 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * Reset action edit modal fields
    */
   async resetActionEditModalFields() {
-    const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
-    const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
-    const valueContainer = document.querySelector("#edit-action-value-container");
-    const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
+    const typeSelect       = document.querySelector("ion-select[name='editActionType']");
+    const deviceSelect     = document.querySelector("ion-select[name='editActionDevice']");
+    const propertySelect   = document.querySelector("ion-select[name='editActionProperty']");
+    const valueContainer   = document.querySelector("#edit-action-value-container");
+    const delayInput       = document.querySelector("ion-input[name='editActionDelay']");
+    const pushTitle        = document.querySelector("ion-input[name='editActionPushTitle']");
+    const pushMessage      = document.querySelector("ion-input[name='editActionPushMessage']");
+    const notificationText = document.querySelector("ion-input[name='editActionNotificationText']");
 
+    typeSelect.value      = "set_device_value";
     deviceSelect.value    = "";
     propertySelect.value  = "";
     delayInput.value      = "";
+
+    if (pushTitle) {
+      pushTitle.value = "";
+    }
+    
+    if (pushMessage) {
+      pushMessage.value = "";
+    }
+
+    if (notificationText) {
+      notificationText.value = "";
+    }
 
     valueContainer.innerHTML = `
       <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
@@ -173,6 +264,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * Enable/Disable action edit modal fields based on selections
    */
   async actionEnabledDisable() {
+    const typeSelect     = document.querySelector("ion-select[name='editActionType']");
     const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
     const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
     const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
@@ -185,27 +277,90 @@ export const ScenarioEditActions = (Base) => class extends Base {
       valueSelect = document.querySelector("ion-select[name='editActionValue']");
     }
 
-    const submitButton   = document.querySelector("#action-submit-button");
+    const submitButton  = document.querySelector("#action-submit-button");
+    const type          = typeSelect?.value || "set_device_value";
 
     propertySelect.disabled = true;
-    valueSelect.disabled    = true;
+    
+    if (valueSelect) {
+      valueSelect.disabled = true;
+    }
+    
     delayInput.disabled     = true;
     submitButton.disabled   = true;
 
-    if (deviceSelect.value !== "") {
-      propertySelect.disabled = false;
-    }
+    switch (type) {
+      case "set_device_value":
+        if (deviceSelect.value !== "") {
+          propertySelect.disabled = false;
+        }
+        
+        if ((deviceSelect.value !== "") && (propertySelect.value !== "")) {
+          if (valueSelect) valueSelect.disabled = false;
+        }
+        
+        if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect?.value !== "")) {
+          delayInput.disabled = false;
+        }
+        
+        if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect?.value !== "") && ((delayInput.value === ""))) {
+          submitButton.disabled = false;
+        }
+        break;
 
-    if ((deviceSelect.value !== "") && (propertySelect.value !== "")) {
-      valueSelect.disabled = false;
-    }
+      case "push_notification":
+        const pushTitle   = document.querySelector("ion-input[name='editActionPushTitle']");
+        const pushMessage = document.querySelector("ion-input[name='editActionPushMessage']");
+        if (pushTitle?.value?.trim() && pushMessage?.value?.trim()) {
+          submitButton.disabled = false;
+        }
+        break;
 
-    if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect.value !== "")) {
-      delayInput.disabled = false;
+      case "notification":
+        const notificationText = document.querySelector("ion-input[name='editActionNotificationText']");
+        if (notificationText?.value?.trim()) {
+          submitButton.disabled = false;
+        }
+        break;
     }
+  }
 
-    if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect.value !== "") && ((delayInput.value === ""))) {
-      submitButton.disabled = false;
+  /**
+   * Show/hide action fields based on action type
+   */
+  actionUpdateFieldVisibility(type) {
+    const deviceField      = document.querySelector("#action-field-device");
+    const propertyField    = document.querySelector("#action-field-property");
+    const valueField       = document.querySelector("#action-field-value");
+    const delayField       = document.querySelector("#action-field-delay");
+    const pushTitle        = document.querySelector("#action-field-push-title");
+    const pushMessage      = document.querySelector("#action-field-push-message");
+    const notificationText = document.querySelector("#action-field-notification-text");
+
+    deviceField.style.display      = "none";
+    propertyField.style.display    = "none";
+    valueField.style.display       = "none";
+    delayField.style.display       = "none";
+    pushTitle.style.display        = "none";
+    pushMessage.style.display      = "none";
+    notificationText.style.display = "none";
+
+    switch (type) {
+      case "set_device_value":
+        deviceField.style.display   = "";
+        propertyField.style.display = "";
+        valueField.style.display    = "";
+        delayField.style.display    = "";
+        break;
+
+      case "push_notification":
+        pushTitle.style.display   = "";
+        pushMessage.style.display = "";
+        break;
+
+      case "notification":
+        notificationText.style.display = "";
+        break;
     }
   }
 
@@ -282,6 +437,10 @@ export const ScenarioEditActions = (Base) => class extends Base {
    */
   async translateActionsPropertiesAndValue() {
     for (const item of this.scenarioData.actions) { // Translate property
+      if (!item.deviceProperties || !item.property) {
+        continue;
+      }
+
       const propertyTranslation = item.deviceProperties.find(property => property.name === item.property);
       if (propertyTranslation && propertyTranslation.translation && propertyTranslation.translation[window.appConfig.CONF_language]) {
         item.propertyTranslated = propertyTranslation.translation[window.appConfig.CONF_language];
@@ -361,21 +520,45 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
     const listElementActions = this.querySelector("#actions-list");
     listElementActions.innerHTML = this.scenarioData.actions.map((item, index) => {
-      const bridgeInfo = bridgeTranslate(item.bridge);
+      const type = item.type || "set_device_value";
+      const bridgeInfo = item.bridge ? bridgeTranslate(item.bridge) : "";
+
+      let cardTitle, cardSubtitle, cardContent;
+
+      if (type === "set_device_value") {
+        cardTitle    = item.deviceName;
+        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardContent  = `
+            <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
+            <ion-text color="light">${window.Translation.get("SetTo")}</ion-text>
+            <ion-text color="light">${item.valueTranslated ? item.valueTranslated : item.value}</ion-text>
+            ${item.delay ? `<ion-text color="light"> (${window.Translation.get("Delay")}: ${item.delay} ${window.Translation.get("Seconds")})</ion-text>` : ``}
+        `;
+      }
+      else if (type === "push_notification") {
+        cardTitle    = `${window.Translation.get("ActionTypePushNotification")}`;
+        cardSubtitle = "";
+        cardContent  = `
+            <ion-text color="light">${item.value}</ion-text>
+            ${item.property ? `<br/><ion-text color="medium">${item.property}</ion-text>` : ""}
+        `;
+      }
+      else if (type === "notification") {
+        cardTitle    = `${window.Translation.get("ActionTypeNotification")}`;
+        cardSubtitle = "";
+        cardContent  = `<ion-text color="light">${item.value}</ion-text>`;
+      }
 
       return `
         <ion-card color="primary" data-id="${item.actionID}">
           <ion-card-header>
-              <ion-card-title>${item.deviceName}</ion-card-title>
-              <ion-card-subtitle>${item.deviceID} (${bridgeInfo})</ion-card-subtitle>
+              <ion-card-title>${cardTitle}</ion-card-title>
+              <ion-card-subtitle>${cardSubtitle}</ion-card-subtitle>
           </ion-card-header>
           <ion-card-content>
             <ion-row>
               <ion-col>
-                  <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
-                  <ion-text color="light">${window.Translation.get("SetTo")}</ion-text>
-                  <ion-text color="light">${item.valueTranslated ? item.valueTranslated : item.value}</ion-text>
-                  ${item.delay ? `<ion-text color="light"> (${window.Translation.get("Delay")}: ${item.delay} ${window.Translation.get("Seconds")})</ion-text>` : ``}
+                  ${cardContent}
               </ion-col>
             </ion-row>
           </ion-card-content>
@@ -404,9 +587,22 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
         this.resetActionEditModalFields();
 
-        await this.loadDataActionDevices(actionData.deviceID);
-        await this.loadDataActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
-        await this.loadDataActionDevicePropertiesValues(actionData.property, actionData.value);
+        const type = actionData.type || "set_device_value";
+        document.querySelector("ion-select[name='editActionType']").value = type;
+        this.actionUpdateFieldVisibility(type);
+
+        if (type === "set_device_value") {
+          await this.loadDataActionDevices(actionData.deviceID);
+          await this.loadDataActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
+          await this.loadDataActionDevicePropertiesValues(actionData.property, actionData.value);
+        }
+        else if (type === "push_notification") {
+          document.querySelector("ion-input[name='editActionPushTitle']").value   = actionData.value || "";
+          document.querySelector("ion-input[name='editActionPushMessage']").value = actionData.property || "";
+        }
+        else if (type === "notification") {
+          document.querySelector("ion-input[name='editActionNotificationText']").value = actionData.value || "";
+        }
 
         this.actionEnabledDisable();
 

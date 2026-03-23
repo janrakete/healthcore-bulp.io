@@ -37,9 +37,6 @@ class ScenarioEdit extends ScenarioEditBase {
                 </ion-item> 
                 <ion-item>
                     <ion-toggle class="custom" color="primary" name="editEnabled" checked="true">${window.Translation.get("Enabled")}</ion-toggle>
-                </ion-item>                  
-                <ion-item>
-                    <ion-toggle class="custom" color="primary" name="editPush" checked="true">${window.Translation.get("PushNotification")}</ion-toggle>
                 </ion-item>  
                 <ion-item color="light" button="true" id="icon-picker-button">
                     <ion-label class="custom">${window.Translation.get("Icon")}</ion-label>
@@ -98,7 +95,6 @@ class ScenarioEdit extends ScenarioEditBase {
 
     const formData              = {};
     formData.name               = this.querySelector("ion-input[name='editName']").value;
-    formData.pushNotification   = this.querySelector("ion-toggle[name='editPush']").checked;
     formData.enabled            = this.querySelector("ion-toggle[name='editEnabled']").checked;
     formData.icon               = this.scenarioData.icon;
 
@@ -138,7 +134,6 @@ class ScenarioEdit extends ScenarioEditBase {
       if (data.status === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editName']").value        = item.name; 
-        this.querySelector("ion-toggle[name='editPush']").checked     = item.pushNotification === true;
         this.querySelector("ion-toggle[name='editEnabled']").checked  = item.enabled === true; 
         
         this.scenarioData.icon = item.icon || "";

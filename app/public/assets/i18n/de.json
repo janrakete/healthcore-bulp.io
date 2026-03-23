@@ -104,5 +104,18 @@
     "DeviceID": "Geräte-ID",
     "ProductName": "Produktname",
     "VendorName": "Hersteller",
-    "EntriesNoneAddNew": "Um etwas Neues hinzuzufügen, tippe auf die Schaltfläche."
+    "EntriesNoneAddNew": "Um etwas Neues hinzuzufügen, tippe auf die Schaltfläche.",
+    "TriggerType": "Auslöser",
+    "ActionType": "Aktion",
+    "TriggerTypeDeviceValue": "Gerätestatus",
+    "TriggerTypeDeviceDisconnected": "Gerät getrennt",
+    "TriggerTypeDeviceConnected": "Gerät verbunden",
+    "TriggerTypeBatteryLow": "Batterie niedrig",
+    "ActionTypeSetDeviceValue": "Gerät steuern",
+    "ActionTypePushNotification": "Push-Benachrichtigung senden",
+    "ActionTypeNotification": "Benachrichtigung anzeigen",
+    "Title": "Titel",
+    "Message": "Nachricht",
+    "Text": "Text",
+    "BatteryThreshold": "Batterieschwelle (%)"
 }
