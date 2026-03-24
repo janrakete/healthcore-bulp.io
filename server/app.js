@@ -161,6 +161,17 @@ async function startServer() {
   global.scenarios     = new ScenarioEngine();
 
   /**
+   * Time-based scenario scheduler (fires once per minute via node-cron)
+   */
+  const Cron = require("node-cron");
+  Cron.schedule("* * * * *", () => {
+    const now     = new Date();
+    const hours   = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    scenarios.handleTimeEvent(hours + ":" + minutes);
+  });
+
+  /**
    * Anomaly detection
    */
   const AnomalyEngine = require("./libs/AnomalyEngine");

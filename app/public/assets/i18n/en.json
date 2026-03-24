@@ -117,5 +117,8 @@
     "Title": "Title",
     "Message": "Message",
     "Text": "Text",
-    "BatteryThreshold": "Battery threshold (%)"
+    "BatteryThreshold": "Battery threshold (%)",
+    "TriggerTypeTime": "Time of day",
+    "Time": "Time",
+    "OClock": ""    
 }       

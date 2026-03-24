@@ -33,6 +33,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                       <ion-select-option value="device_disconnected">${window.Translation.get("TriggerTypeDeviceDisconnected")}</ion-select-option>
                       <ion-select-option value="device_connected">${window.Translation.get("TriggerTypeDeviceConnected")}</ion-select-option>
                       <ion-select-option value="battery_low">${window.Translation.get("TriggerTypeBatteryLow")}</ion-select-option>
+                      <ion-select-option value="time">${window.Translation.get("TriggerTypeTime")}</ion-select-option>
                     </ion-select>
                   </ion-item>  
                   <ion-item color="light" id="trigger-field-device">
@@ -52,6 +53,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                   <ion-item color="light" id="trigger-field-value">
                     <div id="edit-trigger-value-container">
                     </div>
+                  </ion-item>
+                  <ion-item color="light" id="trigger-field-time">
+                    <ion-input type="time" label="${window.Translation.get("Time")}" label-placement="stacked" name="editTriggerTime" shape="round" fill="outline" class="custom"></ion-input>
                   </ion-item>                  
                 </ion-list>
               </ion-col>
@@ -98,14 +102,14 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       const newTrigger = {
         triggerID:        Date.now(),
         type:             type,
-        bridge:           this.triggerSelectedDevice?.bridge || null,
-        deviceID:         deviceSelect.value || null,
-        deviceName:       this.triggerSelectedDevice?.name || null,
+        bridge:           type === "time" ? null : (this.triggerSelectedDevice?.bridge || null),
+        deviceID:         type === "time" ? null : (deviceSelect.value || null),
+        deviceName:       type === "time" ? null : (this.triggerSelectedDevice?.name || null),
         property:         type === "device_value" ? propertySelect.value : null,
         operator:         type === "device_value" ? operatorSelect.value : null,
-        value:            (type === "device_value" || type === "battery_low") ? valueSelect.value : null,
+        value:            type === "time" ? document.querySelector("ion-input[name='editTriggerTime']").value : ((type === "device_value" || type === "battery_low") ? valueSelect.value : null),
         valueType:        (type === "device_value" || type === "battery_low") ? (isNaN(valueSelect.value) ? "String" : "Numeric") : null,
-        deviceProperties: this.triggerSelectedDevice?.properties || []
+        deviceProperties: type === "time" ? [] : (this.triggerSelectedDevice?.properties || [])
       };
       this.scenarioData.triggers.push(newTrigger);
 
@@ -154,12 +158,25 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
       const valueContainer = document.querySelector("#edit-trigger-value-container");
 
-      deviceSelect.value    = "";
-      propertySelect.value  = "";
-      operatorSelect.value  = "";
-      valueContainer.innerHTML = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>`;
+      deviceSelect.value        = "";
+      propertySelect.value      = "";
+      operatorSelect.value      = "";
+      valueContainer.innerHTML  = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>`;
+      
+      const timeInput = document.querySelector("ion-input[name='editTriggerTime']");
+      if (timeInput) {
+        timeInput.value = "";
+      }
+      
       this.triggerSelectedDevice = null;
       this.triggerUpdateFieldVisibility(type);
+      this.triggerEnabledDisable();
+    });
+
+    /**
+     * Event listener for time input change
+     */
+    this.querySelector("ion-input[name='editTriggerTime']")?.addEventListener("ionInput", () => {
       this.triggerEnabledDisable();
     });
 
@@ -218,6 +235,11 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     valueContainer.innerHTML = `
       <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
     `;
+    
+    const timeInput = document.querySelector("ion-input[name='editTriggerTime']");
+    if (timeInput) {
+      timeInput.value = "";
+    } 
   }
 
   /**
@@ -285,6 +307,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
           submitButton.disabled = false;
         }
         break;
+
+      case "time":
+        const timeInput = document.querySelector("ion-input[name='editTriggerTime']");
+        if (timeInput?.value) {
+          submitButton.disabled = false;
+        }
+        break;
     }
   }
 
@@ -296,11 +325,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     const propertyField = document.querySelector("#trigger-field-property");
     const operatorField = document.querySelector("#trigger-field-operator");
     const valueField    = document.querySelector("#trigger-field-value");
+    const timeField     = document.querySelector("#trigger-field-time");
 
     deviceField.style.display   = "none";
     propertyField.style.display = "none";
     operatorField.style.display = "none";
     valueField.style.display    = "none";
+    timeField.style.display     = "none";
 
     switch (type) {
       
@@ -319,6 +350,10 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       case "battery_low":
         deviceField.style.display   = "";
         valueField.style.display    = "";
+        break;
+
+      case "time":
+        timeField.style.display     = "";
         break;
     }
   }
@@ -534,18 +569,26 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
             <ion-text color="light">${operatorInfo}</ion-text>
             <ion-text color="light">${item.valueTranslated ? item.valueTranslated : item.value}</ion-text>
         `;
-      } else if (type === "device_disconnected") {
+      }
+      else if (type === "device_disconnected") {
         cardTitle    = item.deviceName;
         cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
-        cardContent  = `<ion-text color="light"><ion-icon name="cloud-offline-sharp" color="danger"></ion-icon> ${window.Translation.get("TriggerTypeDeviceDisconnected")}</ion-text>`;
-      } else if (type === "device_connected") {
+        cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeDeviceDisconnected")}</ion-text>`;
+      }
+      else if (type === "device_connected") {
         cardTitle    = item.deviceName;
         cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
-        cardContent  = `<ion-text color="light"><ion-icon name="cloud-done-sharp" color="success"></ion-icon> ${window.Translation.get("TriggerTypeDeviceConnected")}</ion-text>`;
-      } else if (type === "battery_low") {
+        cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeDeviceConnected")}</ion-text>`;
+      }
+      else if (type === "battery_low") {
         cardTitle    = item.deviceName;
         cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
-        cardContent  = `<ion-text color="light"><ion-icon name="battery-dead-sharp" color="warning"></ion-icon> ${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
+        cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
+      }
+      else if (type === "time") {
+        cardTitle    = `${window.Translation.get("TriggerTypeTime")}`;
+        cardSubtitle = "";
+        cardContent  = `<ion-text color="light">${item.value} ${window.Translation.get("OClock")}</ion-text>`;
       }
 
       return `
@@ -590,7 +633,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         document.querySelector("ion-select[name='editTriggerType']").value = type;
         this.triggerUpdateFieldVisibility(type);
 
-        await this.loadDataTriggerDevices(triggerData.deviceID);
+        if (type !== "time") {
+          await this.loadDataTriggerDevices(triggerData.deviceID);
+        }
 
         if (type === "device_value") {
           await this.loadDataTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID, triggerData.property);
@@ -605,6 +650,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
           valueContainer.querySelector("ion-input[name='editTriggerValue']").addEventListener("ionInput", () => {
             this.triggerEnabledDisable();
           });
+        }
+        else if (type === "time") {
+          document.querySelector("ion-input[name='editTriggerTime']").value = triggerData.value || "";
         }
         else {
           await this.loadDataTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID);
