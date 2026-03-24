@@ -8,6 +8,7 @@
  *   - device_disconnected: A device loses its connection
  *   - device_connected:    A device reconnects
  *   - battery_low:         A device's battery drops below a threshold (value = threshold %)
+ *   - time:                A specific time of day is reached (value = "HH:mm")
  *
  * Supported action types:
  *   - set_device_value:    Set a property on a device via MQTT
@@ -15,7 +16,6 @@
  *   - notification:        Log a notification without push (value = text)
  */
 
-const e = require("express");
 const appConfig = require("../../config");
 
 class ScenarioEngine {
@@ -26,7 +26,7 @@ class ScenarioEngine {
 
   /**
    * Central entry point for all events
-   * @param {string} eventType - Type of event (device_value, device_connected, device_disconnected, battery_low)
+   * @param {string} eventType - Type of event (device_value, device_connected, device_disconnected, battery_low, time)
    * @param {Object} eventData - { deviceID, bridge, property?, value?, valueType? }
    */
   async handleEvent(eventType, eventData) {
@@ -45,6 +45,25 @@ class ScenarioEngine {
   }
 
   /**
+   * Entry point for time-based triggers (called by scheduler every minute)
+   * @param {string} currentTime - Current time as "HH:mm"
+   */
+  async handleTimeEvent(currentTime) {
+    try {
+      const scenarios = database.prepare(
+        "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = 'time' ORDER BY s.priority DESC"
+      ).all();
+
+      for (const scenario of scenarios) {
+        await this.evaluateScenario(scenario, "time", { time: currentTime });
+      }
+    }
+    catch (error) {
+      common.conLog("Scenario Engine: Error handling time event: " + error.message, "red");
+    }
+  }
+
+  /**
    * Evaluates a single scenario against an event
    * @param {Object} scenario - Scenario details from DB
    * @param {string} eventType - The event type that triggered evaluation
@@ -52,7 +71,7 @@ class ScenarioEngine {
    */
   async evaluateScenario(scenario, eventType, eventData) {
     try {
-      const cooldownKey   = scenario.scenarioID + "-" + eventData.deviceID + "-" + (eventData.property || eventType); // check cooldown to prevent rapid re-execution
+      const cooldownKey   = scenario.scenarioID + "-" + (eventData.deviceID || "time") + "-" + (eventData.property || eventType); // check cooldown to prevent rapid re-execution
       const lastExecution = this.executionCooldowns.get(cooldownKey);
       const now           = Date.now();
 
@@ -62,16 +81,16 @@ class ScenarioEngine {
 
       const triggers = database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID); // get all triggers for this scenario
 
-      let allTriggersSatisfied = true; // check if ALL triggers are satisfied
+      let triggersAllSatisfied = true; // check if ALL triggers are satisfied
       for (const trigger of triggers) {
         const triggerSatisfied = await this.evaluateTrigger(trigger, eventType, eventData);
         if (!triggerSatisfied) {
-          allTriggersSatisfied = false;
+          triggersAllSatisfied = false;
           break;
         }
       }
 
-      if (allTriggersSatisfied) {
+      if (triggersAllSatisfied) {
         common.conLog("Scenario Engine: Executing scenario " + scenario.name, "gre");
         await this.executeScenario(scenario, eventData);
         this.executionCooldowns.set(cooldownKey, now);
@@ -102,6 +121,9 @@ class ScenarioEngine {
       case "battery_low":
         return trigger.type === eventType && trigger.deviceID === eventData.deviceID && trigger.bridge === eventData.bridge && parseFloat(eventData.value) < parseFloat(trigger.value);
 
+      case "time":
+        return eventType === "time" && trigger.value === eventData.time;
+
       default:
         return false;
     }
@@ -114,9 +136,9 @@ class ScenarioEngine {
    * @returns {boolean} - Whether the trigger condition is satisfied
    */
   async evaluateDeviceValueTrigger(trigger, eventData) {
-    const isSameDevice   = trigger.deviceID === eventData.deviceID; // check whether this trigger refers to the exact device, bridge and property that fired the current event
-    const isSameBridge   = trigger.bridge   === eventData.bridge;
-    const isSameProperty = trigger.property === eventData.property;
+    const isSameDevice   = trigger.deviceID === eventData.deviceID; // check whether this trigger refers to the exact device, ...
+    const isSameBridge   = trigger.bridge   === eventData.bridge; // ... bridge, ...
+    const isSameProperty = trigger.property === eventData.property; // ... and property (if trigger.property is null/empty, it matches any property, so we don't require equality in that case)
 
     if (isSameDevice && isSameBridge && isSameProperty) { // the trigger matches the event directly – use the value from the event payload without querying the database
       return this.compareValues(eventData.value, trigger.operator, trigger.value, trigger.valueType);

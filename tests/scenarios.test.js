@@ -680,4 +680,60 @@ describe("Event-Based Triggers", () => {
     db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
   });
+
+  test("time trigger fires at matching time", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Morning Alarm", "Turn on light at 08:00", "alarm");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, value) VALUES (?, ?, ?)"
+    ).run(sid, "time", "08:00");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(sid, "set_device_value", "light_001", "zigbee", "state", "on", "String");
+
+    global.scenarios.executionCooldowns.clear();
+
+    await global.scenarios.handleTimeEvent("08:00");
+    await new Promise((r) => setTimeout(r, 100));
+
+    const exec = db.prepare("SELECT * FROM scenarios_executions WHERE scenarioID = ? ORDER BY executionID DESC LIMIT 1").get(sid);
+    expect(exec).toBeDefined();
+    expect(exec.success).toBe(1);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_executions WHERE scenarioID = ?").run(sid);
+  });
+
+  test("time trigger does NOT fire at non-matching time", async () => {
+    const result = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
+    ).run("Morning Alarm 2", "Turn on light at 08:00", "alarm");
+    const sid = result.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, value) VALUES (?, ?, ?)"
+    ).run(sid, "time", "08:00");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(sid, "set_device_value", "light_001", "zigbee", "state", "on", "String");
+
+    global.scenarios.executionCooldowns.clear();
+
+    await global.scenarios.handleTimeEvent("09:00");
+    await new Promise((r) => setTimeout(r, 100));
+
+    const exec = db.prepare("SELECT * FROM scenarios_executions WHERE scenarioID = ?").get(sid);
+    expect(exec).toBeUndefined();
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);
+  });
 });
