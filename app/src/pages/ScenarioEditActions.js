@@ -303,7 +303,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
           delayInput.disabled = false;
         }
         
-        if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect?.value !== "") && ((delayInput.value === ""))) {
+        if ((deviceSelect.value !== "") && (propertySelect.value !== "") && (valueSelect?.value !== "")) {
           submitButton.disabled = false;
         }
         break;
@@ -590,6 +590,8 @@ export const ScenarioEditActions = (Base) => class extends Base {
         const type = actionData.type || "set_device_value";
         document.querySelector("ion-select[name='editActionType']").value = type;
         this.actionUpdateFieldVisibility(type);
+
+        document.querySelector("ion-input[name='editActionDelay']").value = actionData.delay > 0 ? actionData.delay : "";
 
         if (type === "set_device_value") {
           await this.loadDataActionDevices(actionData.deviceID);
