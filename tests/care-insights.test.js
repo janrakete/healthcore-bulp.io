@@ -16,6 +16,7 @@ jest.mock("../config", () => ({
   CONF_careInsightsActive:          true,
   CONF_careInsightsAnomalyThreshold: 0.6,
   CONF_careInsightsHistorySize:     20,
+  CONF_careInsightsMaxSignalsPerInsight: 5,
 }));
 
 const request = require("supertest");
@@ -112,6 +113,26 @@ describe("Care Insights engine", () => {
     expect(notification.text).toBe("Unusual reading detected");
   });
 
+  test("detects anomaly when baseline is constant but latest value differs", () => {
+    seedValues([200, 70, 70, 70, 70, 70, 70]);
+
+    careInsights.handleDeviceValues({
+      deviceID: "care_device_001",
+      bridge: "http",
+      values: {
+        heartrate: {
+          value: "200",
+          valueAsNumeric: 200,
+        }
+      }
+    });
+
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'unusual_numeric_pattern'").get();
+    expect(insight).toBeDefined();
+    expect(insight.status).toBe("open");
+    expect(insight.severity).toMatch(/high|critical/);
+  });
+
   test("creates and resolves connectivity insight", () => {
     careInsights.handleDeviceStatus({
       deviceID: "care_device_001",
@@ -133,6 +154,46 @@ describe("Care Insights engine", () => {
 
     insight = db.prepare("SELECT * FROM care_insights WHERE type = 'device_connectivity_risk'").get();
     expect(insight.status).toBe("resolved");
+  });
+
+  test("auto-resolves unusual_numeric_pattern insight when values normalize", () => {
+    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    careInsights.handleDeviceValues({
+      deviceID: "care_device_001",
+      bridge: "http",
+      values: { heartrate: { value: "240", valueAsNumeric: 240 } }
+    });
+
+    let insight = db.prepare("SELECT * FROM care_insights WHERE type = 'unusual_numeric_pattern'").get();
+    expect(insight).toBeDefined();
+    expect(insight.status).toBe("open");
+
+    db.prepare("DELETE FROM mqtt_history_devices_values").run();
+    seedValues([71, 70, 69, 71, 70, 72, 71]);
+    careInsights.handleDeviceValues({
+      deviceID: "care_device_001",
+      bridge: "http",
+      values: { heartrate: { value: "71", valueAsNumeric: 71 } }
+    });
+
+    insight = db.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insight.insightID);
+    expect(insight.status).toBe("resolved");
+  });
+
+  test("limits signals per insight to configured maximum", () => {
+    seedValues([240, 70, 69, 71, 70, 72, 71]);
+
+    for (let i = 0; i < 8; i++) {
+      careInsights.handleDeviceValues({
+        deviceID: "care_device_001",
+        bridge: "http",
+        values: { heartrate: { value: String(240 + i), valueAsNumeric: 240 + i } }
+      });
+    }
+
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'unusual_numeric_pattern'").get();
+    const signals = db.prepare("SELECT * FROM care_insight_signals WHERE insightID = ?").all(insight.insightID);
+    expect(signals.length).toBeLessThanOrEqual(5);
   });
 
   test("creates configured hydration insight from care_insight_rules", () => {
@@ -235,6 +296,34 @@ describe("Care Insights API", () => {
     expect(res.body.results[0].individual.firstname).toBe("Mia");
     expect(res.body.results[0].room).toBeDefined();
     expect(res.body.results[0].room.name).toBe("Care Room");
+  });
+
+  test("GET /care-insights caps limit at CONF_tablesMaxEntriesReturned", async () => {
+    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    careInsights.handleDeviceValues({
+      deviceID: "care_device_001",
+      bridge: "http",
+      values: { heartrate: { value: "240", valueAsNumeric: 240 } }
+    });
+
+    const res = await request(app).get("/care-insights?limit=99999");
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(res.body.results.length).toBe(1);
+  });
+
+  test("GET /care-insights applies default limit without query param", async () => {
+    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    careInsights.handleDeviceValues({
+      deviceID: "care_device_001",
+      bridge: "http",
+      values: { heartrate: { value: "240", valueAsNumeric: 240 } }
+    });
+
+    const res = await request(app).get("/care-insights");
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(res.body.results.length).toBe(1);
   });
 
   test("GET /care-insights/:id returns insight with signals", async () => {

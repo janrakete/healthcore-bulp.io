@@ -134,6 +134,7 @@ class CareInsightsEngine {
         }
 
         if (deviation.score < appConfig.CONF_careInsightsAnomalyThreshold) {
+          this.resolveOpenInsights({ ruleID: 0, type: "unusual_numeric_pattern", deviceID: data.deviceID, bridge: data.bridge, property: property });
           return;
         }
 
@@ -211,18 +212,7 @@ class CareInsightsEngine {
       }
 
       if (data.status === "online") {
-        const existingInsights = database.prepare(
-          "SELECT * FROM care_insights WHERE type = ? AND deviceID = ? AND bridge = ? AND status IN ('open', 'acknowledged') ORDER BY insightID DESC"
-        ).all("device_connectivity_risk", data.deviceID, data.bridge);
-
-        database.prepare(
-          "UPDATE care_insights SET status = 'resolved', dateTimeResolved = datetime('now', 'localtime'), dateTimeUpdated = datetime('now', 'localtime') WHERE type = ? AND deviceID = ? AND bridge = ? AND status IN ('open', 'acknowledged')"
-        ).run("device_connectivity_risk", data.deviceID, data.bridge);
-
-        existingInsights.forEach((insight) => {
-          const resolvedInsight = database.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insight.insightID);
-          this.triggerScenarioEvent("care_insight_resolved", resolvedInsight);
-        });
+        this.resolveOpenInsights({ type: "device_connectivity_risk", deviceID: data.deviceID, bridge: data.bridge });
       }
     }
     catch (error) {
@@ -271,10 +261,11 @@ class CareInsightsEngine {
       const stdDev    = Math.sqrt(variance);
 
       if (stdDev === 0) {
-        return null;
+        normalizedDeviation = (latest !== median) ? 6 : 0;
       }
-
-      normalizedDeviation = Math.abs(latest - mean) / stdDev;
+      else {
+        normalizedDeviation = Math.abs(latest - mean) / stdDev;
+      }
     }
 
     return {
@@ -307,7 +298,7 @@ class CareInsightsEngine {
       }
 
       if (this.ruleThresholdReached(rule, aggregation) !== true) {
-        this.resolveRuleInsights(rule, context, property);
+        this.resolveOpenInsights({ ruleID: rule.ruleID, deviceID: context.deviceID, bridge: context.bridge, property: property });
         return;
       }
 
@@ -440,22 +431,48 @@ class CareInsightsEngine {
     return Math.max(0, Math.min(1, (threshold - aggregation.total) / threshold));
   }
 
-  resolveRuleInsights(rule, context, property) {
+  resolveOpenInsights(filters) {
+    const conditions = ["status IN ('open', 'acknowledged')"];
+    const params = [];
+
+    if (filters.ruleID !== undefined) {
+      conditions.push("ruleID = ?");
+      params.push(filters.ruleID);
+    }
+    if (filters.type !== undefined) {
+      conditions.push("type = ?");
+      params.push(filters.type);
+    }
+    if (filters.deviceID !== undefined) {
+      conditions.push("deviceID = ?");
+      params.push(filters.deviceID);
+    }
+    if (filters.bridge !== undefined) {
+      conditions.push("bridge = ?");
+      params.push(filters.bridge);
+    }
+    if (filters.property !== undefined) {
+      conditions.push("property = ?");
+      params.push(filters.property);
+    }
+
+    const where = conditions.join(" AND ");
+
     const insights = database.prepare(
-      "SELECT * FROM care_insights WHERE ruleID = ? AND deviceID = ? AND bridge = ? AND property = ? AND status IN ('open', 'acknowledged') ORDER BY insightID DESC"
-    ).all(rule.ruleID, context.deviceID, context.bridge, property);
+      "SELECT * FROM care_insights WHERE " + where + " ORDER BY insightID DESC"
+    ).all(...params);
 
     if (insights.length === 0) {
       return;
     }
 
     database.prepare(
-      "UPDATE care_insights SET status = 'resolved', dateTimeResolved = datetime('now', 'localtime'), dateTimeUpdated = datetime('now', 'localtime') WHERE ruleID = ? AND deviceID = ? AND bridge = ? AND property = ? AND status IN ('open', 'acknowledged')"
-    ).run(rule.ruleID, context.deviceID, context.bridge, property);
+      "UPDATE care_insights SET status = 'resolved', dateTimeResolved = datetime('now', 'localtime'), dateTimeUpdated = datetime('now', 'localtime') WHERE " + where
+    ).run(...params);
 
     insights.forEach((insight) => {
       const resolvedInsight = database.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insight.insightID);
-      this.triggerScenarioEvent("care_insight_resolved", resolvedInsight);
+      CareInsightsEngine.triggerScenarioEvent("care_insight_resolved", resolvedInsight);
     });
   }
 
@@ -509,7 +526,7 @@ class CareInsightsEngine {
     }
 
     if (eventType !== "") {
-      this.triggerScenarioEvent(eventType, insight);
+      CareInsightsEngine.triggerScenarioEvent(eventType, insight);
     }
 
     return insight;
@@ -524,6 +541,11 @@ class CareInsightsEngine {
     database.prepare(
       "INSERT INTO care_insight_signals (insightID, deviceID, bridge, property, value, valueAsNumeric, weight, dateTimeObserved) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
     ).run(insightID, signal.deviceID || null, signal.bridge || null, signal.property || null, signal.value || null, signal.valueAsNumeric ?? null, signal.weight ?? 1);
+
+    const maxSignals = appConfig.CONF_careInsightsMaxSignalsPerInsight || 50;
+    database.prepare(
+      "DELETE FROM care_insight_signals WHERE insightID = ? AND signalID NOT IN (SELECT signalID FROM care_insight_signals WHERE insightID = ? ORDER BY signalID DESC LIMIT ?)"
+    ).run(insightID, insightID, maxSignals);
   }
 
   /**
@@ -612,15 +634,15 @@ class CareInsightsEngine {
     return this.getDeviceName(context.device);
   }
 
-  triggerScenarioEvent(eventType, insight) {
+  static triggerScenarioEvent(eventType, insight) {
     if ((global.scenarios === undefined) || (insight === undefined) || (insight === null)) {
       return;
     }
 
-    global.scenarios.handleEvent(eventType, this.buildScenarioEventData(insight));
+    global.scenarios.handleEvent(eventType, CareInsightsEngine.buildScenarioEventData(insight));
   }
 
-  buildScenarioEventData(insight) {
+  static buildScenarioEventData(insight) {
     return {
       insightID: insight.insightID,
       ruleID: Number(insight.ruleID) || 0,

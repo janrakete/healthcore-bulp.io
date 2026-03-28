@@ -4,6 +4,8 @@
  * =============================================================================================
  */
 const router                  = require("express").Router();
+const appConfig               = require("../../config");
+const CareInsightsEngine      = require("../libs/CareInsightsEngine");
 
 const allowedStatuses         = ["open", "acknowledged", "resolved", "dismissed"];
 const allowedFeedbackTypes    = ["helpful", "false_positive", "resolved", "escalated", "ignored"];
@@ -59,26 +61,6 @@ function enrichInsight(insight) {
     return enrichedInsight;
 }
 
-function triggerCareInsightScenarioEvent(eventType, insight) {
-    if ((global.scenarios === undefined) || (insight === undefined) || (insight === null)) {
-        return;
-    }
-
-    global.scenarios.handleEvent(eventType, {
-        insightID: insight.insightID,
-        ruleID: Number(insight.ruleID) || 0,
-        insightType: insight.type,
-        severity: insight.severity,
-        score: Number(insight.score) || 0,
-        status: insight.status,
-        deviceID: insight.deviceID || "",
-        bridge: insight.bridge || "",
-        property: insight.property || "",
-        individualID: Number(insight.individualID) || 0,
-        roomID: Number(insight.roomID) || 0
-    });
-}
-
 /**
  * Builds SQL filters for supported query parameters.
  * @param {Object} queryParams
@@ -127,12 +109,15 @@ router.get("/", async function (request, response) {
         }
         statement += " ORDER BY dateTimeUpdated DESC, insightID DESC";
 
+        const maxEntries = appConfig.CONF_tablesMaxEntriesReturned || 500;
+        let limit = maxEntries;
         if (request.query.limit !== undefined) {
-            const limit = Number.parseInt(request.query.limit, 10);
-            if (!Number.isNaN(limit) && limit > 0) {
-                statement += " LIMIT " + limit;
+            const parsed = Number.parseInt(request.query.limit, 10);
+            if (!Number.isNaN(parsed) && parsed > 0) {
+                limit = Math.min(parsed, maxEntries);
             }
         }
+        statement += " LIMIT " + limit;
 
         common.conLog("GET Request: access table 'care_insights'", "gre");
         common.conLog("Execute statement: " + statement, "std", false);
@@ -254,10 +239,10 @@ router.patch("/:insightID", async function (request, response) {
 
                 if (previousStatus !== nextStatus) {
                     if (["resolved", "dismissed"].includes(nextStatus)) {
-                        triggerCareInsightScenarioEvent("care_insight_resolved", updatedInsight);
+                        CareInsightsEngine.triggerScenarioEvent("care_insight_resolved", updatedInsight);
                     }
                     else {
-                        triggerCareInsightScenarioEvent("care_insight_updated", updatedInsight);
+                        CareInsightsEngine.triggerScenarioEvent("care_insight_updated", updatedInsight);
                     }
                 }
 
