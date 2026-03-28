@@ -71,6 +71,7 @@ const appConfig = {
   CONF_careInsightsActive                             : toBool(process.env.CONF_careInsightsActive, true),
   CONF_careInsightsAnomalyThreshold                   : toFloat(process.env.CONF_careInsightsAnomalyThreshold),
   CONF_careInsightsHistorySize                        : toInt(process.env.CONF_careInsightsHistorySize),
+  CONF_careInsightsMaxSignalsPerInsight               : toInt(process.env.CONF_careInsightsMaxSignalsPerInsight),
   CONF_tablesAllowedForAPI                            : (process.env.CONF_tablesAllowedForAPI || "").split(",").map(table => table.trim()).filter(Boolean),
   CONF_tablesMaxEntriesReturned                       : toInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds                     : toInt(process.env.CONF_apiCallTimeoutMilliseconds),
