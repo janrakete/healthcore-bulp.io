@@ -8,6 +8,9 @@
  *   - device_disconnected: A device loses its connection
  *   - device_connected:    A device reconnects
  *   - battery_low:         A device's battery drops below a threshold (value = threshold %)
+ *   - care_insight_opened: A Care Insight is newly created
+ *   - care_insight_updated:A Care Insight is updated
+ *   - care_insight_resolved:A Care Insight is resolved or dismissed
  *   - time:                A specific time of day is reached (value = "HH:mm")
  *
  * Supported action types:
@@ -32,8 +35,8 @@ class ScenarioEngine {
   async handleEvent(eventType, eventData) {
     try {
       const scenarios = database.prepare(
-        "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? AND st.bridge = ? ORDER BY s.priority DESC"
-      ).all(eventType, eventData.deviceID, eventData.bridge);
+        "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND (ifnull(st.deviceID, '') = '' OR st.deviceID = ?) AND (ifnull(st.bridge, '') = '' OR st.bridge = ?) ORDER BY s.priority DESC"
+      ).all(eventType, eventData.deviceID || "", eventData.bridge || "");
 
       for (const scenario of scenarios) {
         await this.evaluateScenario(scenario, eventType, eventData);
@@ -79,6 +82,10 @@ class ScenarioEngine {
         return;
       }
 
+      if (this.matchesScenarioContext(scenario, eventData) !== true) {
+        return;
+      }
+
       const triggers = database.prepare("SELECT * FROM scenarios_triggers WHERE scenarioID = ?").all(scenario.scenarioID); // get all triggers for this scenario
 
       let triggersAllSatisfied = true; // check if ALL triggers are satisfied
@@ -121,12 +128,70 @@ class ScenarioEngine {
       case "battery_low":
         return trigger.type === eventType && trigger.deviceID === eventData.deviceID && trigger.bridge === eventData.bridge && parseFloat(eventData.value) < parseFloat(trigger.value);
 
+      case "care_insight_opened":
+      case "care_insight_updated":
+      case "care_insight_resolved":
+        return this.evaluateCareInsightTrigger(trigger, eventType, eventData);
+
       case "time":
         return eventType === "time" && trigger.value === eventData.time;
 
       default:
         return false;
     }
+  }
+
+  /**
+   * Checks scenario-level person and room context.
+   * @param {Object} scenario
+   * @param {Object} eventData
+   * @returns {boolean}
+   */
+  matchesScenarioContext(scenario, eventData) {
+    if ((Number(scenario.individualID) > 0) && (Number(eventData.individualID) !== Number(scenario.individualID))) {
+      return false;
+    }
+
+    if ((Number(scenario.roomID) > 0) && (Number(eventData.roomID) !== Number(scenario.roomID))) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Evaluates a Care Insight trigger.
+   * @param {Object} trigger
+   * @param {string} eventType
+   * @param {Object} eventData
+   * @returns {boolean}
+   */
+  evaluateCareInsightTrigger(trigger, eventType, eventData) {
+    if (trigger.type !== eventType) {
+      return false;
+    }
+
+    if (trigger.deviceID && trigger.deviceID !== eventData.deviceID) {
+      return false;
+    }
+
+    if (trigger.bridge && trigger.bridge !== eventData.bridge) {
+      return false;
+    }
+
+    if (trigger.property && trigger.property !== eventData.insightType) {
+      return false;
+    }
+
+    if ((trigger.value === null) || (trigger.value === undefined) || (String(trigger.value).trim() === "")) {
+      return true;
+    }
+
+    if (trigger.valueType === "Numeric") {
+      return this.compareValues(eventData.score || 0, trigger.operator || "greater", trigger.value, "Numeric");
+    }
+
+    return this.compareValues(eventData.severity || "", trigger.operator || "equals", trigger.value, "String");
   }
 
   /**

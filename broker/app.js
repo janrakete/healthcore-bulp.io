@@ -167,7 +167,7 @@ function startServer() {
             try {
                 statementInsertHistory.run(topic, message, callID);
 
-                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for anomaly detection
+                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for Care Insights and related analytics
                     const timeFeatures = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
                     for (const [property, value] of Object.entries(data.values)) { // iterate over each property
                         statementInsertValue.run(

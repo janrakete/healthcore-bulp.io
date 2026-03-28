@@ -38,6 +38,18 @@ function createTestDatabase() {
       name TEXT NOT NULL
     );
 
+    CREATE TABLE device_assignments (
+      assignmentID INTEGER PRIMARY KEY AUTOINCREMENT,
+      deviceID TEXT NOT NULL,
+      bridge TEXT NOT NULL,
+      individualID INTEGER DEFAULT 0,
+      roomID INTEGER DEFAULT 0,
+      dateTimeAdded TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE UNIQUE INDEX idx_device_assignments_device
+    ON device_assignments (deviceID, bridge);
+
     CREATE TABLE users (
       userID INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -143,6 +155,69 @@ function createTestDatabase() {
       success BOOLEAN DEFAULT 1,
       error TEXT
     );
+
+    CREATE TABLE care_insights (
+      insightID INTEGER PRIMARY KEY AUTOINCREMENT,
+      ruleID INTEGER DEFAULT 0,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      severity TEXT NOT NULL DEFAULT 'medium',
+      score NUMERIC DEFAULT 0,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      explanation TEXT,
+      recommendation TEXT,
+      deviceID TEXT,
+      bridge TEXT,
+      property TEXT,
+      individualID INTEGER DEFAULT 0,
+      roomID INTEGER DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'careinsights',
+      dateTimeAdded TEXT DEFAULT (datetime('now')),
+      dateTimeUpdated TEXT DEFAULT (datetime('now')),
+      dateTimeResolved TEXT
+    );
+
+    CREATE TABLE care_insight_signals (
+      signalID INTEGER PRIMARY KEY AUTOINCREMENT,
+      insightID INTEGER NOT NULL,
+      deviceID TEXT,
+      bridge TEXT,
+      property TEXT,
+      value TEXT,
+      valueAsNumeric NUMERIC,
+      weight NUMERIC DEFAULT 1,
+      dateTimeObserved TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE care_feedback (
+      feedbackID INTEGER PRIMARY KEY AUTOINCREMENT,
+      insightID INTEGER NOT NULL,
+      userID INTEGER DEFAULT 0,
+      feedbackType TEXT NOT NULL,
+      comment TEXT,
+      dateTimeAdded TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE care_insight_rules (
+      ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      enabled BOOLEAN DEFAULT 1,
+      insightType TEXT NOT NULL,
+      sourceDeviceID TEXT,
+      sourceBridge TEXT,
+      sourceProperty TEXT NOT NULL,
+      aggregationType TEXT NOT NULL DEFAULT 'sum_below_threshold',
+      aggregationWindowHours INTEGER DEFAULT 24,
+      thresholdMin NUMERIC,
+      thresholdMax NUMERIC,
+      minReadings INTEGER DEFAULT 1,
+      severity TEXT NOT NULL DEFAULT 'medium',
+      title TEXT,
+      recommendation TEXT,
+      dateTimeAdded TEXT DEFAULT (datetime('now')),
+      dateTimeUpdated TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   return db;
@@ -202,10 +277,12 @@ function createTestApp() {
   const routesData     = require("../server/routes/data");
   const routesScenarios = require("../server/routes/scenarios");
   const routesDevices  = require("../server/routes/devices");
+  const routesCareInsights = require("../server/routes/care-insights");
 
   app.use("/data",      apiKeyAuth, routesData);
   app.use("/scenarios", apiKeyAuth, routesScenarios);
   app.use("/devices",   apiKeyAuth, routesDevices);
+  app.use("/care-insights", apiKeyAuth, routesCareInsights);
 
   return app;
 }

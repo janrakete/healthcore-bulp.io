@@ -13,6 +13,28 @@ const router        = require("express").Router();
  */
 
 /**
+ * Ensures that the assignment table exists.
+ * @returns {void}
+ */
+function ensureDeviceAssignmentsTable() {
+    database.exec(`
+        CREATE TABLE IF NOT EXISTS device_assignments (
+            assignmentID INTEGER PRIMARY KEY AUTOINCREMENT,
+            deviceID TEXT NOT NULL,
+            bridge TEXT NOT NULL,
+            individualID INTEGER DEFAULT 0,
+            roomID INTEGER DEFAULT 0,
+            dateTimeAdded TEXT DEFAULT (datetime('now'))
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_device_assignments_device
+        ON device_assignments (deviceID, bridge);
+    `);
+}
+
+ensureDeviceAssignmentsTable();
+
+/**
  * MQTT Pending Responses Handler
  * @param {string} callID
  * @param {Object} response
@@ -41,6 +63,164 @@ function handlePendingMqttResponse(callID, response) {
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
         return response.status(200).json(data);
     };
+}
+
+/**
+ * Returns the assignment for a device including optional person and room context.
+ * @param {string} deviceID
+ * @param {string} bridge
+ * @returns {Object|null}
+ */
+function getDeviceAssignment(deviceID, bridge) {
+    const statement = `
+        SELECT 
+            device_assignments.assignmentID,
+            device_assignments.deviceID,
+            device_assignments.bridge,
+            device_assignments.individualID,
+            device_assignments.roomID,
+            individuals.firstname,
+            individuals.lastname,
+            rooms.name AS roomName
+        FROM device_assignments
+        LEFT JOIN individuals ON individuals.individualID = device_assignments.individualID
+        LEFT JOIN rooms ON rooms.roomID = device_assignments.roomID
+        WHERE device_assignments.deviceID = ? AND device_assignments.bridge = ?
+        LIMIT 1
+    `;
+
+    common.conLog("Execute statement: " + statement.replace(/\s+/g, " ").trim(), "std", false);
+
+    const result = database.prepare(statement).get(deviceID, bridge);
+    if (result === undefined) {
+        return null;
+    }
+
+    const assignment = {
+        assignmentID: result.assignmentID,
+        deviceID: result.deviceID,
+        bridge: result.bridge,
+        individualID: result.individualID,
+        roomID: result.roomID,
+    };
+
+    if ((result.individualID !== null) && (result.individualID !== undefined) && (Number(result.individualID) > 0)) {
+        assignment.individual = {
+            individualID: result.individualID,
+            firstname: result.firstname || "",
+            lastname: result.lastname || "",
+        };
+    }
+
+    if ((result.roomID !== null) && (result.roomID !== undefined) && (Number(result.roomID) > 0)) {
+        assignment.room = {
+            roomID: result.roomID,
+            name: result.roomName || "",
+        };
+    }
+
+    return assignment;
+}
+
+/**
+ * Adds assignment data to a device object.
+ * @param {Object} device
+ */
+function addAssignmentToDevice(device) {
+    if ((device === undefined) || (device === null)) {
+        return;
+    }
+
+    device.assignment = getDeviceAssignment(device.deviceID, device.bridge);
+}
+
+/**
+ * Returns a single device by ID and bridge.
+ * @param {string} deviceID
+ * @param {string} bridge
+ * @returns {Object|undefined}
+ */
+function getDevice(deviceID, bridge) {
+    return database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").get(deviceID, bridge);
+}
+
+/**
+ * Returns a single individual by ID.
+ * @param {number} individualID
+ * @returns {Object|undefined}
+ */
+function getIndividual(individualID) {
+    return database.prepare("SELECT * FROM individuals WHERE individualID = ? LIMIT 1").get(individualID);
+}
+
+/**
+ * Returns a single room by ID.
+ * @param {number} roomID
+ * @returns {Object|undefined}
+ */
+function getRoom(roomID) {
+    return database.prepare("SELECT * FROM rooms WHERE roomID = ? LIMIT 1").get(roomID);
+}
+
+/**
+ * Validates and normalizes an assignment payload.
+ * @param {string} deviceID
+ * @param {string} bridge
+ * @param {Object} payload
+ * @returns {Object}
+ */
+function buildAssignmentPayload(deviceID, bridge, payload) {
+    const data = {};
+    const assignment = {
+        deviceID: deviceID,
+        bridge: bridge,
+        individualID: 0,
+        roomID: 0,
+    };
+
+    if ((payload === undefined) || (Object.keys(payload).length === 0)) {
+        data.status = "error";
+        data.error  = "No payload provided";
+        return data;
+    }
+
+    if ((payload.individualID !== undefined) && (Number(payload.individualID) > 0)) {
+        const individual = getIndividual(Number(payload.individualID));
+
+        if (individual === undefined) {
+            data.status = "error";
+            data.error  = "Individual not found";
+            return data;
+        }
+
+        assignment.individualID = individual.individualID;
+
+        if ((payload.roomID === undefined || Number(payload.roomID) <= 0) && Number(individual.roomID) > 0) {
+            assignment.roomID = Number(individual.roomID);
+        }
+    }
+
+    if ((payload.roomID !== undefined) && (Number(payload.roomID) > 0)) {
+        const room = getRoom(Number(payload.roomID));
+
+        if (room === undefined) {
+            data.status = "error";
+            data.error  = "Room not found";
+            return data;
+        }
+
+        assignment.roomID = room.roomID;
+    }
+
+    if ((assignment.individualID <= 0) && (assignment.roomID <= 0)) {
+        data.status = "error";
+        data.error  = "No individualID or roomID provided";
+        return data;
+    }
+
+    data.status     = "ok";
+    data.assignment = assignment;
+    return data;
 }
 
 /**
@@ -111,6 +291,8 @@ router.get("/all", async function (request, response) {
                     device.properties   = {};
                 }
             }
+
+            addAssignmentToDevice(device);
         });
 
         data.results = results;
@@ -763,6 +945,233 @@ router.post("/:bridge/:deviceID", async function (request, response) {
 
 /**
  * @swagger
+ *  /devices/{bridge}/{deviceID}/assignment:
+ *    get:
+ *      summary: Get device assignment
+ *      description: This endpoint retrieves the person and room assignment of a device.
+ *      tags:
+ *        - Devices
+ */
+router.get("/:bridge/:deviceID/assignment", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+
+    let data             = {};
+
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
+
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
+            const device = getDevice(payload.deviceID.trim(), bridge);
+
+            if (device !== undefined) {
+                data.status     = "ok";
+                data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
+            }
+            else {
+                data.status = "error";
+                data.error  = "Device not found";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No ID provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No bridge provided";
+    }
+
+    return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device assignment");
+});
+
+/**
+ * @swagger
+ *  /devices/{bridge}/{deviceID}/assignment:
+ *    post:
+ *      summary: Create device assignment
+ *      description: This endpoint creates a person and room assignment for a device.
+ *      tags:
+ *        - Devices
+ */
+router.post("/:bridge/:deviceID/assignment", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    payload.body         = request.body;
+
+    let data             = {};
+
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
+
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
+            const device = getDevice(payload.deviceID.trim(), bridge);
+
+            if (device !== undefined) {
+                const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
+
+                if (existingAssignment === null) {
+                    const assignmentData = buildAssignmentPayload(payload.deviceID.trim(), bridge, payload.body);
+
+                    if (assignmentData.status === "ok") {
+                        database.prepare(
+                            "INSERT INTO device_assignments (deviceID, bridge, individualID, roomID, dateTimeAdded) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))"
+                        ).run(assignmentData.assignment.deviceID, assignmentData.assignment.bridge, assignmentData.assignment.individualID, assignmentData.assignment.roomID);
+
+                        data.status     = "ok";
+                        data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
+                    }
+                    else {
+                        data = assignmentData;
+                    }
+                }
+                else {
+                    data.status = "error";
+                    data.error  = "Assignment already exists";
+                }
+            }
+            else {
+                data.status = "error";
+                data.error  = "Device not found";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No ID provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No bridge provided";
+    }
+
+    return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device assignment");
+});
+
+/**
+ * @swagger
+ *  /devices/{bridge}/{deviceID}/assignment:
+ *    patch:
+ *      summary: Update device assignment
+ *      description: This endpoint updates the person and room assignment of a device.
+ *      tags:
+ *        - Devices
+ */
+router.patch("/:bridge/:deviceID/assignment", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+    payload.body         = request.body;
+
+    let data             = {};
+
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
+
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
+            const device = getDevice(payload.deviceID.trim(), bridge);
+
+            if (device !== undefined) {
+                const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
+
+                if (existingAssignment !== null) {
+                    const assignmentData = buildAssignmentPayload(payload.deviceID.trim(), bridge, payload.body);
+
+                    if (assignmentData.status === "ok") {
+                        database.prepare(
+                            "UPDATE device_assignments SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?"
+                        ).run(assignmentData.assignment.individualID, assignmentData.assignment.roomID, payload.deviceID.trim(), bridge);
+
+                        data.status     = "ok";
+                        data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
+                    }
+                    else {
+                        data = assignmentData;
+                    }
+                }
+                else {
+                    data.status = "error";
+                    data.error  = "Assignment not found";
+                }
+            }
+            else {
+                data.status = "error";
+                data.error  = "Device not found";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No ID provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No bridge provided";
+    }
+
+    return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device assignment");
+});
+
+/**
+ * @swagger
+ *  /devices/{bridge}/{deviceID}/assignment:
+ *    delete:
+ *      summary: Delete device assignment
+ *      description: This endpoint removes the person and room assignment of a device.
+ *      tags:
+ *        - Devices
+ */
+router.delete("/:bridge/:deviceID/assignment", async function (request, response) {
+    const payload        = {};
+    payload.bridge       = request.params.bridge;
+    payload.deviceID     = request.params.deviceID;
+
+    let data             = {};
+
+    if (payload.bridge !== undefined) {
+        const bridge = payload.bridge.trim();
+
+        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
+            const device = getDevice(payload.deviceID.trim(), bridge);
+
+            if (device !== undefined) {
+                const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
+
+                if (existingAssignment !== null) {
+                    database.prepare(
+                        "DELETE FROM device_assignments WHERE deviceID = ? AND bridge = ?"
+                    ).run(payload.deviceID.trim(), bridge);
+
+                    data.status = "ok";
+                }
+                else {
+                    data.status = "error";
+                    data.error  = "Assignment not found";
+                }
+            }
+            else {
+                data.status = "error";
+                data.error  = "Device not found";
+            }
+        }
+        else {
+            data.status = "error";
+            data.error  = "No ID provided";
+        }
+    }
+    else {
+        data.status = "error";
+        data.error  = "No bridge provided";
+    }
+
+    return common.sendResponse(response, data, "Server route 'Devices'", "DELETE request for device assignment");
+});
+
+/**
+ * @swagger
  *  /devices/{bridge}/{deviceID}:
  *    patch:
  *      summary: Update a device
@@ -1290,7 +1699,7 @@ router.get("/:bridge/:deviceID", async function (request, response) {
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
         if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            const device = database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ?").get(payload.deviceID.trim(), bridge);;
+            const device = getDevice(payload.deviceID.trim(), bridge);
             if (device !== undefined) {
                 data.status = "ok";
                 data.device = device;
@@ -1304,6 +1713,8 @@ router.get("/:bridge/:deviceID", async function (request, response) {
                         data.device.properties  = {};
                     }   
                 }
+
+                addAssignmentToDevice(data.device);
 
                 common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
             }

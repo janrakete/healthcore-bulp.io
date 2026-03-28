@@ -6,7 +6,7 @@
 
 // Mock config — loaded before any route modules
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"],
+  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "device_assignments", "care_insight_rules"],
   CONF_tablesMaxEntriesReturned:   500,
   CONF_apiKey:                     "test-secret-key-12345",
   CONF_apiCallTimeoutMilliseconds: 3000,
