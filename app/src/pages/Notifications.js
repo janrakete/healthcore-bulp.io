@@ -1,8 +1,8 @@
 /**
- * Rooms Page
+ * Notifications Page
  */
 
-import { apiGET, apiDELETE } from "../services/api.js";
+import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { dateFormat, spinnerShow } from "../services/helper.js";
 

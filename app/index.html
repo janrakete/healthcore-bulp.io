@@ -31,6 +31,10 @@
         <ion-route url="/devices-add/lora" component="page-devices-add-lora"></ion-route>
         <ion-route url="/devices-add/http" component="page-devices-add-http"></ion-route>
         <ion-route url="/notifications" component="page-notifications"></ion-route>
+        <ion-route url="/care-insights" component="page-care-insights"></ion-route>
+        <ion-route url="/care-insights/:ID" component="page-care-insight-detail"></ion-route>
+        <ion-route url="/care-insight-rules" component="page-care-insight-rules"></ion-route>
+        <ion-route url="/care-insight-rule-edit/:ID" component="page-care-insight-rule-edit"></ion-route>
         <ion-route url="/device-edit/:BRIDGE/:ID" component="page-device-edit"></ion-route>
         <ion-route url="/scenarios" component="page-scenarios"></ion-route>
         <ion-route url="/scenario-edit/:ID" component="page-scenario-edit"></ion-route>
@@ -55,6 +59,10 @@
       import "./src/pages/DevicesAddLoRa.js";
       import "./src/pages/DevicesAddHTTP.js";
       import "./src/pages/Notifications.js";
+      import "./src/pages/CareInsights.js";
+      import "./src/pages/CareInsightDetail.js";
+      import "./src/pages/CareInsightRules.js";
+      import "./src/pages/CareInsightRuleEdit.js";
       import "./src/pages/DeviceEdit.js";
       import "./src/pages/Scenarios.js";
       import "./src/pages/ScenarioEdit.js";
