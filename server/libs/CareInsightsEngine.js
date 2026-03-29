@@ -554,8 +554,8 @@ class CareInsightsEngine {
    */
   createNotification(insight) {
     database.prepare(
-      "INSERT INTO notifications (text, description, icon, dateTime) VALUES (?, ?, ?, datetime('now', 'localtime'))"
-    ).run(insight.title, insight.summary, this.iconForSeverity(insight.severity));
+      "INSERT INTO notifications (text, description, insightID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))"
+    ).run(insight.title, insight.summary, insight.insightID, this.iconForSeverity(insight.severity));
   }
 
   /**

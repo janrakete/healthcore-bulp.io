@@ -111,6 +111,7 @@ describe("Care Insights engine", () => {
     const notification = db.prepare("SELECT * FROM notifications ORDER BY notificationID DESC LIMIT 1").get();
     expect(notification).toBeDefined();
     expect(notification.text).toBe("Unusual reading detected");
+    expect(notification.insightID).toBe(insight.insightID);
   });
 
   test("detects anomaly when baseline is constant but latest value differs", () => {
