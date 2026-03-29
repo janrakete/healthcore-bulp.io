@@ -79,6 +79,7 @@ function createTestDatabase() {
       text TEXT NOT NULL,
       description TEXT,
       scenarioID INTEGER DEFAULT 0,
+      insightID INTEGER DEFAULT 0,
       icon TEXT,
       dateTime TEXT DEFAULT (datetime('now'))
     );
