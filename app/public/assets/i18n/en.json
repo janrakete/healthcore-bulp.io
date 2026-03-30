@@ -75,7 +75,6 @@
     "AllDevices" : "All devices",
     "RuleSummary" : "Rule summary",
     "RuleTypeSumBelowThreshold" : "Sum below minimum",
-    "CareInsightRuleHint" : "Defines how sensor data is translated into Care Insights automatically.",
     "Signals" : "Signals",
     "Feedback" : "Feedback",
     "Acknowledge" : "Acknowledge",
@@ -144,9 +143,8 @@
     "ProductName": "Product Name",
     "VendorName": "Manufacturer",
     "DeviceAssignment": "Assignment",
-    "DeviceAssignmentHint": "Optional link to a person and room for insights and context.",
-    "AssignedPerson": "Person",
-    "AssignedRoom": "Room",
+    "AssignedPerson": "Assigned person",
+    "AssignedRoom": "Assigned room",
     "EntriesNoneAddNew": "Tap the button to add something new.",
     "TriggerType": "Trigger type",
     "ActionType": "Action type",
@@ -166,5 +164,7 @@
     "BatteryThreshold": "Battery threshold (%)",
     "TriggerTypeTime": "Time of day",
     "Time": "Time",
-    "OClock": ""    
+    "OClock": "",
+    "Reopen": "Reopen",
+    "AsCritical": "Mark as critical"        
 }       

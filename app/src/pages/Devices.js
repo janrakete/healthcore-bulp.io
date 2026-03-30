@@ -112,9 +112,9 @@ class Devices extends HTMLElement {
   async dataLoad(filters = ["zigbee","bluetooth","lora","http"]) {
     const spinner = spinnerShow("#devices-list");
 
-    let resultsRegistered = [];
-    let resultsConnected  = [];
-    let devicesAtServer   = [];
+    let resultsRegistered                   = [];
+    let resultsConnected                    = [];
+    let resultsRegisteredWithAssignments    = [];
 
     let bridges = [];
 
@@ -138,7 +138,7 @@ class Devices extends HTMLElement {
     try {
       const data = await apiGET("/devices/all");
       if (data.status === "ok") {
-        devicesAtServer = data.results;
+        resultsRegisteredWithAssignments = data.results;
       }
       else {
         spinner.remove();
@@ -180,10 +180,9 @@ class Devices extends HTMLElement {
       const items       = resultsRegistered;
 
       listElement.innerHTML = items.map(item => { // Second: generate HTML for each device
-        const displayInfo   = bridgeTranslate(item.bridge);
-        const deviceAtServer = devicesAtServer.find(device => device.deviceID === item.deviceID && device.bridge === item.bridge);
-        const assignmentInfo = this.getAssignmentInfo(deviceAtServer?.assignment);
-        let deviceConnected = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
+        const displayInfo    = bridgeTranslate(item.bridge);
+        const deviceAtServer = resultsRegisteredWithAssignments.find(device => device.deviceID === item.deviceID && device.bridge === item.bridge);
+        let deviceConnected  = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
       
         switch(item.bridge) {
           case "zigbee":
@@ -208,8 +207,12 @@ class Devices extends HTMLElement {
         <ion-card color="primary" data-id="${item.deviceID}">
           <ion-card-header>
               <ion-card-title>${item.name} <ion-badge color="${deviceConnected === 1 ? "success" : deviceConnected === 0 ? "danger" : "medium"}">${deviceConnected === 1 ? window.Translation.get("Connected") : deviceConnected === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
-              <ion-card-subtitle>${item.deviceID} (${displayInfo})${assignmentInfo !== "" ? "<br>" + assignmentInfo : ""}</ion-card-subtitle>
+              <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
           </ion-card-header>
+          <ion-card-content>
+            ${deviceAtServer?.assignment?.individual ? `<p>${window.Translation.get("AssignedPerson") + ": " + deviceAtServer.assignment.individual.firstname + " " + deviceAtServer.assignment.individual.lastname}</p>` : ""}
+            ${deviceAtServer?.assignment?.room ? `<p>${window.Translation.get("AssignedRoom") + ": " + deviceAtServer.assignment.room.name}</p>` : ""}
+          </ion-card-content>
           <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" data-bridge="${item.bridge}"class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
           <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
@@ -239,24 +242,6 @@ class Devices extends HTMLElement {
       toastShow("Error: " + error.message, "danger");
     }
     spinner.remove();
-  }
-
-  getAssignmentInfo(assignment) {
-    if ((assignment === undefined) || (assignment === null)) {
-      return "";
-    }
-
-    const info = [];
-
-    if (assignment.individual !== undefined) {
-      info.push(window.Translation.get("AssignedPerson") + ": " + assignment.individual.firstname + " " + assignment.individual.lastname);
-    }
-
-    if (assignment.room !== undefined) {
-      info.push(window.Translation.get("AssignedRoom") + ": " + assignment.room.name);
-    }
-
-    return info.join(" | ");
   }
 }
 
