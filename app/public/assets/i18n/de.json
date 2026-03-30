@@ -75,7 +75,6 @@
     "AllDevices" : "Alle Geräte",
     "RuleSummary" : "Regelübersicht",
     "RuleTypeSumBelowThreshold" : "Summe unter Mindestwert",
-    "CareInsightRuleHint" : "Definiert, wie Sensordaten automatisch in Care Insights übersetzt werden.",
     "Signals" : "Signale",
     "Feedback" : "Feedback",
     "Acknowledge" : "Bestätigen",
@@ -144,9 +143,8 @@
     "ProductName": "Produktname",
     "VendorName": "Hersteller",
     "DeviceAssignment": "Zuordnung",
-    "DeviceAssignmentHint": "Optionaler Bezug zu Person und Raum für Insights und Kontext.",
-    "AssignedPerson": "Person",
-    "AssignedRoom": "Raum",
+    "AssignedPerson": "Zugeordnete Person",
+    "AssignedRoom": "Zugeordneter Raum",
     "EntriesNoneAddNew": "Um etwas Neues hinzuzufügen, tippe auf die Schaltfläche.",
     "TriggerType": "Auslöser",
     "ActionType": "Aktion",
@@ -166,5 +164,7 @@
     "BatteryThreshold": "Batterieschwelle (%)",
     "TriggerTypeTime": "Uhrzeit",
     "Time": "Uhrzeit",
-    "OClock": "Uhr"
+    "OClock": "Uhr",
+    "Reopen": "Wieder öffnen",
+    "AsCritical": "Als kritisch markieren"
 }

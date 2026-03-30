@@ -128,15 +128,13 @@ export function bridgeTranslate(bridge) {
  * @param {String} containerSelector 
  * @return {void}
  */
-export function entriesNoDataMessage(containerSelector) {
+export function entriesNoDataMessage(containerSelector, showAddNew = true) {
     document.querySelector(containerSelector).innerHTML = `
         <div class="no-data-container">
             <br />
             <ion-text><center>${window.Translation.get("EntriesNone")}</center></ion-text>
             <br />
-            <ion-text><center>${window.Translation.get("EntriesNoneAddNew")}</center></ion-text> 
-            <br />
-            <center><ion-img class="image-arrow" src="./assets/backgrounds/arrow.svg"></ion-img></center>
+            ${showAddNew ? `<ion-text><center>${window.Translation.get("EntriesNoneAddNew")}</center></ion-text><br /><center><ion-img class="image-arrow" src="./assets/backgrounds/arrow.svg"></ion-img></center>` : ""}
         </div>
       `;
 }

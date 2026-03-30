@@ -7,7 +7,7 @@ const router                  = require("express").Router();
 const appConfig               = require("../../config");
 const CareInsightsEngine      = require("../libs/CareInsightsEngine");
 
-const allowedStatuses         = ["open", "acknowledged", "resolved", "dismissed"];
+const allowedStatuses         = ["open", "acknowledged", "resolved", "critical"];
 const allowedFeedbackTypes    = ["helpful", "false_positive", "resolved", "escalated", "ignored"];
 
 /**
@@ -153,7 +153,7 @@ router.get("/stats", async function (request, response) {
         data.data.open               = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'open'").get().total;
         data.data.acknowledged       = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'acknowledged'").get().total;
         data.data.resolved           = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'resolved'").get().total;
-        data.data.critical           = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE severity = 'critical' AND status IN ('open', 'acknowledged')").get().total;
+        data.data.critical           = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'critical'").get().total;
     }
     catch (error) {
         data.status = "error";

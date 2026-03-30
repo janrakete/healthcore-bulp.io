@@ -40,14 +40,14 @@ class DeviceEdit extends HTMLElement {
         ${this.ID !== "[new]" ? `
         <ion-list inset="true">
           <ion-item color="light">
-            <ion-label position="stacked">${window.Translation.get("DeviceAssignment")}</ion-label>
-            <ion-note>${window.Translation.get("DeviceAssignmentHint")}</ion-note>
+            <ion-select label="${window.Translation.get("AssignedPerson")}" label-placement="stacked" name="editAssignmentIndividualID" interface="popover" class="custom" placeholder="${window.Translation.get("PleaseSelect")}">
+              <ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>
+            </ion-select>
           </ion-item>
           <ion-item color="light">
-            <ion-select label="${window.Translation.get("AssignedPerson")}" label-placement="stacked" name="editAssignmentIndividualID" interface="popover"></ion-select>
-          </ion-item>
-          <ion-item color="light">
-            <ion-select label="${window.Translation.get("AssignedRoom")}" label-placement="stacked" name="editAssignmentRoomID" interface="popover"></ion-select>
+            <ion-select label="${window.Translation.get("AssignedRoom")}" label-placement="stacked" name="editAssignmentRoomID" interface="popover" class="custom" placeholder="${window.Translation.get("PleaseSelect")}">
+              <ion-select-option value="0">${window.Translation.get("None")}</ion-select-option>
+            </ion-select>
           </ion-item>
         </ion-list>
         ` : ""}
@@ -167,7 +167,7 @@ class DeviceEdit extends HTMLElement {
 
   async loadSelectionData() {
     try {
-      const roomsData = await apiGET("/data/rooms");
+      const roomsData       = await apiGET("/data/rooms");
       const individualsData = await apiGET("/data/individuals");
 
       if (roomsData.status !== "ok") {
@@ -180,8 +180,8 @@ class DeviceEdit extends HTMLElement {
         return;
       }
 
-      this.rooms = roomsData.results || [];
-      this.individuals = individualsData.results || [];
+      this.rooms        = roomsData.results || [];
+      this.individuals  = individualsData.results || [];
 
       this.renderAssignmentSelections();
     }
@@ -260,8 +260,8 @@ class DeviceEdit extends HTMLElement {
         this.querySelector("ion-input[name='editVendorName']").value  = item.vendorName; 
 
         if (assignmentData.status === "ok") {
-          this.assignmentData = assignmentData.assignment;
-          this.assignmentExists = assignmentData.assignment !== null;
+          this.assignmentData     = assignmentData.assignment;
+          this.assignmentExists   = assignmentData.assignment !== null;
           this.applyAssignmentToForm();
         }
       }
