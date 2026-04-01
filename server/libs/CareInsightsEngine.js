@@ -7,6 +7,9 @@
 const appConfig = require("../../config");
 
 class CareInsightsEngine {
+  /**
+   * Creates a new Care Insights engine instance.
+   */
   constructor() {
   }
 
@@ -16,6 +19,7 @@ class CareInsightsEngine {
    */
   handleDeviceValues(data) {
     try {
+      // Skip all processing when Care Insights are disabled or payload is incomplete.
       if (appConfig.CONF_careInsightsActive !== true || !data || !data.values) {
         return;
       }
@@ -24,8 +28,10 @@ class CareInsightsEngine {
       const assignment = this.getDeviceAssignment(data.deviceID, data.bridge);
 
       Object.entries(data.values).forEach(([property, valueData]) => {
+        // 1) Evaluate explicit, user-configured rules first.
         this.evaluateConfiguredRules(data, property, valueData);
 
+        // 2) Built-in anomaly detection only works with numeric values.
         if (!this.isNumericValue(valueData)) {
           return;
         }
@@ -35,6 +41,7 @@ class CareInsightsEngine {
           return;
         }
 
+        // If the value moved back to normal range, close open anomaly insights.
         if (deviation.score < appConfig.CONF_careInsightsAnomalyThreshold) {
           this.resolveOpenInsights({ ruleID: 0, type: "unusual_numeric_pattern", deviceID: data.deviceID, bridge: data.bridge, property: property });
           return;
@@ -43,7 +50,6 @@ class CareInsightsEngine {
         const insight = this.upsertInsight({
           ruleID: 0,
           type: "unusual_numeric_pattern",
-          severity: this.severityFromScore(deviation.score),
           score: deviation.score,
           title: "Unusual reading detected",
           summary: this.buildNumericSummary(device, property, valueData.value),
@@ -78,6 +84,7 @@ class CareInsightsEngine {
    */
   handleDeviceStatus(data) {
     try {
+      // Device status insights require device identity and a status value.
       if (appConfig.CONF_careInsightsActive !== true || !data || !data.deviceID || !data.bridge || !data.status) {
         return;
       }
@@ -85,10 +92,11 @@ class CareInsightsEngine {
       if (data.status === "offline") {
         const device     = this.getDevice(data.deviceID, data.bridge);
         const assignment = this.getDeviceAssignment(data.deviceID, data.bridge);
+
+        // "offline" opens or updates a connectivity risk insight.
         const insight = this.upsertInsight({
           ruleID: 0,
           type: "device_connectivity_risk",
-          severity: "high",
           score: 0.9,
           title: "Monitoring device offline",
           summary: this.buildConnectivitySummary(device),
@@ -114,6 +122,7 @@ class CareInsightsEngine {
       }
 
       if (data.status === "online") {
+        // "online" resolves open connectivity risks for the same device.
         this.resolveOpenInsights({ type: "device_connectivity_risk", deviceID: data.deviceID, bridge: data.bridge });
       }
     }
@@ -130,6 +139,7 @@ class CareInsightsEngine {
    * @returns {Object|null}
    */
   getDeviationScore(deviceID, bridge, property) {
+    // Load recent history in descending order; newest reading is at index 0.
     const history = database.prepare(
       "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
     ).all(deviceID, bridge, property, appConfig.CONF_careInsightsHistorySize);
@@ -155,9 +165,11 @@ class CareInsightsEngine {
     let normalizedDeviation;
 
     if (mad > 0) {
+      // Robust variant: median absolute deviation scaled to approximately standard deviation.
       normalizedDeviation = Math.abs(latest - median) / (mad * 1.4826);
     }
     else {
+      // Fallback for perfectly flat baseline where MAD is zero.
       const mean      = baseline.reduce((sum, entry) => sum + entry, 0) / baseline.length;
       const variance  = baseline.reduce((sum, entry) => sum + Math.pow(entry - mean, 2), 0) / baseline.length;
       const stdDev    = Math.sqrt(variance);
@@ -195,7 +207,9 @@ class CareInsightsEngine {
       }
 
       const aggregation = this.getRuleAggregation(rule, context, property);
-      if (!aggregation || aggregation.readings < (Number(rule.minReadings) || 1)) {
+      const minReadings = Number(rule.minReadings) || 1;
+
+      if (!aggregation || aggregation.readings < minReadings) {
         return;
       }
 
@@ -207,7 +221,6 @@ class CareInsightsEngine {
       const insight = this.upsertInsight({
         ruleID: rule.ruleID,
         type: rule.insightType,
-        severity: rule.severity || "medium",
         score: this.ruleScore(rule, aggregation),
         title: this.buildRuleTitle(rule, context.device),
         summary: this.buildRuleSummary(rule, aggregation, context),
@@ -241,7 +254,7 @@ class CareInsightsEngine {
    */
   getMatchingRules(deviceID, bridge, property) {
     return database.prepare(
-      "SELECT * FROM care_insight_rules WHERE enabled = 1 AND sourceProperty = ? AND (ifnull(sourceDeviceID, '') = '' OR sourceDeviceID = ?) AND (ifnull(sourceBridge, '') = '' OR sourceBridge = ?) ORDER BY ruleID ASC"
+      "SELECT * FROM care_insight_rules WHERE enabled = 1 AND sourceProperty = ? AND sourceDeviceID = ? AND sourceBridge = ? ORDER BY ruleID ASC"
     ).all(property, deviceID, bridge);
   }
 
@@ -254,32 +267,42 @@ class CareInsightsEngine {
    */
   buildRuleContext(rule, deviceID, bridge) {
     const context = {
-      deviceID: rule.sourceDeviceID || deviceID,
-      bridge: rule.sourceBridge || bridge,
+      deviceID: rule.sourceDeviceID,
+      bridge: rule.sourceBridge,
       individualID: 0,
       roomID: 0,
       device: null,
       assignment: null
     };
-
-    if (rule.aggregationType === "sum_below_threshold" && !this.isValidRuleContext(rule, context)) {
-      return null;
-    }
-
     context.device = this.getDevice(context.deviceID, context.bridge);
     context.assignment = this.getDeviceAssignment(context.deviceID, context.bridge);
     context.individualID = this.getAssignmentIndividualID(context.assignment);
     context.roomID = this.getAssignmentRoomID(context.assignment);
 
+    if (rule.aggregationType === "sum_below_threshold" && !this.isValidRuleContext(rule, context)) {
+      return null;
+    }
+
     return context;
   }
 
+  /**
+   * Validates whether a rule context contains all required values.
+   * @param {Object} rule
+   * @param {Object} context
+   * @returns {boolean}
+   */
   isValidRuleContext(rule, context) {
-    if (String(rule.sourceProperty || "").trim() === "") {
+    // A rule can only be evaluated when it has a property and a concrete device target.
+    if (!rule) {
       return false;
     }
 
-    if (String(context.deviceID || "").trim() === "" || String(context.bridge || "").trim() === "") {
+    const hasProperty = (rule.sourceProperty !== undefined) && (String(rule.sourceProperty).trim() !== "");
+    const hasDeviceID = (context.deviceID !== undefined) && (String(context.deviceID).trim() !== "");
+    const hasBridge = (context.bridge !== undefined) && (String(context.bridge).trim() !== "");
+
+    if (!hasProperty || !hasDeviceID || !hasBridge) {
       return false;
     }
 
@@ -312,6 +335,12 @@ class CareInsightsEngine {
     };
   }
 
+  /**
+   * Evaluates whether a rule threshold is currently reached.
+   * @param {Object} rule
+   * @param {Object} aggregation
+   * @returns {boolean}
+   */
   ruleThresholdReached(rule, aggregation) {
     if (rule.aggregationType === "sum_below_threshold") {
       return aggregation.total < Number(rule.thresholdMin || 0);
@@ -320,6 +349,12 @@ class CareInsightsEngine {
     return false;
   }
 
+  /**
+   * Calculates a normalized score (0..1) for a triggered rule.
+   * @param {Object} rule
+   * @param {Object} aggregation
+   * @returns {number}
+   */
   ruleScore(rule, aggregation) {
     if (rule.aggregationType !== "sum_below_threshold") {
       return 0;
@@ -333,7 +368,13 @@ class CareInsightsEngine {
     return Math.max(0, Math.min(1, (threshold - aggregation.total) / threshold));
   }
 
+  /**
+   * Resolves all currently open insights matching the provided filters.
+   * @param {Object} filters
+   * @returns {void}
+   */
   resolveOpenInsights(filters) {
+    // Start with open/acknowledged entries and narrow down via provided filters.
     const conditions = ["status IN ('open', 'acknowledged')"];
     const params = [];
 
@@ -393,22 +434,28 @@ class CareInsightsEngine {
     let eventType = "";
 
     if (existing) {
-      const previousRank = this.severityRank(existing.severity);
-      const nextRank     = this.severityRank(payload.severity);
-      const hasChanged   = existing.severity !== payload.severity || Number(existing.score) !== Number(payload.score) || existing.title !== payload.title || existing.summary !== payload.summary || existing.explanation !== payload.explanation || existing.recommendation !== payload.recommendation || Number(existing.individualID) !== Number(payload.individualID || 0) || Number(existing.roomID) !== Number(payload.roomID || 0);
+      const hasScoreChanged = Number(existing.score) !== Number(payload.score);
+      const hasTitleChanged = existing.title !== payload.title;
+      const hasSummaryChanged = existing.summary !== payload.summary;
+      const hasExplanationChanged = existing.explanation !== payload.explanation;
+      const hasRecommendationChanged = existing.recommendation !== payload.recommendation;
+      const hasIndividualChanged = Number(existing.individualID) !== Number(payload.individualID || 0);
+      const hasRoomChanged = Number(existing.roomID) !== Number(payload.roomID || 0);
+
+      const hasChanged = hasScoreChanged || hasTitleChanged || hasSummaryChanged || hasExplanationChanged || hasRecommendationChanged || hasIndividualChanged || hasRoomChanged;
 
       database.prepare(
-        "UPDATE care_insights SET ruleID = ?, severity = ?, score = ?, title = ?, summary = ?, explanation = ?, recommendation = ?, individualID = ?, roomID = ?, source = ?, dateTimeUpdated = datetime('now', 'localtime') WHERE insightID = ?"
-      ).run(payload.ruleID || 0, payload.severity, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.individualID || 0, payload.roomID || 0, payload.source, existing.insightID);
+        "UPDATE care_insights SET ruleID = ?, score = ?, title = ?, summary = ?, explanation = ?, recommendation = ?, individualID = ?, roomID = ?, source = ?, dateTimeUpdated = datetime('now', 'localtime') WHERE insightID = ?"
+      ).run(payload.ruleID || 0, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.individualID || 0, payload.roomID || 0, payload.source, existing.insightID);
 
       insightID = existing.insightID;
-      notify    = nextRank > previousRank;
+      notify    = false;
       eventType = hasChanged ? "care_insight_updated" : "";
     }
     else {
       const result = database.prepare(
-        "INSERT INTO care_insights (ruleID, type, status, severity, score, title, summary, explanation, recommendation, deviceID, bridge, property, individualID, roomID, source, dateTimeAdded, dateTimeUpdated) VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))"
-      ).run(payload.ruleID || 0, payload.type, payload.severity, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.deviceID || null, payload.bridge || null, payload.property || null, payload.individualID || 0, payload.roomID || 0, payload.source || "careinsights");
+        "INSERT INTO care_insights (ruleID, type, status, score, title, summary, explanation, recommendation, deviceID, bridge, property, individualID, roomID, source, dateTimeAdded, dateTimeUpdated) VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))"
+      ).run(payload.ruleID || 0, payload.type, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.deviceID || null, payload.bridge || null, payload.property || null, payload.individualID || 0, payload.roomID || 0, payload.source || "careinsights");
 
       insightID = result.lastInsertRowid;
       notify    = true;
@@ -422,7 +469,6 @@ class CareInsightsEngine {
         status: "ok",
         insightID: insight.insightID,
         type: insight.type,
-        severity: insight.severity,
         title: insight.title
       }));
     }
@@ -440,10 +486,18 @@ class CareInsightsEngine {
    * @param {Object} signal
    */
   insertSignal(insightID, signal) {
+    const signalDeviceID = signal.deviceID || null;
+    const signalBridge = signal.bridge || null;
+    const signalProperty = signal.property || null;
+    const signalValue = signal.value || null;
+    const signalValueAsNumeric = signal.valueAsNumeric ?? null;
+    const signalWeight = signal.weight ?? 1;
+
     database.prepare(
       "INSERT INTO care_insight_signals (insightID, deviceID, bridge, property, value, valueAsNumeric, weight, dateTimeObserved) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
-    ).run(insightID, signal.deviceID || null, signal.bridge || null, signal.property || null, signal.value || null, signal.valueAsNumeric ?? null, signal.weight ?? 1);
+    ).run(insightID, signalDeviceID, signalBridge, signalProperty, signalValue, signalValueAsNumeric, signalWeight);
 
+    // Keep only the newest N signals per insight to prevent unbounded growth.
     const maxSignals = appConfig.CONF_careInsightsMaxSignalsPerInsight || 50;
     database.prepare(
       "DELETE FROM care_insight_signals WHERE insightID = ? AND signalID NOT IN (SELECT signalID FROM care_insight_signals WHERE insightID = ? ORDER BY signalID DESC LIMIT ?)"
@@ -457,7 +511,7 @@ class CareInsightsEngine {
   createNotification(insight) {
     database.prepare(
       "INSERT INTO notifications (text, description, insightID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))"
-    ).run(insight.title, insight.summary, insight.insightID, this.iconForSeverity(insight.severity));
+    ).run(insight.title, insight.summary, insight.insightID, "information-circle");
   }
 
   /**
@@ -476,12 +530,29 @@ class CareInsightsEngine {
     return result;
   }
 
+  /**
+   * Loads a device assignment from the database.
+   * @param {string} deviceID
+   * @param {string} bridge
+   * @returns {Object|null}
+   */
   getDeviceAssignment(deviceID, bridge) {
-    return database.prepare(
+    const result = database.prepare(
       "SELECT * FROM device_assignments WHERE deviceID = ? AND bridge = ? LIMIT 1"
-    ).get(deviceID, bridge) || null;
+    ).get(deviceID, bridge);
+
+    if (!result) {
+      return null;
+    }
+
+    return result;
   }
 
+  /**
+   * Returns individualID from an assignment object.
+   * @param {Object|null} assignment
+   * @returns {number}
+   */
   getAssignmentIndividualID(assignment) {
     if ((assignment === null) || (assignment === undefined)) {
       return 0;
@@ -490,6 +561,11 @@ class CareInsightsEngine {
     return Number(assignment.individualID) || 0;
   }
 
+  /**
+   * Returns roomID from an assignment object.
+   * @param {Object|null} assignment
+   * @returns {number}
+   */
   getAssignmentRoomID(assignment) {
     if ((assignment === null) || (assignment === undefined)) {
       return 0;
@@ -498,6 +574,12 @@ class CareInsightsEngine {
     return Number(assignment.roomID) || 0;
   }
 
+  /**
+   * Builds the display title for a rule-based insight.
+   * @param {Object} rule
+   * @param {Object|null} device
+   * @returns {string}
+   */
   buildRuleTitle(rule, device) {
     if ((rule.title !== undefined) && (String(rule.title).trim() !== "")) {
       return String(rule.title).trim();
@@ -506,6 +588,13 @@ class CareInsightsEngine {
     return this.getDeviceName(device) + " requires attention";
   }
 
+  /**
+   * Builds a short summary for a rule-based insight.
+   * @param {Object} rule
+   * @param {Object} aggregation
+   * @param {Object} context
+   * @returns {string}
+   */
   buildRuleSummary(rule, aggregation, context) {
     const label = this.buildRuleContextLabel(context);
 
@@ -516,6 +605,12 @@ class CareInsightsEngine {
     return label + " matched the configured Care Insight rule.";
   }
 
+  /**
+   * Builds the technical explanation for a rule-based insight.
+   * @param {Object} rule
+   * @param {Object} aggregation
+   * @returns {string}
+   */
   buildRuleExplanation(rule, aggregation) {
     if (rule.aggregationType === "sum_below_threshold") {
       return "The rolling sum for '" + rule.sourceProperty + "' across " + aggregation.readings + " readings is " + aggregation.total + " within the last " + aggregation.aggregationWindowHours + " hours.";
@@ -524,6 +619,11 @@ class CareInsightsEngine {
     return "A configured Care Insight rule became active.";
   }
 
+  /**
+   * Builds a context label for summaries (individual full name or device name).
+   * @param {Object} context
+   * @returns {string}
+   */
   buildRuleContextLabel(context) {
     if (Number(context.individualID) > 0) {
       const individual = database.prepare("SELECT firstname, lastname FROM individuals WHERE individualID = ? LIMIT 1").get(context.individualID);
@@ -536,6 +636,12 @@ class CareInsightsEngine {
     return this.getDeviceName(context.device);
   }
 
+  /**
+   * Forwards a Care Insight event to the Scenario Engine.
+   * @param {string} eventType
+   * @param {Object} insight
+   * @returns {void}
+   */
   static triggerScenarioEvent(eventType, insight) {
     if ((global.scenarios === undefined) || (insight === undefined) || (insight === null)) {
       return;
@@ -544,31 +650,59 @@ class CareInsightsEngine {
     global.scenarios.handleEvent(eventType, CareInsightsEngine.buildScenarioEventData(insight));
   }
 
+  /**
+   * Builds normalized event payload data for Scenario Engine evaluation.
+   * @param {Object} insight
+   * @returns {Object}
+   */
   static buildScenarioEventData(insight) {
+    const ruleID = Number(insight.ruleID) || 0;
+    const score = Number(insight.score) || 0;
+    const individualID = Number(insight.individualID) || 0;
+    const roomID = Number(insight.roomID) || 0;
+
     return {
       insightID: insight.insightID,
-      ruleID: Number(insight.ruleID) || 0,
+      ruleID: ruleID,
       insightType: insight.type,
-      severity: insight.severity,
-      score: Number(insight.score) || 0,
+      score: score,
       status: insight.status,
       deviceID: insight.deviceID || "",
       bridge: insight.bridge || "",
       property: insight.property || "",
-      individualID: Number(insight.individualID) || 0,
-      roomID: Number(insight.roomID) || 0
+      individualID: individualID,
+      roomID: roomID
     };
   }
 
+  /**
+   * Builds summary text for numeric anomaly insights.
+   * @param {Object|null} device
+   * @param {string} property
+   * @param {string|number} value
+   * @returns {string}
+   */
   buildNumericSummary(device, property, value) {
     const deviceName = this.getDeviceName(device);
     return deviceName + " reported an unusual value for '" + property + "' (latest value: " + value + ").";
   }
 
+  /**
+   * Builds explanation text for numeric anomaly insights.
+   * @param {string} property
+   * @param {string|number} value
+   * @param {Object} deviation
+   * @returns {string}
+   */
   buildNumericExplanation(property, value, deviation) {
     return "The latest '" + property + "' value (" + value + ") deviates strongly from its recent baseline. Median: " + deviation.median + ", normalized deviation: " + deviation.normalizedDeviation.toFixed(2) + ".";
   }
 
+  /**
+   * Builds summary text for connectivity insights.
+   * @param {Object|null} device
+   * @returns {string}
+   */
   buildConnectivitySummary(device) {
     const deviceName = this.getDeviceName(device);
     return deviceName + " went offline and may stop providing monitoring data.";
@@ -593,18 +727,30 @@ class CareInsightsEngine {
     return "Device";
   }
 
+  /**
+   * Checks whether a device value payload contains a valid numeric value.
+   * @param {Object} valueData
+   * @returns {boolean}
+   */
   isNumericValue(valueData) {
     if (!valueData) {
       return false;
     }
 
-    if (!Number.isFinite(Number(valueData.valueAsNumeric))) {
+    const numericValue = Number(valueData.valueAsNumeric);
+
+    if (!Number.isFinite(numericValue)) {
       return false;
     }
 
     return true;
   }
 
+  /**
+   * Calculates the median for a list of numeric values.
+   * @param {number[]} values
+   * @returns {number}
+   */
   median(values) {
     if (!values || values.length === 0) {
       return 0;
@@ -620,45 +766,6 @@ class CareInsightsEngine {
     return sorted[middle];
   }
 
-  severityFromScore(score) {
-    if (score >= 0.9) {
-      return "critical";
-    }
-
-    if (score >= 0.75) {
-      return "high";
-    }
-
-    if (score >= 0.6) {
-      return "medium";
-    }
-
-    return "low";
-  }
-
-  severityRank(severity) {
-    const rank = {
-      low: 1,
-      medium: 2,
-      high: 3,
-      critical: 4
-    };
-
-    return rank[severity] || 0;
-  }
-
-  iconForSeverity(severity) {
-    switch (severity) {
-      case "critical":
-        return "warning";
-      case "high":
-        return "alert-circle";
-      case "medium":
-        return "analytics";
-      default:
-        return "information-circle";
-    }
-  }
 }
 
 module.exports = CareInsightsEngine;

@@ -56,7 +56,6 @@ afterAll(() => {
 
 beforeEach(() => {
   db.prepare("DELETE FROM care_insight_signals").run();
-  db.prepare("DELETE FROM care_feedback").run();
   db.prepare("DELETE FROM care_insight_rules").run();
   db.prepare("DELETE FROM care_insights").run();
   db.prepare("DELETE FROM notifications").run();
@@ -100,7 +99,6 @@ describe("Care Insights engine", () => {
     const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'unusual_numeric_pattern'").get();
     expect(insight).toBeDefined();
     expect(insight.status).toBe("open");
-    expect(insight.severity).toMatch(/medium|high|critical/);
     expect(insight.individualID).toBeGreaterThan(0);
     expect(insight.roomID).toBeGreaterThan(0);
 
@@ -131,7 +129,6 @@ describe("Care Insights engine", () => {
     const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'unusual_numeric_pattern'").get();
     expect(insight).toBeDefined();
     expect(insight.status).toBe("open");
-    expect(insight.severity).toMatch(/high|critical/);
   });
 
   test("creates and resolves connectivity insight", () => {
@@ -199,8 +196,8 @@ describe("Care Insights engine", () => {
 
   test("creates configured hydration insight from care_insight_rules", () => {
     db.prepare(
-      "INSERT INTO care_insight_rules (name, enabled, insightType, sourceDeviceID, sourceBridge, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, severity, title, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    ).run("Hydration Rule", "hydration_risk", "care_device_001", "http", "drink_ml", "sum_below_threshold", 72, 1500, 3, "high", "Hydration risk detected", "Encourage fluid intake and review the recent drinking pattern.");
+      "INSERT INTO care_insight_rules (name, enabled, insightType, sourceDeviceID, sourceBridge, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, title, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Hydration Rule", "hydration_risk", "care_device_001", "http", "drink_ml", "sum_below_threshold", 72, 1500, 3, "Hydration risk detected", "Encourage fluid intake and review the recent drinking pattern.");
 
     const now = Date.now();
     [300, 200, 250].forEach((value, index) => {
@@ -223,14 +220,13 @@ describe("Care Insights engine", () => {
     const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'hydration_risk'").get();
     expect(insight).toBeDefined();
     expect(insight.ruleID).toBeGreaterThan(0);
-    expect(insight.severity).toBe("high");
     expect(insight.individualID).toBeGreaterThan(0);
   });
 
   test("configured hydration insight can trigger a scenario", async () => {
     db.prepare(
-      "INSERT INTO care_insight_rules (name, enabled, insightType, sourceDeviceID, sourceBridge, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, severity, title) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    ).run("Hydration Rule", "hydration_risk", "care_device_001", "http", "drink_ml", "sum_below_threshold", 72, 1500, 3, "high", "Hydration risk detected");
+      "INSERT INTO care_insight_rules (name, enabled, insightType, sourceDeviceID, sourceBridge, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, title) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Hydration Rule", "hydration_risk", "care_device_001", "http", "drink_ml", "sum_below_threshold", 72, 1500, 3, "Hydration risk detected");
 
     const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ? LIMIT 1").get("Mia");
     const room = db.prepare("SELECT * FROM rooms WHERE name = ? LIMIT 1").get("Care Room");
@@ -239,8 +235,8 @@ describe("Care Insights engine", () => {
     ).run("Hydration Follow-up", "Scenario for hydration risk", "water", room.roomID, individual.individualID).lastInsertRowid;
 
     db.prepare(
-      "INSERT INTO scenarios_triggers (scenarioID, type, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(scenarioID, "care_insight_opened", "hydration_risk", "equals", "high", "String");
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property) VALUES (?, ?, ?, ?, ?)"
+    ).run(scenarioID, "care_insight_opened", "care_device_001", "http", "hydration_risk");
 
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
@@ -369,23 +365,5 @@ describe("Care Insights API", () => {
     expect(res.status).toBe(200);
     const updated = db.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insight.insightID);
     expect(updated.status).toBe("acknowledged");
-  });
-
-  test("POST /care-insights/:id/feedback stores feedback", async () => {
-    careInsights.handleDeviceStatus({
-      deviceID: "care_device_001",
-      bridge: "http",
-      status: "offline"
-    });
-
-    const insight = db.prepare("SELECT * FROM care_insights LIMIT 1").get();
-    const res = await request(app)
-      .post("/care-insights/" + insight.insightID + "/feedback")
-      .send({ feedbackType: "helpful", comment: "Good catch" });
-
-    expect(res.status).toBe(200);
-    const feedback = db.prepare("SELECT * FROM care_feedback WHERE insightID = ?").get(insight.insightID);
-    expect(feedback).toBeDefined();
-    expect(feedback.feedbackType).toBe("helpful");
   });
 });

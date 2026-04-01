@@ -107,7 +107,7 @@ class CareInsightRules extends HTMLElement {
           listElement.innerHTML = items.map(item => `
             <ion-card color="primary" data-id="${item.ruleID}">
               <ion-card-header>
-                <ion-card-title>${item.name}</ion-card-title>
+                <ion-card-title>${item.title}</ion-card-title>
                 <ion-card-subtitle>${item.insightType}</ion-card-subtitle>
               </ion-card-header>
               <ion-card-content>

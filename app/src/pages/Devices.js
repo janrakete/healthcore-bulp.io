@@ -236,6 +236,9 @@ class Devices extends HTMLElement {
       if (resultsRegistered.length === 0) {
           entriesNoDataMessage("#devices-list-no-data");
       }
+      else {
+        this.querySelector("#devices-list-no-data").innerHTML = "";
+      }
     }
     catch (error) {
       console.error("API call - Error:", error);
