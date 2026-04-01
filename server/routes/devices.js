@@ -13,28 +13,6 @@ const router        = require("express").Router();
  */
 
 /**
- * Ensures that the assignment table exists.
- * @returns {void}
- */
-function ensureDeviceAssignmentsTable() {
-    database.exec(`
-        CREATE TABLE IF NOT EXISTS device_assignments (
-            assignmentID INTEGER PRIMARY KEY AUTOINCREMENT,
-            deviceID TEXT NOT NULL,
-            bridge TEXT NOT NULL,
-            individualID INTEGER DEFAULT 0,
-            roomID INTEGER DEFAULT 0,
-            dateTimeAdded TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_device_assignments_device
-        ON device_assignments (deviceID, bridge);
-    `);
-}
-
-ensureDeviceAssignmentsTable();
-
-/**
  * MQTT Pending Responses Handler
  * @param {string} callID
  * @param {Object} response
@@ -72,24 +50,9 @@ function handlePendingMqttResponse(callID, response) {
  * @returns {Object|null}
  */
 function getDeviceAssignment(deviceID, bridge) {
-    const statement = `
-        SELECT 
-            device_assignments.assignmentID,
-            device_assignments.deviceID,
-            device_assignments.bridge,
-            device_assignments.individualID,
-            device_assignments.roomID,
-            individuals.firstname,
-            individuals.lastname,
-            rooms.name AS roomName
-        FROM device_assignments
-        LEFT JOIN individuals ON individuals.individualID = device_assignments.individualID
-        LEFT JOIN rooms ON rooms.roomID = device_assignments.roomID
-        WHERE device_assignments.deviceID = ? AND device_assignments.bridge = ?
-        LIMIT 1
-    `;
+    const statement = "SELECT device_assignments.assignmentID, device_assignments.deviceID, device_assignments.bridge, device_assignments.individualID, device_assignments.roomID, individuals.firstname, individuals.lastname, rooms.name AS roomName FROM device_assignments LEFT JOIN individuals ON individuals.individualID = device_assignments.individualID LEFT JOIN rooms ON rooms.roomID = device_assignments.roomID WHERE device_assignments.deviceID = ? AND device_assignments.bridge = ? LIMIT 1";
 
-    common.conLog("Execute statement: " + statement.replace(/\s+/g, " ").trim(), "std", false);
+    common.conLog("Execute statement: " + statement, "std", false);
 
     const result = database.prepare(statement).get(deviceID, bridge);
     if (result === undefined) {
@@ -97,18 +60,18 @@ function getDeviceAssignment(deviceID, bridge) {
     }
 
     const assignment = {
-        assignmentID: result.assignmentID,
-        deviceID: result.deviceID,
-        bridge: result.bridge,
-        individualID: result.individualID,
-        roomID: result.roomID,
+        assignmentID:   result.assignmentID,
+        deviceID:       result.deviceID,
+        bridge:         result.bridge,
+        individualID:   result.individualID,
+        roomID:         result.roomID,
     };
 
     if ((result.individualID !== null) && (result.individualID !== undefined) && (Number(result.individualID) > 0)) {
         assignment.individual = {
-            individualID: result.individualID,
-            firstname: result.firstname || "",
-            lastname: result.lastname || "",
+            individualID:   result.individualID,
+            firstname:      result.firstname || "",
+            lastname:       result.lastname || "",
         };
     }
 
@@ -171,11 +134,12 @@ function getRoom(roomID) {
  */
 function buildAssignmentPayload(deviceID, bridge, payload) {
     const data = {};
+
     const assignment = {
-        deviceID: deviceID,
-        bridge: bridge,
-        individualID: 0,
-        roomID: 0,
+        deviceID:       deviceID,
+        bridge:         bridge,
+        individualID:   0,
+        roomID:         0,
     };
 
     if ((payload === undefined) || (Object.keys(payload).length === 0)) {
@@ -1017,9 +981,7 @@ router.post("/:bridge/:deviceID/assignment", async function (request, response) 
                     const assignmentData = buildAssignmentPayload(payload.deviceID.trim(), bridge, payload.body);
 
                     if (assignmentData.status === "ok") {
-                        database.prepare(
-                            "INSERT INTO device_assignments (deviceID, bridge, individualID, roomID, dateTimeAdded) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))"
-                        ).run(assignmentData.assignment.deviceID, assignmentData.assignment.bridge, assignmentData.assignment.individualID, assignmentData.assignment.roomID);
+                        database.prepare("INSERT INTO device_assignments (deviceID, bridge, individualID, roomID, dateTimeAdded) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(assignmentData.assignment.deviceID, assignmentData.assignment.bridge, assignmentData.assignment.individualID, assignmentData.assignment.roomID);
 
                         data.status     = "ok";
                         data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
@@ -1081,9 +1043,7 @@ router.patch("/:bridge/:deviceID/assignment", async function (request, response)
                     const assignmentData = buildAssignmentPayload(payload.deviceID.trim(), bridge, payload.body);
 
                     if (assignmentData.status === "ok") {
-                        database.prepare(
-                            "UPDATE device_assignments SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?"
-                        ).run(assignmentData.assignment.individualID, assignmentData.assignment.roomID, payload.deviceID.trim(), bridge);
+                        database.prepare("UPDATE device_assignments SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?").run(assignmentData.assignment.individualID, assignmentData.assignment.roomID, payload.deviceID.trim(), bridge);
 
                         data.status     = "ok";
                         data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
@@ -1141,9 +1101,7 @@ router.delete("/:bridge/:deviceID/assignment", async function (request, response
                 const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
 
                 if (existingAssignment !== null) {
-                    database.prepare(
-                        "DELETE FROM device_assignments WHERE deviceID = ? AND bridge = ?"
-                    ).run(payload.deviceID.trim(), bridge);
+                    database.prepare("DELETE FROM device_assignments WHERE deviceID = ? AND bridge = ?").run(payload.deviceID.trim(), bridge);
 
                     data.status = "ok";
                 }

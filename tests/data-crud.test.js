@@ -84,7 +84,6 @@ describe("POST /data/:table (Insert)", () => {
         aggregationWindowHours: 72,
         thresholdMin: 1500,
         minReadings: 3,
-        severity: "high"
       });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");

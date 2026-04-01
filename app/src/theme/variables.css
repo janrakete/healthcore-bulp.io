@@ -168,7 +168,7 @@ ion-card ion-button {
     --padding-start: 30px;
 }
 
-ion-input.custom, ion-select.custom {
+ion-input.custom, ion-select.custom, ion-textarea.custom {
     --padding-start: 10px;
     --padding-end: 10px;
 }

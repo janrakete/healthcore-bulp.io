@@ -566,7 +566,6 @@ describe("Care Insight Trigger Scenarios", () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 1,
       insightType: "hydration_risk",
-      severity: "high",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",
@@ -586,7 +585,6 @@ describe("Care Insight Trigger Scenarios", () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 2,
       insightType: "hydration_risk",
-      severity: "high",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",

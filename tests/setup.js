@@ -191,15 +191,6 @@ function createTestDatabase() {
       dateTimeObserved TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE care_feedback (
-      feedbackID INTEGER PRIMARY KEY AUTOINCREMENT,
-      insightID INTEGER NOT NULL,
-      userID INTEGER DEFAULT 0,
-      feedbackType TEXT NOT NULL,
-      comment TEXT,
-      dateTimeAdded TEXT DEFAULT (datetime('now'))
-    );
-
     CREATE TABLE care_insight_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -213,7 +204,6 @@ function createTestDatabase() {
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
       minReadings INTEGER DEFAULT 1,
-      severity TEXT NOT NULL DEFAULT 'medium',
       title TEXT,
       recommendation TEXT,
       dateTimeAdded TEXT DEFAULT (datetime('now')),
