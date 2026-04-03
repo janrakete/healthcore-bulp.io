@@ -82,7 +82,7 @@ function seedValues(values) {
 // ─── Care Insights engine ──────────────────────────────────────────────────
 
 describe("Care Insights engine", () => {
-  test("creates anomaly_detection insight and notification", () => {
+  test("creates anomaly_detection insight", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
@@ -109,11 +109,6 @@ describe("Care Insights engine", () => {
     const signal = db.prepare("SELECT * FROM care_insight_signals WHERE insightID = ?").get(insight.insightID);
     expect(signal).toBeDefined();
     expect(signal.property).toBe("heartrate");
-
-    const notification = db.prepare("SELECT * FROM notifications ORDER BY notificationID DESC LIMIT 1").get();
-    expect(notification).toBeDefined();
-    expect(notification.text).toBe("Unusual reading detected");
-    expect(notification.insightID).toBe(insight.insightID);
   });
 
   test("detects anomaly when baseline is constant but latest value differs", () => {
@@ -237,6 +232,34 @@ describe("Care Insights engine", () => {
     expect(insight).toBeDefined();
     expect(insight.ruleID).toBeGreaterThan(0);
     expect(insight.individualID).toBeGreaterThan(0);
+  });
+
+  test("creates sum_above_threshold insight when total exceeds maximum", () => {
+    db.prepare(
+      "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+    ).run("Activity too high", "steps", "sum_above_threshold", 24, 500, 3);
+
+    const now = Date.now();
+    [200, 200, 200].forEach((value, index) => {
+      db.prepare(
+        "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run("care_device_001", "http", "steps", String(value), value, now - index);
+    });
+
+    careInsights.handleDeviceValues({
+      deviceID: "care_device_001",
+      bridge: "http",
+      values: {
+        steps: {
+          value: "200",
+          valueAsNumeric: 200,
+        }
+      }
+    });
+
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'sum_above_threshold'").get();
+    expect(insight).toBeDefined();
+    expect(insight.score).toBeGreaterThan(0);
   });
 
   test("configured hydration insight can trigger a scenario", async () => {

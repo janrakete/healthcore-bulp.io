@@ -139,6 +139,10 @@
         "de": "{0} blieb unterhalb der konfigurierten Summe für '{1}' in den letzten {2} Stunden (aktuelle Summe: {3}, erwartetes Minimum: {4}).",
         "en": "{0} stayed below the configured total for '{1}' in the last {2} hours (current total: {3}, expected minimum: {4})."
     },
+    "CareInsightSummarySumAbove": {
+        "de": "{0} hat die konfigurierte Summe für '{1}' in den letzten {2} Stunden überschritten (aktuelle Summe: {3}, erwartetes Maximum: {4}).",
+        "en": "{0} exceeded the configured total for '{1}' in the last {2} hours (current total: {3}, expected maximum: {4})."
+    },
     "CareInsightSummaryRuleMatched": {
         "de": "{0} hat die konfigurierte Care-Insight-Regel ausgelöst.",
         "en": "{0} matched the configured Care Insight rule."
@@ -146,6 +150,10 @@
     "CareInsightExplanationSumBelow": {
         "de": "Die rollierende Summe für '{0}' über {1} Messwerte beträgt {2} innerhalb der letzten {3} Stunden.",
         "en": "The rolling sum for '{0}' across {1} readings is {2} within the last {3} hours."
+    },
+    "CareInsightExplanationSumAbove": {
+        "de": "Die rollierende Summe für '{0}' über {1} Messwerte beträgt {2} innerhalb der letzten {3} Stunden und überschreitet das Maximum.",
+        "en": "The rolling sum for '{0}' across {1} readings is {2} within the last {3} hours, exceeding the maximum."
     },
     "CareInsightExplanationRuleActive": {
         "de": "Eine konfigurierte Care-Insight-Regel wurde aktiv.",

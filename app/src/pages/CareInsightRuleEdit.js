@@ -33,14 +33,18 @@ class CareInsightRuleEdit extends HTMLElement {
                 <ion-item color="light">
                   <ion-select label="${window.Translation.get("Aggregation")}" label-placement="stacked" name="editAggregationType" interface="popover" class="custom">
                     <ion-select-option value="sum_below_threshold">${window.Translation.get("RuleTypeSumBelowThreshold")}</ion-select-option>
+                    <ion-select-option value="sum_above_threshold">${window.Translation.get("RuleTypeSumAboveThreshold")}</ion-select-option>
                     <ion-select-option value="anomaly_detection">${window.Translation.get("RuleTypeAnomalyDetection")}</ion-select-option>
                   </ion-select>
                 </ion-item>
                 <ion-item color="light" id="field-aggregation-window-hours">
                   <ion-input type="number" label="${window.Translation.get("WindowHours")}" label-placement="stacked" name="editAggregationWindowHours" shape="round" fill="outline" class="custom"></ion-input>
                 </ion-item>
-                <ion-item color="light">
+                <ion-item color="light" id="field-threshold-min">
                   <ion-input type="number" label="${window.Translation.get("MinimumValue")}" label-placement="stacked" name="editThresholdMin" shape="round" fill="outline" class="custom"></ion-input>
+                </ion-item>
+                <ion-item color="light" id="field-threshold-max">
+                  <ion-input type="number" label="${window.Translation.get("MaximumValue")}" label-placement="stacked" name="editThresholdMax" shape="round" fill="outline" class="custom"></ion-input>
                 </ion-item>
                 <ion-item color="light" id="field-min-readings">
                   <ion-input type="number" label="${window.Translation.get("MinimumReadings")}" label-placement="stacked" name="editMinReadings" shape="round" fill="outline" class="custom"></ion-input>
@@ -77,9 +81,13 @@ class CareInsightRuleEdit extends HTMLElement {
   updateFieldVisibility() {
     const aggregationType = this.querySelector("ion-select[name='editAggregationType']")?.value || "sum_below_threshold";
     const isSumBelow      = String(aggregationType) === "sum_below_threshold";
+    const isSumAbove      = String(aggregationType) === "sum_above_threshold";
+    const isSumRule        = isSumBelow || isSumAbove;
 
-    this.querySelector("#field-aggregation-window-hours").style.display = isSumBelow ? "" : "none";
-    this.querySelector("#field-min-readings").style.display             = isSumBelow ? "" : "none";
+    this.querySelector("#field-aggregation-window-hours").style.display = isSumRule ? "" : "none";
+    this.querySelector("#field-min-readings").style.display             = isSumRule ? "" : "none";
+    this.querySelector("#field-threshold-min").style.display            = isSumBelow ? "" : "none";
+    this.querySelector("#field-threshold-max").style.display            = isSumAbove ? "" : "none";
   }
 
   async submit() {
@@ -98,6 +106,7 @@ class CareInsightRuleEdit extends HTMLElement {
     formData.aggregationType          = this.querySelector("ion-select[name='editAggregationType']").value;
     formData.aggregationWindowHours   = Number(this.querySelector("ion-input[name='editAggregationWindowHours']").value) || 24;
     formData.thresholdMin             = Number(this.querySelector("ion-input[name='editThresholdMin']").value) || 0;
+    formData.thresholdMax             = Number(this.querySelector("ion-input[name='editThresholdMax']").value) || 0;
     formData.minReadings              = Number(this.querySelector("ion-input[name='editMinReadings']").value) || 1;
     formData.recommendation           = this.querySelector("ion-textarea[name='editRecommendation']").value || "";
     formData.dateTimeUpdated          = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -139,6 +148,7 @@ class CareInsightRuleEdit extends HTMLElement {
         this.querySelector("ion-select[name='editAggregationType']").value        = item.aggregationType || "sum_below_threshold";
         this.querySelector("ion-input[name='editAggregationWindowHours']").value  = item.aggregationWindowHours;
         this.querySelector("ion-input[name='editThresholdMin']").value            = item.thresholdMin;
+        this.querySelector("ion-input[name='editThresholdMax']").value            = item.thresholdMax;
         this.querySelector("ion-input[name='editMinReadings']").value             = item.minReadings;
         this.querySelector("ion-textarea[name='editRecommendation']").value       = item.recommendation || "";
 
