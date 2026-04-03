@@ -74,7 +74,7 @@ async function startServer() {
   app.use("/devices", apiKeyAuth, routesDevices);
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
   app.use("/scenarios", apiKeyAuth, routesScenarios);
-  const routesCareInsights = require("./routes/care-insights");
+  const routesCareInsights = require("./routes/care-insights"); // import routes for care insights manipulation
   app.use("/care-insights", apiKeyAuth, routesCareInsights);
   
   /**
@@ -182,9 +182,9 @@ async function startServer() {
   /**
    * Push notifications
    */
-  const PushEngine = require("./libs/PushEngine");
-  const pushEngine = new PushEngine();
-  scenarios.pushEngine = pushEngine; // make push engine available in scenarios
+  const PushEngine      = require("./libs/PushEngine");
+  const pushEngine      = new PushEngine();
+  scenarios.pushEngine  = pushEngine; // make push engine available in scenarios
 
   /**
    * MQTT client
@@ -463,7 +463,7 @@ async function startServer() {
               }
             });
 
-            careInsights.handleDeviceValues(data);
+            careInsights.handleDeviceValues(data); // handle care insights based on device values
           }            
         }
         else {
@@ -615,7 +615,7 @@ async function startServer() {
               bridge:   data.bridge
             });
 
-            careInsights.handleDeviceStatus(data);
+            careInsights.handleDeviceStatus(data); // handle care insights based on device status
           }
           else {
             common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");

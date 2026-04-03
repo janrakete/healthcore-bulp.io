@@ -10,6 +10,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerSelectedDevice = null;
   triggerID             = null;
   triggerDevices        = [];
+  triggerCareInsightRules = [];
 
   buildTriggerDeviceOptionValue(deviceID, bridge) {
     return String(bridge || "") + "::" + String(deviceID || "");
@@ -71,7 +72,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                     </ion-select>
                   </ion-item>                  
                   <ion-item color="light" id="trigger-field-care-insight-type">
-                    <ion-input type="text" label="${window.Translation.get("InsightType")}" label-placement="stacked" name="editTriggerInsightType" shape="round" fill="outline" class="custom"></ion-input>
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerCareInsightRule" label="${window.Translation.get("CareInsightRule")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
+                      <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
+                    </ion-select>
                   </ion-item>
                   <ion-item color="light" id="trigger-field-operator">
                     <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerOperator" label="${window.Translation.get("Operator")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
@@ -112,12 +115,12 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
      * Event listener for trigger submit button
      */
     this.querySelector("#trigger-submit-button").addEventListener("click", () => {
-      const typeSelect     = document.querySelector("ion-select[name='editTriggerType']");
-      const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
-      const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
-      const insightTypeInput = document.querySelector("ion-input[name='editTriggerInsightType']");
-      const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
-      const type           = typeSelect.value;
+      const typeSelect        = document.querySelector("ion-select[name='editTriggerType']");
+      const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
+      const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
+      const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+      const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
+      const type              = typeSelect.value;
       
       let valueSelect;
       if ((document.querySelector("ion-input[name='editTriggerValue']")) && (document.querySelector("ion-input[name='editTriggerValue']") !== undefined)) {
@@ -127,26 +130,26 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         valueSelect = document.querySelector("ion-select[name='editTriggerValue']");
       }
       
-      const selectedDeviceData = this.parseTriggerDeviceOptionValue(deviceSelect.value);
-      const isCareInsightTrigger = ["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type);
-      const triggerDevice = isCareInsightTrigger && deviceSelect.value === "" ? null : (selectedDeviceData.deviceID || null);
-      const triggerBridge = isCareInsightTrigger && deviceSelect.value === "" ? null : (selectedDeviceData.bridge || this.triggerSelectedDevice?.bridge || null);
-      const selectedDevice = triggerDevice === null ? null : this.triggerSelectedDevice;
-      const careInsightType = isCareInsightTrigger ? (insightTypeInput.value || null) : null;
-      const careInsightValue = isCareInsightTrigger ? (valueSelect?.value || null) : null;
-      const careInsightOperator = isCareInsightTrigger ? (operatorSelect.value || null) : null;
+      const selectedDeviceData    = this.parseTriggerDeviceOptionValue(deviceSelect.value);
+      const isCareInsightTrigger  = ["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type);
+      const triggerDevice         = selectedDeviceData.deviceID || null;
+      const triggerBridge         = selectedDeviceData.bridge || this.triggerSelectedDevice?.bridge || null;
+      const selectedDevice        = triggerDevice === null ? null : this.triggerSelectedDevice;
+      const selectedRuleID        = isCareInsightTrigger ? (careInsightRuleSelect.value || null) : null;
+      const selectedRule          = isCareInsightTrigger ? this.triggerCareInsightRules.find(r => String(r.ruleID) === String(selectedRuleID)) : null;
 
       const newTrigger = {
         triggerID:        Date.now(),
         type:             type,
-        bridge:           type === "time" ? null : triggerBridge,
-        deviceID:         type === "time" ? null : triggerDevice,
-        deviceName:       type === "time" ? null : (selectedDevice?.name || selectedDevice?.productName || null),
-        property:         type === "device_value" ? propertySelect.value : (isCareInsightTrigger ? careInsightType : null),
-        operator:         type === "device_value" ? operatorSelect.value : (isCareInsightTrigger ? careInsightOperator : null),
-        value:            type === "time" ? document.querySelector("ion-input[name='editTriggerTime']").value : ((type === "device_value" || type === "battery_low") ? valueSelect.value : (isCareInsightTrigger ? careInsightValue : null)),
-        valueType:        (type === "device_value" || type === "battery_low") ? (isNaN(valueSelect.value) ? "String" : "Numeric") : (isCareInsightTrigger ? ((careInsightValue === null || careInsightValue === "") ? null : (isNaN(careInsightValue) ? "String" : "Numeric")) : null),
-        deviceProperties: type === "time" ? [] : (selectedDevice?.properties || [])
+        bridge:           type === "time" ? null : (isCareInsightTrigger ? (triggerBridge || null) : triggerBridge),
+        deviceID:         type === "time" ? null : (isCareInsightTrigger ? (triggerDevice || null) : triggerDevice),
+        deviceName:       type === "time" ? null : (isCareInsightTrigger ? (selectedDevice?.name || selectedDevice?.productName || null) : (selectedDevice?.name || selectedDevice?.productName || null)),
+        property:         type === "device_value" ? propertySelect.value : (isCareInsightTrigger ? selectedRuleID : null),
+        operator:         type === "device_value" ? operatorSelect.value : null,
+        value:            type === "time" ? document.querySelector("ion-input[name='editTriggerTime']").value : ((type === "device_value" || type === "battery_low") ? valueSelect.value : null),
+        valueType:        (type === "device_value" || type === "battery_low") ? (isNaN(valueSelect.value) ? "String" : "Numeric") : null,
+        deviceProperties: type === "time" ? [] : (selectedDevice?.properties || []),
+        ruleTitle:        isCareInsightTrigger ? (selectedRule?.title || null) : null
       };
       this.scenarioData.triggers.push(newTrigger);
 
@@ -180,6 +183,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       this.triggerEnabledDisable();
       this.loadDataTriggerDevices();
       this.loadDataTriggerDeviceOperator();
+      this.loadDataCareInsightRules();
 
       const modal = document.querySelector("#trigger-edit-modal");
       await modal.present();
@@ -189,16 +193,16 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
      * Event listener for trigger type select change
      */
     this.querySelector("ion-select[name='editTriggerType']").addEventListener("ionChange", (event) => {
-      const type = event.detail.value;
-      const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
-      const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
-      const insightTypeInput = document.querySelector("ion-input[name='editTriggerInsightType']");
-      const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
-      const valueContainer = document.querySelector("#edit-trigger-value-container");
+      const type              = event.detail.value;
+      const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
+      const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
+      const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+      const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
+      const valueContainer    = document.querySelector("#edit-trigger-value-container");
 
       deviceSelect.value        = "";
       propertySelect.value      = "";
-      insightTypeInput.value    = "";
+      careInsightRuleSelect.value = "";
       operatorSelect.value      = "";
       valueContainer.innerHTML  = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>`;
       
@@ -209,10 +213,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       
       this.triggerSelectedDevice = null;
       this.triggerUpdateFieldVisibility(type);
-      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
-        this.loadDataTriggerCareInsightOperator();
-      }
-      else {
+      if (!["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
         this.loadDataTriggerDeviceOperator();
       }
       this.triggerEnabledDisable();
@@ -225,7 +226,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       this.triggerEnabledDisable();
     });
 
-    this.querySelector("ion-input[name='editTriggerInsightType']")?.addEventListener("ionInput", () => {
+    this.querySelector("ion-select[name='editTriggerCareInsightRule']")?.addEventListener("ionChange", () => {
       this.triggerEnabledDisable();
     });
 
@@ -240,14 +241,14 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
       this.setTriggerSelectedDevice(deviceID, bridge);
 
-      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
+      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) { // Care Insight trigger doesn't require loading properties
         this.triggerEnabledDisable();
         return;
       }
 
       await this.loadDataTriggerDeviceProperties(bridge, deviceID);
 
-      if (type === "battery_low") {
+      if (type === "battery_low") { // Battery low trigger requires numeric input instead of property value options
         const valueContainer = document.querySelector("#edit-trigger-value-container");
         valueContainer.innerHTML = `<ion-input type="number" label="${window.Translation.get("BatteryThreshold")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom"></ion-input>`;
         valueContainer.querySelector("ion-input[name='editTriggerValue']").addEventListener("ionInput", () => {
@@ -279,17 +280,17 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
    * Reset trigger edit modal fields
    */
   async resetTriggerEditModalFields() {
-    const typeSelect     = document.querySelector("ion-select[name='editTriggerType']");
-    const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
-    const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
-    const insightTypeInput = document.querySelector("ion-input[name='editTriggerInsightType']");
-    const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
-    const valueContainer = document.querySelector("#edit-trigger-value-container");
+    const typeSelect        = document.querySelector("ion-select[name='editTriggerType']");
+    const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
+    const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
+    const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+    const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
+    const valueContainer    = document.querySelector("#edit-trigger-value-container");
 
     typeSelect.value         = "device_value";
     deviceSelect.value       = "";
     propertySelect.value     = "";
-    insightTypeInput.value   = "";
+    careInsightRuleSelect.value = "";
     operatorSelect.value     = "";
     valueContainer.innerHTML = `
       <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
@@ -305,11 +306,11 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
    * Enable/Disable trigger edit modal fields based on selections
    */
   async triggerEnabledDisable() {
-    const typeSelect     = document.querySelector("ion-select[name='editTriggerType']");
-    const deviceSelect   = document.querySelector("ion-select[name='editTriggerDevice']");
-    const propertySelect = document.querySelector("ion-select[name='editTriggerProperty']");
-    const insightTypeInput = document.querySelector("ion-input[name='editTriggerInsightType']");
-    const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
+    const typeSelect        = document.querySelector("ion-select[name='editTriggerType']");
+    const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
+    const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
+    const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+    const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
 
     let valueSelect;
     if ((document.querySelector("ion-input[name='editTriggerValue']")) && (document.querySelector("ion-input[name='editTriggerValue']") !== undefined)) {
@@ -371,23 +372,11 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       case "care_insight_opened":
       case "care_insight_updated":
       case "care_insight_resolved":
-        operatorSelect.disabled = false;
-
-        if (insightTypeInput.value?.trim() !== "") {
+        if (careInsightRuleSelect.value !== "") {
           submitButton.disabled = false;
         }
-
-        if ((operatorSelect.value !== "") || (valueSelect?.value !== "")) {
-          const requiresNumericValue = ["greater", "less"].includes(operatorSelect.value);
-          const hasValidNumericValue = valueSelect?.value !== "" && !Number.isNaN(Number(valueSelect?.value));
-          const hasValidValue = requiresNumericValue ? hasValidNumericValue : valueSelect?.value !== "";
-
-          submitButton.disabled = !(insightTypeInput.value?.trim() !== "" && operatorSelect.value !== "" && hasValidValue);
-          if (valueSelect) {
-            valueSelect.disabled = operatorSelect.value === "";
-          }
-        }
         break;
+
 
       case "time":
         const timeInput = document.querySelector("ion-input[name='editTriggerTime']");
@@ -402,19 +391,19 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
    * Show/hide trigger fields based on trigger type
    */
   triggerUpdateFieldVisibility(type) {
-    const deviceField   = document.querySelector("#trigger-field-device");
-    const propertyField = document.querySelector("#trigger-field-property");
-    const insightTypeField = document.querySelector("#trigger-field-care-insight-type");
-    const operatorField = document.querySelector("#trigger-field-operator");
-    const valueField    = document.querySelector("#trigger-field-value");
-    const timeField     = document.querySelector("#trigger-field-time");
+    const deviceField       = document.querySelector("#trigger-field-device");
+    const propertyField     = document.querySelector("#trigger-field-property");
+    const insightTypeField  = document.querySelector("#trigger-field-care-insight-type");
+    const operatorField     = document.querySelector("#trigger-field-operator");
+    const valueField        = document.querySelector("#trigger-field-value");
+    const timeField         = document.querySelector("#trigger-field-time");
 
-    deviceField.style.display   = "none";
-    propertyField.style.display = "none";
-    insightTypeField.style.display = "none";
-    operatorField.style.display = "none";
-    valueField.style.display    = "none";
-    timeField.style.display     = "none";
+    deviceField.style.display       = "none";
+    propertyField.style.display     = "none";
+    insightTypeField.style.display  = "none";
+    operatorField.style.display     = "none";
+    valueField.style.display        = "none";
+    timeField.style.display         = "none";
 
     switch (type) {
       
@@ -427,7 +416,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       
       case "device_disconnected":
       case "device_connected":
-        deviceField.style.display   = "";
+        deviceField.style.display = "";
         break;
       
       case "battery_low":
@@ -438,14 +427,12 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       case "care_insight_opened":
       case "care_insight_updated":
       case "care_insight_resolved":
-        deviceField.style.display    = "";
-        insightTypeField.style.display = "";
-        operatorField.style.display  = "";
-        valueField.style.display     = "";
+        insightTypeField.style.display  = "";
+        deviceField.style.display       = "";
         break;
 
       case "time":
-        timeField.style.display     = "";
+        timeField.style.display = "";
         break;
     }
   }
@@ -475,6 +462,35 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
         if ((selectedDeviceID !== null) && (selectedBridge !== null)) {
           selectDevice.value = this.buildTriggerDeviceOptionValue(selectedDeviceID, selectedBridge);
+        }
+      }
+      else {
+        toastShow("Error: " + data.error, "danger");
+      }
+    }
+    catch (error) {
+      console.error("API call - Error:", error);
+      toastShow("Error: " + error.message, "danger");
+    }
+  }
+
+  /**
+   * Load Care Insight Rules into the select dropdown
+   * @param {string|null} selectedRuleID - Rule ID to pre-select (optional)
+   */
+  async loadDataCareInsightRules(selectedRuleID = null) {
+    try {
+      const data = await apiGET("/data/care_insight_rules?orderBy=ruleID,DESC");
+      if (data.status === "ok") {
+        this.triggerCareInsightRules = data.results || [];
+        const selectRule = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+
+        selectRule.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + this.triggerCareInsightRules.map(item => {
+          return `<ion-select-option value="${item.ruleID}">${item.title} (${item.aggregationType})</ion-select-option>`;
+        }).join("");
+
+        if (selectedRuleID !== null) {
+          selectRule.value = String(selectedRuleID);
         }
       }
       else {
@@ -550,21 +566,6 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       <ion-select-option value="less">${window.Translation.get("Less")}</ion-select-option>
       <ion-select-option value="between">${window.Translation.get("Between")}</ion-select-option>
       <ion-select-option value="contains">${window.Translation.get("Contains")}</ion-select-option>                      
-    `;
-
-    if (selectedOperator !== null) {
-      operatorSelect.value = selectedOperator;
-    }
-  }
-
-  async loadDataTriggerCareInsightOperator(selectedOperator = null) {
-    const operatorSelect = document.querySelector("ion-select[name='editTriggerOperator']");
-    operatorSelect.innerHTML = `
-      <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
-      <ion-select-option value="equals">${window.Translation.get("Equals")}</ion-select-option>
-      <ion-select-option value="contains">${window.Translation.get("Contains")}</ion-select-option>
-      <ion-select-option value="greater">${window.Translation.get("Greater")}</ion-select-option>
-      <ion-select-option value="less">${window.Translation.get("Less")}</ion-select-option>
     `;
 
     if (selectedOperator !== null) {
@@ -711,33 +712,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
       }
       else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
-        let operatorInfo = "";
-
-        switch(item.operator) {
-          case "equals":
-            operatorInfo = window.Translation.get("Equals");
-            break;
-          case "greater":
-            operatorInfo = window.Translation.get("Greater");
-            break;
-          case "less":
-            operatorInfo = window.Translation.get("Less");
-            break;
-          case "between":
-            operatorInfo = window.Translation.get("Between");
-            break;
-          case "contains":
-            operatorInfo = window.Translation.get("Contains");
-            break;
-          default:
-            operatorInfo = "";
-        }
-
         cardTitle = window.Translation.get(type === "care_insight_opened" ? "TriggerTypeCareInsightOpened" : type === "care_insight_updated" ? "TriggerTypeCareInsightUpdated" : "TriggerTypeCareInsightResolved");
-        cardSubtitle = item.deviceID ? `${item.deviceID} (${bridgeInfo})` : window.Translation.get("AllDevices");
+        cardSubtitle = item.ruleTitle || item.property;
+        const deviceInfo = item.deviceID ? `${item.deviceName || item.deviceID} (${bridgeInfo})` : window.Translation.get("AllDevices");
         cardContent = `
-            <ion-text color="light">${window.Translation.get("InsightType")}: ${item.property}</ion-text>
-            ${item.value ? `<ion-text color="light">${operatorInfo} ${item.value}</ion-text>` : ""}
+            <ion-text color="light">${window.Translation.get("CareInsightRule")}: ${item.ruleTitle || item.property}</ion-text>
+            <br />
+            <ion-text color="light">${window.Translation.get("Device")}: ${deviceInfo}</ion-text>
         `;
       }
       else if (type === "time") {
@@ -810,15 +791,10 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
           document.querySelector("ion-input[name='editTriggerTime']").value = triggerData.value || "";
         }
         else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
-          document.querySelector("ion-input[name='editTriggerInsightType']").value = triggerData.property || "";
-          await this.loadDataTriggerCareInsightOperator(triggerData.operator);
-
-          const valueContainer = document.querySelector("#edit-trigger-value-container");
-          valueContainer.innerHTML = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom"></ion-input>`;
-          valueContainer.querySelector("ion-input[name='editTriggerValue']").value = triggerData.value || "";
-          valueContainer.querySelector("ion-input[name='editTriggerValue']").addEventListener("ionInput", () => {
-            this.triggerEnabledDisable();
-          });
+          await this.loadDataCareInsightRules(triggerData.property || null);
+          if (triggerData.deviceID) {
+            await this.loadDataTriggerDevices(triggerData.deviceID, triggerData.bridge);
+          }
         }
         else {
           await this.loadDataTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID);
