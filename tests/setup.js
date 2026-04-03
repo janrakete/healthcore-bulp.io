@@ -162,7 +162,6 @@ function createTestDatabase() {
       ruleID INTEGER DEFAULT 0,
       type TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
-      severity TEXT NOT NULL DEFAULT 'medium',
       score NUMERIC DEFAULT 0,
       title TEXT NOT NULL,
       summary TEXT NOT NULL,
@@ -193,7 +192,7 @@ function createTestDatabase() {
 
     CREATE TABLE care_insight_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
+      title TEXT,
       enabled BOOLEAN DEFAULT 1,
       sourceProperty TEXT NOT NULL,
       aggregationType TEXT NOT NULL DEFAULT 'sum_below_threshold',
@@ -201,7 +200,6 @@ function createTestDatabase() {
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
       minReadings INTEGER DEFAULT 1,
-      title TEXT,
       recommendation TEXT,
       dateTimeAdded TEXT DEFAULT (datetime('now')),
       dateTimeUpdated TEXT DEFAULT (datetime('now'))
