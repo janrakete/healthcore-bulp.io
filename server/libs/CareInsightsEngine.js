@@ -118,7 +118,7 @@ class CareInsightsEngine {
       "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
     ).all(deviceID, bridge, property, appConfig.CONF_careInsightsHistorySize);
 
-    if (!history || history.length < 5) {
+    if (!history || history.length < appConfig.CONF_careInsightsMinHistoryEntries) {
       return null;
     }
 
@@ -126,7 +126,7 @@ class CareInsightsEngine {
       .map((entry) => Number(entry.valueAsNumeric))
       .filter((entry) => Number.isFinite(entry));
 
-    if (values.length < 5) {
+    if (values.length < appConfig.CONF_careInsightsMinHistoryEntries) {
       return null;
     }
 

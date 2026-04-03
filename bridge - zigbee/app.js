@@ -859,8 +859,17 @@ async function startBridgeAndServer() {
         common.conLog("ZigBee: Device converter has setupReporting function, trying to call it ...", "gre", false);
 
         try {
-          const coordinatorDevice   = zigBee.getDevices().find(d => d.type === "Coordinator");
+          const coordinatorDevice = zigBee.getDevices().find(zigBeeDevice => zigBeeDevice.type === "Coordinator");
+          if (!coordinatorDevice) {
+            common.conLog("ZigBee: Coordinator device not found, cannot setup reporting for " + device.deviceID, "red");
+            return;
+          }
+
           const coordinatorEndpoint = coordinatorDevice.getEndpoint(1);
+          if (!coordinatorEndpoint) {
+            common.conLog("ZigBee: Could not get endpoint 1 from coordinator, cannot setup reporting for " + device.deviceID, "red");
+            return;
+          }
 
           await device.deviceConverter.setupReporting(device.deviceRaw, coordinatorEndpoint);
         }
