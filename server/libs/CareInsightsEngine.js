@@ -14,7 +14,7 @@ class CareInsightsEngine {
   }
 
   /**
-   * Handles device values and creates Care Insights for unusual numeric patterns.
+   * Handles device values and evaluates configured Care Insight rules.
    * @param {Object} data
    */
   handleDeviceValues(data) {
@@ -24,53 +24,8 @@ class CareInsightsEngine {
         return;
       }
 
-      const device     = this.getDevice(data.deviceID, data.bridge);
-      const assignment = this.getDeviceAssignment(data.deviceID, data.bridge);
-
       Object.entries(data.values).forEach(([property, valueData]) => {
-        // 1) Evaluate explicit, user-configured rules first.
         this.evaluateConfiguredRules(data, property, valueData);
-
-        // 2) Built-in anomaly detection only works with numeric values.
-        if (!this.isNumericValue(valueData)) {
-          return;
-        }
-
-        const deviation = this.getDeviationScore(data.deviceID, data.bridge, property);
-        if (!deviation) {
-          return;
-        }
-
-        // If the value moved back to normal range, close open anomaly insights.
-        if (deviation.score < appConfig.CONF_careInsightsAnomalyThreshold) {
-          this.resolveOpenInsights({ ruleID: 0, type: "unusual_numeric_pattern", deviceID: data.deviceID, bridge: data.bridge, property: property });
-          return;
-        }
-
-        const insight = this.upsertInsight({
-          ruleID: 0,
-          type: "unusual_numeric_pattern",
-          score: deviation.score,
-          title: "Unusual reading detected",
-          summary: this.buildNumericSummary(device, property, valueData.value),
-          explanation: this.buildNumericExplanation(property, valueData.value, deviation),
-          recommendation: "Review the latest reading and the surrounding care context.",
-          deviceID: data.deviceID,
-          bridge: data.bridge,
-          property: property,
-          individualID: this.getAssignmentIndividualID(assignment),
-          roomID: this.getAssignmentRoomID(assignment),
-          source: "careinsights"
-        });
-
-        this.insertSignal(insight.insightID, {
-          deviceID: data.deviceID,
-          bridge: data.bridge,
-          property: property,
-          value: String(valueData.value),
-          valueAsNumeric: valueData.valueAsNumeric,
-          weight: deviation.score
-        });
       });
     }
     catch (error) {
@@ -197,12 +152,17 @@ class CareInsightsEngine {
    * @param {Object} valueData
    */
   evaluateConfiguredRules(data, property, valueData) {
-    const rules = this.getMatchingRules(data.deviceID, data.bridge, property);
+    const rules = this.getMatchingRules(property);
 
     rules.forEach((rule) => {
       const context = this.buildRuleContext(rule, data.deviceID, data.bridge);
 
       if (!context) {
+        return;
+      }
+
+      if (rule.aggregationType === "anomaly_detection") {
+        this.evaluateAnomalyRule(rule, data, property, valueData, context);
         return;
       }
 
@@ -220,7 +180,7 @@ class CareInsightsEngine {
 
       const insight = this.upsertInsight({
         ruleID: rule.ruleID,
-        type: rule.insightType,
+        type: rule.aggregationType,
         score: this.ruleScore(rule, aggregation),
         title: this.buildRuleTitle(rule, context.device),
         summary: this.buildRuleSummary(rule, aggregation, context),
@@ -246,16 +206,65 @@ class CareInsightsEngine {
   }
 
   /**
-   * Returns all active rules matching a device/property input.
-   * @param {string} deviceID
-   * @param {string} bridge
+   * Evaluates an anomaly detection rule for one incoming value.
+   * @param {Object} rule
+   * @param {Object} data
+   * @param {string} property
+   * @param {Object} valueData
+   * @param {Object} context
+   */
+  evaluateAnomalyRule(rule, data, property, valueData, context) {
+    if (!this.isNumericValue(valueData)) {
+      return;
+    }
+
+    const deviation = this.getDeviationScore(data.deviceID, data.bridge, property);
+    if (!deviation) {
+      return;
+    }
+
+    const threshold = Number(rule.thresholdMin) || appConfig.CONF_careInsightsAnomalyThreshold;
+
+    if (deviation.score < threshold) {
+      this.resolveOpenInsights({ ruleID: rule.ruleID, type: "anomaly_detection", deviceID: data.deviceID, bridge: data.bridge, property: property });
+      return;
+    }
+
+    const insight = this.upsertInsight({
+      ruleID: rule.ruleID,
+      type: "anomaly_detection",
+      score: deviation.score,
+      title: this.buildRuleTitle(rule, context.device),
+      summary: this.buildNumericSummary(context.device, property, valueData.value),
+      explanation: this.buildNumericExplanation(property, valueData.value, deviation),
+      recommendation: rule.recommendation || "Review the latest reading and the surrounding care context.",
+      deviceID: data.deviceID,
+      bridge: data.bridge,
+      property: property,
+      individualID: context.individualID,
+      roomID: context.roomID,
+      source: "careinsights_rule"
+    });
+
+    this.insertSignal(insight.insightID, {
+      deviceID: data.deviceID,
+      bridge: data.bridge,
+      property: property,
+      value: String(valueData.value),
+      valueAsNumeric: valueData.valueAsNumeric,
+      weight: deviation.score
+    });
+  }
+
+  /**
+   * Returns all active rules matching a property.
    * @param {string} property
    * @returns {Array}
    */
-  getMatchingRules(deviceID, bridge, property) {
+  getMatchingRules(property) {
     return database.prepare(
-      "SELECT * FROM care_insight_rules WHERE enabled = 1 AND sourceProperty = ? AND sourceDeviceID = ? AND sourceBridge = ? ORDER BY ruleID ASC"
-    ).all(property, deviceID, bridge);
+      "SELECT * FROM care_insight_rules WHERE enabled = 1 AND sourceProperty = ? ORDER BY ruleID ASC"
+    ).all(property);
   }
 
   /**
@@ -267,8 +276,8 @@ class CareInsightsEngine {
    */
   buildRuleContext(rule, deviceID, bridge) {
     const context = {
-      deviceID: rule.sourceDeviceID,
-      bridge: rule.sourceBridge,
+      deviceID: deviceID,
+      bridge: bridge,
       individualID: 0,
       roomID: 0,
       device: null,
@@ -279,7 +288,7 @@ class CareInsightsEngine {
     context.individualID = this.getAssignmentIndividualID(context.assignment);
     context.roomID = this.getAssignmentRoomID(context.assignment);
 
-    if (rule.aggregationType === "sum_below_threshold" && !this.isValidRuleContext(rule, context)) {
+    if (!this.isValidRuleContext(rule, context)) {
       return null;
     }
 

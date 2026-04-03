@@ -188,7 +188,7 @@ function buildFilters(queryParams) {
  *                   example: error
  *                 error:
  *                   type: string
- *                   example: Fatal error: <message>
+ *                   example: "Fatal error: <message>"
  */
 router.get("/", async function (request, response) {
     let data = {};
@@ -273,7 +273,7 @@ router.get("/", async function (request, response) {
  *                   example: error
  *                 error:
  *                   type: string
- *                   example: Fatal error: <message>
+ *                   example: "Fatal error: <message>"
  */
 router.get("/stats", async function (request, response) {
     let data = {};

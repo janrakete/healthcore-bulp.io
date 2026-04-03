@@ -34,9 +34,18 @@ class ScenarioEngine {
    */
   async handleEvent(eventType, eventData) {
     try {
-      const scenarios = database.prepare(
-        "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? AND st.bridge = ? ORDER BY s.priority DESC"
-      ).all(eventType, eventData.deviceID || "", eventData.bridge || "");
+      let scenarios;
+
+      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(eventType)) {
+        scenarios = database.prepare(
+          "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? ORDER BY s.priority DESC"
+        ).all(eventType);
+      }
+      else {
+        scenarios = database.prepare(
+          "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? AND st.bridge = ? ORDER BY s.priority DESC"
+        ).all(eventType, eventData.deviceID || "", eventData.bridge || "");
+      }
 
       for (const scenario of scenarios) {
         await this.evaluateScenario(scenario, eventType, eventData);
@@ -171,15 +180,15 @@ class ScenarioEngine {
       return false;
     }
 
+    if (trigger.property && String(trigger.property) !== String(eventData.ruleID)) {
+      return false;
+    }
+
     if (trigger.deviceID && trigger.deviceID !== eventData.deviceID) {
       return false;
     }
 
     if (trigger.bridge && trigger.bridge !== eventData.bridge) {
-      return false;
-    }
-
-    if (trigger.property && trigger.property !== eventData.insightType) {
       return false;
     }
 
