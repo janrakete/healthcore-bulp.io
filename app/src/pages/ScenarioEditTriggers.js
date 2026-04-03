@@ -149,7 +149,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         value:            type === "time" ? document.querySelector("ion-input[name='editTriggerTime']").value : ((type === "device_value" || type === "battery_low") ? valueSelect.value : null),
         valueType:        (type === "device_value" || type === "battery_low") ? (isNaN(valueSelect.value) ? "String" : "Numeric") : null,
         deviceProperties: type === "time" ? [] : (selectedDevice?.properties || []),
-        ruleTitle:        isCareInsightTrigger ? (selectedRule?.title || selectedRule?.name || null) : null
+        ruleTitle:        isCareInsightTrigger ? (selectedRule?.title || null) : null
       };
       this.scenarioData.triggers.push(newTrigger);
 
@@ -486,7 +486,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         const selectRule = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
 
         selectRule.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + this.triggerCareInsightRules.map(item => {
-          return `<ion-select-option value="${item.ruleID}">${item.title || item.name} (${item.aggregationType})</ion-select-option>`;
+          return `<ion-select-option value="${item.ruleID}">${item.title} (${item.aggregationType})</ion-select-option>`;
         }).join("");
 
         if (selectedRuleID !== null) {

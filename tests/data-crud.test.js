@@ -75,7 +75,7 @@ describe("POST /data/:table (Insert)", () => {
     const res = await request(app)
       .post("/data/care_insight_rules")
       .send({
-        name: "Hydration Risk",
+        title: "Hydration Risk",
         sourceProperty: "drink_ml",
         aggregationType: "sum_below_threshold",
         aggregationWindowHours: 72,

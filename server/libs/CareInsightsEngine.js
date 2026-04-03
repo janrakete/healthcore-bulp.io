@@ -4,7 +4,8 @@
  * =============================================================================================
  */
 
-const appConfig = require("../../config");
+const appConfig    = require("../../config");
+const translations = require("../../i18n.json");
 
 class CareInsightsEngine {
   /**
@@ -14,13 +15,31 @@ class CareInsightsEngine {
   }
 
   /**
+   * Returns a translated string from i18n.json for the configured language.
+   * Supports placeholder replacement: {0}, {1}, {2}, etc.
+   * @param {string} key
+   * @param  {...any} args
+   * @returns {string}
+   */
+  translate(key, ...args) {
+    const lang  = appConfig.CONF_careInsightsLanguage;
+    const entry = translations[key];
+    let text    = (entry && entry[lang]) ? entry[lang] : (entry && entry["en"]) ? entry["en"] : key;
+
+    args.forEach((arg, index) => {
+      text = text.replace("{" + index + "}", arg);
+    });
+
+    return text;
+  }
+
+  /**
    * Handles device values and evaluates configured Care Insight rules.
    * @param {Object} data
    */
   handleDeviceValues(data) {
     try {
-      // Skip all processing when Care Insights are disabled or payload is incomplete.
-      if (appConfig.CONF_careInsightsActive !== true || !data || !data.values) {
+      if (appConfig.CONF_careInsightsActive !== true || !data || !data.values) { // Skip all processing when Care Insights are disabled or payload is incomplete.
         return;
       }
 
@@ -39,8 +58,8 @@ class CareInsightsEngine {
    */
   handleDeviceStatus(data) {
     try {
-      // Device status insights require device identity and a status value.
-      if (appConfig.CONF_careInsightsActive !== true || !data || !data.deviceID || !data.bridge || !data.status) {
+     
+      if (appConfig.CONF_careInsightsActive !== true || !data || !data.deviceID || !data.bridge || !data.status) { // Device status insights require device identity and a status value.
         return;
       }
 
@@ -53,10 +72,10 @@ class CareInsightsEngine {
           ruleID: 0,
           type: "device_connectivity_risk",
           score: 0.9,
-          title: "Monitoring device offline",
+          title: this.translate("CareInsightTitleDeviceOffline"),
           summary: this.buildConnectivitySummary(device),
-          explanation: "A monitoring device went offline and may currently stop delivering relevant care signals.",
-          recommendation: "Check the device connection, power supply, and radio path.",
+          explanation: this.translate("CareInsightExplanationDeviceOffline"),
+          recommendation: this.translate("CareInsightRecommendationDeviceOffline"),
           deviceID: data.deviceID,
           bridge: data.bridge,
           property: "status",
@@ -185,7 +204,7 @@ class CareInsightsEngine {
         title: this.buildRuleTitle(rule, context.device),
         summary: this.buildRuleSummary(rule, aggregation, context),
         explanation: this.buildRuleExplanation(rule, aggregation),
-        recommendation: rule.recommendation || "Review the recent values and decide whether an intervention is required.",
+        recommendation: rule.recommendation || this.translate("CareInsightRecommendationDefault"),
         deviceID: context.deviceID,
         bridge: context.bridge,
         property: property,
@@ -237,7 +256,7 @@ class CareInsightsEngine {
       title: this.buildRuleTitle(rule, context.device),
       summary: this.buildNumericSummary(context.device, property, valueData.value),
       explanation: this.buildNumericExplanation(property, valueData.value, deviation),
-      recommendation: rule.recommendation || "Review the latest reading and the surrounding care context.",
+      recommendation: rule.recommendation || this.translate("CareInsightRecommendationAnomaly"),
       deviceID: data.deviceID,
       bridge: data.bridge,
       property: property,
@@ -594,7 +613,7 @@ class CareInsightsEngine {
       return String(rule.title).trim();
     }
 
-    return this.getDeviceName(device) + " requires attention";
+    return this.translate("CareInsightTitleFallback", this.getDeviceName(device));
   }
 
   /**
@@ -608,10 +627,10 @@ class CareInsightsEngine {
     const label = this.buildRuleContextLabel(context);
 
     if (rule.aggregationType === "sum_below_threshold") {
-      return label + " stayed below the configured total for '" + rule.sourceProperty + "' in the last " + aggregation.aggregationWindowHours + " hours (current total: " + aggregation.total + ", expected minimum: " + Number(rule.thresholdMin || 0) + ").";
+      return this.translate("CareInsightSummarySumBelow", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
     }
 
-    return label + " matched the configured Care Insight rule.";
+    return this.translate("CareInsightSummaryRuleMatched", label);
   }
 
   /**
@@ -622,10 +641,10 @@ class CareInsightsEngine {
    */
   buildRuleExplanation(rule, aggregation) {
     if (rule.aggregationType === "sum_below_threshold") {
-      return "The rolling sum for '" + rule.sourceProperty + "' across " + aggregation.readings + " readings is " + aggregation.total + " within the last " + aggregation.aggregationWindowHours + " hours.";
+      return this.translate("CareInsightExplanationSumBelow", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
 
-    return "A configured Care Insight rule became active.";
+    return this.translate("CareInsightExplanationRuleActive");
   }
 
   /**
@@ -693,7 +712,7 @@ class CareInsightsEngine {
    */
   buildNumericSummary(device, property, value) {
     const deviceName = this.getDeviceName(device);
-    return deviceName + " reported an unusual value for '" + property + "' (latest value: " + value + ").";
+    return this.translate("CareInsightSummaryAnomaly", deviceName, property, value);
   }
 
   /**
@@ -704,7 +723,7 @@ class CareInsightsEngine {
    * @returns {string}
    */
   buildNumericExplanation(property, value, deviation) {
-    return "The latest '" + property + "' value (" + value + ") deviates strongly from its recent baseline. Median: " + deviation.median + ", normalized deviation: " + deviation.normalizedDeviation.toFixed(2) + ".";
+    return this.translate("CareInsightExplanationAnomaly", property, value, deviation.median, deviation.normalizedDeviation.toFixed(2));
   }
 
   /**
@@ -714,7 +733,7 @@ class CareInsightsEngine {
    */
   buildConnectivitySummary(device) {
     const deviceName = this.getDeviceName(device);
-    return deviceName + " went offline and may stop providing monitoring data.";
+    return this.translate("CareInsightSummaryDeviceOffline", deviceName);
   }
 
   /**
@@ -733,7 +752,7 @@ class CareInsightsEngine {
       }
     }
 
-    return "Device";
+    return this.translate("CareInsightDeviceFallback");
   }
 
   /**

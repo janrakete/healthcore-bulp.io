@@ -545,8 +545,8 @@ describe("Care Insight Trigger Scenarios", () => {
     const individualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Lea", "Example", roomID).lastInsertRowid;
 
     careRuleID = db.prepare(
-      "INSERT INTO care_insight_rules (name, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, title) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
-    ).run("Hydration Rule", "drink_ml", "sum_below_threshold", 72, 1500, 3, "Hydration risk detected").lastInsertRowid;
+      "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+    ).run("Hydration risk detected", "drink_ml", "sum_below_threshold", 72, 1500, 3).lastInsertRowid;
 
     const scenarioResult = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"

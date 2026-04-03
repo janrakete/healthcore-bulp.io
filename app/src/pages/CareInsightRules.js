@@ -4,7 +4,7 @@
 
 import { apiDELETE, apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { spinnerShow, entriesNoDataMessage, bridgeTranslate } from "../services/helper.js";
+import { spinnerShow, entriesNoDataMessage } from "../services/helper.js";
 
 class CareInsightRules extends HTMLElement {
   connectedCallback() {
@@ -108,7 +108,7 @@ class CareInsightRules extends HTMLElement {
             <ion-card color="primary" data-id="${item.ruleID}">
               <ion-card-header>
                 <ion-card-title>${item.title}</ion-card-title>
-                <ion-card-subtitle>${item.aggregationType} — ${item.sourceProperty}</ion-card-subtitle>
+                <ion-card-subtitle>${window.Translation.get("SourceProperty")}: ${item.sourceProperty} (${item.aggregationType})</ion-card-subtitle>
               </ion-card-header>
               <ion-card-content>
                 <ion-row>
