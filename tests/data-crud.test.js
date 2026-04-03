@@ -5,7 +5,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"],
+  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "care_insight_rules"],
   CONF_tablesMaxEntriesReturned:   500,
   CONF_apiKey:                     "",  // dev mode — no auth required
   CONF_apiCallTimeoutMilliseconds: 3000,
@@ -60,6 +60,38 @@ describe("POST /data/:table (Insert)", () => {
       .send({ firstname: "Jan", lastname: "Tester", roomID: 1 });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
+  });
+
+  test("Insert into care_insight_rules → 200 with ID", async () => {
+    const res = await request(app)
+      .post("/data/care_insight_rules")
+      .send({
+        title: "Hydration Risk",
+        sourceProperty: "drink_ml",
+        aggregationType: "sum_below_threshold",
+        aggregationWindowHours: 72,
+        thresholdMin: 1500,
+        minReadings: 3,
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(typeof res.body.ID).toBe("number");
+  });
+
+  test("Insert sum_above_threshold care_insight_rule → 200 with ID", async () => {
+    const res = await request(app)
+      .post("/data/care_insight_rules")
+      .send({
+        title: "Activity too high",
+        sourceProperty: "steps",
+        aggregationType: "sum_above_threshold",
+        aggregationWindowHours: 24,
+        thresholdMax: 500,
+        minReadings: 3,
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(typeof res.body.ID).toBe("number");
   });
 
   test("Insert with unknown column → 400", async () => {
@@ -165,6 +197,13 @@ describe("GET /data/:table (Read)", () => {
     const res = await request(app).get("/data/settings");
     expect(res.status).toBe(200);
     expect(res.body.results).toEqual([]);
+  });
+
+  test("GET care_insight_rules → returns array", async () => {
+    const res = await request(app).get("/data/care_insight_rules");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.results)).toBe(true);
+    expect(res.body.results.length).toBeGreaterThanOrEqual(1);
   });
 });
 

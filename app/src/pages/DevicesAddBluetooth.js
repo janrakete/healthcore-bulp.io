@@ -43,13 +43,13 @@ class DevicesAddBluetooth extends HTMLElement {
       const data = await apiPOST("/devices/bluetooth/scan", {"duration" : window.appConfig.CONF_scanDuration});
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("ScanStarted"), "success");
 
         const interval = setInterval(async () => {
             const scanData = await apiGET("/devices/bluetooth/scan/info?callID=" + data.data.callID);
             if (this.scanning === true) {
-                if (scanData.status === "ok") {
+                if (String(scanData.status) === "ok") {
                     if ((scanData.data.devices) && (scanData.data.devices.length !== 0)) {
                         const listElement = this.querySelector("#devices-list-container");
                         listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanFound") + "</ion-text></center>";
@@ -79,7 +79,7 @@ class DevicesAddBluetooth extends HTMLElement {
             spinner.remove();
             this.scanning = false;
             const listElement = this.querySelector("#devices-list-container");
-            if (listElement.innerHTML === "") {
+            if (String(listElement.innerHTML) === "") {
                 listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanNoDevicesFound") + "</ion-text></center><br />";
             }
             else {
@@ -96,7 +96,7 @@ class DevicesAddBluetooth extends HTMLElement {
     async addAndConnectDevice(deviceID) {
         const data = await apiPOST("/devices/bluetooth/" + deviceID + "/connect", {"addDeviceToServer" : true});
         console.log("API call - Output:", data);
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
             toastShow(window.Translation.get("DeviceAddedAndConnected"), "success");
 
             const button = this.querySelector(`#connect-${deviceID}`); // remove connect button

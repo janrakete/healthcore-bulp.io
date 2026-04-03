@@ -48,6 +48,9 @@ class Start extends HTMLElement {
             <ion-col size="6"><ion-button href="/sos" class="selection" color="tertiary" expand="block"><div><div><ion-icon slot="start" name="call-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("SOSTitle")}</ion-text></div></div></ion-button></ion-col>
           </ion-row>
           <ion-row>
+            <ion-col size="12"><ion-button class="selection" expand="block" href="/care-insights"><ion-icon slot="start" name="analytics-sharp" size="large" color="primary"></ion-icon><ion-text>${window.Translation.get("CareInsightsTitle")}</ion-text></ion-button></ion-col>
+          </ion-row>
+          <ion-row>
             <ion-col size="12"><ion-button class="selection" expand="block" href="/settings"><ion-icon slot="start" name="build-sharp" size="large" color="primary"></ion-icon><ion-text>${window.Translation.get("SettingsTitle")}</ion-text></ion-button></ion-col>
           </ion-row>
         </ion-grid>
@@ -87,11 +90,11 @@ class Start extends HTMLElement {
         const data = await apiGET("/data/notifications?orderBy=dateTime,DESC&limit=3");
         console.log("API call - Output:", data);
         
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
           const listElement = this.querySelector("#notifications-list");
           const items = data.results;
 
-          if (items && items.length > 0) {
+          if (items && Number(items.length) > 0) {
               listElement.innerHTML = items.map(item => `
               <ion-card color="primary" data-id="${item.notificationID}" class="small">
                 <ion-card-header>
@@ -129,7 +132,7 @@ class Start extends HTMLElement {
             Zeroconf.watch("_http._tcp.", "local.").subscribe(result => {
               console.log("App: Result from Zeroconf:");
               console.log(result);
-              if (result.action === "resolved") {
+              if (String(result.action) === "resolved") {
                 console.log("App: Bonjour service resolved, checking name ...");
                 if ((result.service.name === window.appConfig.CONF_serverIDBonjour) &&  (serverFound === false)) {
                   serverFound = true;
@@ -172,7 +175,7 @@ class Start extends HTMLElement {
                                 
             const tryConnect = async () => {
               const data = await apiGET("/info");
-              if (data.status === "ok") {
+              if (String(data.status) === "ok") {
                 console.log("App: Connected to server at static URL: " +  window.appConfig.CONF_serverURL);
 
                 barLoadingStop(loadingInterval, "ion-alert", "message");
@@ -186,7 +189,7 @@ class Start extends HTMLElement {
 
             const interval = setInterval(async () => { // Interval to retry connection
 
-              if (this.serverFindCurrentAttemptSecond >= window.appConfig.CONF_serverFindTimeout) {
+              if (Number(this.serverFindCurrentAttemptSecond) >= window.appConfig.CONF_serverFindTimeout) {
                 clearInterval(interval);
                 barLoadingStop(loadingInterval, "ion-alert", "message");
                 document.querySelector("ion-alert").dismiss();
@@ -226,11 +229,11 @@ class Start extends HTMLElement {
       console.log("Push: Checking push token on server ...");
       try {
         const dataGET = await apiGET("/data/push_tokens?token=" + window.devicePushToken);
-        if (dataGET.status === "ok") {
-          if (dataGET.results.length === 0) {
+        if (String(dataGET.status) === "ok") {
+          if (Number(dataGET.results.length) === 0) {
             console.log("Push: Push token not registered on server, registering ...");
             const dataPOST = await apiPOST("/data/push_tokens", { token: window.devicePushToken });
-            if (dataPOST.status === "ok") {
+            if (String(dataPOST.status) === "ok") {
               console.log("Push: Push token registered on server.");
             } 
             else {

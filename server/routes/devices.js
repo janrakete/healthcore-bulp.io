@@ -44,6 +44,66 @@ function handlePendingMqttResponse(callID, response) {
 }
 
 /**
+ * Enriches a device object with individual and room details based on its individualID and roomID.
+ * @param {Object} device - The device object (must have individualID and roomID fields).
+ */
+function enrichDeviceWithAssignment(device) {
+    if ((device === undefined) || (device === null)) {
+        return;
+    }
+
+    if (Number(device.individualID) > 0) {
+        const individual = getIndividual(device.individualID);
+        if (individual) {
+            device.individual = {
+                individualID:   individual.individualID,
+                firstname:      individual.firstname || "",
+                lastname:       individual.lastname || "",
+            };
+        }
+    }
+
+    if (Number(device.roomID) > 0) {
+        const room = getRoom(device.roomID);
+        if (room) {
+            device.room = {
+                roomID: room.roomID,
+                name:   room.name || "",
+            };
+        }
+    }
+}
+
+/**
+ * Returns a single device by ID and bridge.
+ * @param {string} deviceID
+ * @param {string} bridge
+ * @returns {Object|undefined}
+ */
+function getDevice(deviceID, bridge) {
+    return database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").get(deviceID, bridge);
+}
+
+/**
+ * Returns a single individual by ID.
+ * @param {number} individualID
+ * @returns {Object|undefined}
+ */
+function getIndividual(individualID) {
+    return database.prepare("SELECT * FROM individuals WHERE individualID = ? LIMIT 1").get(individualID);
+}
+
+/**
+ * Returns a single room by ID.
+ * @param {number} roomID
+ * @returns {Object|undefined}
+ */
+function getRoom(roomID) {
+    return database.prepare("SELECT * FROM rooms WHERE roomID = ? LIMIT 1").get(roomID);
+}
+
+
+/**
  * @swagger
  *  /devices/all:
  *    get:
@@ -70,12 +130,56 @@ function handlePendingMqttResponse(callID, response) {
  *                        deviceID:
  *                          type: string
  *                          example: "12345"
- *                        productName:
- *                          type: string
- *                          example: "Product XYZ"
  *                        bridge:
  *                          type: string
  *                          example: "bluetooth"
+ *                        name:
+ *                          type: string
+ *                          example: "Living Room Sensor"
+ *                        productName:
+ *                          type: string
+ *                          example: "Product XYZ"
+ *                        vendorName:
+ *                          type: string
+ *                          example: "Vendor ABC"
+ *                        description:
+ *                          type: string
+ *                          example: "Temperature sensor in the living room"
+ *                        powerType:
+ *                          type: string
+ *                          example: "mains"
+ *                        properties:
+ *                          type: object
+ *                          description: Parsed JSON object with device-specific properties
+ *                        individualID:
+ *                          type: integer
+ *                          example: 5
+ *                        roomID:
+ *                          type: integer
+ *                          example: 3
+ *                        individual:
+ *                          type: object
+ *                          description: Enriched individual data (if individualID is set)
+ *                          properties:
+ *                            individualID:
+ *                              type: integer
+ *                              example: 5
+ *                            firstname:
+ *                              type: string
+ *                              example: "Max"
+ *                            lastname:
+ *                              type: string
+ *                              example: "Mustermann"
+ *                        room:
+ *                          type: object
+ *                          description: Enriched room data (if roomID is set)
+ *                          properties:
+ *                            roomID:
+ *                              type: integer
+ *                              example: 3
+ *                            name:
+ *                              type: string
+ *                              example: "Living Room"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -111,6 +215,8 @@ router.get("/all", async function (request, response) {
                     device.properties   = {};
                 }
             }
+
+            enrichDeviceWithAssignment(device);
         });
 
         data.results = results;
@@ -761,6 +867,7 @@ router.post("/:bridge/:deviceID", async function (request, response) {
     }
 });
 
+
 /**
  * @swagger
  *  /devices/{bridge}/{deviceID}:
@@ -797,6 +904,14 @@ router.post("/:bridge/:deviceID", async function (request, response) {
  *                description:
  *                  type: string
  *                  example: "New Device Description"
+ *                individualID:
+ *                  type: integer
+ *                  description: ID of the individual to assign this device to (0 to unassign)
+ *                  example: 5
+ *                roomID:
+ *                  type: integer
+ *                  description: ID of the room to assign this device to (0 to unassign)
+ *                  example: 3
  *      responses:
  *        "200":
  *          description: Device updated successfully
@@ -857,15 +972,60 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
             const bridge = payload.bridge.trim();
 
             if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
-                message.bridge      = bridge;
-                message.updates     = payload.body;
+                const deviceID = payload.deviceID.trim();
 
-                mqttClient.publish(bridge + "/devices/update", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
+                // Update individualID and roomID directly in the database (these are server-side fields, not bridge-side)
+                if (payload.body.individualID !== undefined || payload.body.roomID !== undefined) {
+                    const device = getDevice(deviceID, bridge);
 
-                handlePendingMqttResponse(message.callID, response);
+                    if (device === undefined) {
+                        data.status = "error";
+                        data.error  = "Device not found";
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
+
+                    const individualID = (payload.body.individualID !== undefined) ? (Number(payload.body.individualID) || 0) : device.individualID;
+                    const roomID       = (payload.body.roomID !== undefined) ? (Number(payload.body.roomID) || 0) : device.roomID;
+
+                    if (individualID > 0 && getIndividual(individualID) === undefined) {
+                        data.status = "error";
+                        data.error  = "Individual not found";
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
+
+                    if (roomID > 0 && getRoom(roomID) === undefined) {
+                        data.status = "error";
+                        data.error  = "Room not found";
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
+
+                    database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?").run(individualID, roomID, deviceID, bridge);
+                    common.conLog("PATCH request for device assignment update via ID " + deviceID + " successful", "gre");
+                }
+
+                // Forward remaining fields (name, description, etc.) to the bridge via MQTT
+                const bridgeFields = { ...payload.body };
+                delete bridgeFields.individualID;
+                delete bridgeFields.roomID;
+
+                if (Object.keys(bridgeFields).length > 0) {
+                    message.deviceID    = deviceID;
+                    message.callID      = common.randomHash();
+                    message.bridge      = bridge;
+                    message.updates     = bridgeFields;
+
+                    mqttClient.publish(bridge + "/devices/update", JSON.stringify(message));
+                    common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
+
+                    handlePendingMqttResponse(message.callID, response);
+                }
+                else {
+                    // Only assignment fields were updated, no MQTT needed
+                    data.status = "ok";
+                    data.device = getDevice(deviceID, bridge);
+                    enrichDeviceWithAssignment(data.device);
+                    return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                }
             }
             else {
                 data.status = "error";
@@ -1264,9 +1424,53 @@ router.get("/:bridge/list", async function (request, response) {
  *                      bridge:
  *                        type: string
  *                        example: "bluetooth"
+ *                      name:
+ *                        type: string
+ *                        example: "Living Room Sensor"
+ *                      productName:
+ *                        type: string
+ *                        example: "Product XYZ"
+ *                      vendorName:
+ *                        type: string
+ *                        example: "Vendor ABC"
+ *                      description:
+ *                        type: string
+ *                        example: "Temperature sensor in the living room"
  *                      powerType:
  *                        type: string
  *                        example: "MAINS"
+ *                      properties:
+ *                        type: object
+ *                        description: Parsed JSON object with device-specific properties
+ *                      individualID:
+ *                        type: integer
+ *                        example: 5
+ *                      roomID:
+ *                        type: integer
+ *                        example: 3
+ *                      individual:
+ *                        type: object
+ *                        description: Enriched individual data (if individualID is set)
+ *                        properties:
+ *                          individualID:
+ *                            type: integer
+ *                            example: 5
+ *                          firstname:
+ *                            type: string
+ *                            example: "Max"
+ *                          lastname:
+ *                            type: string
+ *                            example: "Mustermann"
+ *                      room:
+ *                        type: object
+ *                        description: Enriched room data (if roomID is set)
+ *                        properties:
+ *                          roomID:
+ *                            type: integer
+ *                            example: 3
+ *                          name:
+ *                            type: string
+ *                            example: "Living Room"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -1290,7 +1494,7 @@ router.get("/:bridge/:deviceID", async function (request, response) {
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
         if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            const device = database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ?").get(payload.deviceID.trim(), bridge);;
+            const device = getDevice(payload.deviceID.trim(), bridge);
             if (device !== undefined) {
                 data.status = "ok";
                 data.device = device;
@@ -1304,6 +1508,8 @@ router.get("/:bridge/:deviceID", async function (request, response) {
                         data.device.properties  = {};
                     }   
                 }
+
+                enrichDeviceWithAssignment(data.device);
 
                 common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
             }

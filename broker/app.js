@@ -88,23 +88,38 @@ function startServer() {
      */
 
     /**
-     * Extract time features from a date object.
-     * @param {Date} date
+     * Extracts time-based features from a date for use in machine learning algorithms.
+     * @param {Date|number} date - A Date object or a numeric timestamp (milliseconds since epoch).
      * @returns {Object} An object containing the extracted time features.
-     * @description This function extracts various time-related features from a given date object.
+     * @description Returns both raw and sine/cosine-encoded versions of time values.
+     * Raw values (weekday, hour) are included for human readability.
+     * Sine/cosine encoding is used for cyclical features so that ML algorithms understand
+     * that the values "wrap around" — e.g. Sunday (6) and Monday (0) are adjacent,
+     * and 23:00 and 00:00 are adjacent. Without this encoding, a model would treat them
+     * as far apart on a linear scale.
      */
     function timeFeaturesExtract(date) {
-        if (!(date instanceof Date))
+        if (!(date instanceof Date)) {
             date = new Date(date);
+        }
 
+        // Raw timestamp in milliseconds — used as a unique time identifier
         const dateTimeAsNumeric = date.getTime();
-        const weekday           = date.getDay();
-        const weekdaySin        = Math.sin((2 * Math.PI * weekday) / 7);
-        const weekdayCos        = Math.cos((2 * Math.PI * weekday) / 7);
-        const hour              = date.getHours();
-        const hourSin           = Math.sin((2 * Math.PI * hour) / 24);
-        const hourCos           = Math.cos((2 * Math.PI * hour) / 24);
-        const month             = date.getMonth() + 1;
+
+        // Weekday: 0 (Sunday) to 6 (Saturday)
+        // Sine/cosine encoding maps this onto a circle of 7 steps
+        const weekday    = date.getDay();
+        const weekdaySin = Math.sin((2 * Math.PI * weekday) / 7);
+        const weekdayCos = Math.cos((2 * Math.PI * weekday) / 7);
+
+        // Hour: 0 to 23
+        // Sine/cosine encoding maps this onto a circle of 24 steps
+        const hour    = date.getHours();
+        const hourSin = Math.sin((2 * Math.PI * hour) / 24);
+        const hourCos = Math.cos((2 * Math.PI * hour) / 24);
+
+        // Month: 1 (January) to 12 (December) — getMonth() returns 0–11, so +1
+        const month = date.getMonth() + 1;
 
         return {
             dateTimeAsNumeric,
@@ -167,7 +182,7 @@ function startServer() {
             try {
                 statementInsertHistory.run(topic, message, callID);
 
-                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for anomaly detection
+                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for Care Insights and related analytics
                     const timeFeatures = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
                     for (const [property, value] of Object.entries(data.values)) { // iterate over each property
                         statementInsertValue.run(

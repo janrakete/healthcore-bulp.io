@@ -34,13 +34,13 @@ class DevicesAddZigBee extends HTMLElement {
       const data = await apiPOST("/devices/zigbee/scan", {"duration" : window.appConfig.CONF_scanDuration});
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("ScanStarted"), "success");
 
         const interval = setInterval(async () => {
             const scanData = await apiGET("/devices/zigbee/scan/info?callID=" + data.data.callID);
             if (this.scanning === true) {
-                if (scanData.status === "ok") {
+                if (String(scanData.status) === "ok") {
                     if ((scanData.data.devices) && (scanData.data.devices.length !== 0)) {
                         const listElement = this.querySelector("#devices-list-container");
                         listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanFoundAndAdded") + "</ion-text></center>";
@@ -69,7 +69,7 @@ class DevicesAddZigBee extends HTMLElement {
             spinner.remove();
             this.scanning = false;
             const listElement = this.querySelector("#devices-list-container");
-            if (listElement.innerHTML === "") {
+            if (String(listElement.innerHTML) === "") {
                 listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanNoDevicesFound") + "</ion-text></center><br />";
             }
             else {

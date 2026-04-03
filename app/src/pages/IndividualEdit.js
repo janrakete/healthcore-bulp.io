@@ -45,7 +45,7 @@ class IndividualEdit extends HTMLElement {
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
     this.loadRoomsData();
-    if (this.ID > 0) {
+    if (Number(this.ID) > 0) {
       this.loadData();
     }
   }
@@ -64,7 +64,7 @@ class IndividualEdit extends HTMLElement {
     let data = {};
 
     try {
-      if (parseInt(this.ID) === 0) // New entry    
+      if (Number(this.ID) === 0) // New entry    
       {
         data = await apiPOST("/data/individuals", formData);
       }
@@ -72,7 +72,7 @@ class IndividualEdit extends HTMLElement {
         data = await apiPATCH("/data/individuals?individualID=" + this.ID, formData);
       }
         
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");             
         document.querySelector("ion-router").push("/individuals");   
       }
@@ -90,7 +90,7 @@ class IndividualEdit extends HTMLElement {
     try {
       const data = await apiGET("/data/rooms"); // load rooms for select
       console.log("API call - Output:", data);
-      if (data.status === "ok") { 
+      if (String(data.status) === "ok") { 
         const select = this.querySelector("ion-select[name='editRoom']");
         data.results.forEach(room => {
           const option = document.createElement("ion-select-option");
@@ -115,7 +115,7 @@ class IndividualEdit extends HTMLElement {
       const data = await apiGET("/data/individuals?individualID=" + this.ID);
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editFirstName']").value = item.firstname;
         this.querySelector("ion-input[name='editLastName']").value  = item.lastname;

@@ -71,9 +71,9 @@ class Individuals extends HTMLElement {
       actionSheet.isOpen = false;
       const ID = actionSheet.dataset.ID; // Get ID of entry to delete
       console.log("Action sheet: ID of entry:", ID);
-      if (event.detail.data?.action === "delete") {
+      if (String(event.detail.data?.action) === "delete") {
         const data = await apiDELETE("/data/individuals?individualID=" + ID);
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
           const itemDelete = this.querySelector("#individuals-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
@@ -92,15 +92,15 @@ class Individuals extends HTMLElement {
     try {
       const roomData = await apiGET("/data/rooms"); // load rooms for select
       console.log("API call - Output:", roomData);
-      if (roomData.status === "ok") { 
+      if (String(roomData.status) === "ok") { 
         const data = await apiGET("/data/individuals");
         console.log("API call - Output:", data);
         
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
           const listElement = this.querySelector("#individuals-list");
           const items       = data.results;
 
-          if (!items || items.length === 0) {
+          if (!items || Number(items.length) === 0) {
             entriesNoDataMessage("#individuals-list-no-data");
           }
           else {
@@ -108,7 +108,7 @@ class Individuals extends HTMLElement {
               <ion-card color="primary" data-id="${item.individualID}">
                 <ion-card-header>
                     <ion-card-title>${item.firstname} ${item.lastname}</ion-card-title>
-                    <ion-card-subtitle>${item.roomID > 0 && roomData.results.find(room => room.roomID === item.roomID) ? `${window.Translation.get("Room")}: ${roomData.results.find(room => room.roomID === item.roomID).name}` : '' }</ion-card-subtitle>
+                    <ion-card-subtitle>${Number(item.roomID) > 0 && roomData.results.find(room => Number(room.roomID) === Number(item.roomID)) ? `${window.Translation.get("Room")}: ${roomData.results.find(room => Number(room.roomID) === Number(item.roomID)).name}` : '' }</ion-card-subtitle>
                 </ion-card-header>
                 <ion-button data-id="${item.individualID}" id="edit-${item.individualID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
                 <ion-button data-id="${item.individualID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>

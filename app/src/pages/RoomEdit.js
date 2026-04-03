@@ -36,7 +36,7 @@ class RoomEdit extends HTMLElement {
       </ion-content>
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
-    if (this.ID > 0) {
+    if (Number(this.ID) > 0) {
       this.loadData();
     }
   }
@@ -53,7 +53,7 @@ class RoomEdit extends HTMLElement {
     let data = {};
 
     try {
-      if (parseInt(this.ID) === 0) // New entry    
+      if (Number(this.ID) === 0) // New entry    
       {
         data = await apiPOST("/data/rooms", formData);
       }
@@ -61,7 +61,7 @@ class RoomEdit extends HTMLElement {
         data = await apiPATCH("/data/rooms?roomID=" + this.ID, formData);
       }
         
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");             
         document.querySelector("ion-router").push("/rooms");   
       }
@@ -80,7 +80,7 @@ class RoomEdit extends HTMLElement {
       const data = await apiGET("/data/rooms?roomID=" + this.ID);
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editName']").value = item.name;     
       }
