@@ -41,11 +41,11 @@ class Notifications extends HTMLElement {
       const data = await apiGET("/data/notifications?orderBy=dateTime,DESC");
       console.log("API call - Output:", data);
       
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const listElement = this.querySelector("#notifications-list");
         const items       = data.results;
 
-        if (!items || items.length === 0) {
+        if (!items || Number(items.length) === 0) {
           listElement.innerHTML = `
             <center><ion-text>${window.Translation.get("EntriesNone")}</ion-text></center>
           `;
@@ -58,8 +58,8 @@ class Notifications extends HTMLElement {
                 <ion-card-subtitle>${dateFormat(item.dateTime, window.appConfig.CONF_dateLocale)}</ion-card-subtitle>
               </ion-card-header>
               ${item.description !== null ? `<ion-card-content><ion-text color="light">${item.description}</ion-text></ion-card-content>` : ""}
-              ${item.scenarioID > 0 ? `<ion-button href="/scenario-edit/${item.scenarioID}"><ion-icon slot="start" name="unlink-sharp" color="tertiary"></ion-icon><ion-text color="light">${window.Translation.get("ScenarioGoTo")}</ion-text></ion-button>` : ''}
-              ${item.insightID > 0 ? `<ion-button href="/care-insight/${item.insightID}"><ion-icon slot="start" name="analytics-outline" color="tertiary"></ion-icon><ion-text color="light">${window.Translation.get("CareInsightGoTo")}</ion-text></ion-button>` : ''}
+              ${Number(item.scenarioID) > 0 ? `<ion-button href="/scenario-edit/${item.scenarioID}"><ion-icon slot="start" name="unlink-sharp" color="tertiary"></ion-icon><ion-text color="light">${window.Translation.get("ScenarioGoTo")}</ion-text></ion-button>` : ''}
+              ${Number(item.insightID) > 0 ? `<ion-button href="/care-insight/${item.insightID}"><ion-icon slot="start" name="analytics-outline" color="tertiary"></ion-icon><ion-text color="light">${window.Translation.get("CareInsightGoTo")}</ion-text></ion-button>` : ''}
               </ion-card>
             `).join("");
         }

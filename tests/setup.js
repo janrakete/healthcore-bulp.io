@@ -23,6 +23,8 @@ function createTestDatabase() {
       name TEXT,
       description TEXT,
       strength INTEGER,
+      individualID INTEGER DEFAULT 0,
+      roomID INTEGER DEFAULT 0,
       dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -37,18 +39,6 @@ function createTestDatabase() {
       roomID INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL
     );
-
-    CREATE TABLE device_assignments (
-      assignmentID INTEGER PRIMARY KEY AUTOINCREMENT,
-      deviceID TEXT NOT NULL,
-      bridge TEXT NOT NULL,
-      individualID INTEGER DEFAULT 0,
-      roomID INTEGER DEFAULT 0,
-      dateTimeAdded TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE UNIQUE INDEX idx_device_assignments_device
-    ON device_assignments (deviceID, bridge);
 
     CREATE TABLE users (
       userID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -278,20 +268,22 @@ function createTestApp() {
  */
 function insertTestDevice(db, overrides = {}) {
   const device = {
-    deviceID:      "test_device_001",
-    bridge:        "http",
-    powerType:     "MAINS",
-    vendorName:    "TestVendor",
-    productName:   "TestProduct",
-    properties:    JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
-    name:          "Test Device",
-    description:   "A test device",
+    deviceID:       "test_device_001",
+    bridge:         "http",
+    powerType:      "MAINS",
+    vendorName:     "TestVendor",
+    productName:    "TestProduct",
+    properties:     JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
+    name:           "Test Device",
+    description:    "A test device",
+    individualID:   0,
+    roomID:         0,
     ...overrides,
   };
 
   db.prepare(
-    "INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, properties, name, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(device.deviceID, device.bridge, device.powerType, device.vendorName, device.productName, device.properties, device.name, device.description);
+    "INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, properties, name, description, individualID, roomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(device.deviceID, device.bridge, device.powerType, device.vendorName, device.productName, device.properties, device.name, device.description, device.individualID, device.roomID);
 
   return device;
 }

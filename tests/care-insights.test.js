@@ -4,7 +4,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:         ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "device_assignments", "care_insight_rules"],
+  CONF_tablesAllowedForAPI:         ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "care_insight_rules"],
   CONF_tablesMaxEntriesReturned:    500,
   CONF_apiKey:                      "",
   CONF_apiCallTimeoutMilliseconds:  1000,
@@ -16,6 +16,7 @@ jest.mock("../config", () => ({
   CONF_careInsightsActive:          true,
   CONF_careInsightsAnomalyThreshold: 0.6,
   CONF_careInsightsHistorySize:     20,
+  CONF_careInsightsMinHistoryEntries: 10,
   CONF_careInsightsMaxSignalsPerInsight: 5,
   CONF_language:                    "de",
 }));
@@ -36,19 +37,17 @@ beforeAll(() => {
   careInsights = new CareInsightsEngine();
   app = createTestApp();
 
-  insertTestDevice(db, {
-    deviceID: "care_device_001",
-    bridge: "http",
-    productName: "CareSensor",
-    name: "Room Sensor",
-  });
-
   const roomResult = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Care Room");
   const individualResult = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Mia", "Muster", roomResult.lastInsertRowid);
 
-  db.prepare(
-    "INSERT INTO device_assignments (deviceID, bridge, individualID, roomID) VALUES (?, ?, ?, ?)"
-  ).run("care_device_001", "http", individualResult.lastInsertRowid, roomResult.lastInsertRowid);
+  insertTestDevice(db, {
+    deviceID:     "care_device_001",
+    bridge:       "http",
+    productName:  "CareSensor",
+    name:         "Room Sensor",
+    individualID: individualResult.lastInsertRowid,
+    roomID:       roomResult.lastInsertRowid,
+  });
 });
 
 afterAll(() => {
@@ -88,7 +87,7 @@ describe("Care Insights engine", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([250, 71, 72, 70, 69, 71, 70]);
+    seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
 
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
@@ -122,7 +121,7 @@ describe("Care Insights engine", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([200, 70, 70, 70, 70, 70, 70]);
+    seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
 
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
@@ -168,7 +167,7 @@ describe("Care Insights engine", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
       bridge: "http",
@@ -180,7 +179,7 @@ describe("Care Insights engine", () => {
     expect(insight.status).toBe("open");
 
     db.prepare("DELETE FROM mqtt_history_devices_values").run();
-    seedValues([71, 70, 69, 71, 70, 72, 71]);
+    seedValues([71, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
       bridge: "http",
@@ -196,7 +195,7 @@ describe("Care Insights engine", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
 
     for (let i = 0; i < 8; i++) {
       careInsights.handleDeviceValues({
@@ -292,7 +291,7 @@ describe("Care Insights API", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
       bridge: "http",
@@ -321,7 +320,7 @@ describe("Care Insights API", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
       bridge: "http",
@@ -339,7 +338,7 @@ describe("Care Insights API", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([240, 70, 69, 71, 70, 72, 71]);
+    seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
       bridge: "http",
@@ -357,7 +356,7 @@ describe("Care Insights API", () => {
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
 
-    seedValues([230, 70, 71, 69, 70, 72, 70]);
+    seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);
     careInsights.handleDeviceValues({
       deviceID: "care_device_001",
       bridge: "http",

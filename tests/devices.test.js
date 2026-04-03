@@ -5,7 +5,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "device_assignments"],
+  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"],
   CONF_tablesMaxEntriesReturned:   500,
   CONF_apiKey:                     "",  // dev mode
   CONF_apiCallTimeoutMilliseconds: 1000,  // short timeout for tests
@@ -55,10 +55,12 @@ describe("GET /devices/all", () => {
     secondIndividualID = individualResultSecond.lastInsertRowid;
 
     insertTestDevice(db, {
-      deviceID:    "dev_bt_001",
-      bridge:      "bluetooth",
-      productName: "BangleJS2",
-      properties:  JSON.stringify([
+      deviceID:      "dev_bt_001",
+      bridge:        "bluetooth",
+      productName:   "BangleJS2",
+      individualID:  individualResult.lastInsertRowid,
+      roomID:        roomResult.lastInsertRowid,
+      properties:    JSON.stringify([
         { name: "heartrate", dataType: "Numeric", access: "r" },
         { name: "light", dataType: "Boolean", access: "rw" },
       ]),
@@ -69,10 +71,6 @@ describe("GET /devices/all", () => {
       productName: "IKEA TRADFRI",
       properties:  JSON.stringify([{ name: "state", dataType: "Boolean", access: "rw" }]),
     });
-
-    db.prepare(
-      "INSERT INTO device_assignments (deviceID, bridge, individualID, roomID) VALUES (?, ?, ?, ?)"
-    ).run("dev_bt_001", "bluetooth", individualResult.lastInsertRowid, roomResult.lastInsertRowid);
   });
 
   test("returns all registered devices", async () => {
@@ -98,62 +96,63 @@ describe("GET /devices/all", () => {
     expect(zbDevice.bridge).toBe("zigbee");
   });
 
-  test("returns assignment data for assigned devices", async () => {
+  test("returns individual and room data for assigned devices", async () => {
     const res = await request(app).get("/devices/all");
     const btDevice = res.body.results.find((d) => d.deviceID === "dev_bt_001");
 
-    expect(btDevice.assignment).toBeDefined();
-    expect(btDevice.assignment.individualID).toBeGreaterThan(0);
-    expect(btDevice.assignment.roomID).toBeGreaterThan(0);
-    expect(btDevice.assignment.individual.firstname).toBe("Jan");
-    expect(btDevice.assignment.room.name).toBe("Living Room");
+    expect(btDevice.individualID).toBeGreaterThan(0);
+    expect(btDevice.roomID).toBeGreaterThan(0);
+    expect(btDevice.individual).toBeDefined();
+    expect(btDevice.individual.firstname).toBe("Jan");
+    expect(btDevice.room).toBeDefined();
+    expect(btDevice.room.name).toBe("Living Room");
   });
 });
 
-// ─── /devices/:bridge/:deviceID/assignment ─────────────────────────────────
+// ─── PATCH /devices/:bridge/:deviceID (assignment fields) ──────────────────
 
-describe("/devices/:bridge/:deviceID/assignment", () => {
+describe("PATCH /devices/:bridge/:deviceID (assignment)", () => {
 
-  test("GET returns assignment for device", async () => {
-    const res = await request(app).get("/devices/bluetooth/dev_bt_001/assignment");
-
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe("ok");
-    expect(res.body.assignment).toBeDefined();
-    expect(res.body.assignment.individualID).toBe(assignedIndividualID);
-    expect(res.body.assignment.roomID).toBe(assignedRoomID);
-  });
-
-  test("POST creates assignment for device without one", async () => {
+  test("PATCH updates individualID and roomID on the device", async () => {
     const res = await request(app)
-      .post("/devices/zigbee/dev_zb_001/assignment")
-      .send({ individualID: secondIndividualID });
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ individualID: secondIndividualID, roomID: secondRoomID });
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
-    expect(res.body.assignment.individualID).toBe(secondIndividualID);
-    expect(res.body.assignment.roomID).toBe(secondRoomID);
+    expect(res.body.device.individualID).toBe(secondIndividualID);
+    expect(res.body.device.roomID).toBe(secondRoomID);
   });
 
-  test("PATCH updates assignment", async () => {
+  test("PATCH clears assignment when set to 0", async () => {
     const res = await request(app)
-      .patch("/devices/bluetooth/dev_bt_001/assignment")
-      .send({ roomID: secondRoomID, individualID: secondIndividualID });
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ individualID: 0, roomID: 0 });
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
-    expect(res.body.assignment.individualID).toBe(secondIndividualID);
-    expect(res.body.assignment.roomID).toBe(secondRoomID);
+
+    const row = db.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ?").get("dev_bt_001", "bluetooth");
+    expect(row.individualID).toBe(0);
+    expect(row.roomID).toBe(0);
   });
 
-  test("DELETE removes assignment", async () => {
-    const res = await request(app).delete("/devices/zigbee/dev_zb_001/assignment");
+  test("PATCH with non-existent individualID → error", async () => {
+    const res = await request(app)
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ individualID: 99999 });
 
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe("ok");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Individual not found");
+  });
 
-    const row = db.prepare("SELECT * FROM device_assignments WHERE deviceID = ? AND bridge = ?").get("dev_zb_001", "zigbee");
-    expect(row).toBeUndefined();
+  test("PATCH with non-existent roomID → error", async () => {
+    const res = await request(app)
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ roomID: 99999 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Room not found");
   });
 });
 
@@ -167,8 +166,6 @@ describe("GET /devices/:bridge/:deviceID", () => {
     expect(res.body.status).toBe("ok");
     expect(res.body.device.deviceID).toBe("dev_bt_001");
     expect(Array.isArray(res.body.device.properties)).toBe(true);
-    expect(res.body.device.assignment).toBeDefined();
-    expect(res.body.device.assignment.individual.firstname).toBe("Mia");
   });
 
   test("non-existent device → 400", async () => {

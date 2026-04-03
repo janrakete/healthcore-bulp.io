@@ -354,6 +354,20 @@ router.post("/:table", async function (request, response) {
  *               type: string
  *           style: form
  *           explode: true
+ *         - in: query
+ *           name: orderBy
+ *           required: false
+ *           description: Order results by a column in the format "column,direction" (e.g., "dateTime,DESC"). Direction defaults to ASC if omitted.
+ *           schema:
+ *             type: string
+ *             example: "dateTime,DESC"
+ *         - in: query
+ *           name: limit
+ *           required: false
+ *           description: Maximum number of entries to return. If omitted, a server-side default limit is applied.
+ *           schema:
+ *             type: integer
+ *             example: 50
  *       responses:
  *         "200":
  *           description: Successfully retrieved data from the table. Returns an array of entries matching the query parameters.

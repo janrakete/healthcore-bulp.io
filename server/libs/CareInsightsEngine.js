@@ -64,8 +64,7 @@ class CareInsightsEngine {
       }
 
       if (data.status === "offline") {
-        const device     = this.getDevice(data.deviceID, data.bridge);
-        const assignment = this.getDeviceAssignment(data.deviceID, data.bridge);
+        const device = this.getDevice(data.deviceID, data.bridge);
 
         // "offline" opens or updates a connectivity risk insight.
         const insight = this.upsertInsight({
@@ -79,8 +78,8 @@ class CareInsightsEngine {
           deviceID: data.deviceID,
           bridge: data.bridge,
           property: "status",
-          individualID: this.getAssignmentIndividualID(assignment),
-          roomID: this.getAssignmentRoomID(assignment),
+          individualID: Number(device?.individualID) || 0,
+          roomID: Number(device?.roomID) || 0,
           source: "careinsights"
         });
 
@@ -294,18 +293,15 @@ class CareInsightsEngine {
    * @returns {Object|null}
    */
   buildRuleContext(rule, deviceID, bridge) {
+    const device = this.getDevice(deviceID, bridge);
+
     const context = {
-      deviceID: deviceID,
-      bridge: bridge,
-      individualID: 0,
-      roomID: 0,
-      device: null,
-      assignment: null
+      deviceID:     deviceID,
+      bridge:       bridge,
+      individualID: Number(device?.individualID) || 0,
+      roomID:       Number(device?.roomID) || 0,
+      device:       device,
     };
-    context.device = this.getDevice(context.deviceID, context.bridge);
-    context.assignment = this.getDeviceAssignment(context.deviceID, context.bridge);
-    context.individualID = this.getAssignmentIndividualID(context.assignment);
-    context.roomID = this.getAssignmentRoomID(context.assignment);
 
     if (!this.isValidRuleContext(rule, context)) {
       return null;
@@ -558,49 +554,6 @@ class CareInsightsEngine {
     return result;
   }
 
-  /**
-   * Loads a device assignment from the database.
-   * @param {string} deviceID
-   * @param {string} bridge
-   * @returns {Object|null}
-   */
-  getDeviceAssignment(deviceID, bridge) {
-    const result = database.prepare(
-      "SELECT * FROM device_assignments WHERE deviceID = ? AND bridge = ? LIMIT 1"
-    ).get(deviceID, bridge);
-
-    if (!result) {
-      return null;
-    }
-
-    return result;
-  }
-
-  /**
-   * Returns individualID from an assignment object.
-   * @param {Object|null} assignment
-   * @returns {number}
-   */
-  getAssignmentIndividualID(assignment) {
-    if ((assignment === null) || (assignment === undefined)) {
-      return 0;
-    }
-
-    return Number(assignment.individualID) || 0;
-  }
-
-  /**
-   * Returns roomID from an assignment object.
-   * @param {Object|null} assignment
-   * @returns {number}
-   */
-  getAssignmentRoomID(assignment) {
-    if ((assignment === null) || (assignment === undefined)) {
-      return 0;
-    }
-
-    return Number(assignment.roomID) || 0;
-  }
 
   /**
    * Builds the display title for a rule-based insight.

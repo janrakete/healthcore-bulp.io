@@ -32,7 +32,7 @@ class CareInsightDetail extends HTMLElement {
       const data = await apiGET("/care-insights/" + this.ID);
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const item = data.insight;
 
         this.querySelector("#care-insight-detail").innerHTML = `
@@ -61,7 +61,7 @@ class CareInsightDetail extends HTMLElement {
               <ion-card-title>${window.Translation.get("Signals")}</ion-card-title>
             </ion-card-header>
             <ion-card-content>
-              ${(data.signals && data.signals.length > 0) ? data.signals.map((signal) => `
+              ${(data.signals && Number(data.signals.length) > 0) ? data.signals.map((signal) => `
                 <p>
                   ${dateFormat(signal.dateTimeObserved, window.appConfig.CONF_dateLocale)}<br />
                   ${signal.property}: ${signal.value}
@@ -91,7 +91,7 @@ class CareInsightDetail extends HTMLElement {
   async updateStatus(status) {
     try {
       const data = await apiPATCH("/care-insights/" + this.ID, { status: status });
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");
         await this.loadData();
       }

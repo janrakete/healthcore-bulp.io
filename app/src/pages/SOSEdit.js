@@ -39,7 +39,7 @@ class SOSEdit extends HTMLElement {
       </ion-content>
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
-    if (this.ID > 0) {
+    if (Number(this.ID) > 0) {
       this.loadData();
     }
   }
@@ -57,7 +57,7 @@ class SOSEdit extends HTMLElement {
     let data = {};
 
     try {
-      if (parseInt(this.ID) === 0) // New entry    
+      if (Number(this.ID) === 0) // New entry    
       {
         data = await apiPOST("/data/sos", formData);
       }
@@ -65,7 +65,7 @@ class SOSEdit extends HTMLElement {
         data = await apiPATCH("/data/sos?sosID=" + this.ID, formData);
       }
         
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");             
         document.querySelector("ion-router").push("/sos");   
       }
@@ -84,7 +84,7 @@ class SOSEdit extends HTMLElement {
       const data = await apiGET("/data/sos?sosID=" + this.ID);
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editName']").value   = item.name;
         this.querySelector("ion-input[name='editPhone']").value  = item.number;   

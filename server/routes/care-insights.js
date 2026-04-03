@@ -317,6 +317,70 @@ function buildOrderByClause(orderByString, table) {
  *                       property:
  *                         type: string
  *                         example: hydration
+ *                       individualID:
+ *                         type: integer
+ *                         example: 5
+ *                       roomID:
+ *                         type: integer
+ *                         example: 3
+ *                       dateTimeCreated:
+ *                         type: string
+ *                         example: "2025-01-15 14:30:00"
+ *                       dateTimeUpdated:
+ *                         type: string
+ *                         example: "2025-01-15 15:00:00"
+ *                       dateTimeResolved:
+ *                         type: string
+ *                         nullable: true
+ *                         example: null
+ *                       device:
+ *                         type: object
+ *                         description: Enriched device data (if deviceID and bridge are set)
+ *                         properties:
+ *                           deviceID:
+ *                             type: string
+ *                             example: "sensor-001"
+ *                           bridge:
+ *                             type: string
+ *                             example: "zigbee"
+ *                           name:
+ *                             type: string
+ *                             example: "Hydration Sensor"
+ *                           productName:
+ *                             type: string
+ *                             example: "Hydro Monitor"
+ *                           vendorName:
+ *                             type: string
+ *                             example: "SensorCorp"
+ *                           description:
+ *                             type: string
+ *                             example: "Monitors hydration levels"
+ *                       individual:
+ *                         type: object
+ *                         description: Enriched individual data (if individualID is set)
+ *                         properties:
+ *                           individualID:
+ *                             type: integer
+ *                             example: 5
+ *                           firstname:
+ *                             type: string
+ *                             example: "Max"
+ *                           lastname:
+ *                             type: string
+ *                             example: "Mustermann"
+ *                           roomID:
+ *                             type: integer
+ *                             example: 3
+ *                       room:
+ *                         type: object
+ *                         description: Enriched room data (if roomID is set)
+ *                         properties:
+ *                           roomID:
+ *                             type: integer
+ *                             example: 3
+ *                           name:
+ *                             type: string
+ *                             example: "Living Room"
  *       "400":
  *         description: Bad request or internal route error
  *         content:
@@ -468,10 +532,66 @@ router.get("/stats", async function (request, response) {
  *                   example: ok
  *                 insight:
  *                   type: object
+ *                   description: The Care Insight with enriched device, individual and room data
+ *                   properties:
+ *                     insightID:
+ *                       type: integer
+ *                       example: 42
+ *                     ruleID:
+ *                       type: integer
+ *                       example: 12
+ *                     type:
+ *                       type: string
+ *                       example: "hydration"
+ *                     status:
+ *                       type: string
+ *                       example: "open"
+ *                     score:
+ *                       type: number
+ *                       example: 63.5
+ *                     deviceID:
+ *                       type: string
+ *                       example: "sensor-001"
+ *                     bridge:
+ *                       type: string
+ *                       example: "zigbee"
+ *                     property:
+ *                       type: string
+ *                       example: "hydration"
+ *                     individualID:
+ *                       type: integer
+ *                       example: 5
+ *                     roomID:
+ *                       type: integer
+ *                       example: 3
+ *                     dateTimeCreated:
+ *                       type: string
+ *                       example: "2025-01-15 14:30:00"
+ *                     dateTimeUpdated:
+ *                       type: string
+ *                       example: "2025-01-15 15:00:00"
+ *                     dateTimeResolved:
+ *                       type: string
+ *                       nullable: true
+ *                       example: null
  *                 signals:
  *                   type: array
+ *                   description: List of signals associated with this Care Insight, ordered by signalID descending
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       signalID:
+ *                         type: integer
+ *                         example: 101
+ *                       insightID:
+ *                         type: integer
+ *                         example: 42
+ *                       value:
+ *                         type: string
+ *                         example: "45"
+ *                       dateTime:
+ *                         type: string
+ *                         example: "2025-01-15 14:35:00"
  *       "400":
  *         description: Invalid request or Care Insight not found
  *         content:

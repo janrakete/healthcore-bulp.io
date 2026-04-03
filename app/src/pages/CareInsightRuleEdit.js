@@ -69,14 +69,14 @@ class CareInsightRuleEdit extends HTMLElement {
 
     this.updateFieldVisibility();
 
-    if (this.ID > 0) {
+    if (Number(this.ID) > 0) {
       this.loadData();
     }
   }
 
   updateFieldVisibility() {
     const aggregationType = this.querySelector("ion-select[name='editAggregationType']")?.value || "sum_below_threshold";
-    const isSumBelow      = aggregationType === "sum_below_threshold";
+    const isSumBelow      = String(aggregationType) === "sum_below_threshold";
 
     this.querySelector("#field-aggregation-window-hours").style.display = isSumBelow ? "" : "none";
     this.querySelector("#field-min-readings").style.display             = isSumBelow ? "" : "none";
@@ -105,14 +105,14 @@ class CareInsightRuleEdit extends HTMLElement {
     let data = {};
 
     try {
-      if (parseInt(this.ID) === 0) {
+      if (Number(this.ID) === 0) {
         data = await apiPOST("/data/care_insight_rules", formData);
       }
       else {
         data = await apiPATCH("/data/care_insight_rules?ruleID=" + this.ID, formData);
       }
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");
         document.querySelector("ion-router").push("/care-insight-rules");
       }
@@ -131,7 +131,7 @@ class CareInsightRuleEdit extends HTMLElement {
       const data = await apiGET("/data/care_insight_rules?ruleID=" + this.ID);
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editTitle']").value                   = item.title;
         this.querySelector("ion-toggle[name='editEnabled']").checked              = Number(item.enabled) === 1;
