@@ -24,8 +24,7 @@ class Settings extends HTMLElement {
                     <ion-col size="6"><ion-button class="selection" expand="block" href="/scenarios"><div><div><ion-icon slot="start" name="unlink-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("ScenariosTitle")}</ion-text></div></div></ion-button></ion-col>
                 </ion-row>
                 <ion-row>
-                    <ion-col size="6"><ion-button class="selection" expand="block" href="/care-insights"><div><div><ion-icon slot="start" name="analytics-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("CareInsightsTitle")}</ion-text></div></div></ion-button></ion-col>
-                    <ion-col size="6"><ion-button class="selection" expand="block" href="/care-insight-rules"><div><div><ion-icon slot="start" name="options-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("CareInsightRulesTitle")}</ion-text></div></div></ion-button></ion-col>
+                    <ion-col size="12"><ion-button class="selection" expand="block" href="/care-insight-rules"><div><div><ion-icon slot="start" name="options-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("CareInsightRulesTitle")}</ion-text></div></div></ion-button></ion-col>
                 </ion-row>
             </ion-grid>
         </ion-content>

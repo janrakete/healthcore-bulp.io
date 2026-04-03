@@ -139,10 +139,11 @@ function buildWhereClause(table, payload) {
       
       if (response.status === "ok" && conditions.length > 0) {
          response.condition = " WHERE " + conditions.join(" AND ");
-      } else if (response.status === "error") {
+      }
+      else if (response.status === "error") {
          // error already set
-      } else {
-          // empty loop but keys present? Should be ok.
+      }
+      else {
           response.status = "ok";
       }
    }  

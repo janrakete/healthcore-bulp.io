@@ -7,22 +7,12 @@ import { toastShow } from "../services/toast.js";
 import { dateFormat, entriesNoDataMessage, spinnerShow } from "../services/helper.js";
 
 class CareInsights extends HTMLElement {
-  filters = {
-    status: "",
-    severity: "",
-  };
-
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/settings"></ion-back-button>
-          </ion-buttons>
-          <ion-buttons slot="end">
-            <ion-button href="/care-insight-rules">
-              <ion-icon slot="icon-only" name="options-sharp"></ion-icon>
-            </ion-button>
+            <ion-back-button default-href="/"></ion-back-button>
           </ion-buttons>
           <ion-title>${window.Translation.get("PageCareInsightsHeadline")}</ion-title>
         </ion-toolbar>
@@ -34,74 +24,22 @@ class CareInsights extends HTMLElement {
         </ion-refresher>
 
         <div id="care-insights-stats"></div>
-        <ion-list inset="true">
-          <ion-item color="light">
-            <ion-segment id="filter-status" value="all" scrollable="true">
-              <ion-segment-button value="all">
-                <ion-label>${window.Translation.get("All")}</ion-label>
-              </ion-segment-button>
-              <ion-segment-button value="open">
-                <ion-label>${window.Translation.get("Open")}</ion-label>
-              </ion-segment-button>
-              <ion-segment-button value="acknowledged">
-                <ion-label>${window.Translation.get("Acknowledged")}</ion-label>
-              </ion-segment-button>
-              <ion-segment-button value="resolved">
-                <ion-label>${window.Translation.get("Resolved")}</ion-label>
-              </ion-segment-button>
-              <ion-segment-button value="dismissed">
-                <ion-label>${window.Translation.get("Dismissed")}</ion-label>
-              </ion-segment-button>
-            </ion-segment>
-          </ion-item>
-          <ion-item color="light">
-            <ion-select label="${window.Translation.get("Severity")}" label-placement="stacked" id="filter-severity" interface="popover">
-              <ion-select-option value="">${window.Translation.get("All")}</ion-select-option>
-              <ion-select-option value="critical">${window.Translation.get("Critical")}</ion-select-option>
-              <ion-select-option value="high">${window.Translation.get("High")}</ion-select-option>
-              <ion-select-option value="medium">${window.Translation.get("Medium")}</ion-select-option>
-              <ion-select-option value="low">${window.Translation.get("Low")}</ion-select-option>
-            </ion-select>
-          </ion-item>
-          <ion-item color="light" lines="none">
-            <ion-button id="filter-reset" expand="block" color="medium">
-              <ion-icon slot="start" name="refresh-sharp"></ion-icon>
-              ${window.Translation.get("ResetFilter")}
-            </ion-button>
-          </ion-item>
-        </ion-list>
+
         <div id="care-insights-list"></div>
+
         <div id="care-insights-list-no-data"></div>
       </ion-content>
     `;
 
     this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => { // pull to refresh
-      await this.dataLoad();
+      await this.loadData();
       event.target.complete();
     });
 
-    this.querySelector("#filter-status").addEventListener("ionChange", async (event) => { // reload list when status filter changes
-      this.filters.status = event.detail.value === "all" ? "" : event.detail.value;
-      await this.dataLoad();
-    });
-
-    this.querySelector("#filter-severity").addEventListener("ionChange", async (event) => { // reload list when severity filter changes
-      this.filters.severity = event.detail.value || "";
-      await this.dataLoad();
-    });
-
-    this.querySelector("#filter-reset").addEventListener("click", async () => { // reset all active filters
-      this.filters.status = "";
-      this.filters.severity = "";
-      this.querySelector("#filter-status").value = "all";
-      this.querySelector("#filter-severity").value = "";
-      await this.dataLoad();
-    });
-
-    this.dataLoad();
+    this.loadData();
   }
 
-  async dataLoad() {
+  async loadData() {
     const spinner = spinnerShow("#care-insights-list");
 
     try {
@@ -110,8 +48,7 @@ class CareInsights extends HTMLElement {
         this.renderStats(stats.data);
       }
 
-      const queryString = this.buildQueryString();
-      const data = await apiGET("/care-insights?limit=100" + queryString);
+      const data = await apiGET("/care-insights");
       console.log("API call - Output:", data);
 
       if (data.status === "ok") {
@@ -120,12 +57,12 @@ class CareInsights extends HTMLElement {
 
         if (!items || items.length === 0) {
           listElement.innerHTML = "";
-          entriesNoDataMessage("#care-insights-list-no-data");
+          entriesNoDataMessage("#care-insights-list-no-data", false);
         }
         else {
           this.querySelector("#care-insights-list-no-data").innerHTML = "";
           listElement.innerHTML = items.map((item) => `
-            <ion-card color="${this.getSeverityColor(item.severity)}" data-id="${item.insightID}">
+            <ion-card color="primary" data-id="${item.insightID}">
               <ion-card-header>
                 <ion-card-title>${item.title}</ion-card-title>
                 <ion-card-subtitle>${this.getSubtitle(item)}</ion-card-subtitle>
@@ -139,7 +76,7 @@ class CareInsights extends HTMLElement {
 
           this.querySelectorAll(".action-open-option").forEach((button) => {
             button.addEventListener("click", () => {
-              document.querySelector("ion-router").push("/care-insights/" + button.getAttribute("data-id"));
+              document.querySelector("ion-router").push("/care-insight/" + button.getAttribute("data-id"));
             });
           });
         }
@@ -154,25 +91,6 @@ class CareInsights extends HTMLElement {
     }
 
     spinner.remove();
-  }
-
-  buildQueryString() {
-    const params = new URLSearchParams();
-
-    if (this.filters.status !== "") {
-      params.set("status", this.filters.status);
-    }
-
-    if (this.filters.severity !== "") {
-      params.set("severity", this.filters.severity);
-    }
-
-    const queryString = params.toString();
-    if (queryString === "") {
-      return "";
-    }
-
-    return "&" + queryString;
   }
 
   renderStats(data) {
@@ -193,7 +111,6 @@ class CareInsights extends HTMLElement {
   getSubtitle(item) {
     const parts = [];
 
-    parts.push(this.getSeverityLabel(item.severity));
     parts.push(this.getStatusLabel(item.status));
 
     if (item.individual) {
@@ -213,42 +130,16 @@ class CareInsights extends HTMLElement {
     return parts.join(" | ");
   }
 
-  getSeverityColor(severity) {
-    switch (severity) {
-      case "critical":
-        return "danger";
-      case "high":
-        return "warning";
-      case "medium":
-        return "primary";
-      default:
-        return "medium";
-    }
-  }
-
-  getSeverityLabel(severity) {
-    switch (severity) {
-      case "critical":
-        return window.Translation.get("Critical");
-      case "high":
-        return window.Translation.get("High");
-      case "medium":
-        return window.Translation.get("Medium");
-      default:
-        return window.Translation.get("Low");
-    }
-  }
-
   getStatusLabel(status) {
     switch (status) {
       case "acknowledged":
-        return window.Translation.get("Acknowledged");
+        return "<ion-badge color=\"tertiary\">" + window.Translation.get("Acknowledged") + "</ion-badge>";
       case "resolved":
-        return window.Translation.get("Resolved");
-      case "dismissed":
-        return window.Translation.get("Dismissed");
+        return "<ion-badge color=\"success\">" + window.Translation.get("Resolved") + "</ion-badge>";
+      case "critical":
+        return "<ion-badge color=\"danger\">" + window.Translation.get("Critical") + "</ion-badge>";
       default:
-        return window.Translation.get("Open");
+        return "<ion-badge color=\"warning\">" + window.Translation.get("Open") + "</ion-badge>";
     }
   }
 }

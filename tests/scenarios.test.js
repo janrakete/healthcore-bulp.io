@@ -538,10 +538,15 @@ describe("Multi-Trigger Scenarios", () => {
 describe("Care Insight Trigger Scenarios", () => {
 
   let careScenarioID;
+  let careRuleID;
 
   beforeAll(() => {
     const roomID = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Hydration Room").lastInsertRowid;
     const individualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Lea", "Example", roomID).lastInsertRowid;
+
+    careRuleID = db.prepare(
+      "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+    ).run("Hydration risk detected", "drink_ml", "sum_below_threshold", 72, 1500, 3).lastInsertRowid;
 
     const scenarioResult = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
@@ -549,8 +554,8 @@ describe("Care Insight Trigger Scenarios", () => {
     careScenarioID = scenarioResult.lastInsertRowid;
 
     db.prepare(
-      "INSERT INTO scenarios_triggers (scenarioID, type, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(careScenarioID, "care_insight_opened", "hydration_risk", "equals", "high", "String");
+      "INSERT INTO scenarios_triggers (scenarioID, type, property) VALUES (?, ?, ?)"
+    ).run(careScenarioID, "care_insight_opened", String(careRuleID));
 
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
@@ -565,8 +570,8 @@ describe("Care Insight Trigger Scenarios", () => {
   test("care_insight_opened trigger executes matching scenario", async () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 1,
-      insightType: "hydration_risk",
-      severity: "high",
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",
@@ -585,8 +590,8 @@ describe("Care Insight Trigger Scenarios", () => {
 
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 2,
-      insightType: "hydration_risk",
-      severity: "high",
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",
@@ -598,6 +603,58 @@ describe("Care Insight Trigger Scenarios", () => {
 
     const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Hydration scenario triggered");
     expect(notifications.length).toBe(1);
+  });
+
+  test("care_insight trigger with device filter only fires for matching device", async () => {
+    const deviceScenarioID = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
+    ).run("Device-Specific Hydration Alert", "Only glass_001", "water", 0, 0).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
+    ).run(deviceScenarioID, "care_insight_opened", String(careRuleID), "glass_001", "http");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
+    ).run(deviceScenarioID, "notification", "Device-specific hydration alert", 0);
+
+    global.scenarios.executionCooldowns.clear();
+
+    // Matching device — should trigger
+    await global.scenarios.handleEvent("care_insight_opened", {
+      insightID: 10,
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
+      score: 0.8,
+      deviceID: "glass_001",
+      bridge: "http",
+      individualID: 0,
+      roomID: 0
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notificationsMatch = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Device-specific hydration alert");
+    expect(notificationsMatch.length).toBe(1);
+
+    global.scenarios.executionCooldowns.clear();
+
+    // Non-matching device — should NOT trigger
+    await global.scenarios.handleEvent("care_insight_opened", {
+      insightID: 11,
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
+      score: 0.8,
+      deviceID: "glass_999",
+      bridge: "http",
+      individualID: 0,
+      roomID: 0
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notificationsNoMatch = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Device-specific hydration alert");
+    expect(notificationsNoMatch.length).toBe(1); // Still only 1 from before
   });
 });
 

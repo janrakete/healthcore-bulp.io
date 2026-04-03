@@ -4,7 +4,7 @@
 
 import { apiDELETE, apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { spinnerShow, entriesNoDataMessage, bridgeTranslate } from "../services/helper.js";
+import { spinnerShow, entriesNoDataMessage } from "../services/helper.js";
 
 class CareInsightRules extends HTMLElement {
   connectedCallback() {
@@ -23,12 +23,6 @@ class CareInsightRules extends HTMLElement {
           </ion-refresher-content>
         </ion-refresher>
 
-        <ion-list inset="true">
-          <ion-item color="light">
-            <ion-note>${window.Translation.get("CareInsightRuleHint")}</ion-note>
-          </ion-item>
-        </ion-list>
-
         <div id="care-insight-rules-list"></div>
         <div id="care-insight-rules-list-no-data"></div>
 
@@ -46,12 +40,12 @@ class CareInsightRules extends HTMLElement {
     });
 
     this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => {
-      await this.dataLoad();
+      await this.loadData();
       event.target.complete();
     });
 
     this.actionSheetSetup();
-    this.dataLoad();
+    this.loadData();
   }
 
   actionSheetSetup() {
@@ -93,7 +87,7 @@ class CareInsightRules extends HTMLElement {
     });
   }
 
-  async dataLoad() {
+  async loadData() {
     const spinner = spinnerShow("#care-insight-rules-list");
 
     try {
@@ -113,18 +107,13 @@ class CareInsightRules extends HTMLElement {
           listElement.innerHTML = items.map(item => `
             <ion-card color="primary" data-id="${item.ruleID}">
               <ion-card-header>
-                <ion-card-title>${item.name}</ion-card-title>
-                <ion-card-subtitle>${item.insightType}</ion-card-subtitle>
+                <ion-card-title>${item.title}</ion-card-title>
+                <ion-card-subtitle>${window.Translation.get("SourceProperty")}: ${item.sourceProperty} (${item.aggregationType})</ion-card-subtitle>
               </ion-card-header>
               <ion-card-content>
                 <ion-row>
                   <ion-col>
                     ${Number(item.enabled) === 1 ? `<ion-text color="light"><ion-icon name="play-circle-sharp" color="success"></ion-icon> ${window.Translation.get("Enabled")}</ion-text>` : `<ion-text color="light"><ion-icon name="pause-circle-sharp" color="danger"></ion-icon> ${window.Translation.get("Disabled")}</ion-text>`}
-                  </ion-col>
-                </ion-row>
-                <ion-row>
-                  <ion-col>
-                    <ion-text color="light">${this.buildSummary(item)}</ion-text>
                   </ion-col>
                 </ion-row>
               </ion-card-content>
@@ -141,8 +130,8 @@ class CareInsightRules extends HTMLElement {
 
           this.querySelectorAll(".action-delete-option").forEach(button => {
             button.addEventListener("click", () => {
-              this.querySelector("#action-sheet").dataset.ID = button.getAttribute("data-id");
-              this.querySelector("#action-sheet").isOpen = true;
+              this.querySelector("#action-sheet").dataset.ID  = button.getAttribute("data-id");
+              this.querySelector("#action-sheet").isOpen      = true;
             });
           });
         }
@@ -157,25 +146,6 @@ class CareInsightRules extends HTMLElement {
     }
 
     spinner.remove();
-  }
-
-  buildSummary(item) {
-    const parts = [];
-
-    parts.push(window.Translation.get("SourceDevice") + ": " + (item.sourceDeviceID || window.Translation.get("AllDevices")));
-
-    if (item.sourceBridge) {
-      parts.push(bridgeTranslate(String(item.sourceBridge).toLowerCase()));
-    }
-
-    parts.push(window.Translation.get("SourceProperty") + ": " + item.sourceProperty);
-    parts.push(window.Translation.get("RuleTypeSumBelowThreshold"));
-    parts.push(window.Translation.get("WindowHours") + ": " + item.aggregationWindowHours);
-    parts.push(window.Translation.get("MinimumValue") + ": " + item.thresholdMin);
-    parts.push(window.Translation.get("MinimumReadings") + ": " + item.minReadings);
-    parts.push(window.Translation.get("Severity") + ": " + item.severity);
-
-    return parts.join(" | ");
   }
 }
 

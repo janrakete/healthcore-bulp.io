@@ -4,14 +4,14 @@
  * ==================================================================
  * 
  * Supported trigger types:
- *   - device_value:        A device property matches a condition (operator + value)
- *   - device_disconnected: A device loses its connection
- *   - device_connected:    A device reconnects
- *   - battery_low:         A device's battery drops below a threshold (value = threshold %)
- *   - care_insight_opened: A Care Insight is newly created
- *   - care_insight_updated:A Care Insight is updated
- *   - care_insight_resolved:A Care Insight is resolved or dismissed
- *   - time:                A specific time of day is reached (value = "HH:mm")
+ *   - device_value:          A device property matches a condition (operator + value)
+ *   - device_disconnected:   A device loses its connection
+ *   - device_connected:      A device reconnects
+ *   - battery_low:           A device's battery drops below a threshold (value = threshold %)
+ *   - care_insight_opened:   A Care Insight is newly created
+ *   - care_insight_updated:  A Care Insight is updated
+ *   - care_insight_resolved: A Care Insight is resolved or dismissed
+ *   - time:                  A specific time of day is reached (value = "HH:mm")
  *
  * Supported action types:
  *   - set_device_value:    Set a property on a device via MQTT
@@ -34,9 +34,18 @@ class ScenarioEngine {
    */
   async handleEvent(eventType, eventData) {
     try {
-      const scenarios = database.prepare(
-        "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND (ifnull(st.deviceID, '') = '' OR st.deviceID = ?) AND (ifnull(st.bridge, '') = '' OR st.bridge = ?) ORDER BY s.priority DESC"
-      ).all(eventType, eventData.deviceID || "", eventData.bridge || "");
+      let scenarios;
+
+      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(eventType)) {
+        scenarios = database.prepare(
+          "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? ORDER BY s.priority DESC"
+        ).all(eventType);
+      }
+      else {
+        scenarios = database.prepare(
+          "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? AND st.bridge = ? ORDER BY s.priority DESC"
+        ).all(eventType, eventData.deviceID || "", eventData.bridge || "");
+      }
 
       for (const scenario of scenarios) {
         await this.evaluateScenario(scenario, eventType, eventData);
@@ -78,11 +87,11 @@ class ScenarioEngine {
       const lastExecution = this.executionCooldowns.get(cooldownKey);
       const now           = Date.now();
 
-      if (lastExecution && (now - lastExecution) < appConfig.CONF_scenarioCooldownMilliseconds) {
+      if (lastExecution && (now - lastExecution) < appConfig.CONF_scenarioCooldownMilliseconds) { // scenario was executed recently for this device/property – skip to prevent rapid re-execution
         return;
       }
 
-      if (this.matchesScenarioContext(scenario, eventData) !== true) {
+      if (this.matchesScenarioContext(scenario, eventData) !== true) { // check person and room context
         return;
       }
 
@@ -171,6 +180,10 @@ class ScenarioEngine {
       return false;
     }
 
+    if (trigger.property && String(trigger.property) !== String(eventData.ruleID)) {
+      return false;
+    }
+
     if (trigger.deviceID && trigger.deviceID !== eventData.deviceID) {
       return false;
     }
@@ -179,19 +192,7 @@ class ScenarioEngine {
       return false;
     }
 
-    if (trigger.property && trigger.property !== eventData.insightType) {
-      return false;
-    }
-
-    if ((trigger.value === null) || (trigger.value === undefined) || (String(trigger.value).trim() === "")) {
-      return true;
-    }
-
-    if (trigger.valueType === "Numeric") {
-      return this.compareValues(eventData.score || 0, trigger.operator || "greater", trigger.value, "Numeric");
-    }
-
-    return this.compareValues(eventData.severity || "", trigger.operator || "equals", trigger.value, "String");
+    return true;
   }
 
   /**

@@ -79,6 +79,7 @@ function createTestDatabase() {
       text TEXT NOT NULL,
       description TEXT,
       scenarioID INTEGER DEFAULT 0,
+      insightID INTEGER DEFAULT 0,
       icon TEXT,
       dateTime TEXT DEFAULT (datetime('now'))
     );
@@ -161,7 +162,6 @@ function createTestDatabase() {
       ruleID INTEGER DEFAULT 0,
       type TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
-      severity TEXT NOT NULL DEFAULT 'medium',
       score NUMERIC DEFAULT 0,
       title TEXT NOT NULL,
       summary TEXT NOT NULL,
@@ -190,30 +190,16 @@ function createTestDatabase() {
       dateTimeObserved TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE care_feedback (
-      feedbackID INTEGER PRIMARY KEY AUTOINCREMENT,
-      insightID INTEGER NOT NULL,
-      userID INTEGER DEFAULT 0,
-      feedbackType TEXT NOT NULL,
-      comment TEXT,
-      dateTimeAdded TEXT DEFAULT (datetime('now'))
-    );
-
     CREATE TABLE care_insight_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
+      title TEXT,
       enabled BOOLEAN DEFAULT 1,
-      insightType TEXT NOT NULL,
-      sourceDeviceID TEXT,
-      sourceBridge TEXT,
       sourceProperty TEXT NOT NULL,
       aggregationType TEXT NOT NULL DEFAULT 'sum_below_threshold',
       aggregationWindowHours INTEGER DEFAULT 24,
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
       minReadings INTEGER DEFAULT 1,
-      severity TEXT NOT NULL DEFAULT 'medium',
-      title TEXT,
       recommendation TEXT,
       dateTimeAdded TEXT DEFAULT (datetime('now')),
       dateTimeUpdated TEXT DEFAULT (datetime('now'))

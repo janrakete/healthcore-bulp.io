@@ -331,6 +331,6 @@ That's it. If something breaks, you'll know immediately.
 ### Manual tests
 Some things simply can't be automated — real Bluetooth adapters, physical ZigBee devices, push notifications on actual phones, network resilience, and end-to-end flows through the entire system. That's where the manual test plan comes in.
 
-The full manual test plan is documented in [`tests/manual.md`](tests/manual.md).
+The full manual test plan is documented in [`tests/MANUAL.md`](tests/MANUAL.md).
 
 The rule is simple: **first run `npm test`** to make sure all automated tests pass, **then** work through the manual tests when you have the hardware connected.

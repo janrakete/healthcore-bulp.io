@@ -75,16 +75,12 @@ describe("POST /data/:table (Insert)", () => {
     const res = await request(app)
       .post("/data/care_insight_rules")
       .send({
-        name: "Hydration Risk",
-        insightType: "hydration_risk",
-        sourceDeviceID: "device_123",
-        sourceBridge: "http",
+        title: "Hydration Risk",
         sourceProperty: "drink_ml",
         aggregationType: "sum_below_threshold",
         aggregationWindowHours: 72,
         thresholdMin: 1500,
         minReadings: 3,
-        severity: "high"
       });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
