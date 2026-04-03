@@ -482,7 +482,15 @@ async function startBridgeAndServer() {
    * @param {Object} data - The data object. If data.deviceID is set, only that device's signal strength is read; otherwise all connected devices.
    */
   function mqttDevicesStrength(data) {
-    const devices = data.deviceID ? (bridgeStatus.devicesConnected.has(data.deviceID) ? [bridgeStatus.devicesConnected.get(data.deviceID)] : []) : [...bridgeStatus.devicesConnected.values()]; // if deviceID is provided, get that device; otherwise use all connected devices
+    // If deviceID is provided, get only that device; otherwise use all connected devices
+    let devices = [];
+    if (data.deviceID) {
+      if (bridgeStatus.devicesConnected.has(data.deviceID)) {
+        devices = [bridgeStatus.devicesConnected.get(data.deviceID)];
+      }
+    } else {
+      devices = [...bridgeStatus.devicesConnected.values()];
+    }
  
     if (devices.length === 0) {
       common.conLog("Bluetooth: No connected devices to read signal strength from", "red");
@@ -834,7 +842,7 @@ async function startBridgeAndServer() {
       device = undefined; // if no device ID or product name given, set device to undefined
     }
 
-    if (device) { // if device is in array of devices found via scan, try do connect
+    if (device) { // if device is in array of devices found via scan, try to connect
       common.conLog("Bluetooth: Device " + device.deviceID + " (" + device.productName + ") found - trying to connect", "yel");
       deviceConnectAndDiscover(device, device.deviceRaw, data.callID, data.addDeviceToServer); // connect to device and discover services and characteristics
     }
@@ -854,7 +862,7 @@ async function startBridgeAndServer() {
 
     const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
-    if (device) { // if device is in map of connected devices, try do disconnect
+    if (device) { // if device is in map of connected devices, try to disconnect
       device.deviceRaw.disconnect(function (error) { // disconnect device
         if (error) {    
           common.conLog("Bluetooth: Error while disconnecting device:", "red");
@@ -882,11 +890,9 @@ async function startBridgeAndServer() {
   function mqttDevicesDisconnect(data) {
     common.conLog("Bluetooth: Request for disconnecting " + data.deviceID, "yel");
 
-
-  
     const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
 
-    if (device) { // if device is in map of connected devices, try do disconnect
+    if (device) { // if device is in map of connected devices, try to disconnect
       device.deviceRaw.disconnect(function (error) { // disconnect device
         if (error) {    
           common.conLog("Bluetooth: Error while disconnecting device:", "red");

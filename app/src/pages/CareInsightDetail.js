@@ -61,7 +61,7 @@ class CareInsightDetail extends HTMLElement {
               <ion-card-title>${window.Translation.get("Signals")}</ion-card-title>
             </ion-card-header>
             <ion-card-content>
-              ${data.signals.length > 0 ? data.signals.map((signal) => `
+              ${(data.signals && data.signals.length > 0) ? data.signals.map((signal) => `
                 <p>
                   ${dateFormat(signal.dateTimeObserved, window.appConfig.CONF_dateLocale)}<br />
                   ${signal.property}: ${signal.value}
