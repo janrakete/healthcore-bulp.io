@@ -108,7 +108,7 @@ class CareInsightRules extends HTMLElement {
             <ion-card color="primary" data-id="${item.ruleID}">
               <ion-card-header>
                 <ion-card-title>${item.title}</ion-card-title>
-                <ion-card-subtitle>${item.insightType}</ion-card-subtitle>
+                <ion-card-subtitle>${item.aggregationType} — ${item.sourceProperty}</ion-card-subtitle>
               </ion-card-header>
               <ion-card-content>
                 <ion-row>

@@ -76,9 +76,6 @@ describe("POST /data/:table (Insert)", () => {
       .post("/data/care_insight_rules")
       .send({
         name: "Hydration Risk",
-        insightType: "hydration_risk",
-        sourceDeviceID: "device_123",
-        sourceBridge: "http",
         sourceProperty: "drink_ml",
         aggregationType: "sum_below_threshold",
         aggregationWindowHours: 72,
