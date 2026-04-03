@@ -9,7 +9,7 @@ const translations = require("../../i18n.json");
 
 class CareInsightsEngine {
   /**
-   * Creates a new Care Insights engine instance.
+   * Creates a new Care Insights engine instance
    */
   constructor() {
   }
@@ -39,7 +39,7 @@ class CareInsightsEngine {
    */
   handleDeviceValues(data) {
     try {
-      if (appConfig.CONF_careInsightsActive !== true || !data || !data.values) { // Skip all processing when Care Insights are disabled or payload is incomplete.
+      if (appConfig.CONF_careInsightsActive !== true || !data || !data.values) { // Skip all processing when Care Insights are disabled or payload is incomplete
         return;
       }
 
@@ -59,45 +59,43 @@ class CareInsightsEngine {
   handleDeviceStatus(data) {
     try {
      
-      if (appConfig.CONF_careInsightsActive !== true || !data || !data.deviceID || !data.bridge || !data.status) { // Device status insights require device identity and a status value.
+      if (appConfig.CONF_careInsightsActive !== true || !data || !data.deviceID || !data.bridge || !data.status) { // Device status insights require device identity and a status value
         return;
       }
 
-      if (data.status === "offline") {
+      if (data.status === "offline") { // "offline" opens or updates a connectivity risk insight
         const device = this.getDevice(data.deviceID, data.bridge);
 
-        // "offline" opens or updates a connectivity risk insight.
+        
         const insight = this.upsertInsight({
-          ruleID: 0,
-          type: "device_connectivity_risk",
-          score: 0.9,
-          title: this.translate("CareInsightTitleDeviceOffline"),
-          summary: this.buildConnectivitySummary(device),
-          explanation: this.translate("CareInsightExplanationDeviceOffline"),
+          ruleID:         0,
+          type:           "device_connectivity_risk",
+          score:          0.9,
+          title:          this.translate("CareInsightTitleDeviceOffline"),
+          summary:        this.buildConnectivitySummary(device),
+          explanation:    this.translate("CareInsightExplanationDeviceOffline"),
           recommendation: this.translate("CareInsightRecommendationDeviceOffline"),
-          deviceID: data.deviceID,
-          bridge: data.bridge,
-          property: "status",
-          individualID: Number(device?.individualID) || 0,
-          roomID: Number(device?.roomID) || 0,
-          source: "careinsights"
+          deviceID:       data.deviceID,
+          bridge:         data.bridge,
+          property:       "status",
+          individualID:   Number(device?.individualID) || 0,
+          roomID:         Number(device?.roomID) || 0,
+          source:         "careinsights"
         });
 
         this.insertSignal(insight.insightID, {
-          deviceID: data.deviceID,
-          bridge: data.bridge,
-          property: "status",
-          value: "offline",
+          deviceID:       data.deviceID,
+          bridge:         data.bridge,
+          property:       "status",
+          value:          "offline",
           valueAsNumeric: 0,
-          weight: 0.9
+          weight:     0.9
         });
         return;
       }
 
-      if (data.status === "online") {
-        // "online" resolves open connectivity risks for the same device.
-        this.resolveOpenInsights({ type: "device_connectivity_risk", deviceID: data.deviceID, bridge: data.bridge });
-      }
+      if (data.status === "online") { // "online" resolves open connectivity risks for the same device
+        this.resolveOpenInsights({ type: "device_connectivity_risk", deviceID: data.deviceID, bridge: data.bridge });       }
     }
     catch (error) {
       common.conLog("Care Insights: Error while processing device status: " + error.message, "red");
@@ -112,8 +110,7 @@ class CareInsightsEngine {
    * @returns {Object|null}
    */
   getDeviationScore(deviceID, bridge, property) {
-    // Load recent history in descending order; newest reading is at index 0.
-    const history = database.prepare(
+    const history = database.prepare( // Load recent history in descending order; newest reading is at index 0
       "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
     ).all(deviceID, bridge, property, appConfig.CONF_careInsightsHistorySize);
 
@@ -137,12 +134,10 @@ class CareInsightsEngine {
 
     let normalizedDeviation;
 
-    if (mad > 0) {
-      // Robust variant: median absolute deviation scaled to approximately standard deviation.
-      normalizedDeviation = Math.abs(latest - median) / (mad * 1.4826);
+    if (mad > 0) { // Robust variant: median absolute deviation scaled to approximately standard deviation
+      normalizedDeviation = Math.abs(latest - median) / (mad * 1.4826); 
     }
-    else {
-      // Fallback for perfectly flat baseline where MAD is zero.
+    else { // Fallback for perfectly flat baseline where MAD is zero
       const mean      = baseline.reduce((sum, entry) => sum + entry, 0) / baseline.length;
       const variance  = baseline.reduce((sum, entry) => sum + Math.pow(entry - mean, 2), 0) / baseline.length;
       const stdDev    = Math.sqrt(variance);
@@ -156,10 +151,10 @@ class CareInsightsEngine {
     }
 
     return {
-      score: Math.max(0, Math.min(1, normalizedDeviation / 6)),
-      latest: latest,
-      median: median,
-      normalizedDeviation: normalizedDeviation
+      score:                Math.max(0, Math.min(1, normalizedDeviation / 6)),
+      latest:               latest,
+      median:               median,
+      normalizedDeviation:  normalizedDeviation
     };
   }
 
@@ -193,33 +188,33 @@ class CareInsightsEngine {
 
       if (this.ruleThresholdReached(rule, aggregation) !== true) {
         this.resolveOpenInsights({ ruleID: rule.ruleID, deviceID: context.deviceID, bridge: context.bridge, property: property });
-        return;
       }
+      else {
+        const insight = this.upsertInsight({
+          ruleID:           rule.ruleID,
+          type:             rule.aggregationType,
+          score:            this.ruleScore(rule, aggregation),
+          title:            this.buildRuleTitle(rule, context.device),
+          summary:          this.buildRuleSummary(rule, aggregation, context),
+          explanation:      this.buildRuleExplanation(rule, aggregation),
+          recommendation:   rule.recommendation || this.translate("CareInsightRecommendationDefault"),
+          deviceID:         context.deviceID,
+          bridge:           context.bridge,
+          property:         property,
+          individualID:     context.individualID,
+          roomID:           context.roomID,
+          source:           "careinsights_rule"
+        });
 
-      const insight = this.upsertInsight({
-        ruleID: rule.ruleID,
-        type: rule.aggregationType,
-        score: this.ruleScore(rule, aggregation),
-        title: this.buildRuleTitle(rule, context.device),
-        summary: this.buildRuleSummary(rule, aggregation, context),
-        explanation: this.buildRuleExplanation(rule, aggregation),
-        recommendation: rule.recommendation || this.translate("CareInsightRecommendationDefault"),
-        deviceID: context.deviceID,
-        bridge: context.bridge,
-        property: property,
-        individualID: context.individualID,
-        roomID: context.roomID,
-        source: "careinsights_rule"
-      });
-
-      this.insertSignal(insight.insightID, {
-        deviceID: context.deviceID,
-        bridge: context.bridge,
-        property: property,
-        value: String(valueData.value ?? valueData.valueAsNumeric ?? ""),
-        valueAsNumeric: valueData.valueAsNumeric ?? null,
-        weight: aggregation.total
-      });
+        this.insertSignal(insight.insightID, {
+          deviceID:       context.deviceID,
+          bridge:         context.bridge,
+          property:       property,
+          value:          String(valueData.value ?? valueData.valueAsNumeric ?? ""),
+          valueAsNumeric: valueData.valueAsNumeric ?? null,
+          weight:         aggregation.total
+        });
+      }
     });
   }
 
@@ -249,28 +244,28 @@ class CareInsightsEngine {
     }
 
     const insight = this.upsertInsight({
-      ruleID: rule.ruleID,
-      type: "anomaly_detection",
-      score: deviation.score,
-      title: this.buildRuleTitle(rule, context.device),
-      summary: this.buildNumericSummary(context.device, property, valueData.value),
-      explanation: this.buildNumericExplanation(property, valueData.value, deviation),
-      recommendation: rule.recommendation || this.translate("CareInsightRecommendationAnomaly"),
-      deviceID: data.deviceID,
-      bridge: data.bridge,
-      property: property,
-      individualID: context.individualID,
-      roomID: context.roomID,
-      source: "careinsights_rule"
+      ruleID:           rule.ruleID,
+      type:             "anomaly_detection",
+      score:            deviation.score,
+      title:            this.buildRuleTitle(rule, context.device),
+      summary:          this.buildNumericSummary(context.device, property, valueData.value),
+      explanation:      this.buildNumericExplanation(property, valueData.value, deviation),
+      recommendation:   rule.recommendation || this.translate("CareInsightRecommendationAnomaly"),
+      deviceID:         data.deviceID,
+      bridge:           data.bridge,
+      property:         property,
+      individualID:     context.individualID,
+      roomID:           context.roomID,
+      source:           "careinsights_rule"
     });
 
     this.insertSignal(insight.insightID, {
-      deviceID: data.deviceID,
-      bridge: data.bridge,
-      property: property,
-      value: String(valueData.value),
+      deviceID:       data.deviceID,
+      bridge:         data.bridge,
+      property:       property,
+      value:          String(valueData.value),
       valueAsNumeric: valueData.valueAsNumeric,
-      weight: deviation.score
+      weight:         deviation.score
     });
   }
 
@@ -280,9 +275,7 @@ class CareInsightsEngine {
    * @returns {Array}
    */
   getMatchingRules(property) {
-    return database.prepare(
-      "SELECT * FROM care_insight_rules WHERE enabled = 1 AND sourceProperty = ? ORDER BY ruleID ASC"
-    ).all(property);
+    return database.prepare("SELECT * FROM care_insight_rules WHERE enabled = 1 AND sourceProperty = ? ORDER BY ruleID ASC").all(property);
   }
 
   /**
@@ -311,14 +304,14 @@ class CareInsightsEngine {
   }
 
   /**
-   * Validates whether a rule context contains all required values.
+   * Validates whether a rule context contains all required values
    * @param {Object} rule
    * @param {Object} context
    * @returns {boolean}
    */
   isValidRuleContext(rule, context) {
-    // A rule can only be evaluated when it has a property and a concrete device target.
-    if (!rule) {
+    
+    if (!rule) { // A rule can only be evaluated when it has a property and a concrete device target
       return false;
     }
 
@@ -353,8 +346,8 @@ class CareInsightsEngine {
     }
 
     return {
-      readings: Number(result.readings) || 0,
-      total: Number(result.total) || 0,
+      readings:               Number(result.readings) || 0,
+      total:                  Number(result.total) || 0,
       aggregationWindowHours: aggregationWindowHours
     };
   }
@@ -370,6 +363,10 @@ class CareInsightsEngine {
       return aggregation.total < Number(rule.thresholdMin || 0);
     }
 
+    if (rule.aggregationType === "sum_above_threshold") {
+      return aggregation.total > Number(rule.thresholdMax || 0);
+    }
+
     return false;
   }
 
@@ -380,16 +377,23 @@ class CareInsightsEngine {
    * @returns {number}
    */
   ruleScore(rule, aggregation) {
-    if (rule.aggregationType !== "sum_below_threshold") {
-      return 0;
+    if (rule.aggregationType === "sum_below_threshold") {
+      const threshold = Number(rule.thresholdMin || 0);
+      if (threshold <= 0) {
+        return 0;
+      }
+      return Math.max(0, Math.min(1, (threshold - aggregation.total) / threshold));
     }
 
-    const threshold = Number(rule.thresholdMin || 0);
-    if (threshold <= 0) {
-      return 0;
+    if (rule.aggregationType === "sum_above_threshold") {
+      const threshold = Number(rule.thresholdMax || 0);
+      if (threshold <= 0) {
+        return 0;
+      }
+      return Math.max(0, Math.min(1, (aggregation.total - threshold) / threshold));
     }
 
-    return Math.max(0, Math.min(1, (threshold - aggregation.total) / threshold));
+    return 0;
   }
 
   /**
@@ -398,26 +402,29 @@ class CareInsightsEngine {
    * @returns {void}
    */
   resolveOpenInsights(filters) {
-    // Start with open/acknowledged entries and narrow down via provided filters.
-    const conditions = ["status IN ('open', 'acknowledged')"];
+    const conditions = ["status IN ('open', 'acknowledged')"]; // Start with open/acknowledged entries and narrow down via provided filters
     const params = [];
 
     if (filters.ruleID !== undefined) {
       conditions.push("ruleID = ?");
       params.push(filters.ruleID);
     }
+
     if (filters.type !== undefined) {
       conditions.push("type = ?");
       params.push(filters.type);
     }
+
     if (filters.deviceID !== undefined) {
       conditions.push("deviceID = ?");
       params.push(filters.deviceID);
     }
+
     if (filters.bridge !== undefined) {
       conditions.push("bridge = ?");
       params.push(filters.bridge);
     }
+
     if (filters.property !== undefined) {
       conditions.push("property = ?");
       params.push(filters.property);
@@ -454,17 +461,16 @@ class CareInsightsEngine {
     ).get(payload.ruleID || 0, payload.type, payload.deviceID || "", payload.bridge || "", payload.property || "");
 
     let insightID;
-    let notify = false;
-    let eventType = "";
+    let eventType   = "";
 
     if (existing) {
-      const hasScoreChanged = Number(existing.score) !== Number(payload.score);
-      const hasTitleChanged = existing.title !== payload.title;
-      const hasSummaryChanged = existing.summary !== payload.summary;
-      const hasExplanationChanged = existing.explanation !== payload.explanation;
-      const hasRecommendationChanged = existing.recommendation !== payload.recommendation;
-      const hasIndividualChanged = Number(existing.individualID) !== Number(payload.individualID || 0);
-      const hasRoomChanged = Number(existing.roomID) !== Number(payload.roomID || 0);
+      const hasScoreChanged           = Number(existing.score) !== Number(payload.score);
+      const hasTitleChanged           = existing.title !== payload.title;
+      const hasSummaryChanged         = existing.summary !== payload.summary;
+      const hasExplanationChanged     = existing.explanation !== payload.explanation;
+      const hasRecommendationChanged  = existing.recommendation !== payload.recommendation;
+      const hasIndividualChanged      = Number(existing.individualID) !== Number(payload.individualID || 0);
+      const hasRoomChanged            = Number(existing.roomID) !== Number(payload.roomID || 0);
 
       const hasChanged = hasScoreChanged || hasTitleChanged || hasSummaryChanged || hasExplanationChanged || hasRecommendationChanged || hasIndividualChanged || hasRoomChanged;
 
@@ -473,7 +479,6 @@ class CareInsightsEngine {
       ).run(payload.ruleID || 0, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.individualID || 0, payload.roomID || 0, payload.source, existing.insightID);
 
       insightID = existing.insightID;
-      notify    = false;
       eventType = hasChanged ? "care_insight_updated" : "";
     }
     else {
@@ -482,20 +487,10 @@ class CareInsightsEngine {
       ).run(payload.ruleID || 0, payload.type, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.deviceID || null, payload.bridge || null, payload.property || null, payload.individualID || 0, payload.roomID || 0, payload.source || "careinsights");
 
       insightID = result.lastInsertRowid;
-      notify    = true;
       eventType = "care_insight_opened";
     }
 
     const insight = database.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insightID);
-    if (notify) {
-      this.createNotification(insight);
-      mqttClient.publish("server/care-insights", JSON.stringify({
-        status: "ok",
-        insightID: insight.insightID,
-        type: insight.type,
-        title: insight.title
-      }));
-    }
 
     if (eventType !== "") {
       CareInsightsEngine.triggerScenarioEvent(eventType, insight);
@@ -510,19 +505,19 @@ class CareInsightsEngine {
    * @param {Object} signal
    */
   insertSignal(insightID, signal) {
-    const signalDeviceID = signal.deviceID || null;
-    const signalBridge = signal.bridge || null;
-    const signalProperty = signal.property || null;
-    const signalValue = signal.value || null;
-    const signalValueAsNumeric = signal.valueAsNumeric ?? null;
-    const signalWeight = signal.weight ?? 1;
+    const signalDeviceID        = signal.deviceID || null;
+    const signalBridge          = signal.bridge || null;
+    const signalProperty        = signal.property || null;
+    const signalValue           = signal.value || null;
+    const signalValueAsNumeric  = signal.valueAsNumeric ?? null;
+    const signalWeight          = signal.weight ?? 1;
 
     database.prepare(
       "INSERT INTO care_insight_signals (insightID, deviceID, bridge, property, value, valueAsNumeric, weight, dateTimeObserved) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
     ).run(insightID, signalDeviceID, signalBridge, signalProperty, signalValue, signalValueAsNumeric, signalWeight);
 
-    // Keep only the newest N signals per insight to prevent unbounded growth.
-    const maxSignals = appConfig.CONF_careInsightsMaxSignalsPerInsight || 50;
+    
+    const maxSignals = appConfig.CONF_careInsightsMaxSignalsPerInsight // Keep only the newest N signals per insight to prevent unbounded growth
     database.prepare(
       "DELETE FROM care_insight_signals WHERE insightID = ? AND signalID NOT IN (SELECT signalID FROM care_insight_signals WHERE insightID = ? ORDER BY signalID DESC LIMIT ?)"
     ).run(insightID, insightID, maxSignals);
@@ -565,8 +560,9 @@ class CareInsightsEngine {
     if ((rule.title !== undefined) && (String(rule.title).trim() !== "")) {
       return String(rule.title).trim();
     }
-
-    return this.translate("CareInsightTitleFallback", this.getDeviceName(device));
+    else {
+      return this.translate("CareInsightTitleFallback", this.getDeviceName(device));
+    }
   }
 
   /**
@@ -582,8 +578,12 @@ class CareInsightsEngine {
     if (rule.aggregationType === "sum_below_threshold") {
       return this.translate("CareInsightSummarySumBelow", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
     }
-
-    return this.translate("CareInsightSummaryRuleMatched", label);
+    else if (rule.aggregationType === "sum_above_threshold") {
+      return this.translate("CareInsightSummarySumAbove", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
+    }
+    else {
+      return this.translate("CareInsightSummaryRuleMatched", label);
+    }
   }
 
   /**
@@ -596,8 +596,12 @@ class CareInsightsEngine {
     if (rule.aggregationType === "sum_below_threshold") {
       return this.translate("CareInsightExplanationSumBelow", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
-
-    return this.translate("CareInsightExplanationRuleActive");
+    else if (rule.aggregationType === "sum_above_threshold") {
+      return this.translate("CareInsightExplanationSumAbove", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+    }
+    else {
+      return this.translate("CareInsightExplanationRuleActive");
+    }
   }
 
   /**
@@ -613,8 +617,9 @@ class CareInsightsEngine {
         return individual.firstname + " " + individual.lastname;
       }
     }
-
-    return this.getDeviceName(context.device);
+    else {
+      return this.getDeviceName(context.device);
+    }
   }
 
   /**
@@ -627,8 +632,9 @@ class CareInsightsEngine {
     if ((global.scenarios === undefined) || (insight === undefined) || (insight === null)) {
       return;
     }
-
-    global.scenarios.handleEvent(eventType, CareInsightsEngine.buildScenarioEventData(insight));
+    else {
+      global.scenarios.handleEvent(eventType, CareInsightsEngine.buildScenarioEventData(insight));
+    }
   }
 
   /**
@@ -637,22 +643,22 @@ class CareInsightsEngine {
    * @returns {Object}
    */
   static buildScenarioEventData(insight) {
-    const ruleID = Number(insight.ruleID) || 0;
-    const score = Number(insight.score) || 0;
-    const individualID = Number(insight.individualID) || 0;
-    const roomID = Number(insight.roomID) || 0;
+    const ruleID        = Number(insight.ruleID) || 0;
+    const score         = Number(insight.score) || 0;
+    const individualID  = Number(insight.individualID) || 0;
+    const roomID        = Number(insight.roomID) || 0;
 
     return {
-      insightID: insight.insightID,
-      ruleID: ruleID,
-      insightType: insight.type,
-      score: score,
-      status: insight.status,
-      deviceID: insight.deviceID || "",
-      bridge: insight.bridge || "",
-      property: insight.property || "",
+      insightID:    insight.insightID,
+      ruleID:       ruleID,
+      insightType:  insight.type,
+      score:        score,
+      status:       insight.status,
+      deviceID:     insight.deviceID || "",
+      bridge:       insight.bridge || "",
+      property:     insight.property || "",
       individualID: individualID,
-      roomID: roomID
+      roomID:       roomID
     };
   }
 

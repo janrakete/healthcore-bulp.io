@@ -78,6 +78,22 @@ describe("POST /data/:table (Insert)", () => {
     expect(typeof res.body.ID).toBe("number");
   });
 
+  test("Insert sum_above_threshold care_insight_rule → 200 with ID", async () => {
+    const res = await request(app)
+      .post("/data/care_insight_rules")
+      .send({
+        title: "Activity too high",
+        sourceProperty: "steps",
+        aggregationType: "sum_above_threshold",
+        aggregationWindowHours: 24,
+        thresholdMax: 500,
+        minReadings: 3,
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(typeof res.body.ID).toBe("number");
+  });
+
   test("Insert with unknown column → 400", async () => {
     const res = await request(app)
       .post("/data/sos")
