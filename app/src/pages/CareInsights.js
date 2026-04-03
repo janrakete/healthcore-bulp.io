@@ -44,18 +44,18 @@ class CareInsights extends HTMLElement {
 
     try {
       const stats = await apiGET("/care-insights/stats");
-      if (stats.status === "ok") {
+      if (String(stats.status) === "ok") {
         this.renderStats(stats.data);
       }
 
       const data = await apiGET("/care-insights");
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const listElement = this.querySelector("#care-insights-list");
         const items = data.results;
 
-        if (!items || items.length === 0) {
+        if (!items || Number(items.length) === 0) {
           listElement.innerHTML = "";
           entriesNoDataMessage("#care-insights-list-no-data", false);
         }

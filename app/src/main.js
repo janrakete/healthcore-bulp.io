@@ -120,7 +120,7 @@ if (window.isCapacitor === true) {
   console.log("Push: permission status is:");
   console.log(permissionRequest);
 
-  if (permissionRequest.receive === "granted") {
+  if (String(permissionRequest.receive) === "granted") {
     console.log("Push: permission granted");
     await PushNotifications.register();
     console.log("Push: trying to subscribe to topic '" + window.appConfig.CONF_pushTopic + "' ...");

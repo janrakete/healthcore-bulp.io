@@ -71,9 +71,9 @@ class CareInsightRules extends HTMLElement {
       actionSheet.isOpen = false;
       const ID = actionSheet.dataset.ID;
 
-      if (event.detail.data?.action === "delete") {
+      if (String(event.detail.data?.action) === "delete") {
         const data = await apiDELETE("/data/care_insight_rules?ruleID=" + ID);
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
           const itemDelete = this.querySelector("#care-insight-rules-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
@@ -94,11 +94,11 @@ class CareInsightRules extends HTMLElement {
       const data = await apiGET("/data/care_insight_rules?orderBy=ruleID,DESC");
       console.log("API call - Output:", data);
 
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const listElement = this.querySelector("#care-insight-rules-list");
         const items = data.results;
 
-        if (!items || items.length === 0) {
+        if (!items || Number(items.length) === 0) {
           listElement.innerHTML = "";
           entriesNoDataMessage("#care-insight-rules-list-no-data");
         }

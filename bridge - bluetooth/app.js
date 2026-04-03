@@ -348,7 +348,7 @@ async function startBridgeAndServer() {
       common.conLog("Bluetooth: Maintenance loop running ...", "yel", false);
 
       // Phase 1: Watchdog (pure in-memory check)
-      if (bridgeStatus.devicesConnected.size > 0) {
+      if (Number(bridgeStatus.devicesConnected.size) > 0) {
         const now = Date.now();
 
         for (const device of bridgeStatus.devicesConnected.values()) {

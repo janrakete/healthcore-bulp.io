@@ -44,57 +44,34 @@ function handlePendingMqttResponse(callID, response) {
 }
 
 /**
- * Returns the assignment for a device including optional person and room context.
- * @param {string} deviceID
- * @param {string} bridge
- * @returns {Object|null}
+ * Enriches a device object with individual and room details based on its individualID and roomID.
+ * @param {Object} device - The device object (must have individualID and roomID fields).
  */
-function getDeviceAssignment(deviceID, bridge) {
-    const statement = "SELECT device_assignments.assignmentID, device_assignments.deviceID, device_assignments.bridge, device_assignments.individualID, device_assignments.roomID, individuals.firstname, individuals.lastname, rooms.name AS roomName FROM device_assignments LEFT JOIN individuals ON individuals.individualID = device_assignments.individualID LEFT JOIN rooms ON rooms.roomID = device_assignments.roomID WHERE device_assignments.deviceID = ? AND device_assignments.bridge = ? LIMIT 1";
-
-    common.conLog("Execute statement: " + statement, "std", false);
-
-    const result = database.prepare(statement).get(deviceID, bridge);
-    if (result === undefined) {
-        return null;
-    }
-
-    const assignment = {
-        assignmentID:   result.assignmentID,
-        deviceID:       result.deviceID,
-        bridge:         result.bridge,
-        individualID:   result.individualID,
-        roomID:         result.roomID,
-    };
-
-    if ((result.individualID !== null) && (result.individualID !== undefined) && (Number(result.individualID) > 0)) {
-        assignment.individual = {
-            individualID:   result.individualID,
-            firstname:      result.firstname || "",
-            lastname:       result.lastname || "",
-        };
-    }
-
-    if ((result.roomID !== null) && (result.roomID !== undefined) && (Number(result.roomID) > 0)) {
-        assignment.room = {
-            roomID: result.roomID,
-            name: result.roomName || "",
-        };
-    }
-
-    return assignment;
-}
-
-/**
- * Adds assignment data to a device object.
- * @param {Object} device
- */
-function addAssignmentToDevice(device) {
+function enrichDeviceWithAssignment(device) {
     if ((device === undefined) || (device === null)) {
         return;
     }
 
-    device.assignment = getDeviceAssignment(device.deviceID, device.bridge);
+    if (Number(device.individualID) > 0) {
+        const individual = getIndividual(device.individualID);
+        if (individual) {
+            device.individual = {
+                individualID:   individual.individualID,
+                firstname:      individual.firstname || "",
+                lastname:       individual.lastname || "",
+            };
+        }
+    }
+
+    if (Number(device.roomID) > 0) {
+        const room = getRoom(device.roomID);
+        if (room) {
+            device.room = {
+                roomID: room.roomID,
+                name:   room.name || "",
+            };
+        }
+    }
 }
 
 /**
@@ -125,67 +102,6 @@ function getRoom(roomID) {
     return database.prepare("SELECT * FROM rooms WHERE roomID = ? LIMIT 1").get(roomID);
 }
 
-/**
- * Validates and normalizes an assignment payload.
- * @param {string} deviceID
- * @param {string} bridge
- * @param {Object} payload
- * @returns {Object}
- */
-function buildAssignmentPayload(deviceID, bridge, payload) {
-    const data = {};
-
-    const assignment = {
-        deviceID:       deviceID,
-        bridge:         bridge,
-        individualID:   0,
-        roomID:         0,
-    };
-
-    if ((payload === undefined) || (Object.keys(payload).length === 0)) {
-        data.status = "error";
-        data.error  = "No payload provided";
-        return data;
-    }
-
-    if ((payload.individualID !== undefined) && (Number(payload.individualID) > 0)) {
-        const individual = getIndividual(Number(payload.individualID));
-
-        if (individual === undefined) {
-            data.status = "error";
-            data.error  = "Individual not found";
-            return data;
-        }
-
-        assignment.individualID = individual.individualID;
-
-        if ((payload.roomID === undefined || Number(payload.roomID) <= 0) && Number(individual.roomID) > 0) {
-            assignment.roomID = Number(individual.roomID);
-        }
-    }
-
-    if ((payload.roomID !== undefined) && (Number(payload.roomID) > 0)) {
-        const room = getRoom(Number(payload.roomID));
-
-        if (room === undefined) {
-            data.status = "error";
-            data.error  = "Room not found";
-            return data;
-        }
-
-        assignment.roomID = room.roomID;
-    }
-
-    if ((assignment.individualID <= 0) && (assignment.roomID <= 0)) {
-        data.status = "error";
-        data.error  = "No individualID or roomID provided";
-        return data;
-    }
-
-    data.status     = "ok";
-    data.assignment = assignment;
-    return data;
-}
 
 /**
  * @swagger
@@ -214,12 +130,56 @@ function buildAssignmentPayload(deviceID, bridge, payload) {
  *                        deviceID:
  *                          type: string
  *                          example: "12345"
- *                        productName:
- *                          type: string
- *                          example: "Product XYZ"
  *                        bridge:
  *                          type: string
  *                          example: "bluetooth"
+ *                        name:
+ *                          type: string
+ *                          example: "Living Room Sensor"
+ *                        productName:
+ *                          type: string
+ *                          example: "Product XYZ"
+ *                        vendorName:
+ *                          type: string
+ *                          example: "Vendor ABC"
+ *                        description:
+ *                          type: string
+ *                          example: "Temperature sensor in the living room"
+ *                        powerType:
+ *                          type: string
+ *                          example: "mains"
+ *                        properties:
+ *                          type: object
+ *                          description: Parsed JSON object with device-specific properties
+ *                        individualID:
+ *                          type: integer
+ *                          example: 5
+ *                        roomID:
+ *                          type: integer
+ *                          example: 3
+ *                        individual:
+ *                          type: object
+ *                          description: Enriched individual data (if individualID is set)
+ *                          properties:
+ *                            individualID:
+ *                              type: integer
+ *                              example: 5
+ *                            firstname:
+ *                              type: string
+ *                              example: "Max"
+ *                            lastname:
+ *                              type: string
+ *                              example: "Mustermann"
+ *                        room:
+ *                          type: object
+ *                          description: Enriched room data (if roomID is set)
+ *                          properties:
+ *                            roomID:
+ *                              type: integer
+ *                              example: 3
+ *                            name:
+ *                              type: string
+ *                              example: "Living Room"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -256,7 +216,7 @@ router.get("/all", async function (request, response) {
                 }
             }
 
-            addAssignmentToDevice(device);
+            enrichDeviceWithAssignment(device);
         });
 
         data.results = results;
@@ -907,226 +867,6 @@ router.post("/:bridge/:deviceID", async function (request, response) {
     }
 });
 
-/**
- * @swagger
- *  /devices/{bridge}/{deviceID}/assignment:
- *    get:
- *      summary: Get device assignment
- *      description: This endpoint retrieves the person and room assignment of a device.
- *      tags:
- *        - Devices
- */
-router.get("/:bridge/:deviceID/assignment", async function (request, response) {
-    const payload        = {};
-    payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
-
-    let data             = {};
-
-    if (payload.bridge !== undefined) {
-        const bridge = payload.bridge.trim();
-
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
-            const device = getDevice(payload.deviceID.trim(), bridge);
-
-            if (device !== undefined) {
-                data.status     = "ok";
-                data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
-            }
-            else {
-                data.status = "error";
-                data.error  = "Device not found";
-            }
-        }
-        else {
-            data.status = "error";
-            data.error  = "No ID provided";
-        }
-    }
-    else {
-        data.status = "error";
-        data.error  = "No bridge provided";
-    }
-
-    return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device assignment");
-});
-
-/**
- * @swagger
- *  /devices/{bridge}/{deviceID}/assignment:
- *    post:
- *      summary: Create device assignment
- *      description: This endpoint creates a person and room assignment for a device.
- *      tags:
- *        - Devices
- */
-router.post("/:bridge/:deviceID/assignment", async function (request, response) {
-    const payload        = {};
-    payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
-    payload.body         = request.body;
-
-    let data             = {};
-
-    if (payload.bridge !== undefined) {
-        const bridge = payload.bridge.trim();
-
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
-            const device = getDevice(payload.deviceID.trim(), bridge);
-
-            if (device !== undefined) {
-                const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
-
-                if (existingAssignment === null) {
-                    const assignmentData = buildAssignmentPayload(payload.deviceID.trim(), bridge, payload.body);
-
-                    if (assignmentData.status === "ok") {
-                        database.prepare("INSERT INTO device_assignments (deviceID, bridge, individualID, roomID, dateTimeAdded) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(assignmentData.assignment.deviceID, assignmentData.assignment.bridge, assignmentData.assignment.individualID, assignmentData.assignment.roomID);
-
-                        data.status     = "ok";
-                        data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
-                    }
-                    else {
-                        data = assignmentData;
-                    }
-                }
-                else {
-                    data.status = "error";
-                    data.error  = "Assignment already exists";
-                }
-            }
-            else {
-                data.status = "error";
-                data.error  = "Device not found";
-            }
-        }
-        else {
-            data.status = "error";
-            data.error  = "No ID provided";
-        }
-    }
-    else {
-        data.status = "error";
-        data.error  = "No bridge provided";
-    }
-
-    return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device assignment");
-});
-
-/**
- * @swagger
- *  /devices/{bridge}/{deviceID}/assignment:
- *    patch:
- *      summary: Update device assignment
- *      description: This endpoint updates the person and room assignment of a device.
- *      tags:
- *        - Devices
- */
-router.patch("/:bridge/:deviceID/assignment", async function (request, response) {
-    const payload        = {};
-    payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
-    payload.body         = request.body;
-
-    let data             = {};
-
-    if (payload.bridge !== undefined) {
-        const bridge = payload.bridge.trim();
-
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
-            const device = getDevice(payload.deviceID.trim(), bridge);
-
-            if (device !== undefined) {
-                const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
-
-                if (existingAssignment !== null) {
-                    const assignmentData = buildAssignmentPayload(payload.deviceID.trim(), bridge, payload.body);
-
-                    if (assignmentData.status === "ok") {
-                        database.prepare("UPDATE device_assignments SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?").run(assignmentData.assignment.individualID, assignmentData.assignment.roomID, payload.deviceID.trim(), bridge);
-
-                        data.status     = "ok";
-                        data.assignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
-                    }
-                    else {
-                        data = assignmentData;
-                    }
-                }
-                else {
-                    data.status = "error";
-                    data.error  = "Assignment not found";
-                }
-            }
-            else {
-                data.status = "error";
-                data.error  = "Device not found";
-            }
-        }
-        else {
-            data.status = "error";
-            data.error  = "No ID provided";
-        }
-    }
-    else {
-        data.status = "error";
-        data.error  = "No bridge provided";
-    }
-
-    return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device assignment");
-});
-
-/**
- * @swagger
- *  /devices/{bridge}/{deviceID}/assignment:
- *    delete:
- *      summary: Delete device assignment
- *      description: This endpoint removes the person and room assignment of a device.
- *      tags:
- *        - Devices
- */
-router.delete("/:bridge/:deviceID/assignment", async function (request, response) {
-    const payload        = {};
-    payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
-
-    let data             = {};
-
-    if (payload.bridge !== undefined) {
-        const bridge = payload.bridge.trim();
-
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) {
-            const device = getDevice(payload.deviceID.trim(), bridge);
-
-            if (device !== undefined) {
-                const existingAssignment = getDeviceAssignment(payload.deviceID.trim(), bridge);
-
-                if (existingAssignment !== null) {
-                    database.prepare("DELETE FROM device_assignments WHERE deviceID = ? AND bridge = ?").run(payload.deviceID.trim(), bridge);
-
-                    data.status = "ok";
-                }
-                else {
-                    data.status = "error";
-                    data.error  = "Assignment not found";
-                }
-            }
-            else {
-                data.status = "error";
-                data.error  = "Device not found";
-            }
-        }
-        else {
-            data.status = "error";
-            data.error  = "No ID provided";
-        }
-    }
-    else {
-        data.status = "error";
-        data.error  = "No bridge provided";
-    }
-
-    return common.sendResponse(response, data, "Server route 'Devices'", "DELETE request for device assignment");
-});
 
 /**
  * @swagger
@@ -1164,6 +904,14 @@ router.delete("/:bridge/:deviceID/assignment", async function (request, response
  *                description:
  *                  type: string
  *                  example: "New Device Description"
+ *                individualID:
+ *                  type: integer
+ *                  description: ID of the individual to assign this device to (0 to unassign)
+ *                  example: 5
+ *                roomID:
+ *                  type: integer
+ *                  description: ID of the room to assign this device to (0 to unassign)
+ *                  example: 3
  *      responses:
  *        "200":
  *          description: Device updated successfully
@@ -1224,15 +972,60 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
             const bridge = payload.bridge.trim();
 
             if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
-                message.bridge      = bridge;
-                message.updates     = payload.body;
+                const deviceID = payload.deviceID.trim();
 
-                mqttClient.publish(bridge + "/devices/update", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
+                // Update individualID and roomID directly in the database (these are server-side fields, not bridge-side)
+                if (payload.body.individualID !== undefined || payload.body.roomID !== undefined) {
+                    const device = getDevice(deviceID, bridge);
 
-                handlePendingMqttResponse(message.callID, response);
+                    if (device === undefined) {
+                        data.status = "error";
+                        data.error  = "Device not found";
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
+
+                    const individualID = (payload.body.individualID !== undefined) ? (Number(payload.body.individualID) || 0) : device.individualID;
+                    const roomID       = (payload.body.roomID !== undefined) ? (Number(payload.body.roomID) || 0) : device.roomID;
+
+                    if (individualID > 0 && getIndividual(individualID) === undefined) {
+                        data.status = "error";
+                        data.error  = "Individual not found";
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
+
+                    if (roomID > 0 && getRoom(roomID) === undefined) {
+                        data.status = "error";
+                        data.error  = "Room not found";
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
+
+                    database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?").run(individualID, roomID, deviceID, bridge);
+                    common.conLog("PATCH request for device assignment update via ID " + deviceID + " successful", "gre");
+                }
+
+                // Forward remaining fields (name, description, etc.) to the bridge via MQTT
+                const bridgeFields = { ...payload.body };
+                delete bridgeFields.individualID;
+                delete bridgeFields.roomID;
+
+                if (Object.keys(bridgeFields).length > 0) {
+                    message.deviceID    = deviceID;
+                    message.callID      = common.randomHash();
+                    message.bridge      = bridge;
+                    message.updates     = bridgeFields;
+
+                    mqttClient.publish(bridge + "/devices/update", JSON.stringify(message));
+                    common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
+
+                    handlePendingMqttResponse(message.callID, response);
+                }
+                else {
+                    // Only assignment fields were updated, no MQTT needed
+                    data.status = "ok";
+                    data.device = getDevice(deviceID, bridge);
+                    enrichDeviceWithAssignment(data.device);
+                    return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                }
             }
             else {
                 data.status = "error";
@@ -1631,9 +1424,53 @@ router.get("/:bridge/list", async function (request, response) {
  *                      bridge:
  *                        type: string
  *                        example: "bluetooth"
+ *                      name:
+ *                        type: string
+ *                        example: "Living Room Sensor"
+ *                      productName:
+ *                        type: string
+ *                        example: "Product XYZ"
+ *                      vendorName:
+ *                        type: string
+ *                        example: "Vendor ABC"
+ *                      description:
+ *                        type: string
+ *                        example: "Temperature sensor in the living room"
  *                      powerType:
  *                        type: string
  *                        example: "MAINS"
+ *                      properties:
+ *                        type: object
+ *                        description: Parsed JSON object with device-specific properties
+ *                      individualID:
+ *                        type: integer
+ *                        example: 5
+ *                      roomID:
+ *                        type: integer
+ *                        example: 3
+ *                      individual:
+ *                        type: object
+ *                        description: Enriched individual data (if individualID is set)
+ *                        properties:
+ *                          individualID:
+ *                            type: integer
+ *                            example: 5
+ *                          firstname:
+ *                            type: string
+ *                            example: "Max"
+ *                          lastname:
+ *                            type: string
+ *                            example: "Mustermann"
+ *                      room:
+ *                        type: object
+ *                        description: Enriched room data (if roomID is set)
+ *                        properties:
+ *                          roomID:
+ *                            type: integer
+ *                            example: 3
+ *                          name:
+ *                            type: string
+ *                            example: "Living Room"
  *        "400":
  *          description: Bad request. The request was invalid or cannot be served.
  *          content:
@@ -1672,7 +1509,7 @@ router.get("/:bridge/:deviceID", async function (request, response) {
                     }   
                 }
 
-                addAssignmentToDevice(data.device);
+                enrichDeviceWithAssignment(data.device);
 
                 common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
             }
