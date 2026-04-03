@@ -8,6 +8,125 @@ const router        = require("express").Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Scenario:
+ *       type: object
+ *       properties:
+ *         scenarioID:
+ *           type: integer
+ *           example: 42
+ *         name:
+ *           type: string
+ *           example: "High Heartrate Alert"
+ *         description:
+ *           type: string
+ *           example: "Turn on emergency light when heartrate > 100"
+ *         enabled:
+ *           type: boolean
+ *           example: true
+ *         priority:
+ *           type: integer
+ *           example: 0
+ *         icon:
+ *           type: string
+ *           example: "heart"
+ *         roomID:
+ *           type: integer
+ *           example: 3
+ *         individualID:
+ *           type: integer
+ *           example: 5
+ *         dateTimeAdded:
+ *           type: string
+ *           example: "2025-01-15 14:30:00"
+ *         triggers:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               triggerID:
+ *                 type: integer
+ *                 example: 1
+ *               scenarioID:
+ *                 type: integer
+ *                 example: 42
+ *               type:
+ *                 type: string
+ *                 example: "device_value"
+ *               deviceID:
+ *                 type: string
+ *                 example: "12345"
+ *               bridge:
+ *                 type: string
+ *                 example: "bluetooth"
+ *               property:
+ *                 type: string
+ *                 example: "heartrate"
+ *               operator:
+ *                 type: string
+ *                 enum: ["equals", "greater", "less", "between", "contains"]
+ *               value:
+ *                 type: string
+ *                 example: "100"
+ *               valueType:
+ *                 type: string
+ *                 enum: ["String", "Numeric", "Boolean"]
+ *               deviceName:
+ *                 type: string
+ *                 example: "Heart Monitor"
+ *               deviceProperties:
+ *                 type: object
+ *                 description: Parsed JSON object with device-specific properties
+ *               devicePowerType:
+ *                 type: string
+ *                 example: "battery"
+ *         actions:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               actionID:
+ *                 type: integer
+ *                 example: 1
+ *               scenarioID:
+ *                 type: integer
+ *                 example: 42
+ *               type:
+ *                 type: string
+ *                 example: "set_device_value"
+ *               deviceID:
+ *                 type: string
+ *                 example: "12345"
+ *               bridge:
+ *                 type: string
+ *                 example: "bluetooth"
+ *               property:
+ *                 type: string
+ *                 example: "led"
+ *               value:
+ *                 type: string
+ *                 example: "on"
+ *               valueType:
+ *                 type: string
+ *                 enum: ["String", "Numeric", "Boolean"]
+ *               delay:
+ *                 type: integer
+ *                 description: Delay in seconds before executing this action
+ *                 example: 3
+ *               deviceName:
+ *                 type: string
+ *                 example: "Emergency Light"
+ *               deviceProperties:
+ *                 type: object
+ *                 description: Parsed JSON object with device-specific properties
+ *               devicePowerType:
+ *                 type: string
+ *                 example: "mains"
+ */
+
+/**
+ * @swagger
  * /scenarios/all:
  *   get:
  *     summary: Get all scenarios
@@ -28,7 +147,7 @@ const router        = require("express").Router();
  *                 results:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     $ref: '#/components/schemas/Scenario'
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -111,6 +230,7 @@ router.get("/all", async function (request, response) {
  *       - in: path
  *         name: scenarioID
  *         required: true
+ *         description: The unique ID of the scenario
  *         schema:
  *           type: integer
  *     responses:
@@ -127,7 +247,7 @@ router.get("/all", async function (request, response) {
  *                 results:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     $ref: '#/components/schemas/Scenario'
  *       "400":
  *         description: Bad request. The request was invalid or cannot be served.
  *         content:
@@ -402,13 +522,14 @@ router.post("/", async function (request, response) {
  * /scenarios/{scenarioID}:
  *   patch:
  *     summary: Update a scenario
- *     description: Update an existing scenario
+ *     description: Update an existing scenario. Only the provided fields will be updated. If triggers or actions are provided, the existing ones will be replaced entirely.
  *     tags:
  *       - Scenarios
  *     parameters:
  *       - in: path
  *         name: scenarioID
  *         required: true
+ *         description: The unique ID of the scenario to update
  *         schema:
  *           type: integer
  *     requestBody:
@@ -585,13 +706,14 @@ router.patch("/:scenarioID", async function (request, response) {
  * /scenarios/{scenarioID}:
  *   delete:
  *     summary: Delete a scenario
- *     description: Delete a scenario and all its triggers and actions
+ *     description: Delete a scenario and all its associated triggers and actions
  *     tags:
  *       - Scenarios
  *     parameters:
  *       - in: path
  *         name: scenarioID
  *         required: true
+ *         description: The unique ID of the scenario to delete
  *         schema:
  *           type: integer
  *     responses:
@@ -652,13 +774,14 @@ router.delete("/:scenarioID", async function (request, response) {
  * /scenarios/{scenarioID}/execute:
  *   post:
  *     summary: Execute all actions for a scenario
- *     description: Manually trigger the execution of all actions for a specific scenario
+ *     description: Manually trigger the execution of all actions for a specific scenario, regardless of its trigger conditions
  *     tags:
  *       - Scenarios
  *     parameters:
  *       - in: path
  *         name: scenarioID
  *         required: true
+ *         description: The unique ID of the scenario to execute
  *         schema:
  *           type: integer
  *     responses:

@@ -52,17 +52,17 @@ export function dateFormat(dateString, locale = "en-US", pastTime = true) {
         const diffInHours       = Math.floor(diffInMinutes / 60);
         const diffInDays        = Math.floor(diffInHours / 24);
 
-        if (diffInDays > 0) {
-            const translationKey = diffInDays === 1 ? "DayAgo" : "DaysAgo";
+        if (Number(diffInDays) > 0) {
+            const translationKey = Number(diffInDays) === 1 ? "DayAgo" : "DaysAgo";
             return window.Translation.get(translationKey).replace("{0}", diffInDays);
-        } else if (diffInHours > 0) {
-            const translationKey = diffInHours === 1 ? "HourAgo" : "HoursAgo";
+        } else if (Number(diffInHours) > 0) {
+            const translationKey = Number(diffInHours) === 1 ? "HourAgo" : "HoursAgo";
             return window.Translation.get(translationKey).replace("{0}", diffInHours);
-        } else if (diffInMinutes > 0) {
-            const translationKey = diffInMinutes === 1 ? "MinuteAgo" : "MinutesAgo";
+        } else if (Number(diffInMinutes) > 0) {
+            const translationKey = Number(diffInMinutes) === 1 ? "MinuteAgo" : "MinutesAgo";
             return window.Translation.get(translationKey).replace("{0}", diffInMinutes);
         } else {
-            const translationKey = diffInSeconds === 1 ? "SecondAgo" : "SecondsAgo";
+            const translationKey = Number(diffInSeconds) === 1 ? "SecondAgo" : "SecondsAgo";
             return window.Translation.get(translationKey).replace("{0}", diffInSeconds);
         }
     }
@@ -128,15 +128,13 @@ export function bridgeTranslate(bridge) {
  * @param {String} containerSelector 
  * @return {void}
  */
-export function entriesNoDataMessage(containerSelector) {
+export function entriesNoDataMessage(containerSelector, showAddNew = true) {
     document.querySelector(containerSelector).innerHTML = `
         <div class="no-data-container">
             <br />
             <ion-text><center>${window.Translation.get("EntriesNone")}</center></ion-text>
             <br />
-            <ion-text><center>${window.Translation.get("EntriesNoneAddNew")}</center></ion-text> 
-            <br />
-            <center><ion-img class="image-arrow" src="./assets/backgrounds/arrow.svg"></ion-img></center>
+            ${showAddNew ? `<ion-text><center>${window.Translation.get("EntriesNoneAddNew")}</center></ion-text><br /><center><ion-img class="image-arrow" src="./assets/backgrounds/arrow.svg"></ion-img></center>` : ""}
         </div>
       `;
 }

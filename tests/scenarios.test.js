@@ -5,7 +5,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:          ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"],
+  CONF_tablesAllowedForAPI:          ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "care_insight_rules"],
   CONF_tablesMaxEntriesReturned:     500,
   CONF_apiKey:                       "",  // dev mode
   CONF_apiCallTimeoutMilliseconds:   3000,
@@ -533,6 +533,131 @@ describe("Multi-Trigger Scenarios", () => {
   });
 });
 
+// ─── Care Insight Trigger Scenarios ────────────────────────────────────────
+
+describe("Care Insight Trigger Scenarios", () => {
+
+  let careScenarioID;
+  let careRuleID;
+
+  beforeAll(() => {
+    const roomID = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Hydration Room").lastInsertRowid;
+    const individualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Lea", "Example", roomID).lastInsertRowid;
+
+    careRuleID = db.prepare(
+      "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+    ).run("Hydration risk detected", "drink_ml", "sum_below_threshold", 72, 1500, 3).lastInsertRowid;
+
+    const scenarioResult = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
+    ).run("Hydration Alert", "React to hydration insights", "water", roomID, individualID);
+    careScenarioID = scenarioResult.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, property) VALUES (?, ?, ?)"
+    ).run(careScenarioID, "care_insight_opened", String(careRuleID));
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
+    ).run(careScenarioID, "notification", "Hydration scenario triggered", 0);
+  });
+
+  beforeEach(() => {
+    global.mqttClient.publish.mockClear();
+    global.scenarios.executionCooldowns.clear();
+  });
+
+  test("care_insight_opened trigger executes matching scenario", async () => {
+    await global.scenarios.handleEvent("care_insight_opened", {
+      insightID: 1,
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
+      score: 0.8,
+      deviceID: "glass_001",
+      bridge: "http",
+      individualID: 1,
+      roomID: 1
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Hydration scenario triggered");
+    expect(notifications.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("care_insight_opened trigger respects scenario individual and room context", async () => {
+    global.scenarios.executionCooldowns.clear();
+
+    await global.scenarios.handleEvent("care_insight_opened", {
+      insightID: 2,
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
+      score: 0.8,
+      deviceID: "glass_001",
+      bridge: "http",
+      individualID: 999,
+      roomID: 999
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Hydration scenario triggered");
+    expect(notifications.length).toBe(1);
+  });
+
+  test("care_insight trigger with device filter only fires for matching device", async () => {
+    const deviceScenarioID = db.prepare(
+      "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
+    ).run("Device-Specific Hydration Alert", "Only glass_001", "water", 0, 0).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
+    ).run(deviceScenarioID, "care_insight_opened", String(careRuleID), "glass_001", "http");
+
+    db.prepare(
+      "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
+    ).run(deviceScenarioID, "notification", "Device-specific hydration alert", 0);
+
+    global.scenarios.executionCooldowns.clear();
+
+    // Matching device — should trigger
+    await global.scenarios.handleEvent("care_insight_opened", {
+      insightID: 10,
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
+      score: 0.8,
+      deviceID: "glass_001",
+      bridge: "http",
+      individualID: 0,
+      roomID: 0
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notificationsMatch = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Device-specific hydration alert");
+    expect(notificationsMatch.length).toBe(1);
+
+    global.scenarios.executionCooldowns.clear();
+
+    // Non-matching device — should NOT trigger
+    await global.scenarios.handleEvent("care_insight_opened", {
+      insightID: 11,
+      ruleID: careRuleID,
+      insightType: "sum_below_threshold",
+      score: 0.8,
+      deviceID: "glass_999",
+      bridge: "http",
+      individualID: 0,
+      roomID: 0
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const notificationsNoMatch = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Device-specific hydration alert");
+    expect(notificationsNoMatch.length).toBe(1); // Still only 1 from before
+  });
+});
+
 // ─── Event-Based Triggers (device_disconnected, device_connected, battery_low) ──
 
 describe("Event-Based Triggers", () => {
@@ -588,7 +713,10 @@ describe("Event-Based Triggers", () => {
     });
 
     await new Promise((r) => setTimeout(r, 100));
-    const setCalls = global.mqttClient.publish.mock.calls.filter((c) => c[0] === "zigbee/devices/values/set");
+    const setCalls = global.mqttClient.publish.mock.calls
+      .filter((c) => c[0] === "zigbee/devices/values/set")
+      .map((c) => JSON.parse(c[1]))
+      .filter((message) => message.deviceID === "light_001" && message.values && message.values.state === "off");
     expect(setCalls.length).toBe(1);
 
     db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);

@@ -74,6 +74,8 @@ async function startServer() {
   app.use("/devices", apiKeyAuth, routesDevices);
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
   app.use("/scenarios", apiKeyAuth, routesScenarios);
+  const routesCareInsights = require("./routes/care-insights"); // import routes for care insights manipulation
+  app.use("/care-insights", apiKeyAuth, routesCareInsights);
   
   /**
    * Swagger
@@ -172,17 +174,17 @@ async function startServer() {
   });
 
   /**
-   * Anomaly detection
+   * Care Insights
    */
-  const AnomalyEngine = require("./libs/AnomalyEngine");
-  const anomalies     = new AnomalyEngine();
+  const CareInsightsEngine = require("./libs/CareInsightsEngine");
+  const careInsights       = new CareInsightsEngine();
 
   /**
    * Push notifications
    */
-  const PushEngine = require("./libs/PushEngine");
-  const pushEngine = new PushEngine();
-  scenarios.pushEngine = pushEngine; // make push engine available in scenarios
+  const PushEngine      = require("./libs/PushEngine");
+  const pushEngine      = new PushEngine();
+  scenarios.pushEngine  = pushEngine; // make push engine available in scenarios
 
   /**
    * MQTT client
@@ -437,15 +439,6 @@ async function startServer() {
           common.conLog("Server: Fetched values for device with ID " + data.deviceID, "gre");
 
           /**
-           * Check for anomalies in the fetched values
-           */
-          if (appConfig.CONF_anomalyDetectionActive === true) { 
-            if (data.values !== undefined) { // Check for anomalies in the fetched values
-              anomalies.check(data);
-            }
-          }
-
-          /**
            * Evaluate scenarios based on the fetched values
            */
           if (data.values !== undefined) {
@@ -469,6 +462,8 @@ async function startServer() {
                 });
               }
             });
+
+            careInsights.handleDeviceValues(data); // handle care insights based on device values
           }            
         }
         else {
@@ -619,6 +614,8 @@ async function startServer() {
               deviceID: data.deviceID,
               bridge:   data.bridge
             });
+
+            careInsights.handleDeviceStatus(data); // handle care insights based on device status
           }
           else {
             common.conLog("Server: Device with ID " + data.deviceID + " is not registered", "red");

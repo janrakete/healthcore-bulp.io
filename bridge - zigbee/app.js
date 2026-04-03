@@ -288,7 +288,7 @@ async function startBridgeAndServer() {
       common.conLog("ZigBee: Maintenance loop running ...", "yel", false);
 
       // Phase 1: Watchdog (pure in-memory check)
-      if (bridgeStatus.devicesConnected.size > 0) {
+      if (Number(bridgeStatus.devicesConnected.size) > 0) {
         const now = Date.now();
 
         for (const device of bridgeStatus.devicesConnected.values()) {
@@ -615,7 +615,7 @@ async function startBridgeAndServer() {
 
     deviceBatteryCheck(message.deviceID, message.values); // check for low battery and publish alert if needed
     
-    if (message.values && Object.keys(message.values).length > 0) { // cache last known values for this device (useful for battery-powered devices that sleep)
+    if (message.values && Number(Object.keys(message.values).length) > 0) { // cache last known values for this device (useful for battery-powered devices that sleep)
       const cached = bridgeStatus.lastKnownValues.get(message.deviceID) || {};
       bridgeStatus.lastKnownValues.set(message.deviceID, { ...cached, ...message.values, _lastUpdated: Date.now() });
     }
@@ -859,8 +859,17 @@ async function startBridgeAndServer() {
         common.conLog("ZigBee: Device converter has setupReporting function, trying to call it ...", "gre", false);
 
         try {
-          const coordinatorDevice   = zigBee.getDevices().find(d => d.type === "Coordinator");
+          const coordinatorDevice = zigBee.getDevices().find(zigBeeDevice => zigBeeDevice.type === "Coordinator");
+          if (!coordinatorDevice) {
+            common.conLog("ZigBee: Coordinator device not found, cannot setup reporting for " + device.deviceID, "red");
+            return;
+          }
+
           const coordinatorEndpoint = coordinatorDevice.getEndpoint(1);
+          if (!coordinatorEndpoint) {
+            common.conLog("ZigBee: Could not get endpoint 1 from coordinator, cannot setup reporting for " + device.deviceID, "red");
+            return;
+          }
 
           await device.deviceConverter.setupReporting(device.deviceRaw, coordinatorEndpoint);
         }
@@ -959,7 +968,7 @@ async function startBridgeAndServer() {
             }
 
             // Update last known values cache with successfully read values
-            if (Object.keys(message.values).length > 0) {
+            if (Number(Object.keys(message.values).length) > 0) {
               const cached = bridgeStatus.lastKnownValues.get(data.deviceID) || {};
               bridgeStatus.lastKnownValues.set(data.deviceID, { ...cached, ...message.values, _lastUpdated: Date.now() });
             }

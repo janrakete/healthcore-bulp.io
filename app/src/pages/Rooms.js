@@ -71,9 +71,9 @@ class Rooms extends HTMLElement {
       actionSheet.isOpen = false;
       const ID = actionSheet.dataset.ID; // Get ID of entry to delete
       console.log("Action sheet: ID of entry:", ID);
-      if (event.detail.data?.action === "delete") {
+      if (String(event.detail.data?.action) === "delete") {
         const data = await apiDELETE("/data/rooms?roomID=" + ID);
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
           const itemDelete = this.querySelector("#rooms-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
@@ -93,11 +93,11 @@ class Rooms extends HTMLElement {
       const data = await apiGET("/data/rooms");
       console.log("API call - Output:", data);
       
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const listElement = this.querySelector("#rooms-list");
         const items       = data.results;
 
-        if (!items || items.length === 0) {
+        if (!items || Number(items.length) === 0) {
           entriesNoDataMessage("#rooms-list-no-data");
         }
         else {

@@ -23,6 +23,8 @@ function createTestDatabase() {
       name TEXT,
       description TEXT,
       strength INTEGER,
+      individualID INTEGER DEFAULT 0,
+      roomID INTEGER DEFAULT 0,
       dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -67,6 +69,7 @@ function createTestDatabase() {
       text TEXT NOT NULL,
       description TEXT,
       scenarioID INTEGER DEFAULT 0,
+      insightID INTEGER DEFAULT 0,
       icon TEXT,
       dateTime TEXT DEFAULT (datetime('now'))
     );
@@ -143,6 +146,54 @@ function createTestDatabase() {
       success BOOLEAN DEFAULT 1,
       error TEXT
     );
+
+    CREATE TABLE care_insights (
+      insightID INTEGER PRIMARY KEY AUTOINCREMENT,
+      ruleID INTEGER DEFAULT 0,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      score NUMERIC DEFAULT 0,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      explanation TEXT,
+      recommendation TEXT,
+      deviceID TEXT,
+      bridge TEXT,
+      property TEXT,
+      individualID INTEGER DEFAULT 0,
+      roomID INTEGER DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'careinsights',
+      dateTimeAdded TEXT DEFAULT (datetime('now')),
+      dateTimeUpdated TEXT DEFAULT (datetime('now')),
+      dateTimeResolved TEXT
+    );
+
+    CREATE TABLE care_insight_signals (
+      signalID INTEGER PRIMARY KEY AUTOINCREMENT,
+      insightID INTEGER NOT NULL,
+      deviceID TEXT,
+      bridge TEXT,
+      property TEXT,
+      value TEXT,
+      valueAsNumeric NUMERIC,
+      weight NUMERIC DEFAULT 1,
+      dateTimeObserved TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE care_insight_rules (
+      ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      enabled BOOLEAN DEFAULT 1,
+      sourceProperty TEXT NOT NULL,
+      aggregationType TEXT NOT NULL DEFAULT 'sum_below_threshold',
+      aggregationWindowHours INTEGER DEFAULT 24,
+      thresholdMin NUMERIC,
+      thresholdMax NUMERIC,
+      minReadings INTEGER DEFAULT 1,
+      recommendation TEXT,
+      dateTimeAdded TEXT DEFAULT (datetime('now')),
+      dateTimeUpdated TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   return db;
@@ -202,10 +253,12 @@ function createTestApp() {
   const routesData     = require("../server/routes/data");
   const routesScenarios = require("../server/routes/scenarios");
   const routesDevices  = require("../server/routes/devices");
+  const routesCareInsights = require("../server/routes/care-insights");
 
   app.use("/data",      apiKeyAuth, routesData);
   app.use("/scenarios", apiKeyAuth, routesScenarios);
   app.use("/devices",   apiKeyAuth, routesDevices);
+  app.use("/care-insights", apiKeyAuth, routesCareInsights);
 
   return app;
 }
@@ -215,20 +268,22 @@ function createTestApp() {
  */
 function insertTestDevice(db, overrides = {}) {
   const device = {
-    deviceID:      "test_device_001",
-    bridge:        "http",
-    powerType:     "MAINS",
-    vendorName:    "TestVendor",
-    productName:   "TestProduct",
-    properties:    JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
-    name:          "Test Device",
-    description:   "A test device",
+    deviceID:       "test_device_001",
+    bridge:         "http",
+    powerType:      "MAINS",
+    vendorName:     "TestVendor",
+    productName:    "TestProduct",
+    properties:     JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
+    name:           "Test Device",
+    description:    "A test device",
+    individualID:   0,
+    roomID:         0,
     ...overrides,
   };
 
   db.prepare(
-    "INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, properties, name, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(device.deviceID, device.bridge, device.powerType, device.vendorName, device.productName, device.properties, device.name, device.description);
+    "INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, properties, name, description, individualID, roomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(device.deviceID, device.bridge, device.powerType, device.vendorName, device.productName, device.properties, device.name, device.description, device.individualID, device.roomID);
 
   return device;
 }

@@ -93,7 +93,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       let newAction;
 
-      if (type === "set_device_value") {
+      if (String(type) === "set_device_value") {
         const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
         const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
         const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
@@ -115,11 +115,11 @@ export const ScenarioEditActions = (Base) => class extends Base {
           property:         propertySelect.value,
           value:            valueSelect.value,
           valueType:        isNaN(valueSelect.value) ? "String" : "Numeric",
-          delay:            parseInt(delayInput.value) > 0 ? parseInt(delayInput.value) : 0,
+          delay:            Number(parseInt(delayInput.value)) > 0 ? parseInt(delayInput.value) : 0,
           deviceProperties: this.actionSelectedDevice.properties
         };
       }
-      else if (type === "push_notification") {
+      else if (String(type) === "push_notification") {
         const titleInput   = document.querySelector("ion-input[name='editActionPushTitle']");
         const messageInput = document.querySelector("ion-input[name='editActionPushMessage']");
 
@@ -131,7 +131,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
           deviceProperties: []
         };
       }
-      else if (type === "notification") {
+      else if (String(type) === "notification") {
         const textInput = document.querySelector("ion-input[name='editActionNotificationText']");
 
         newAction = {
@@ -373,7 +373,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     try {
       const data = await apiGET("/devices/all");
       console.log("API call - Output:", data);
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         const selectDevice = document.querySelector("ion-select[name='editActionDevice']");
         if (selectedDeviceID !== null) {
           selectDevice.value = selectedDeviceID;
@@ -403,7 +403,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     try {
       const data = await apiGET("/devices/" + bridge + "/" + deviceID);
       console.log("API call - Output:", data);
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         this.actionSelectedDevice = data.device; // Store selected device
 
         const selectProperty = document.querySelector("ion-select[name='editActionProperty']");
@@ -441,14 +441,14 @@ export const ScenarioEditActions = (Base) => class extends Base {
         continue;
       }
 
-      const propertyTranslation = item.deviceProperties.find(property => property.name === item.property);
+      const propertyTranslation = item.deviceProperties.find(property => String(property.name) === String(item.property));
       if (propertyTranslation && propertyTranslation.translation && propertyTranslation.translation[window.appConfig.CONF_language]) {
         item.propertyTranslated = propertyTranslation.translation[window.appConfig.CONF_language];
       }
 
-      const valueTranslation = item.deviceProperties.find(property => property.name === item.property); // Translate value
+      const valueTranslation = item.deviceProperties.find(property => String(property.name) === String(item.property)); // Translate value
       if (valueTranslation && valueTranslation.anyValue) {
-        const anyValueItem = valueTranslation.anyValue.find(valueItem => valueItem.value === item.value);
+        const anyValueItem = valueTranslation.anyValue.find(valueItem => Number(valueItem.value) === Number(item.value));
         if (anyValueItem && anyValueItem.translation && anyValueItem.translation[window.appConfig.CONF_language]) {
           item.valueTranslated = anyValueItem.translation[window.appConfig.CONF_language];
         }
@@ -462,10 +462,10 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * @param {String|null} selectedValue 
    */
   async loadDataActionDevicePropertiesValues(propertyName, selectedValue = null) {
-    const property        = this.actionSelectedDevice.properties.find(item => item.name === propertyName);
+    const property        = this.actionSelectedDevice.properties.find(item => String(item.name) === String(propertyName));
     const valueContainer  = document.querySelector("#edit-action-value-container");
 
-    if (property.valueType === "Options") {
+    if (String(property.valueType) === "Options") {
       valueContainer.innerHTML = `
         <ion-select interface="popover" class="custom" label-placement="stacked" name="editActionValue" label="${window.Translation.get("Value")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
           <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
@@ -476,7 +476,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
         valueContainer.querySelector("ion-select[name='editActionValue']").value = selectedValue;
       }
     }
-    else if (property.valueType === "Numeric")  {
+    else if (String(property.valueType) === "Numeric")  {
       valueContainer.innerHTML = `
         <ion-input type="number" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom"></ion-input>
       `;
@@ -525,7 +525,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       let cardTitle, cardSubtitle, cardContent;
 
-      if (type === "set_device_value") {
+      if (String(type) === "set_device_value") {
         cardTitle    = item.deviceName;
         cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
         cardContent  = `
@@ -535,7 +535,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
             ${item.delay ? `<ion-text color="light"> (${window.Translation.get("Delay")}: ${item.delay} ${window.Translation.get("Seconds")})</ion-text>` : ``}
         `;
       }
-      else if (type === "push_notification") {
+      else if (String(type) === "push_notification") {
         cardTitle    = `${window.Translation.get("ActionTypePushNotification")}`;
         cardSubtitle = "";
         cardContent  = `
@@ -543,7 +543,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
             ${item.property ? `<br/><ion-text color="medium">${item.property}</ion-text>` : ""}
         `;
       }
-      else if (type === "notification") {
+      else if (String(type) === "notification") {
         cardTitle    = `${window.Translation.get("ActionTypeNotification")}`;
         cardSubtitle = "";
         cardContent  = `<ion-text color="light">${item.value}</ion-text>`;
@@ -565,7 +565,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
           <ion-button data-id="${item.actionID}" id="action-edit-${item.actionID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
           <ion-button data-id="${item.actionID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
-        <ion-text>${index < this.scenarioData.actions.length - 1 ? `<center>${window.Translation.get("And")}</center>` : ""}</ion-text>
+        <ion-text>${Number(index) < this.scenarioData.actions.length - 1 ? `<center>${window.Translation.get("And")}</center>` : ""}</ion-text>
     `;
     }).join("");
 
@@ -581,7 +581,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
     this.querySelectorAll(".action-edit-option").forEach(button => {
       button.addEventListener("click", async () => {
-        const actionData = this.scenarioData.actions.find(item => item.actionID === parseInt(button.getAttribute("data-id")));
+        const actionData = this.scenarioData.actions.find(item => Number(item.actionID) === Number(parseInt(button.getAttribute("data-id"))));
         
         this.actionID = actionData.actionID;  
 
@@ -591,18 +591,18 @@ export const ScenarioEditActions = (Base) => class extends Base {
         document.querySelector("ion-select[name='editActionType']").value = type;
         this.actionUpdateFieldVisibility(type);
 
-        document.querySelector("ion-input[name='editActionDelay']").value = actionData.delay > 0 ? actionData.delay : "";
+        document.querySelector("ion-input[name='editActionDelay']").value = actionData.Number(delay) > 0 ? actionData.delay : "";
 
-        if (type === "set_device_value") {
+        if (String(type) === "set_device_value") {
           await this.loadDataActionDevices(actionData.deviceID);
           await this.loadDataActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
           await this.loadDataActionDevicePropertiesValues(actionData.property, actionData.value);
         }
-        else if (type === "push_notification") {
+        else if (String(type) === "push_notification") {
           document.querySelector("ion-input[name='editActionPushTitle']").value   = actionData.value || "";
           document.querySelector("ion-input[name='editActionPushMessage']").value = actionData.property || "";
         }
-        else if (type === "notification") {
+        else if (String(type) === "notification") {
           document.querySelector("ion-input[name='editActionNotificationText']").value = actionData.value || "";
         }
 

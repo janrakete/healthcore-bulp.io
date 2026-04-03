@@ -114,5 +114,69 @@
     "saturation": {
         "de": "Sättigung",
         "en": "Saturation"
+    },
+    "CareInsightTitleDeviceOffline": {
+        "de": "Überwachungsgerät offline",
+        "en": "Monitoring device offline"
+    },
+    "CareInsightExplanationDeviceOffline": {
+        "de": "Ein Überwachungsgerät ist offline gegangen und liefert möglicherweise keine relevanten Pflegesignale mehr.",
+        "en": "A monitoring device went offline and may currently stop delivering relevant care signals."
+    },
+    "CareInsightRecommendationDeviceOffline": {
+        "de": "Verbindung, Stromversorgung und Funkweg des Geräts prüfen.",
+        "en": "Check the device connection, power supply, and radio path."
+    },
+    "CareInsightSummaryDeviceOffline": {
+        "de": "{0} ist offline gegangen und liefert möglicherweise keine Überwachungsdaten mehr.",
+        "en": "{0} went offline and may stop providing monitoring data."
+    },
+    "CareInsightTitleFallback": {
+        "de": "{0} erfordert Aufmerksamkeit",
+        "en": "{0} requires attention"
+    },
+    "CareInsightSummarySumBelow": {
+        "de": "{0} blieb unterhalb der konfigurierten Summe für '{1}' in den letzten {2} Stunden (aktuelle Summe: {3}, erwartetes Minimum: {4}).",
+        "en": "{0} stayed below the configured total for '{1}' in the last {2} hours (current total: {3}, expected minimum: {4})."
+    },
+    "CareInsightSummarySumAbove": {
+        "de": "{0} hat die konfigurierte Summe für '{1}' in den letzten {2} Stunden überschritten (aktuelle Summe: {3}, erwartetes Maximum: {4}).",
+        "en": "{0} exceeded the configured total for '{1}' in the last {2} hours (current total: {3}, expected maximum: {4})."
+    },
+    "CareInsightSummaryRuleMatched": {
+        "de": "{0} hat die konfigurierte Care-Insight-Regel ausgelöst.",
+        "en": "{0} matched the configured Care Insight rule."
+    },
+    "CareInsightExplanationSumBelow": {
+        "de": "Die rollierende Summe für '{0}' über {1} Messwerte beträgt {2} innerhalb der letzten {3} Stunden.",
+        "en": "The rolling sum for '{0}' across {1} readings is {2} within the last {3} hours."
+    },
+    "CareInsightExplanationSumAbove": {
+        "de": "Die rollierende Summe für '{0}' über {1} Messwerte beträgt {2} innerhalb der letzten {3} Stunden und überschreitet das Maximum.",
+        "en": "The rolling sum for '{0}' across {1} readings is {2} within the last {3} hours, exceeding the maximum."
+    },
+    "CareInsightExplanationRuleActive": {
+        "de": "Eine konfigurierte Care-Insight-Regel wurde aktiv.",
+        "en": "A configured Care Insight rule became active."
+    },
+    "CareInsightRecommendationDefault": {
+        "de": "Aktuelle Werte prüfen und entscheiden, ob eine Intervention erforderlich ist.",
+        "en": "Review the recent values and decide whether an intervention is required."
+    },
+    "CareInsightRecommendationAnomaly": {
+        "de": "Den letzten Messwert und den Pflegekontext prüfen.",
+        "en": "Review the latest reading and the surrounding care context."
+    },
+    "CareInsightSummaryAnomaly": {
+        "de": "{0} hat einen ungewöhnlichen Wert für '{1}' gemeldet (letzter Wert: {2}).",
+        "en": "{0} reported an unusual value for '{1}' (latest value: {2})."
+    },
+    "CareInsightExplanationAnomaly": {
+        "de": "Der letzte Wert für '{0}' ({1}) weicht stark von der aktuellen Basislinie ab. Median: {2}, normalisierte Abweichung: {3}.",
+        "en": "The latest '{0}' value ({1}) deviates strongly from its recent baseline. Median: {2}, normalized deviation: {3}."
+    },
+    "CareInsightDeviceFallback": {
+        "de": "Gerät",
+        "en": "Device"
     }
 }

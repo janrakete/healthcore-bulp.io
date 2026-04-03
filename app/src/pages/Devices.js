@@ -93,9 +93,9 @@ class Devices extends HTMLElement {
       const ID      = actionSheet.dataset.ID; // Get ID of entry to delete
       const bridge  = actionSheet.dataset.bridge; // Get bridge of entry to delete
       console.log("Action sheet: ID of entry:", ID);
-      if (event.detail.data?.action === "delete") {
+      if (String(event.detail.data?.action) === "delete") {
         const data = await apiDELETE("/devices/" + bridge + "/" + ID);
-        if (data.status === "ok") {
+        if (String(data.status) === "ok") {
           const itemDelete = this.querySelector("#devices-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
@@ -112,14 +112,15 @@ class Devices extends HTMLElement {
   async dataLoad(filters = ["zigbee","bluetooth","lora","http"]) {
     const spinner = spinnerShow("#devices-list");
 
-    let resultsRegistered = [];
-    let resultsConnected  = [];
+    let resultsRegistered                   = [];
+    let resultsConnected                    = [];
+    let resultsRegisteredWithAssignments    = [];
 
     let bridges = [];
 
     try {
       const data = await apiGET("/info");
-      if (data.status === "ok") {
+      if (String(data.status) === "ok") {
         bridges = data.bridges;
       }
       else {
@@ -134,17 +135,35 @@ class Devices extends HTMLElement {
       toastShow("Error: " + error.message, "danger");
     }
 
+    try {
+      const data = await apiGET("/devices/all");
+      if (String(data.status) === "ok") {
+        resultsRegisteredWithAssignments = data.results;
+      }
+      else {
+        spinner.remove();
+        toastShow("Error: " + data.error, "danger");
+        return;
+      }
+    }
+    catch (error) {
+      spinner.remove();
+      console.error("API call - Error:", error);
+      toastShow("Error: " + error.message, "danger");
+      return;
+    }
+
     try { // First: get all devices and put them into one array
       for (const filter of filters) {
 
-        const bridgeInfo = bridges.find(bridges => bridges.bridge.toLowerCase() === filter.toLowerCase()); // Find bridge info for current filter
-        if (bridgeInfo && bridgeInfo.status.toLowerCase() === "online") {
+        const bridgeInfo = bridges.find(bridges => String(bridges.bridge).toLowerCase() === String(filter).toLowerCase()); // Find bridge info for current filter
+        if (bridgeInfo && String(bridgeInfo.status).toLowerCase() === "online") {
           console.log("Devices: Loading devices with filter: " + filter);
 
           let response = await apiGET("/devices/" +  filter + "/list");
           console.log("API call - Output:", response);
 
-          if (response.status === "ok") {
+          if (String(response.status) === "ok") {
             resultsRegistered = resultsRegistered.concat(response.data.devicesRegisteredAtServer);
             resultsConnected  = resultsConnected.concat(response.data.devicesConnected);
           }
@@ -161,17 +180,18 @@ class Devices extends HTMLElement {
       const items       = resultsRegistered;
 
       listElement.innerHTML = items.map(item => { // Second: generate HTML for each device
-        const displayInfo   = bridgeTranslate(item.bridge);
-        let deviceConnected = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
+        const displayInfo    = bridgeTranslate(item.bridge);
+        const deviceAtServer = resultsRegisteredWithAssignments.find(device => String(device.deviceID) === String(item.deviceID) && String(device.bridge) === String(item.bridge));
+        let deviceConnected  = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
       
         switch(item.bridge) {
           case "zigbee":
-            if (resultsConnected && resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
+            if (resultsConnected && resultsConnected.some(device => String(device.deviceID) === String(item.deviceID))) { // check if device is connected
               deviceConnected = 1;
             }
             break;
           case "bluetooth":
-            if (resultsConnected && resultsConnected.some(device => device.deviceID === item.deviceID)) { // check if device is connected
+            if (resultsConnected && resultsConnected.some(device => String(device.deviceID) === String(item.deviceID))) { // check if device is connected
               deviceConnected = 1;
             }
             break;
@@ -186,9 +206,13 @@ class Devices extends HTMLElement {
         return `
         <ion-card color="primary" data-id="${item.deviceID}">
           <ion-card-header>
-              <ion-card-title>${item.name} <ion-badge color="${deviceConnected === 1 ? "success" : deviceConnected === 0 ? "danger" : "medium"}">${deviceConnected === 1 ? window.Translation.get("Connected") : deviceConnected === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
+              <ion-card-title>${item.name} <ion-badge color="${Number(deviceConnected) === 1 ? "success" : Number(deviceConnected) === 0 ? "danger" : "medium"}">${Number(deviceConnected) === 1 ? window.Translation.get("Connected") : Number(deviceConnected) === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
               <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
           </ion-card-header>
+          <ion-card-content>
+            ${deviceAtServer?.individual ? `<p>${window.Translation.get("AssignedPerson") + ": " + deviceAtServer.individual.firstname + " " + deviceAtServer.individual.lastname}</p>` : ""}
+            ${deviceAtServer?.room ? `<p>${window.Translation.get("AssignedRoom") + ": " + deviceAtServer.room.name}</p>` : ""}
+          </ion-card-content>
           <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" data-bridge="${item.bridge}"class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
           <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
@@ -209,8 +233,11 @@ class Devices extends HTMLElement {
         });
       });
 
-      if (resultsRegistered.length === 0) {
+      if (Number(resultsRegistered.length) === 0) {
           entriesNoDataMessage("#devices-list-no-data");
+      }
+      else {
+        this.querySelector("#devices-list-no-data").innerHTML = "";
       }
     }
     catch (error) {

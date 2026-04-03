@@ -20,6 +20,10 @@ const request = require("supertest");
 const { createTestDatabase, setupGlobals, createTestApp, insertTestDevice } = require("./setup");
 
 let app, db;
+let assignedRoomID;
+let assignedIndividualID;
+let secondRoomID;
+let secondIndividualID;
 
 beforeAll(() => {
   db = createTestDatabase();
@@ -40,11 +44,23 @@ afterAll(() => {
 describe("GET /devices/all", () => {
 
   beforeAll(() => {
+    const roomResult = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Living Room");
+    const individualResult = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Jan", "Tester", roomResult.lastInsertRowid);
+    const roomResultSecond = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Kitchen");
+    const individualResultSecond = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Mia", "Muster", roomResultSecond.lastInsertRowid);
+
+    assignedRoomID = roomResult.lastInsertRowid;
+    assignedIndividualID = individualResult.lastInsertRowid;
+    secondRoomID = roomResultSecond.lastInsertRowid;
+    secondIndividualID = individualResultSecond.lastInsertRowid;
+
     insertTestDevice(db, {
-      deviceID:    "dev_bt_001",
-      bridge:      "bluetooth",
-      productName: "BangleJS2",
-      properties:  JSON.stringify([
+      deviceID:      "dev_bt_001",
+      bridge:        "bluetooth",
+      productName:   "BangleJS2",
+      individualID:  individualResult.lastInsertRowid,
+      roomID:        roomResult.lastInsertRowid,
+      properties:    JSON.stringify([
         { name: "heartrate", dataType: "Numeric", access: "r" },
         { name: "light", dataType: "Boolean", access: "rw" },
       ]),
@@ -78,6 +94,65 @@ describe("GET /devices/all", () => {
     const zbDevice = res.body.results.find((d) => d.deviceID === "dev_zb_001");
     expect(zbDevice).toBeDefined();
     expect(zbDevice.bridge).toBe("zigbee");
+  });
+
+  test("returns individual and room data for assigned devices", async () => {
+    const res = await request(app).get("/devices/all");
+    const btDevice = res.body.results.find((d) => d.deviceID === "dev_bt_001");
+
+    expect(btDevice.individualID).toBeGreaterThan(0);
+    expect(btDevice.roomID).toBeGreaterThan(0);
+    expect(btDevice.individual).toBeDefined();
+    expect(btDevice.individual.firstname).toBe("Jan");
+    expect(btDevice.room).toBeDefined();
+    expect(btDevice.room.name).toBe("Living Room");
+  });
+});
+
+// ─── PATCH /devices/:bridge/:deviceID (assignment fields) ──────────────────
+
+describe("PATCH /devices/:bridge/:deviceID (assignment)", () => {
+
+  test("PATCH updates individualID and roomID on the device", async () => {
+    const res = await request(app)
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ individualID: secondIndividualID, roomID: secondRoomID });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+    expect(res.body.device.individualID).toBe(secondIndividualID);
+    expect(res.body.device.roomID).toBe(secondRoomID);
+  });
+
+  test("PATCH clears assignment when set to 0", async () => {
+    const res = await request(app)
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ individualID: 0, roomID: 0 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+
+    const row = db.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ?").get("dev_bt_001", "bluetooth");
+    expect(row.individualID).toBe(0);
+    expect(row.roomID).toBe(0);
+  });
+
+  test("PATCH with non-existent individualID → error", async () => {
+    const res = await request(app)
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ individualID: 99999 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Individual not found");
+  });
+
+  test("PATCH with non-existent roomID → error", async () => {
+    const res = await request(app)
+      .patch("/devices/bluetooth/dev_bt_001")
+      .send({ roomID: 99999 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Room not found");
   });
 });
 

@@ -22,7 +22,7 @@ class ConverterStandard {
      */
     getPropertyByName(name) {
         for (const property of Object.values(this.properties)) {
-            if (property.name === name) {
+            if (String(property.name) === String(name)) {
                 return property;
             }
         }
