@@ -184,6 +184,12 @@ function startServer() {
 
                 if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for Care Insights and related analytics
                     const timeFeatures = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
+ 
+                    if (!data.values || typeof data.values !== "object" || Array.isArray(data.values)) { // validate that data.values exists and is an object (not an array)
+                        common.conLog("Broker: data.values is missing or not an object, skipping value insertion", "red");
+                        return callback(null, true);
+                    }
+ 
                     for (const [property, value] of Object.entries(data.values)) { // iterate over each property
                         statementInsertValue.run(
                             data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, property, value.value, value.valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
@@ -213,5 +219,20 @@ function startServer() {
         });
     });
 }
+
+/** 
+ * Unhandled errors
+ */
+process.on("unhandledRejection", function (reason) {
+    common.conLog("Broker: Unhandled promise rejection: " + reason, "red");
+});
+
+/** 
+ * Uncaught exceptions
+ */
+process.on("uncaughtException", function (error) {
+    common.conLog("Broker: Uncaught exception: " + error.message, "red");
+    common.conLog(error.stack, "std", false);
+});
 
 startServer();

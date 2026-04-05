@@ -458,42 +458,47 @@ async function startBridgeAndServer() {
    * @event deviceJoin
    * @description This event is triggered when a new device joins the ZigBee network. It logs the device information and publishes a message to the MQTT broker.
   */
-  zigBee.on("deviceInterview", async function (data) { 
-    let message                = {};
-    message.deviceID           = data.device.ieeeAddr;
-    message.lastSeen           = data.device.lastSeen;
-    message.vendorName         = data.device.manufacturerName;
-    message.productName        = data.device.modelID;
-    message.softwareBuildID    = data.device.softwareBuildID;
-    message.type               = data.device.type;
-    message.bridge             = BRIDGE_PREFIX;
+  zigBee.on("deviceInterview", async function (data) {
+    try {
+      let message                = {};
+      message.deviceID           = data.device.ieeeAddr;
+      message.lastSeen           = data.device.lastSeen;
+      message.vendorName         = data.device.manufacturerName;
+      message.productName        = data.device.modelID;
+      message.softwareBuildID    = data.device.softwareBuildID;
+      message.type               = data.device.type;
+      message.bridge             = BRIDGE_PREFIX;
 
-    if (data.device.interviewState === "PENDING") {
-      common.conLog("ZigBee: device is currently interviewing", "yel");
-      common.conLog(message, "std", false);
+      if (data.device.interviewState === "PENDING") {
+        common.conLog("ZigBee: device is currently interviewing", "yel");
+        common.conLog(message, "std", false);
 
-      message.callID = bridgeStatus.deviceScanCallID; // add callID if device is discovered during scanning
-      mqttClient.publish("server/devices/discover", JSON.stringify(message)); // ... publish to MQTT broker
+        message.callID = bridgeStatus.deviceScanCallID; // add callID if device is discovered during scanning
+        mqttClient.publish("server/devices/discover", JSON.stringify(message)); // ... publish to MQTT broker
+      }
+      else if (data.device.interviewState === "SUCCESSFUL") {
+        common.conLog("ZigBee: device has joined and been interviewed", "gre");
+
+        const deviceConverter = convertersList.find(message.productName); // get converter for device from list of converters
+        if (deviceConverter === undefined) { 
+          common.conLog("ZigBee: No converter found for " + message.productName, "red");
+          message.powerType = "?"; 
+        }
+        else {
+          common.conLog("ZigBee: Converter found for " + message.productName, "gre");
+          message.powerType   = deviceConverter.powerType;
+          message.properties  = common.devicePropertiesToArray(deviceConverter.properties);        
+        }
+
+        common.conLog(message, "std", false);
+
+        message.forceReconnect = true; // because this is ZigBee, reconnect device after creation
+
+        mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
+      }
     }
-    else if (data.device.interviewState === "SUCCESSFUL") {
-      common.conLog("ZigBee: device has joined and been interviewed", "gre");
-
-      const deviceConverter = convertersList.find(message.productName); // get converter for device from list of converters
-      if (deviceConverter === undefined) { 
-        common.conLog("ZigBee: No converter found for " + message.productName, "red");
-        message.powerType = "?"; 
-      }
-      else {
-        common.conLog("ZigBee: Converter found for " + message.productName, "gre");
-        message.powerType   = deviceConverter.powerType;
-        message.properties  = common.devicePropertiesToArray(deviceConverter.properties);        
-      }
-
-      common.conLog(message, "std", false);
-
-      message.forceReconnect = true; // because this is ZigBee, reconnect device after creation
-      
-      mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
+    catch (error) {
+      common.conLog("ZigBee: Error in deviceInterview event handler: " + error.message, "red");
     }
   });
 
@@ -504,23 +509,28 @@ async function startBridgeAndServer() {
    * @description This event is triggered when a device leaves the ZigBee network. It logs the device information and publishes a message to the MQTT broker.
   */
   zigBee.on("deviceLeave", function (data) {
-    common.conLog("ZigBee: device has left", "yel");
-    common.conLog(data, "std", false);
+    try {
+      common.conLog("ZigBee: device has left", "yel");
+      common.conLog(data, "std", false);
 
-    bridgeStatus.devicesConnected.delete(data.ieeeAddr); // remove device from map of connected devices
-    bridgeStatus.devicesRegisteredAtServer.delete(data.ieeeAddr); // remove device from map of registered devices
-    bridgeStatus.deviceLastSeen.delete(data.ieeeAddr); // remove device from watchdog tracking
+      bridgeStatus.devicesConnected.delete(data.ieeeAddr); // remove device from map of connected devices
+      bridgeStatus.devicesRegisteredAtServer.delete(data.ieeeAddr); // remove device from map of registered devices
+      bridgeStatus.deviceLastSeen.delete(data.ieeeAddr); // remove device from watchdog tracking
 
-    let message      = {};
-    message.deviceID = data.ieeeAddr;
-    message.bridge   = BRIDGE_PREFIX;
-    mqttClient.publish("server/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
+      let message      = {};
+      message.deviceID = data.ieeeAddr;
+      message.bridge   = BRIDGE_PREFIX;
+      mqttClient.publish("server/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
 
-    message           = {}; // create message for MQTT broker about device status
-    message.deviceID  = data.ieeeAddr;
-    message.bridge    = BRIDGE_PREFIX;
-    message.status    = "offline";
-    mqttClient.publish("server/devices/status", JSON.stringify(message));
+      message           = {}; // create message for MQTT broker about device status
+      message.deviceID  = data.ieeeAddr;
+      message.bridge    = BRIDGE_PREFIX;
+      message.status    = "offline";
+      mqttClient.publish("server/devices/status", JSON.stringify(message));
+    }
+    catch (error) {
+      common.conLog("ZigBee: Error in deviceLeave event handler: " + error.message, "red");
+    }
   });
 
   /**
@@ -529,43 +539,48 @@ async function startBridgeAndServer() {
    * @event deviceAnnounce 
    * @description This event is triggered when a device announces itself on the ZigBee network.
    */
-  zigBee.on("deviceAnnounce", function (data) { 
-    common.conLog("ZigBee: device has announced, try to add to connected devices", "yel");
+  zigBee.on("deviceAnnounce", function (data) {
+    try {
+      common.conLog("ZigBee: device has announced, try to add to connected devices", "yel");
 
-    const deviceID = data.device.ieeeAddr;
+      const deviceID = data.device.ieeeAddr;
 
-    deviceUpdateLastSeen(deviceID);  // Update last-seen timestamp — device just announced, so it's alive
-    
-    let device = deviceFindByID(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in map of registered devices
-    if (device) { // if device is in array of registered devices, add to array connected devices
-      common.conLog("ZigBee: Device " + device.deviceID + " is registered at server - trying to connect", "yel");
+      deviceUpdateLastSeen(deviceID);  // Update last-seen timestamp — device just announced, so it's alive
       
-      data = deviceGetInfo(deviceID, bridgeStatus.devicesRegisteredAtServer);
-      if (data === undefined) { 
-        common.conLog("ZigBee: Device " + deviceID + " NOT added to list of connected devices", "red");
-      }
-      else {
-        const deviceConnected = bridgeStatus.devicesConnected.get(deviceID); // check if device is already in map of connected devices
-        if (deviceConnected === undefined) { // if device is not in map of connected devices, add it
-          common.conLog("ZigBee: Device " + data.deviceID + " added to list of connected devices", "gre");
-          bridgeStatus.devicesConnected.set(data.deviceID, data); // add device to map of connected devices
+      let device = deviceFindByID(deviceID, bridgeStatus.devicesRegisteredAtServer); // search device in map of registered devices
+      if (device) { // if device is in array of registered devices, add to array connected devices
+        common.conLog("ZigBee: Device " + device.deviceID + " is registered at server - trying to connect", "yel");
+        
+        data = deviceGetInfo(deviceID, bridgeStatus.devicesRegisteredAtServer);
+        if (data === undefined) { 
+          common.conLog("ZigBee: Device " + deviceID + " NOT added to list of connected devices", "red");
+        }
+        else {
+          const deviceConnected = bridgeStatus.devicesConnected.get(deviceID); // check if device is already in map of connected devices
+          if (deviceConnected === undefined) { // if device is not in map of connected devices, add it
+            common.conLog("ZigBee: Device " + data.deviceID + " added to list of connected devices", "gre");
+            bridgeStatus.devicesConnected.set(data.deviceID, data); // add device to map of connected devices
+          }
         }
       }
-    }
-    else {
-      common.conLog("... but is not registered at server", "std", false);      
-    }
-  
-    let message      = {};
-    message.deviceID = deviceID;
-    message.bridge   = BRIDGE_PREFIX;
-    mqttClient.publish("zigbee/devices/announced", JSON.stringify(message)); // ... publish to MQTT broker
+      else {
+        common.conLog("... but is not registered at server", "std", false);      
+      }
+    
+      let message      = {};
+      message.deviceID = deviceID;
+      message.bridge   = BRIDGE_PREFIX;
+      mqttClient.publish("zigbee/devices/announced", JSON.stringify(message)); // ... publish to MQTT broker
 
-    message           = {}; // create message for MQTT broker about device status
-    message.deviceID  = deviceID;
-    message.bridge    = BRIDGE_PREFIX;
-    message.status    = "online";
-    mqttClient.publish("server/devices/status", JSON.stringify(message));
+      message           = {}; // create message for MQTT broker about device status
+      message.deviceID  = deviceID;
+      message.bridge    = BRIDGE_PREFIX;
+      message.status    = "online";
+      mqttClient.publish("server/devices/status", JSON.stringify(message));
+    }
+    catch (error) {
+      common.conLog("ZigBee: Error in deviceAnnounce event handler: " + error.message, "red");
+    }
   });
 
   /**
@@ -574,50 +589,55 @@ async function startBridgeAndServer() {
    * @event message 
    * @description This event is triggered when a device sends a message on the ZigBee network. It processes the message, retrieves the appropriate converter for the device, and publishes the message to the MQTT broker.
   */
-  zigBee.on("message", async function (data) { 
-    let message          = {};
-    message.deviceID     = data.device.ieeeAddr;
-    message.productName  = data.device.modelID;
-    message.values       = {};
-    message.bridge       = BRIDGE_PREFIX;
-    
-    deviceUpdateLastSeen(message.deviceID); // Update last-seen timestamp for watchdog
-    
-    common.conLog("ZigBee: Device " + message.deviceID + " sends message", "yel");
+  zigBee.on("message", async function (data) {
+    try {
+      let message          = {};
+      message.deviceID     = data.device.ieeeAddr;
+      message.productName  = data.device.modelID;
+      message.values       = {};
+      message.bridge       = BRIDGE_PREFIX;
 
-    const device          = data.device;
-    const deviceConverter = convertersList.find(device.modelID); // get converter for this device
+      deviceUpdateLastSeen(message.deviceID); // Update last-seen timestamp for watchdog
 
-    if (deviceConverter)  {
-      common.conLog("ZigBee: Device converter found", "gre");
-      const properties = deviceConverter.getPropertyByClusterName(data.cluster);
+      common.conLog("ZigBee: Device " + message.deviceID + " sends message", "yel");
 
-      if (properties) {
-        for (const [attribute, property] of Object.entries(properties)) {
-          common.conLog("ZigBee: Information about property name '" + property.name + "' (original attribute: '" + attribute + "')", "yel");
-          common.conLog("ZigBee: Property details", "std", false);
-          common.conLog(property, "std", false);
-          common.conLog("ZigBee: data details", "std", false);
-          common.conLog(data, "std", false);
-          message.values[property.name] = deviceConverter.get(property, data.type, data.data); // get converted value for property
+      const device          = data.device;
+      const deviceConverter = convertersList.find(device.modelID); // get converter for this device
+
+      if (deviceConverter)  {
+        common.conLog("ZigBee: Device converter found", "gre");
+        const properties = deviceConverter.getPropertyByClusterName(data.cluster);
+
+        if (properties) {
+          for (const [attribute, property] of Object.entries(properties)) {
+            common.conLog("ZigBee: Information about property name '" + property.name + "' (original attribute: '" + attribute + "')", "yel");
+            common.conLog("ZigBee: Property details", "std", false);
+            common.conLog(property, "std", false);
+            common.conLog("ZigBee: data details", "std", false);
+            common.conLog(data, "std", false);
+            message.values[property.name] = deviceConverter.get(property, data.type, data.data); // get converted value for property
+          }
+        }
+        else {
+          common.conLog("ZigBee: No property found for cluster " + data.cluster, "red");
         }
       }
       else {
-        common.conLog("ZigBee: No property found for cluster " + data.cluster, "red");
+        common.conLog("ZigBee: No converter found for " + device.modelID, "red");
+        message.message = "Device not supported";
+      }
+
+      mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
+
+      deviceBatteryCheck(message.deviceID, message.values); // check for low battery and publish alert if needed
+
+      if (message.values && Number(Object.keys(message.values).length) > 0) { // cache last known values for this device (useful for battery-powered devices that sleep)
+        const cached = bridgeStatus.lastKnownValues.get(message.deviceID) || {};
+        bridgeStatus.lastKnownValues.set(message.deviceID, { ...cached, ...message.values, _lastUpdated: Date.now() });
       }
     }
-    else {
-      common.conLog("ZigBee: No converter found for " + device.modelID, "red");
-      message.message = "Device not supported";
-    }
-
-    mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-
-    deviceBatteryCheck(message.deviceID, message.values); // check for low battery and publish alert if needed
-    
-    if (message.values && Number(Object.keys(message.values).length) > 0) { // cache last known values for this device (useful for battery-powered devices that sleep)
-      const cached = bridgeStatus.lastKnownValues.get(message.deviceID) || {};
-      bridgeStatus.lastKnownValues.set(message.deviceID, { ...cached, ...message.values, _lastUpdated: Date.now() });
+    catch (error) {
+      common.conLog("ZigBee: Error in message event handler: " + error.message, "red");
     }
   });
 
@@ -1121,5 +1141,20 @@ async function startBridgeAndServer() {
     }, appConfig.CONF_bridgesWaitShutdownSeconds * 1000);
   });
 }
+
+/** 
+ * Unhandled errors
+ */
+process.on("unhandledRejection", function (reason) {
+  common.conLog("ZigBee Bridge: Unhandled promise rejection: " + reason, "red");
+});
+
+/** 
+ * Uncaught exceptions
+ */
+process.on("uncaughtException", function (error) {
+  common.conLog("ZigBee Bridge: Uncaught exception: " + error.message, "red");
+  common.conLog(error.stack, "std", false);
+});
 
 startBridgeAndServer();
