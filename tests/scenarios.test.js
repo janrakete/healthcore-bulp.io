@@ -122,7 +122,7 @@ describe("Scenario CRUD", () => {
         name: "Updated Alert",
         actions: [
           { type: "set_device_value", deviceID: "light_001", bridge: "zigbee", property: "state", value: "on", valueType: "String", delay: 0 },
-          { type: "set_device_value", deviceID: "light_001", bridge: "zigbee", property: "brightness", value: "254", valueType: "Numeric", delay: 2 },
+          { type: "set_device_value", deviceID: "light_001", bridge: "zigbee", property: "brightness", value: "254", valueType: "Numeric", delay: 0 },
         ],
       });
     expect(res.status).toBe(200);

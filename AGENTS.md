@@ -10,4 +10,4 @@
 ## Testing#
 - Use /tests/setup.js to run tests
 - Add tests when you create new features
-- Update /tests/setup.js if things need to be tested manually
+- Update /tests/MANUAL.md if things need to be tested manually
