@@ -71,10 +71,10 @@ class CareInsightsEngine {
           ruleID:         0,
           type:           "device_connectivity_risk",
           score:          0.9,
-          title:          this.translate("CareInsightTitleDeviceOffline"),
+          title:          this.translate("careInsightTitleDeviceOffline"),
           summary:        this.buildConnectivitySummary(device),
-          explanation:    this.translate("CareInsightExplanationDeviceOffline"),
-          recommendation: this.translate("CareInsightRecommendationDeviceOffline"),
+          explanation:    this.translate("careInsightExplanationDeviceOffline"),
+          recommendation: this.translate("careInsightRecommendationDeviceOffline"),
           deviceID:       data.deviceID,
           bridge:         data.bridge,
           property:       "status",
@@ -197,7 +197,7 @@ class CareInsightsEngine {
           title:            this.buildRuleTitle(rule, context.device),
           summary:          this.buildRuleSummary(rule, aggregation, context),
           explanation:      this.buildRuleExplanation(rule, aggregation),
-          recommendation:   rule.recommendation || this.translate("CareInsightRecommendationDefault"),
+          recommendation:   rule.recommendation || this.translate("careInsightRecommendationDefault"),
           deviceID:         context.deviceID,
           bridge:           context.bridge,
           property:         property,
@@ -250,7 +250,7 @@ class CareInsightsEngine {
       title:            this.buildRuleTitle(rule, context.device),
       summary:          this.buildNumericSummary(context.device, property, valueData.value),
       explanation:      this.buildNumericExplanation(property, valueData.value, deviation),
-      recommendation:   rule.recommendation || this.translate("CareInsightRecommendationAnomaly"),
+      recommendation:   rule.recommendation || this.translate("careInsightRecommendationAnomaly"),
       deviceID:         data.deviceID,
       bridge:           data.bridge,
       property:         property,
@@ -561,7 +561,7 @@ class CareInsightsEngine {
       return String(rule.title).trim();
     }
     else {
-      return this.translate("CareInsightTitleFallback", this.getDeviceName(device));
+      return this.translate("careInsightTitleFallback", this.getDeviceName(device));
     }
   }
 
@@ -576,13 +576,13 @@ class CareInsightsEngine {
     const label = this.buildRuleContextLabel(context);
 
     if (rule.aggregationType === "sum_below_threshold") {
-      return this.translate("CareInsightSummarySumBelow", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
+      return this.translate("careInsightSummarySumBelow", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
     }
     else if (rule.aggregationType === "sum_above_threshold") {
-      return this.translate("CareInsightSummarySumAbove", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
+      return this.translate("careInsightSummarySumAbove", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
     }
     else {
-      return this.translate("CareInsightSummaryRuleMatched", label);
+      return this.translate("careInsightSummaryRuleMatched", label);
     }
   }
 
@@ -594,13 +594,13 @@ class CareInsightsEngine {
    */
   buildRuleExplanation(rule, aggregation) {
     if (rule.aggregationType === "sum_below_threshold") {
-      return this.translate("CareInsightExplanationSumBelow", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+      return this.translate("careInsightExplanationSumBelow", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else if (rule.aggregationType === "sum_above_threshold") {
-      return this.translate("CareInsightExplanationSumAbove", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+      return this.translate("careInsightExplanationSumAbove", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {
-      return this.translate("CareInsightExplanationRuleActive");
+      return this.translate("careInsightExplanationRuleActive");
     }
   }
 
@@ -671,7 +671,7 @@ class CareInsightsEngine {
    */
   buildNumericSummary(device, property, value) {
     const deviceName = this.getDeviceName(device);
-    return this.translate("CareInsightSummaryAnomaly", deviceName, property, value);
+    return this.translate("careInsightSummaryAnomaly", deviceName, property, value);
   }
 
   /**
@@ -682,7 +682,7 @@ class CareInsightsEngine {
    * @returns {string}
    */
   buildNumericExplanation(property, value, deviation) {
-    return this.translate("CareInsightExplanationAnomaly", property, value, deviation.median, deviation.normalizedDeviation.toFixed(2));
+    return this.translate("careInsightExplanationAnomaly", property, value, deviation.median, deviation.normalizedDeviation.toFixed(2));
   }
 
   /**
@@ -692,7 +692,7 @@ class CareInsightsEngine {
    */
   buildConnectivitySummary(device) {
     const deviceName = this.getDeviceName(device);
-    return this.translate("CareInsightSummaryDeviceOffline", deviceName);
+    return this.translate("careInsightSummaryDeviceOffline", deviceName);
   }
 
   /**
@@ -711,7 +711,7 @@ class CareInsightsEngine {
       }
     }
 
-    return this.translate("CareInsightDeviceFallback");
+    return this.translate("careInsightDeviceFallback");
   }
 
   /**
