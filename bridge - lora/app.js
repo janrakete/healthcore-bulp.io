@@ -177,7 +177,9 @@ async function startBridgeAndServer() {
       await common.pause(300);
       loRa.write("ATZ" + "\r\n"); // restart LoRa adapter
       await common.pause(300);
-    })();
+    })().catch(function (error) {
+      common.conLog("LoRa: Error during adapter configuration sequence: " + error.message, "red");
+    });
   });
 
   /**
@@ -486,4 +488,19 @@ async function startBridgeAndServer() {
   });
 }
   
+/** 
+ * Unhandled errors
+ */
+process.on("unhandledRejection", function (reason) {
+  common.conLog("LoRa Bridge: Unhandled promise rejection: " + reason, "red");
+});
+
+/** 
+ * Uncaught exceptions
+ */
+process.on("uncaughtException", function (error) {
+  common.conLog("LoRa Bridge: Uncaught exception: " + error.message, "red");
+  common.conLog(error.stack, "std", false);
+});
+
 startBridgeAndServer();

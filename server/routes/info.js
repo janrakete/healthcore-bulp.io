@@ -67,7 +67,12 @@ router.get("/", async function (request, response) {
         bridgeStatus.port   = port;
 
         try {
-            const answer        = await fetch(appConfig.CONF_baseURL +  ":" + port + "/info");
+
+            const controller    = new AbortController(); // Create an AbortController to handle timeouts
+            const timeoutID     = setTimeout(() => controller.abort(), appConfig.CONF_apiCallTimeoutMilliseconds);
+            const answer        = await fetch(appConfig.CONF_baseURL + ":" + port + "/info", { signal: controller.signal });
+            clearTimeout(timeoutID);
+
             const answerData    = await answer.json();
             bridgeStatus.status = answerData.status;
         }

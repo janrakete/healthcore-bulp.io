@@ -1108,4 +1108,19 @@ async function startBridgeAndServer() {
   });
 }
 
+/** 
+ * Unhandled errors
+ */
+process.on("unhandledRejection", function (reason) {
+  common.conLog("Bluetooth Bridge: Unhandled promise rejection: " + reason, "red");
+});
+
+/**
+ * Uncaught exceptions
+ */
+process.on("uncaughtException", function (error) {
+  common.conLog("Bluetooth Bridge: Uncaught exception: " + error.message, "red");
+  common.conLog(error.stack, "std", false);
+});
+
 startBridgeAndServer();

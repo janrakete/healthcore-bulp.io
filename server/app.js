@@ -260,7 +260,7 @@ async function startServer() {
    * @param {string} message - The message payload of the incoming MQTT message
    * @description This function is called when a message is received from the MQTT broker.
    */
-  mqttClient.on("message", function (topic, message) { // getting a message from MQTT broker
+  mqttClient.on("message", async function (topic, message) { // getting a message from MQTT broker
     common.conLog("MQTT: Getting incoming message from broker", "yel");
     common.conLog("Topic: " + topic.toString(), "std", false);
     common.conLog("Message: " + message.toString(), "std", false);
@@ -275,34 +275,34 @@ async function startServer() {
 
       switch (topic) {
         case "server/devices/refresh":
-          mqttDevicesRefresh(data);
+          await mqttDevicesRefresh(data);
           break;
         case "server/devices/create":
-          mqttDevicesCreate(data);
+          await mqttDevicesCreate(data);
           break;
         case "server/devices/remove":
-          mqttDevicesRemove(data);
+          await mqttDevicesRemove(data);
           break;
         case "server/devices/update":
-          mqttDevicesUpdate(data);
+          await mqttDevicesUpdate(data);
           break;
         case "server/devices/values/get":
-          mqttDevicesValuesGet(data);
+          await mqttDevicesValuesGet(data);
           break;
         case "server/devices/strength":
-          mqttDevicesStrength(data);
+          await mqttDevicesStrength(data);
           break;
         case "server/devices/status":
-          mqttDevicesStatus(data);
+          await mqttDevicesStatus(data);
           break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
       }
     }
     catch (error) { // if error while parsing message, log error
-      common.conLog("MQTT: Error while parsing message:", "red");     
+      common.conLog("MQTT: Error while parsing message:", "red");
       common.conLog(error, "std", false);
-    } 
+    }
   });
 
   /**
@@ -463,7 +463,7 @@ async function startServer() {
               }
             });
 
-            careInsights.handleDeviceValues(data); // handle care insights based on device values
+            await careInsights.handleDeviceValues(data); // handle care insights based on device values
           }            
         }
         else {
@@ -671,5 +671,20 @@ async function startServer() {
     }, appConfig.CONF_bridgesWaitShutdownSeconds * 1000);
   });
 }
+
+/** 
+ * Unhandled errors
+ */
+process.on("unhandledRejection", function (reason) {
+  common.conLog("Server: Unhandled promise rejection: " + reason, "red");
+});
+
+/** 
+ * Uncaught exceptions
+ */
+process.on("uncaughtException", function (error) {
+  common.conLog("Server: Uncaught exception: " + error.message, "red");
+  common.conLog(error.stack, "std", false);
+});
 
 startServer();
