@@ -75,12 +75,12 @@ import "@ionic/core/css/display.css";
  * Theme variables
  */
 import "./theme/variables.css";
-//import '@ionic/core/css/palettes/dark.system.css';
+//import "@ionic/core/css/palettes/dark.system.css";
 
 /**
  * Additional controllers
  */
-import { toastController, createAnimation } from '@ionic/core';
+import { toastController, createAnimation } from "@ionic/core";
 window.toastController = toastController;
 window.createAnimation = createAnimation;
 

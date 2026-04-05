@@ -8,7 +8,7 @@ const util      = require("util");
 const chalk     = new (require("chalk").Instance)({ level: 1 });
 const dayjs     = require("dayjs");
 const sleep     = require("sleep-promise");
-const crypto    = require('crypto');
+const crypto    = require("crypto");
 
 /**
  * Console Log Function
