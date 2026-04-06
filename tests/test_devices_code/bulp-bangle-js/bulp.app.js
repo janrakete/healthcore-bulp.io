@@ -56,6 +56,16 @@
   }
 
   // ===================================================
+  // Demo: Simulated high heartrate
+  // ===================================================
+  function sendDemoHighHeartrate() {
+    const DEMO_BPM = 155;
+    showText("Demo: " + DEMO_BPM + " bpm");
+    sendBLE({t:"h", v:DEMO_BPM});
+    setTimeout(showMenu, 2000);
+  }
+
+  // ===================================================
   // HRM measurement
   // ===================================================
   function showHRM() {
@@ -122,6 +132,7 @@
     const menu = {
       "": {"title":"Per BLE senden:"},
       "Aktueller Puls\n(an App)": () => showHRM(),
+      "Demo: Hoher Puls\n(155 bpm)": () => sendDemoHighHeartrate(),
       "Licht an\n(an ZigBee-Gerät)": () => sendLightOn(),
       "Alarm an\n(an Bluetooth-Gerät)": () => sendAlarmOn(),
       "App beenden": () => exitApp()
