@@ -41,7 +41,10 @@ const Database = require("better-sqlite3");
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 const DB_FILENAME = process.env.CONF_databaseFilename || "../healthcore_database.db";
-const DB_PATH     = path.resolve(__dirname, "..", DB_FILENAME);
+// DB_FILENAME ist relativ zum Projektverzeichnis (z.B. "../healthcore_database.db").
+// Da __dirname das tests/-Verzeichnis ist, reicht ein einfaches path.resolve ohne
+// zusätzliches ".."-Segment — sonst wird eine Ebene zu weit nach oben navigiert.
+const DB_PATH     = path.resolve(__dirname, DB_FILENAME);
 
 const DEMO_PREFIX = "DEMO - ";
 
@@ -220,13 +223,20 @@ function ensureBangleBaseline(db, deviceID) {
 
 /**
  * Legt CareInsight-Regeln und Szenarien für die echten Geräte an.
+ *
+ * Trennung von Verantwortlichkeiten:
+ *   - Eine CareInsight-Regel ist geräteunabhängig: Sie lauscht nur auf eine Property
+ *     (z.B. "heartrate") und feuert für jedes Gerät, das diese Property sendet.
+ *   - Die Gerätebindung erfolgt ausschließlich im Szenario-Trigger über deviceID und bridge:
+ *     Das Szenario reagiert nur, wenn die Regel für das konkrete Zielgerät ausgelöst wurde.
+ *
  * Für SONOFF wird der aktuelle Button-Press-Sum abgefragt und die Schwelle
  * dynamisch gesetzt (current_sum + SONOFF_PRESS_THRESHOLD), so dass genau
  * SONOFF_PRESSES_NEEDED weitere Drücke den Insight auslösen.
  *
  * @param {Database} db
- * @param {Object} bangle  - { deviceID, bridge }
- * @param {Object} sonoff  - { deviceID, bridge }
+ * @param {Object} bangle  - { deviceID, bridge } — wird für den Szenario-Trigger benötigt
+ * @param {Object} sonoff  - { deviceID, bridge } — wird für Threshold-Query und Szenario-Trigger benötigt
  */
 function setupDemo(db, bangle, sonoff) {
   logSection("SETUP: CareInsight-Regeln & Szenarien anlegen");
@@ -243,9 +253,11 @@ function setupDemo(db, bangle, sonoff) {
   log("SONOFF Button-Sum (letzte 1h): " + currentSum, "📊");
   log("SONOFF Schwelle gesetzt auf:   " + sonoffThreshold + " (aktuell " + currentSum + " + " + SONOFF_PRESS_THRESHOLD + ")", "📊");
 
-  // ── CareInsight-Regeln ────────────────────────────────────────────────────
+  // ── CareInsight-Regeln ─────────────────────────────────────────────────────
+  // Regeln sind geräteunabhängig und lauschen nur auf eine Property. Welches
+  // Gerät die Regel schlussendlich auslöst, entscheidet erst der Szenario-Trigger.
 
-  // Regel 1: Puls-Anomalie für Bangle.js 2
+  // Regel 1: Puls-Anomalie (feuert für jedes Gerät, das "heartrate" sendet)
   const bangleRule = db.prepare(
     "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?)"
   ).run(
@@ -259,7 +271,7 @@ function setupDemo(db, bangle, sonoff) {
   const bangleRuleID = bangleRule.lastInsertRowid;
   log("CareInsight-Regel: Puls-Anomalie (ID " + bangleRuleID + ", Schwelle: " + ANOMALY_THRESHOLD + ")", "✓");
 
-  // Regel 2: Häufiges Drücken für SONOFF
+  // Regel 2: Häufiges Drücken (feuert für jedes Gerät, das "button" sendet)
   const sonoffRule = db.prepare(
     "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
   ).run(
@@ -275,6 +287,8 @@ function setupDemo(db, bangle, sonoff) {
   log("CareInsight-Regel: Häufiger Taserdruck (ID " + sonoffRuleID + ", Schwelle: >" + sonoffThreshold + " Drücke/h)", "✓");
 
   // ── Szenarien ─────────────────────────────────────────────────────────────
+  // Die Gerätebindung erfolgt im Szenario-Trigger: deviceID und bridge begrenzen
+  // die Auslösung auf das konkrete Zielgerät, obwohl die Regel selbst generisch ist.
 
   // Szenario 1: Bangle.js Puls-Anomalie → Notification
   const bangleScenario = db.prepare(
@@ -286,9 +300,10 @@ function setupDemo(db, bangle, sonoff) {
   );
   const bangleScenarioID = bangleScenario.lastInsertRowid;
 
+  // Trigger: Regel feuert + Gerät muss Bangle.js 2 sein
   db.prepare(
-    "INSERT INTO scenarios_triggers (scenarioID, type, property) VALUES (?, ?, ?)"
-  ).run(bangleScenarioID, "care_insight_opened", String(bangleRuleID));
+    "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
+  ).run(bangleScenarioID, "care_insight_opened", String(bangleRuleID), bangle.deviceID, bangle.bridge);
 
   db.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
@@ -311,9 +326,10 @@ function setupDemo(db, bangle, sonoff) {
   );
   const sonoffScenarioID = sonoffScenario.lastInsertRowid;
 
+  // Trigger: Regel feuert + Gerät muss SONOFF SNZB-01P sein
   db.prepare(
-    "INSERT INTO scenarios_triggers (scenarioID, type, property) VALUES (?, ?, ?)"
-  ).run(sonoffScenarioID, "care_insight_opened", String(sonoffRuleID));
+    "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
+  ).run(sonoffScenarioID, "care_insight_opened", String(sonoffRuleID), sonoff.deviceID, sonoff.bridge);
 
   db.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
