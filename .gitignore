@@ -10,3 +10,4 @@ key.pem
 /bridge - zigbee/devices.db
 app/android/app/google-services.json
 push-firebase-admin.json
+.vscode/*.*

@@ -70,7 +70,6 @@
     "MinimumValue" : "Mindestwert",
     "MaximumValue" : "Höchstwert",
     "MinimumReadings" : "Mindestanzahl der Werte",
-    "InsightType" : "Insight-Typ",
     "SourceProperty" : "Überwachte Eigenschaft",
     "SourceDevice" : "Gerät",
     "RuleSummary" : "Regelübersicht",
@@ -166,5 +165,7 @@
     "Time": "Uhrzeit",
     "OClock": "Uhr",
     "Reopen": "Wieder öffnen",
-    "AsCritical": "Als kritisch markieren"
+    "AsCritical": "Als kritisch markieren",
+    "Connect": "Verbinden",
+    "DevicesScanFound": "Geräte gefunden."    
 }

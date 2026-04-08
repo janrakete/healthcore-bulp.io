@@ -70,7 +70,6 @@
     "MinimumValue" : "Minimum value",
     "MaximumValue" : "Maximum value",
     "MinimumReadings" : "Minimum value readings",
-    "InsightType" : "Insight type",
     "SourceProperty" : "Monitored property",
     "SourceDevice" : "Device",
     "RuleSummary" : "Rule summary",
@@ -166,5 +165,7 @@
     "Time": "Time",
     "OClock": "",
     "Reopen": "Reopen",
-    "AsCritical": "Mark as critical"        
+    "AsCritical": "Mark as critical",
+    "Connect": "Connect",
+    "DevicesScanFound": "Devices found."        
 }       
