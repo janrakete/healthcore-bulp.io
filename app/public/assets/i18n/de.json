@@ -167,5 +167,10 @@
     "Reopen": "Wieder öffnen",
     "AsCritical": "Als kritisch markieren",
     "Connect": "Verbinden",
-    "DevicesScanFound": "Geräte gefunden."    
+    "DevicesScanFound": "Geräte gefunden.",    
+    "AllDevices": "Alle Geräte",
+    "CareInsightRule": "Insight-Regel",
+    "DeviceAddedAndConnected": "Gerät hinzugefügt und verbunden.",
+    "DevicesAddManually": "Gerät manuell hinzufügen",
+    "DevicesWithNoScanHelp": "Diese Verbindungsart kann nicht per Scan gefunden werden."
 }
