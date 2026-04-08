@@ -167,5 +167,10 @@
     "Reopen": "Reopen",
     "AsCritical": "Mark as critical",
     "Connect": "Connect",
-    "DevicesScanFound": "Devices found."        
+    "DevicesScanFound": "Devices found.",
+    "AllDevices": "All devices",
+    "CareInsightRule": "Insight rule",
+    "DeviceAddedAndConnected": "Device added and connected.",
+    "DevicesAddManually": "Add device manually",
+    "DevicesWithNoScanHelp": "This connection type cannot be found via a scan."
 }       
