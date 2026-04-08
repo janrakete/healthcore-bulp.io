@@ -94,12 +94,12 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
                         reportableChange: 0
                     }], options);
                 }
-                catch (error) {}
+                catch (error) { /* Device may be asleep, reporting will be configured on next wake */ }
 
                 try {
-                    await epMotion.read("msOccupancySensing", ["occupancy"], options); 
+                    await epMotion.read("msOccupancySensing", ["occupancy"], options);
                 }
-                catch(error) {}
+                catch (error) { /* Device may be asleep, read will succeed on next wake */ }
             }
 
             // 2. Illuminance
@@ -114,12 +114,12 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
                         reportableChange: 5
                     }], options);
                 }
-                catch (error) {}
+                catch (error) { /* Device may be asleep, reporting will be configured on next wake */ }
 
                 try {
                     await epIlluminance.read("msIlluminanceMeasurement", ["measuredValue"], options);
                 }
-                catch (error) {}
+                catch (error) { /* Device may be asleep, read will succeed on next wake */ }
             }
 
             // 3. Battery
@@ -132,11 +132,11 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
                         { attribute: "batteryVoltage", minimumReportInterval: 3600, maximumReportInterval: 65000, reportableChange: 1 }
                     ], options);
                 }
-                catch (error) {}
+                catch (error) { /* Device may be asleep, reporting will be configured on next wake */ }
                 try {
                     await epPower.read("genPowerCfg", ["batteryPercentageRemaining", "batteryVoltage"], options);
                 }
-                catch (error) {}
+                catch (error) { /* Device may be asleep, read will succeed on next wake */ }
             }
         }
         catch (error) {

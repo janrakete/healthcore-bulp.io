@@ -332,7 +332,12 @@ class ScenarioEngine {
 
       for (const action of actions) {
         setTimeout(() => {
-          this.executeAction(action, scenario);
+          try {
+            this.executeAction(action, scenario);
+          }
+          catch (timerError) {
+            common.conLog("Scenario Engine: Error executing delayed action for scenario " + scenario.scenarioID + ": " + timerError.message, "red");
+          }
         }, action.delay * 1000);
       }
     }
@@ -361,7 +366,12 @@ class ScenarioEngine {
 
         for (const action of actions) { // execute actions with delays
           setTimeout(() => {
-            this.executeAction(action, scenario);
+            try {
+              this.executeAction(action, scenario);
+            }
+            catch (timerError) {
+              common.conLog("Scenario Engine: Error executing delayed action for scenario " + scenario.scenarioID + ": " + timerError.message, "red");
+            }
           }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
         }
 

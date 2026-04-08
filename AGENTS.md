@@ -1,6 +1,6 @@
 ## General
 - Always use the latest version of the local files
-- Read README.md to understand the purpose of the code
+- Read /README.md to understand the purpose of the code
 
 ## Code style and comments
 - Please style new code to match the existing code
@@ -10,4 +10,4 @@
 ## Testing#
 - Use /tests/setup.js to run tests
 - Add tests when you create new features
-- Update /tests/setup.js if things need to be tested manually
+- Update /tests/MANUAL.md if things need to be tested manually
