@@ -176,9 +176,36 @@ async function startHealthcheck() {
    * @returns {File} monitor.html - The HTML file for the healthcheck monitor interface
    * @description This route serves the monitor.html file located in the monitor directory. It uses the express.static middleware to serve static files from the monitor directory, allowing the client to access the healthcheck monitor interface.  
    */
-  app.use(express.static(__dirname + "/monitor"));
+  /**
+   * This route returns the runtime configuration needed by the browser-based dashboard.
+   * The Healthcore server base URL and optional API key are injected here so the
+   * frontend never has to hard-code connection details.
+   * @route GET /api/config
+   * @returns {Object} config - An object with serverBaseUrl and apiKey fields
+   * @description Reads CONF_baseURL, CONF_portServer and CONF_apiKey from the app
+   *   configuration and returns them as JSON. The dashboard fetches this once on startup.
+   */
+  app.get("/api/config", (req, res) => {
+    res.json({
+      serverBaseUrl:                    appConfig.CONF_baseURL + ":" + appConfig.CONF_portServer,
+      apiKey:                           appConfig.CONF_apiKey || "",
+      dashboardRefreshIntervalMs:       appConfig.CONF_dashboardRefreshIntervalMs       || 30000,
+      dashboardRecentInsightsCount:     appConfig.CONF_dashboardRecentInsightsCount     || 5,
+      dashboardRecentNotificationsCount: appConfig.CONF_dashboardRecentNotificationsCount || 3
+    });
+  });
+
+  // Serve all static files (JS, CSS, libraries) from the dashboard folder
+  app.use(express.static(__dirname + "/dashboard"));
+
+  /**
+   * This route serves the dashboard HTML page. The dashboard is the single entry point
+   * for the healthcheck interface and replaces the old monitor page.
+   * @route GET /
+   * @returns {File} dashboard.html - The HTML file for the healthcheck dashboard
+   */
   app.get("/", function (req, res) {
-    res.sendFile(__dirname + "/monitor/monitor.html");
+    res.sendFile(__dirname + "/dashboard/dashboard.html");
   });
 
   /**

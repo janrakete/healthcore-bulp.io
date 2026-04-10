@@ -1,0 +1,222 @@
+/**
+ * =============================================================================================
+ * Healthcheck Dashboard — Stylesheet
+ * ===================================
+ */
+@font-face {
+    font-family: "Poppins";
+    src:         url("../fonts/Poppins/Poppins-ExtraLight.ttf") format("truetype");
+    font-weight: 200;
+    font-style:  normal;
+}
+
+@font-face {
+    font-family: "Poppins";
+    src:         url("../fonts/Poppins/Poppins-Light.ttf") format("truetype");
+    font-weight: 300;
+    font-style:  normal;
+}
+
+@font-face {
+    font-family: "Poppins";
+    src:         url("../fonts/Poppins/Poppins-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style:  normal;
+}
+
+@font-face {
+    font-family: "Poppins";
+    src:         url("../fonts/Poppins/Poppins-Medium.ttf") format("truetype");
+    font-weight: 500;
+    font-style:  normal;
+}
+
+@font-face {
+    font-family: "Poppins";
+    src:         url("../fonts/Poppins/Poppins-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-style:  normal;
+}
+
+@font-face {
+    font-family: "Poppins";
+    src:         url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style:  normal;
+}
+
+:root {
+    /* Bulma primary colour override → deep purple #311B92 */
+    --bulma-primary-h: 263deg;
+    --bulma-primary-s: 69%;
+    --bulma-primary-l: 34%;
+    --bulma-link-h:    263deg;
+    --bulma-link-s:    69%;
+    --bulma-link-l:    34%;
+
+    /* ── Healthcore colour palette ──────────────────────────────────────────
+       Single source of truth for all status and chart colours.
+       Used by CSS rules below AND read at runtime by dashboard.js via
+       getComputedStyle so Chart.js charts stay in sync automatically.
+       ──────────────────────────────────────────────────────────────────── */
+    --hc-color-primary:              #311B92;
+    --hc-color-primary-mid:          #673ab7;
+    --hc-color-primary-alpha:        rgba(49, 27, 146, 0.1);
+
+    --hc-color-insight-open:         #ff9800;
+    --hc-color-insight-acknowledged: #2196f3;
+    --hc-color-insight-resolved:     #4caf50;
+    --hc-color-insight-critical:     #ff5722;
+
+    --hc-color-connected:            #4caf50;
+    --hc-color-disconnected:         #ff5722;
+}
+
+/* Replace Bulma's default stack (BlinkMacSystemFont, …) with Poppins.
+   Bulma 1.x sets html/body to #fafafa — override to pure white. */
+html,
+body {
+    font-family:      "Poppins", sans-serif;
+    background-color: #ffffff;
+    color:            #222222;
+}
+
+/* Navbar background and text colour */
+#hc-nav.navbar {
+    background-color: #311B92;
+}
+
+/* Active-state highlight for the language toggle buttons */
+.hc-lang-btn.is-active {
+    background-color: #ffffff !important;
+    color:            #311B92 !important;
+    font-weight:      600;
+}
+
+/* Status bar */
+#hc-status-bar {
+    background-color: #ffffff;
+    border-bottom:    1px solid #e8e8e8;
+}
+
+/* Red colour for the error state */
+#hc-status-message.is-error {
+    color:       #c62828 !important;
+    font-weight: 600;
+}
+
+/* Padding for tab panels to give content some breathing room */
+.hc-tab-panel {
+    padding: 1.25rem 1rem;
+}
+
+/* Stat cards — center text and add a top border for visual separation */
+.hc-stat-card {
+    text-align: center;
+    border-top: 4px solid var(--hc-color-primary);
+}
+
+/* Orange accent for warning stats (e.g. critical signals) */
+.hc-stat-card.is-warning {
+    border-top-color: #ff5722;
+}
+
+/* The number in the stat card — large, bold, and with a specific colour */
+.hc-stat-number {
+    display:     block;
+    font-size:   2.5rem;
+    font-weight: 700;
+    color:       var(--hc-color-primary);
+    line-height: 1.1;
+    margin-top:  0.2rem;
+}
+
+/* Red colour for warning stats (e.g. critical signals) */
+.hc-stat-number.is-warning {
+    color: #ff5722;
+}
+
+/* Label below the number, styled as uppercase with a smaller font size and lighter colour */
+.hc-stat-label {
+    display:        block;
+    font-size:      0.7rem;
+    color:          #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top:     0.2rem;
+}
+
+/* Chart box — centers the chart and limits its maximum width for better readability on large screens */
+.hc-chart-box {
+    max-width:  380px;
+    margin:     0 auto;
+    text-align: center;
+}
+
+/* Filter bar (Bulma's .field.is-grouped handles layout) */
+.hc-filter-bar {
+    background-color: #ffffff;
+    border-left:      4px solid var(--hc-color-primary);
+    border-bottom:    1px solid #e8e8e8;
+    padding:          0.5rem 1rem;
+    margin-bottom:    1rem;
+    align-items:      center;
+}
+
+/* Care Insights — expand / collapse mechanism */
+.hc-insight-detail {
+    display: none;
+}
+
+/* When the .is-visible class is added, show the detail section */
+.hc-insight-detail.is-visible {
+    display: block;
+}
+
+/* Pointer cursor and hover background on clickable card headers */
+.hc-insight-card .card-header {
+    cursor: pointer;
+}
+
+/* Subtle background change on hover to indicate interactivity */
+.hc-insight-card .card-header:hover {
+    background-color: #f5f5f5;
+}
+
+/* Signal chart container */
+.hc-signal-chart-container {
+    position:   relative;
+    height:     220px;
+    margin-top: 1rem;
+}
+
+/* Colour-coded tags for signal states and connection status. The !important is used to override any conflicting styles from Bulma or other libraries, ensuring our custom colours are applied consistently. */
+.hc-tag-open         { background-color: var(--hc-color-insight-open)         !important; color: #ffffff !important; }
+.hc-tag-acknowledged { background-color: var(--hc-color-insight-acknowledged) !important; color: #ffffff !important; }
+.hc-tag-resolved     { background-color: var(--hc-color-insight-resolved)     !important; color: #ffffff !important; }
+.hc-tag-critical     { background-color: var(--hc-color-insight-critical)     !important; color: #ffffff !important; }
+.hc-tag-connected    { background-color: var(--hc-color-connected)            !important; color: #ffffff !important; }
+.hc-tag-disconnected { background-color: var(--hc-color-disconnected)         !important; color: #ffffff !important; }
+
+/* Overview — recent-data row separator */
+.hc-overview-recent-row {
+    padding:       0.45rem 0;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+/* Remove the bottom border from the last row for a cleaner look */
+.hc-overview-recent-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Data card — top border accent */
+.hc-data-card {
+    border-top: 4px solid var(--hc-color-primary-mid);
+    height:     100%;
+}
+
+/* Status tab — bridge card sizing */
+.hc-status-bridge-card {
+    min-width: 160px;
+}
