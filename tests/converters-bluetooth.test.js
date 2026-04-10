@@ -133,3 +133,94 @@ describe("BLE ConverterStandard", () => {
     });
   });
 });
+
+// =====================================================================
+// Converter_BangleJS2BLE
+// =====================================================================
+const { Converter_BangleJS2BLE } = require("../bridge - bluetooth/converters/Converter_BangleJS2BLE");
+
+describe("Converter_BangleJS2BLE", () => {
+  let converter;
+
+  beforeEach(() => {
+    converter = new Converter_BangleJS2BLE();
+  });
+
+  test("should have Nordic UART TX characteristic defined", () => {
+    const prop = converter.getPropertyByUUID("6e400003b5a3f393e0a9e50e24dcca9e");
+    expect(prop).toBeDefined();
+    expect(prop.valueType).toBe("Subproperties");
+    expect(prop.notify).toBe(true);
+  });
+
+  describe("getSubproperty - complete message", () => {
+    let property;
+
+    beforeEach(() => {
+      property = converter.getPropertyByUUID("6e400003b5a3f393e0a9e50e24dcca9e");
+    });
+
+    test("should parse heartrate message", () => {
+      const result = converter.getSubproperty(property, Buffer.from('{"t":"h","v":72}'));
+      expect(result).toBeDefined();
+      expect(result.name).toBe("heartrate");
+      expect(result.value).toBe(72);
+      expect(result.valueAsNumeric).toBe(72);
+    });
+
+    test("should parse light-on message", () => {
+      const result = converter.getSubproperty(property, Buffer.from('{"t":"l","v":"1"}'));
+      expect(result).toBeDefined();
+      expect(result.name).toBe("light");
+      expect(result.value).toBe("on");
+      expect(result.valueAsNumeric).toBe(1);
+    });
+
+    test("should parse light-off message", () => {
+      const result = converter.getSubproperty(property, Buffer.from('{"t":"l","v":"0"}'));
+      expect(result.value).toBe("off");
+      expect(result.valueAsNumeric).toBe(0);
+    });
+
+    test("should parse alarm-on message", () => {
+      const result = converter.getSubproperty(property, Buffer.from('{"t":"a","v":"1"}'));
+      expect(result.name).toBe("alarm");
+      expect(result.value).toBe("on");
+    });
+
+    test("should return undefined for unknown type", () => {
+      const result = converter.getSubproperty(property, Buffer.from('{"t":"x","v":"1"}'));
+      expect(result).toBeUndefined();
+    });
+
+    test("should return undefined for invalid JSON", () => {
+      const result = converter.getSubproperty(property, Buffer.from("not-json"));
+      expect(result).toBeUndefined();
+    });
+
+    // Simulate macOS fragmentation: the JSON arrives split across two BLE notifications.
+    // The bridge buffers the fragments and should only process the complete line.
+    test("should handle fragmented message via manual buffer simulation", () => {
+      let buffer = "";
+
+      // First fragment: the first half of the JSON, no newline yet
+      buffer += '{"t":"h","v"';
+      let lines = buffer.split("\n");
+      buffer = lines.pop(); // no newline yet, nothing to process
+      expect(lines.filter(l => l.trim() !== "")).toHaveLength(0);
+
+      // Second fragment: rest of the JSON plus newline (as Bangle.js Bluetooth.println adds)
+      buffer += ':98}\n';
+      lines = buffer.split("\n");
+      buffer = lines.pop(); // keep incomplete remainder
+
+      const completedLines = lines.filter(l => l.trim() !== "");
+      expect(completedLines).toHaveLength(1);
+
+      const result = converter.getSubproperty(property, Buffer.from(completedLines[0].trim()));
+      expect(result).toBeDefined();
+      expect(result.name).toBe("heartrate");
+      expect(result.value).toBe(98);
+    });
+  });
+});

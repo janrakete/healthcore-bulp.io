@@ -147,6 +147,7 @@ async function startBridgeAndServer() {
         if (error) {    
           common.conLog("Bluetooth: Error while connecting to device:", "red");
           common.conLog(error, "std", false);
+          bridgeStatus.devicesConnecting.delete(device.deviceID); // connection failed — remove from connecting guard
         }
         else {
           deviceRaw.once("disconnect", function (error) { // if device is connect, set event handler for disconnecting
@@ -155,6 +156,8 @@ async function startBridgeAndServer() {
             
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
             delete device.deviceConverter; // remove device converter from device, because stringify will not work with object
+            delete device._buffers; // clear UART fragment buffers to avoid stale data on reconnect
+            bridgeStatus.devicesConnecting.delete(device.deviceID); // ensure connecting-guard is cleared on disconnect
             mqttClient.publish("server/devices/disconnect", JSON.stringify(device)); // publish disconnected device to MQTT broker
 
             let message       = {}; // create message for MQTT broker about device status
@@ -173,82 +176,121 @@ async function startBridgeAndServer() {
             }
           });
 
-          deviceRaw.discoverAllServicesAndCharacteristics(function (error, services) { // discover services and characteristics of device
-            if (error || services.length === 0) {
-              common.conLog("Bluetooth: Ghost connection? - no services found", "yel");
-              deviceRaw.disconnect();
-            }
-            else {
-              device.deviceConverter = convertersList.find(device.productName); // get converter for device from list of converters
+          const discoverDelay = (process.platform === "darwin") ? 1000 : 0; // on macOS, a short delay before service discovery prevents CoreBluetooth from hanging when services are not yet cached
 
-              if (device.deviceConverter === undefined) { 
-                common.conLog("Bluetooth: No converter found for " + device.productName, "red");
+          setTimeout(() => {
+            common.conLog("Bluetooth: Starting service discovery for " + device.deviceID + " (platform: " + process.platform + ")", "yel");
+
+            deviceRaw.discoverServices([], function (error, services) { // First: discover all services
+              if (error || !services || services.length === 0) {
+                common.conLog("Bluetooth: Service discovery failed for " + device.deviceID + " - error: " + error + ", services: " + (services ? services.length : "null"), "red");
+                deviceRaw.disconnect();
+                return;
               }
-              else
-              {
-                for (const service of services) { // for each service of device
-                  common.conLog("Bluetooth: " + device.deviceID + " - Service found: " + service.uuid, "yel");
-                  for (const characteristic of service.characteristics) { // for each characteristic of service
-                    common.conLog("Bluetooth: " + device.deviceID + " - Characteristic found: " + characteristic.uuid, "yel");
-                    const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
-                    if (property !== undefined) {
-                      if ((property.notify === true) && characteristic.properties.includes("notify")) { // if characteristic has notify value, subscribe to it
-                        characteristic.subscribe(function (error) { 
-                          if (error) {
-                            common.conLog("Bluetooth: Error while subscribing to characteristic:", "red");
-                            common.conLog(error, "std", false);
-                          }
-                          else {
-                            common.conLog("Bluetooth: Subscribed to characteristic " + characteristic.uuid, "gre");
-                            characteristic.on("data", function (value) { // if value is received from device, log it
-                              deviceUpdateLastSeen(device.deviceID); // update watchdog timestamp
 
-                              let message                     = {};
-                              message.deviceID                = device.deviceID;
-                              message.values                  = {}; // create empty array for properties
-                              message.bridge                  = BRIDGE_PREFIX;
+              common.conLog("Bluetooth: Found " + services.length + " service(s) for " + device.deviceID, "yel");
 
-                              if (property.valueType === "Subproperties") { // if property has multiple subproperties
-                                const subproperty = device.deviceConverter.getSubproperty(property, value);
-                                if (subproperty !== undefined) { // if subproperty is found in converter
-                                  message.values[subproperty.name] = { value: subproperty.value, valueAsNumeric: subproperty.valueAsNumeric };
+              let servicesRemaining = services.length; // counter to know when all services are processed
+
+              function onAllCharacteristicsDiscovered() { // called after each service's characteristics are discovered to check if all services are processed before proceeding with converter lookup and subscription
+                servicesRemaining--;
+                if (servicesRemaining > 0) {
+                  return; // still waiting for other services
+                }
+                device.deviceConverter = convertersList.find(device.productName); // When all characteristics discovered —  get converter for device from list of converters and subscribe
+
+                common.conLog("Bluetooth: Looking up converter for productName: '" + device.productName + "'", "yel");
+
+                if (device.deviceConverter === undefined) {
+                  common.conLog("Bluetooth: No converter found for " + device.productName, "red");
+                }
+                else {
+                  for (const service of services) { // for each service of device
+                    common.conLog("Bluetooth: " + device.deviceID + " - Service: " + service.uuid, "yel");
+                    for (const characteristic of service.characteristics || []) { // for each characteristic of service
+                      common.conLog("Bluetooth: " + device.deviceID + " - Characteristic: " + characteristic.uuid + " [" + (characteristic.properties || []).join(",") + "]", "yel");
+                      const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
+                      if (property !== undefined) {
+                        if ((property.notify === true) && characteristic.properties.includes("notify")) { // if characteristic has notify value, subscribe to it
+                          characteristic.subscribe(function (error) { 
+                            if (error) {
+                              common.conLog("Bluetooth: Error while subscribing to characteristic:", "red");
+                              common.conLog(error, "std", false);
+                            }
+                            else {
+                              common.conLog("Bluetooth: Subscribed to characteristic " + characteristic.uuid, "gre");
+
+                              if (property.valueType === "Subproperties") { // if property has multiple subproperties (text-based UART), initialize buffer for incoming fragments
+                                if (!device._buffers) { 
+                                  device._buffers = {};
                                 }
-                              }
-                              else {
-                                message.values[property.name]   = device.deviceConverter.get(property, value);
+                                device._buffers[characteristic.uuid] = "";
                               }
 
-                              mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-                              
-                              deviceBatteryCheck(device.deviceID, message.values); // check for low battery and publish alert if needed
-                            }); 
-                          }
-                        });
+                              characteristic.on("data", function (value) { // if value is received from device, log it
+                                deviceUpdateLastSeen(device.deviceID); // update watchdog timestamp
+
+                                if (property.valueType === "Subproperties") { // if property has multiple subproperties (text-based UART)
+                                  device._buffers[characteristic.uuid] += (Buffer.isBuffer(value) ? value.toString("utf8") : String(value)); // Append incoming fragment to buffer and process only complete newline-terminated lines
+
+                                  const lines = device._buffers[characteristic.uuid].split("\n");
+                                  device._buffers[characteristic.uuid] = lines.pop(); // keep the incomplete remainder for the next data event
+
+                                  for (const line of lines) {
+                                    const trimmedLine = line.trim();
+                                    if (trimmedLine === "") { // skip empty lines
+                                      continue;
+                                    }
+
+                                    const subproperty = device.deviceConverter.getSubproperty(property, Buffer.from(trimmedLine));
+                                    if (subproperty !== undefined) { // if subproperty is found in converter
+                                      let message         = {};
+                                      message.deviceID    = device.deviceID;
+                                      message.values      = {};
+                                      message.bridge      = BRIDGE_PREFIX;
+                                      message.values[subproperty.name] = { value: subproperty.value, valueAsNumeric: subproperty.valueAsNumeric };
+                                      mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
+                                      deviceBatteryCheck(device.deviceID, message.values); // check for low battery and publish alert if needed
+                                    }
+                                  }
+                                }
+                                else {
+                                  let message                     = {};
+                                  message.deviceID                = device.deviceID;
+                                  message.values                  = {}; // create empty object for properties
+                                  message.bridge                  = BRIDGE_PREFIX;
+                                  message.values[property.name]   = device.deviceConverter.get(property, value);
+                                  mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
+                                  deviceBatteryCheck(device.deviceID, message.values); // check for low battery and publish alert if needed
+                                }
+                              }); 
+                            }
+                          });
+                        }
                       }
-                    }
-                    else { // if characteristic is not in converter propery list
-                      common.conLog("Bluetooth: Characteristic " + characteristic.uuid + " not found in converter list", "red");
+                      else { // if characteristic is not in converter property list
+                        common.conLog("Bluetooth: Characteristic " + characteristic.uuid + " not found in converter list", "red");
+                      }
                     }
                   }
                 }
-              }
 
-              common.conLog("Bluetooth: Device connected: " + device.deviceID + " (" + device.productName + ")", "gre");
-              mqttClient.publish("server/devices/connect", JSON.stringify(device)); // publish connected device to MQTT broker
+                common.conLog("Bluetooth: Device connected: " + device.deviceID + " (" + device.productName + ")", "gre");
+                mqttClient.publish("server/devices/connect", JSON.stringify(device)); // publish connected device to MQTT broker
 
-              let message       = {}; // create message for MQTT broker about device status
-              message.deviceID  = device.deviceID;
-              message.bridge    = BRIDGE_PREFIX;
-              message.status    = "online";
-              mqttClient.publish("server/devices/status", JSON.stringify(message));
+                let message       = {}; // create message for MQTT broker about device status
+                message.deviceID  = device.deviceID;
+                message.bridge    = BRIDGE_PREFIX;
+                message.status    = "online";
+                mqttClient.publish("server/devices/status", JSON.stringify(message));
 
-              if (addDeviceToServer === true) { // if device should be added to server (only if it was connected via mqtt message with addDeviceToServer flag)
+                if (addDeviceToServer === true) { // if device should be added to server (only if it was connected via mqtt message with addDeviceToServer flag)
                   let message         = {};
                   message.deviceID    = device.deviceID;
                   message.bridge      = device.bridge || "";
-                  message.powerType   = device.deviceConverter.powerType || "";
+                  message.powerType   = device.deviceConverter ? device.deviceConverter.powerType || "" : ""; // if converter defines a powerType, use it; otherwise empty string
                   message.productName = device.productName || "";
-                  message.properties  = common.devicePropertiesToArray(device.deviceConverter.properties) || "";
+                  message.properties  = device.deviceConverter ? common.devicePropertiesToArray(device.deviceConverter.properties) || "" : "";
                   message.name        = device.name || "";
                   message.description = device.description || "";
 
@@ -256,13 +298,31 @@ async function startBridgeAndServer() {
 
                   mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
                   common.conLog("Try to add device " + message.deviceID + " to server", "yel");
-              }                 
+                }
 
-              device.deviceRaw = deviceRaw; // save device object for later use
-              bridgeStatus.devicesConnected.set(device.deviceID, device); // add device to map of connected devices
-              deviceUpdateLastSeen(device.deviceID); // initialize watchdog timestamp on connect
-            }
-          });
+                device.deviceRaw = deviceRaw; // save device object for later use
+                bridgeStatus.devicesConnected.set(device.deviceID, device); // add device to map of connected devices
+                bridgeStatus.devicesConnecting.delete(device.deviceID); // connection complete — remove from connecting guard
+                deviceUpdateLastSeen(device.deviceID); // initialize watchdog timestamp on connect
+              }
+
+              const characteristicsDiscoverDelay = (process.platform === "darwin") ? 500 : 0; // on macOS, a short delay between service discoveries prevents CoreBluetooth from hanging when services are not yet cached
+
+              for (const service of services) {
+                setTimeout(() => {
+                  service.discoverCharacteristics([], function (error, characteristics) {
+                    if (error) {
+                      common.conLog("Bluetooth: Error discovering characteristics for service " + service.uuid + ": " + error, "red");
+                    }
+                    else {
+                      common.conLog("Bluetooth: Service " + service.uuid + " has " + (characteristics ? characteristics.length : 0) + " characteristic(s)", "yel");
+                    }
+                    onAllCharacteristicsDiscovered(); // advance counter regardless of error so we don't hang
+                  });
+                }, characteristicsDiscoverDelay);
+              }
+            });
+          }, discoverDelay); // end of macOS initial-delay setTimeout
         }
       });
     }
@@ -307,6 +367,7 @@ async function startBridgeAndServer() {
   class BridgeStatus {
     constructor() {
       this.devicesConnected              = new Map(); // Map of currently connected Bluetooth devices (keyed by deviceID)
+      this.devicesConnecting             = new Map(); // Map of deviceIDs currently in the process of connecting (prevents duplicate connect attempts)
       this.devicesRegisteredAtServer     = new Map(); // Map of devices registered at the server (keyed by deviceID)
       this.devicesFoundViaScan           = new Map(); // Map of devices found via scanning (keyed by deviceID)
       this.deviceScanCallID              = undefined; // ID of call if scanning is initiated
@@ -549,12 +610,14 @@ async function startBridgeAndServer() {
     if (((data.deviceID !== undefined) && (data.deviceID.trim() !== "")) && ((data.productName !== undefined) && (data.productName.trim() !== ""))) {
       common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") discovered", "yel");
 
-      // always check if discovered device is registered at server and not yet connected - auto-connect if so
+      // always check if discovered device is registered at server and not yet connected/connecting - auto-connect if so
       const registeredDevice  = bridgeStatus.devicesRegisteredAtServer.get(data.deviceID);
       const alreadyConnected  = bridgeStatus.devicesConnected.get(data.deviceID);
+      const alreadyConnecting = bridgeStatus.devicesConnecting.has(data.deviceID); // guard against duplicate connect attempts (device may be re-discovered while connection is in progress)
 
-      if (registeredDevice && !alreadyConnected) {
+      if (registeredDevice && !alreadyConnected && !alreadyConnecting) {
         common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") is registered at server - trying to connect", "yel");
+        bridgeStatus.devicesConnecting.set(data.deviceID, true); // mark as connecting to prevent duplicate attempts
         deviceConnectAndDiscover(data, deviceRaw);
       }
 
@@ -603,6 +666,7 @@ async function startBridgeAndServer() {
       bluetooth.stopScanning();    
       message.status = "offline";
       bridgeStatus.devicesConnected.clear();
+      bridgeStatus.devicesConnecting.clear(); // cancel all pending connection guards
       bridgeStatus.devicesRegisteredAtServer.clear();
       bridgeStatus.devicesFoundViaScan.clear();
       bridgeStatus.deviceScanCallID             = undefined;
