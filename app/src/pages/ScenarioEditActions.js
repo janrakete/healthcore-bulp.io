@@ -591,7 +591,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
         document.querySelector("ion-select[name='editActionType']").value = type;
         this.actionUpdateFieldVisibility(type);
 
-        document.querySelector("ion-input[name='editActionDelay']").value = actionData.Number(delay) > 0 ? actionData.delay : "";
+        document.querySelector("ion-input[name='editActionDelay']").value = Number(actionData.delay) > 0 ? actionData.delay : "";
 
         if (String(type) === "set_device_value") {
           await this.loadDataActionDevices(actionData.deviceID);

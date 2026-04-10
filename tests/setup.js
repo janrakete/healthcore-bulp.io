@@ -182,7 +182,7 @@ function createTestDatabase() {
 
     CREATE TABLE care_insight_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT,
+      title TEXT NOT NULL,
       enabled BOOLEAN DEFAULT 1,
       sourceProperty TEXT NOT NULL,
       aggregationType TEXT NOT NULL DEFAULT 'sum_below_threshold',
