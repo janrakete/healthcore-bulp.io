@@ -11,3 +11,4 @@ key.pem
 app/android/app/google-services.json
 push-firebase-admin.json
 ./.claude
+healthcore_database.db
