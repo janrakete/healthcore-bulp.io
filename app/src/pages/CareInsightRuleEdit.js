@@ -74,7 +74,7 @@ class CareInsightRuleEdit extends HTMLElement {
     this.updateFieldVisibility();
 
     if (Number(this.ID) > 0) {
-      this.loadData();
+      this.dataLoad();
     }
   }
 
@@ -135,7 +135,7 @@ class CareInsightRuleEdit extends HTMLElement {
     }
   }
 
-  async loadData() {
+  async dataLoad() {
     try {
       const data = await apiGET("/data/care_insight_rules?ruleID=" + this.ID);
       console.log("API call - Output:", data);

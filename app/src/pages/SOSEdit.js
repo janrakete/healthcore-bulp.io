@@ -40,7 +40,7 @@ class SOSEdit extends HTMLElement {
     `;
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
     if (Number(this.ID) > 0) {
-      this.loadData();
+      this.dataLoad();
     }
   }
 
@@ -79,7 +79,7 @@ class SOSEdit extends HTMLElement {
     }
   }
 
-  async loadData() {
+  async dataLoad() {
     try {
       const data = await apiGET("/data/sos?sosID=" + this.ID);
       console.log("API call - Output:", data);

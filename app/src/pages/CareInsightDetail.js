@@ -22,10 +22,10 @@ class CareInsightDetail extends HTMLElement {
       </ion-content>
     `;
 
-    this.loadData();
+    this.dataLoad();
   }
 
-  async loadData() {
+  async dataLoad() {
     const spinner = spinnerShow("#care-insight-detail");
 
     try {
@@ -93,7 +93,7 @@ class CareInsightDetail extends HTMLElement {
       const data = await apiPATCH("/care-insights/" + this.ID, { status: status });
       if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");
-        await this.loadData();
+        await this.dataLoad();
       }
       else {
         toastShow("Error: " + data.error, "danger");

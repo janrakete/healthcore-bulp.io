@@ -79,7 +79,7 @@ class ScenarioEdit extends ScenarioEditBase {
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
     
     if (Number(this.ID) > 0) {
-      this.loadData();
+      this.dataLoad();
     }
 
     this.setupTriggerEvents();
@@ -126,7 +126,7 @@ class ScenarioEdit extends ScenarioEditBase {
     }
   }
 
-  async loadData() {
+  async dataLoad() {
     try {
       const data = await apiGET("/scenarios/" + this.ID);
       console.log("API call - Output:", data);
