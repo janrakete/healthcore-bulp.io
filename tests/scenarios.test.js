@@ -803,7 +803,14 @@ describe("Event-Based Triggers", () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(mockPushEngine.sendAll).toHaveBeenCalledWith("Alert!", "Heart rate too high");
 
+    // A push_notification should also create a normal notification in the database
+    const notification = db.prepare("SELECT * FROM notifications WHERE scenarioID = ?").get(sid);
+    expect(notification).toBeTruthy();
+    expect(notification.text).toBe("Alert!");
+    expect(notification.description).toBe("Heart rate too high");
+
     global.scenarios.pushEngine = null;
+    db.prepare("DELETE FROM notifications WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);

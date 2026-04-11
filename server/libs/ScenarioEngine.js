@@ -15,7 +15,7 @@
  *
  * Supported action types:
  *   - set_device_value:    Set a property on a device via MQTT
- *   - push_notification:   Send a push notification (value = title, property = body)
+ *   - push_notification:   Send a push notification and also create a normal notification (value = title, property = body)
  *   - notification:        Log a notification without push (value = text)
  */
 
@@ -412,6 +412,9 @@ class ScenarioEngine {
           if (this.pushEngine) {
             this.pushEngine.sendAll(action.value || scenario.name, action.property || scenario.description || "");
           }
+          database.prepare("INSERT INTO notifications (text, description, scenarioID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(
+            action.value || scenario.name, action.property || scenario.description || "", scenario.scenarioID, scenario.icon
+          );
           common.conLog("Scenario Engine: Action push_notification - " + (action.value || scenario.name), "yel");
           break;
 
