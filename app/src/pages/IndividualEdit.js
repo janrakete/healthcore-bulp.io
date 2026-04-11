@@ -46,7 +46,7 @@ class IndividualEdit extends HTMLElement {
     this.querySelector("#submit-button").addEventListener("click", () => this.submit());
     this.loadRoomsData();
     if (Number(this.ID) > 0) {
-      this.loadData();
+      this.dataLoad();
     }
   }
 
@@ -110,7 +110,7 @@ class IndividualEdit extends HTMLElement {
   }
 
 
-  async loadData() {
+  async dataLoad() {
     try {
       const data = await apiGET("/data/individuals?individualID=" + this.ID);
       console.log("API call - Output:", data);
