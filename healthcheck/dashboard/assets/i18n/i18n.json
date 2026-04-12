@@ -13,7 +13,7 @@
     },
     "NotificationsTitle": {
         "en": "Notifications",
-        "de": "Benachrichtigungen"
+        "de": "Nachrichten"
     },
     "LastUpdated": {
         "en": "Last updated",
@@ -73,7 +73,7 @@
     },
     "RecentNotifications": {
         "en": "Recent Notifications",
-        "de": "Aktuelle Benachrichtigungen"
+        "de": "Aktuelle Nachrichten"
     },
     "NoData": {
         "en": "No data available",
@@ -426,5 +426,13 @@
     "Property": {
         "en": "Property",
         "de": "Eigenschaft"
+    },
+    "English": {
+        "en": "English",
+        "de": "Englisch"
+    },
+    "German": {
+        "en": "German",
+        "de": "Deutsch"
     }
 }

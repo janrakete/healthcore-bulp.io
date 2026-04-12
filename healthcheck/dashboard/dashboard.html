@@ -3,41 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Healthcheck: Dashboard for Healthcore</title>
-
-  <!-- Bulma CSS framework (local copy, no CDN) -->
+  <title>Healthcheck</title>
   <link rel="stylesheet" href="assets/css/bulma.min.css" />
-
-  <!-- Dashboard custom styles: Bulma overrides + component styles -->
   <link rel="stylesheet" href="assets/css/dashboard.css" />
 </head>
 <body>
 
-  <!-- =================================================================================== -->
-  <!-- Top navigation bar (Bulma navbar)                                                  -->
-  <!-- =================================================================================== -->
   <nav id="hc-nav" class="navbar" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
-      <span class="navbar-item has-text-white has-text-weight-bold is-size-5" id="hc-nav-title">bulp.io: Healthcheck</span>
+      <span class="navbar-item has-text-white is-size-5"><span id="logo"><span id="logo-pre">bulp</span><span id="logo-post">.io</span> - Healthcheck</span></span>
     </div>
     <div class="navbar-end">
       <div class="navbar-item">
         <div class="buttons">
-          <button id="hc-lang-de" class="button is-small is-light hc-lang-btn">DE</button>
-          <button id="hc-lang-en" class="button is-small is-light hc-lang-btn">EN</button>
+          <button id="hc-lang-de" class="button is-small is-light hc-lang-btn" data-i18n="German">German</button>
+          <button id="hc-lang-en" class="button is-small is-light hc-lang-btn" data-i18n="English">English</button>
         </div>
       </div>
     </div>
   </nav>
 
-  <!-- =================================================================================== -->
-  <!-- Tab bar — one tab per dashboard section                                             -->
-  <!-- =================================================================================== -->
   <div class="tabs is-centered hc-tab-bar" id="hc-dashboard-tabs">
     <ul>
       <li class="is-active" data-tab="overview">
         <a data-i18n="Overview">Overview</a>
       </li>
+      <li data-tab="notifications">
+        <a data-i18n="NotificationsTitle">Notifications</a>
+      </li>      
       <li data-tab="care-insights">
         <a data-i18n="CareInsightsTitle">Care Insights</a>
       </li>
@@ -50,18 +43,12 @@
       <li data-tab="rooms">
         <a data-i18n="RoomsTitle">Rooms</a>
       </li>
-      <li data-tab="notifications">
-        <a data-i18n="NotificationsTitle">Notifications</a>
-      </li>
       <li data-tab="status">
         <a data-i18n="StatusTitle">Status</a>
       </li>
     </ul>
   </div>
 
-  <!-- =================================================================================== -->
-  <!-- Status bar — connection message + last-updated timestamp (Bulma level)             -->
-  <!-- =================================================================================== -->
   <div id="hc-status-bar" class="level px-4 py-2 mb-0">
     <div class="level-left">
       <div class="level-item">
@@ -75,12 +62,8 @@
     </div>
   </div>
 
-  <!-- =================================================================================== -->
-  <!-- Tab panel: Overview                                                                  -->
-  <!-- =================================================================================== -->
   <section id="tab-overview" class="hc-tab-panel">
 
-    <!-- Recent data row: latest Care Insights + latest Notifications side by side -->
     <div class="columns">
       <div class="column is-half">
         <div class="box">
@@ -96,10 +79,8 @@
       </div>
     </div>
 
-    <!-- Summary statistic cards (built dynamically in dashboard.js) -->
     <div class="columns is-multiline" id="overview-stats-cards"></div>
 
-    <!-- Doughnut charts row -->
     <div class="columns" id="overview-charts">
       <div class="column is-half">
         <div class="box hc-chart-box">
