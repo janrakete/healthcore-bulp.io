@@ -7,26 +7,15 @@
  *  1. Bangle.js 2 (Bluetooth)
  *     → Press in the watch menu: "Demo: High Heart Rate (155 bpm)"
  *     → CareInsightsEngine (anomaly_detection) detects a deviation
- *     → Scenario fires → Notification in the app → Changes color of Paulmann bulb
+ *     → Scenario fires → Push notification → Changes color of Paulmann bulb
  *     
  *  2. SONOFF SNZB-01P (ZigBee)
  *     → Press the button 6 times within one minute
  *     → CareInsightsEngine (sum_above_threshold) triggers
  *     → Scenario fires → Push notification → Activates alarm on BULP sensor  
  *
- * Prerequisites:
- *   - Healthcore is running (broker/app.js + server/app.js)
- *   - Bangle.js 2 is connected to Healthcore via the Bluetooth bridge
- *   - SONOFF SNZB-01P is connected to Healthcore via the ZigBee bridge
- *   - Paulmann Smart Home device is connected to Healthcore via the ZigBee bridge
- *   - BULP is connected to Healthcore via the Bluetooth bridge
- *   - Load the new bulp.app.js onto the Bangle.js 2 (contains the "Demo: High Heart Rate" menu)
- *
  * Start:
  *   node tests/demo-real-devices.js
- *
- * Reset/clean up only:
- *   node tests/demo-real-devices.js --reset-only
  * =============================================================================================
  */
 
@@ -41,14 +30,8 @@ dotenv.config({ path: path.resolve(__dirname, "../.env.local"), override: true }
 const Database = require("better-sqlite3");
 const { find } = require("async");
 
-// ─── Configuration ────────────────────────────────────────────────────────────
-
 const DB_FILENAME = process.env.CONF_databaseFilename || "../healthcore_database.db";
-// DB_FILENAME is relative to the project directory (e.g. "../healthcore_database.db").
-// Since __dirname points to the tests/ directory, a simple path.resolve is sufficient —
-// no extra ".." segment is needed, otherwise navigation would go one level too far up.
 const DB_PATH     = path.resolve(__dirname, DB_FILENAME);
-
 const DEMO_PREFIX = "[Demo] ";
 
 // CareInsights parameters from .env
@@ -59,8 +42,6 @@ const HISTORY_SIZE        = parseInt(process.env.CONF_careInsightsHistorySize)  
 // Number of button presses required to exceed the threshold
 const SONOFF_PRESS_THRESHOLD = 5;  // Schwelle: mehr als 5 Drücke/Stunde
 const SONOFF_PRESSES_NEEDED  = 6;  // 6 Drücke → Summe 6 > 5 → Insight
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function log(msg = "", symbol = " ") {
   console.log(symbol + " " + msg);
@@ -76,8 +57,6 @@ function logSection(title) {
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-// ─── Find devices in the database ────────────────────────────────────────────
 
 /**
  * Finds the Bangle.js 2 in the DB (first by ProductName, then by bridge).
@@ -323,7 +302,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   const bangleScenario = db.prepare(
     "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 8, ?)"
   ).run(
-    DEMO_PREFIX + "Hoher Puls → Notification",
+    DEMO_PREFIX + "Hoher Puls → Push-Nachricht",
     "Ungewöhnlicher Puls erkannt",
     "heart"
   );
@@ -338,7 +317,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
   ).run(
     bangleScenarioID,
-    "notification",
+    "push_notification",
     "Ungewöhnlicher Puls erkannt",
     "Puls-Uhr hat einen Puls gemessen, der deutlich vom Normalwert abweicht.",
     0
@@ -400,94 +379,6 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   return { bangleRuleID, sonoffRuleID, bangleScenarioID, sonoffScenarioID, sonoffThreshold };
 }
 
-// ─── Live-Monitoring ──────────────────────────────────────────────────────────
-
-/**
- * Waits for new care insights for the given device IDs and prints
- * a message as soon as they appear in the DB.
- * Aborts after `timeoutSeconds` seconds.
- *
- * @param {Database} db
- * @param {string[]} deviceIDs
- * @param {number} timeoutSeconds
- */
-async function waitForInsights(db, deviceIDs, timeoutSeconds = 120) {
-  logSection("WARTE AUF EVENTS ...");
-  log("Timeout: " + timeoutSeconds + " Sekunden", "⏱");
-  log("");
-
-  const placeholders = deviceIDs.map(() => "?").join(", ");
-  const seenIDs      = new Set();
-  const startTime    = Date.now();
-  const deadline     = startTime + timeoutSeconds * 1000;
-
-  let dotCount = 0;
-
-  while (Date.now() < deadline) {
-    const insights = db.prepare(
-      "SELECT * FROM care_insights WHERE deviceID IN (" + placeholders + ") AND status = 'open' ORDER BY insightID DESC LIMIT 10"
-    ).all(...deviceIDs);
-
-    for (const insight of insights) {
-      if (!seenIDs.has(insight.insightID)) {
-        seenIDs.add(insight.insightID);
-        process.stdout.write("\n");
-        log("CARE INSIGHT erkannt! (ID " + insight.insightID + ")", "🚨");
-        log("Gerät:   " + insight.deviceID + " [" + insight.bridge + "]", "   ");
-        log("Typ:     " + insight.type, "   ");
-        log("Score:   " + Number(insight.score).toFixed(2), "   ");
-        log("Titel:   " + insight.title, "   ");
-        log("Summary: " + insight.summary, "   ");
-
-        // Wait for associated notification/execution
-        await sleep(800);
-
-        const notification = db.prepare(
-          "SELECT * FROM notifications ORDER BY notificationID DESC LIMIT 1"
-        ).get();
-
-        if (notification && (Date.now() - new Date(notification.dateTime).getTime()) < 5000) {
-          log("Notification erstellt: \"" + notification.text + "\"", "✅");
-        }
-
-        const execution = db.prepare(
-          "SELECT se.*, s.name AS scenarioName FROM scenarios_executions se JOIN scenarios s ON se.scenarioID = s.scenarioID WHERE s.name LIKE ? ORDER BY se.executionID DESC LIMIT 1"
-        ).get(DEMO_PREFIX + "%");
-
-        if (execution) {
-          log("Szenario ausgeführt: \"" + execution.scenarioName + "\"", "✅");
-        }
-
-        log("");
-      }
-    }
-
-    // Print progress dot
-    process.stdout.write(".");
-    dotCount++;
-    if (dotCount % 30 === 0) {
-      const remaining = Math.ceil((deadline - Date.now()) / 1000);
-      process.stdout.write(" (" + remaining + "s)\n");
-    }
-
-    await sleep(1000);
-  }
-
-  process.stdout.write("\n");
-
-  if (seenIDs.size === 0) {
-    log("Timeout — keine neuen Care Insights empfangen.", "⏱");
-    log("Überprüfe:", "  ");
-    log("  • Ist die Bangle.js 2 über Bluetooth verbunden?", "  ");
-    log("  • Wurde 'Demo: Hoher Puls' im Watch-Menü gedrückt?", "  ");
-    log("  • Wurde der SONOFF-Taster " + SONOFF_PRESSES_NEEDED + "× gedrückt?", "  ");
-    log("  • Laufen broker/app.js und server/app.js?", "  ");
-  }
-  else {
-    log("" + seenIDs.size + " Care Insight(s) empfangen. Demo erfolgreich!", "🎉");
-  }
-}
-
 // ─── Print demo instructions ─────────────────────────────────────────────────
 
 function printInstructions(bangle, sonoff, sonoffThreshold) {
@@ -503,7 +394,6 @@ function printInstructions(bangle, sonoff, sonoffThreshold) {
   console.log("  │  → Öffne das bulp-Menü auf der Bangle.js 2          │");
   console.log("  │  → Tippe auf: \"Demo: Hoher Puls (155 bpm)\"          │");
   console.log("  │                                                      │");
-  console.log("  │  Erwartung: Notification in der Healthcore-App       │");
   console.log("  └──────────────────────────────────────────────────────┘");
   console.log("");
   console.log("  ┌──────────────────────────────────────────────────────┐");
@@ -515,7 +405,6 @@ function printInstructions(bangle, sonoff, sonoffThreshold) {
   console.log("  │  → Drücke den Taster " + SONOFF_PRESSES_NEEDED + "× hintereinander             │");
   console.log("  │  → Schwelle: >" + sonoffThreshold + " Drücke in der letzten Stunde        │");
   console.log("  │                                                      │");
-  console.log("  │  Erwartung: Push-Notification auf dem Smartphone     │");
   console.log("  └──────────────────────────────────────────────────────┘");
   console.log("");
 }
@@ -534,8 +423,6 @@ async function main() {
   console.log("║    " + new Date().toLocaleString("de-DE") + "                         ║");
   console.log("╚══════════════════════════════════════════════════════════╝");
 
-  const resetOnly = process.argv.includes("--reset-only");
-
   // ── Open database ─────────────────────────────────────────────────────────
   let db;
   try {
@@ -547,7 +434,6 @@ async function main() {
     log("Stelle sicher, dass Healthcore gestartet wurde, damit die DB existiert.", "  ");
     process.exit(1);
   }
-
   // ── Find real devices ───────────────────────────────────────────────────
   logSection("GERÄTE SUCHEN");
 
@@ -563,8 +449,6 @@ async function main() {
   }
   else {
     log("Bangle.js 2 nicht gefunden!", "✗");
-    log("  → Starte den Bluetooth-Bridge (node \"bridge - bluetooth/app.js\")", "  ");
-    log("  → Verbinde die Bangle.js 2 und stelle sicher, dass sie in Healthcore registriert ist.", "  ");
     hasError = true;
   }
 
@@ -573,8 +457,6 @@ async function main() {
   }
   else {
     log("SONOFF SNZB-01P nicht gefunden!", "✗");
-    log("  → Starte den ZigBee-Bridge (node \"bridge - zigbee/app.js\")", "  ");
-    log("  → Koppele das SONOFF und stelle sicher, dass es in Healthcore registriert ist.", "  ");
     hasError = true;
   }
 
@@ -583,8 +465,6 @@ async function main() {
   }
   else {
     log("Paulmann Smart Home nicht gefunden!", "✗");
-    log("  → Starte den ZigBee-Bridge (node \"bridge - zigbee/app.js\")", "  ");
-    log("  → Koppele das Paulmann-Gerät und stelle sicher, dass es in Healthcore registriert ist.", "  ");
     hasError = true;
   }
 
@@ -593,8 +473,6 @@ async function main() {
   }
   else {
     log("BULP nicht gefunden!", "✗");
-    log("  → Starte den Bluetooth-Bridge (node \"bridge - bluetooth/app.js\")", "  ");
-    log("  → Verbinde die BULP und stelle sicher, dass sie in Healthcore registriert ist.", "  ");
     hasError = true;
   }
 
@@ -605,33 +483,14 @@ async function main() {
     process.exit(1);
   }
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
   resetDemo(db, bangle.deviceID, sonoff.deviceID, paulmann.deviceID, bulp.deviceID);
+  await sleep(1000);
 
-  if (resetOnly) {
-    log("", "");
-    log("Reset abgeschlossen (--reset-only). Demo nicht gestartet.", "✓");
-    db.close();
-    return;
-  }
-
-  // ── Ensure Bangle.js baseline ──────────────────────────────────────────────
   ensureBangleBaseline(db, bangle.deviceID);
 
-  // ── Create scenarios & rules ────────────────────────────────────────────
   const { sonoffThreshold } = setupDemo(db, bangle, sonoff, paulmann, bulp);
 
-  // ── Print instructions ────────────────────────────────────────────────────
   printInstructions(bangle, sonoff, sonoffThreshold);
-
-  // ── Live monitoring ────────────────────────────────────────────────────────
-  await waitForInsights(db, [bangle.deviceID, sonoff.deviceID], 120);
-
-  console.log("");
-  console.log("╔══════════════════════════════════════════════════════════╗");
-  console.log("║  Wiederholung: node tests/demo-real-devices.js          ║");
-  console.log("╚══════════════════════════════════════════════════════════╝");
-  console.log("");
 
   db.close();
 }
