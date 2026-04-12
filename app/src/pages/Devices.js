@@ -4,7 +4,7 @@
 
 import { apiGET, apiDELETE } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { spinnerShow, bridgeTranslate, entriesNoDataMessage } from "../services/helper.js";
+import { spinnerShow, bridgeTranslate, entriesNoDataMessage, stringCut } from "../services/helper.js";
 
 class Devices extends HTMLElement {
   connectedCallback() {
@@ -207,7 +207,7 @@ class Devices extends HTMLElement {
         <ion-card color="primary" data-id="${item.deviceID}">
           <ion-card-header>
               <ion-card-title>${item.name} <ion-badge color="${Number(deviceConnected) === 1 ? "success" : Number(deviceConnected) === 0 ? "danger" : "medium"}">${Number(deviceConnected) === 1 ? window.Translation.get("Connected") : Number(deviceConnected) === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
-              <ion-card-subtitle>${item.deviceID} (${displayInfo})</ion-card-subtitle>
+              <ion-card-subtitle>${stringCut(item.deviceID, 20)} | ${displayInfo}</ion-card-subtitle>
           </ion-card-header>
           <ion-card-content>
             ${deviceAtServer?.individual ? `<p>${window.Translation.get("AssignedPerson") + ": " + deviceAtServer.individual.firstname + " " + deviceAtServer.individual.lastname}</p>` : ""}

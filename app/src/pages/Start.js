@@ -140,8 +140,8 @@ class Start extends HTMLElement {
     this.querySelector("#care-insights-stats").innerHTML = `
       <ion-grid class="custom">
         <ion-row>
-          <ion-col size="6" class="custom"><ion-card color="danger" class="small"><ion-card-header><ion-card-title class="ion-text-center">${data.critical}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Critical")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
-          <ion-col size="6" class="custom"><ion-card color="warning" class="small"><ion-card-header><ion-card-title class="ion-text-center">${data.open}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Open")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
+          <ion-col size="6" class="custom"><ion-card color="danger" class="small" href="/care-insights"><ion-card-header><ion-card-title class="ion-text-center">${data.critical}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Critical")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
+          <ion-col size="6" class="custom"><ion-card color="warning" class="small" href="/care-insights"><ion-card-header><ion-card-title class="ion-text-center">${data.open}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Open")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
         </ion-row>
       </ion-grid>
     `;
