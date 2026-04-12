@@ -96,7 +96,6 @@ body {
 /* Status bar */
 #hc-status-bar {
     background-color: #ffffff;
-    border-bottom:    1px solid #e8e8e8;
 }
 
 /* Red colour for the error state */
@@ -219,4 +218,17 @@ body {
 /* Status tab — bridge card sizing */
 .hc-status-bridge-card {
     min-width: 160px;
+}
+
+#logo {
+    font-size: 2em;
+}
+
+#logo-pre {
+    font-family: "Poppins";
+    font-weight: bold;
+}
+
+#logo-post {
+    font-family: "Poppins";
 }

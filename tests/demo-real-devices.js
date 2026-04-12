@@ -186,10 +186,9 @@ function resetDemo(db, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDev
 
   // 5. Delete SONOFF button presses from the last 2 hours (for a clean threshold demo)
   if (sonoffDeviceID) {
-    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
     const deletedPresses = db.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'zigbee' AND property = 'button' AND dateTimeAsNumeric >= ?"
-    ).run(sonoffDeviceID, twoHoursAgo);
+      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'zigbee' AND property = 'button'"
+    ).run(sonoffDeviceID);
     log("SONOFF Button-Presses (letzte 2h) gelöscht: " + deletedPresses.changes, "✓");
   }
 
@@ -197,10 +196,9 @@ function resetDemo(db, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDev
   //    Identifiable: values between 68 and 74, within the demo time windows
   //    Real measurements are left untouched — baseline will be re-seeded if needed.
   if (bangleDeviceID) {
-    const baselineStart = Date.now() - 100 * 60 * 1000; // vor max 100 Minuten
     const deletedBaseline = db.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate' AND valueAsNumeric BETWEEN 68 AND 74 AND dateTimeAsNumeric >= ?"
-    ).run(bangleDeviceID, baselineStart);
+      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate'"
+    ).run(bangleDeviceID);
     if (deletedBaseline.changes > 0) {
       log("Synthetische Bangle.js-Baseline entfernt: " + deletedBaseline.changes + " Einträge", "✓");
     }
