@@ -1,7 +1,7 @@
 /**
  * =============================================================================================
  * Healthcore Demo Script — Real Devices
- * ======================================
+ * =====================================
  * Simulates two scenarios with physical devices:
  *
  *  1. Bangle.js 2 (Bluetooth)
@@ -60,12 +60,12 @@ function sleep(ms) {
 
 /**
  * Finds the Bangle.js 2 in the DB (first by ProductName, then by bridge).
- * @param {Database} db
+ * @param {Database} database
  * @returns {Object|null} device row
  */
-function findBangleDevice(db) {
+function findBangleDevice(database) {
   // Search using the converter product name pattern
-  const device = db.prepare(
+  const device = database.prepare(
     "SELECT * FROM devices WHERE bridge = 'bluetooth' AND productName LIKE 'Bangle.js%' ORDER BY dateTimeAdded DESC LIMIT 1"
   ).get();
 
@@ -74,11 +74,11 @@ function findBangleDevice(db) {
 
 /**
  * Finds the SONOFF SNZB-01P in the DB.
- * @param {Database} db
+ * @param {Database} database
  * @returns {Object|null} device row
  */
-function findSonoffDevice(db) {
-  const device = db.prepare(
+function findSonoffDevice(database) {
+  const device = database.prepare(
     "SELECT * FROM devices WHERE bridge = 'zigbee' AND productName = 'SNZB-01P' ORDER BY dateTimeAdded DESC LIMIT 1"
   ).get();
 
@@ -87,11 +87,11 @@ function findSonoffDevice(db) {
 
 /**
  * Finds the Paulmann Smart Home device in the DB.
- * @param {Database} db
+ * @param {Database} database
  * @returns {Object|null} device row
  */
-function findPaulmannDevice(db) {
-  const device = db.prepare(
+function findPaulmannDevice(database) {
+  const device = database.prepare(
     "SELECT * FROM devices WHERE bridge = 'zigbee' AND productName LIKE 'RGB%' ORDER BY dateTimeAdded DESC LIMIT 1"
   ).get();
 
@@ -100,36 +100,34 @@ function findPaulmannDevice(db) {
 
 /**
  * Finds the BULP in the DB.
- * @param {Database} db
+ * @param {Database} database
  * @returns {Object|null} device row
  */
-function findBulpDevice(db) {
-  const device = db.prepare(
+function findBulpDevice(database) {
+  const device = database.prepare(
     "SELECT * FROM devices WHERE bridge = 'bluetooth' AND productName LIKE 'bulp%' ORDER BY dateTimeAdded DESC LIMIT 1"
   ).get();
 
   return device || null;
 }
 
-// ─── Reset ────────────────────────────────────────────────────────────────────
-
 /**
  * Deletes all demo-specific configuration data.
  * Real measurement history is NOT deleted — only SONOFF button presses
  * from the last 2 hours are cleared (for a clean threshold demo).
  */
-function resetDemo(db, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDeviceID) {
+function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDeviceID) {
   logSection("RESET: Vorherige Demo-Daten löschen");
 
   // 1. Delete demo notifications via scenario IDs (before deleting the scenarios!)
-  const demoScenarios = db.prepare(
+  const demoScenarios = database.prepare(
     "SELECT scenarioID FROM scenarios WHERE name LIKE ?"
   ).all(DEMO_PREFIX + "%");
 
   if (demoScenarios.length > 0) {
     const ids          = demoScenarios.map((s) => s.scenarioID);
     const placeholders = ids.map(() => "?").join(", ");
-    const deletedN = db.prepare(
+    const deletedN = database.prepare(
       "DELETE FROM notifications WHERE scenarioID IN (" + placeholders + ")"
     ).run(...ids);
     log("Demo-Notifications gelöscht: " + deletedN.changes, "✓");
@@ -140,15 +138,15 @@ function resetDemo(db, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDev
 
   // 2. Delete demo scenarios
   demoScenarios.forEach((s) => {
-    db.prepare("DELETE FROM scenarios_triggers   WHERE scenarioID = ?").run(s.scenarioID);
-    db.prepare("DELETE FROM scenarios_actions    WHERE scenarioID = ?").run(s.scenarioID);
-    db.prepare("DELETE FROM scenarios_executions WHERE scenarioID = ?").run(s.scenarioID);
-    db.prepare("DELETE FROM scenarios            WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios_triggers   WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios_actions    WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios_executions WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios            WHERE scenarioID = ?").run(s.scenarioID);
   });
   log("Demo-Szenarien gelöscht: " + demoScenarios.length, "✓");
 
   // 3. Delete demo CareInsight rules
-  const deletedRules = db.prepare(
+  const deletedRules = database.prepare(
     "DELETE FROM care_insight_rules WHERE title LIKE ?"
   ).run(DEMO_PREFIX + "%");
   log("CareInsight-Regeln gelöscht: " + deletedRules.changes, "✓");
@@ -157,25 +155,23 @@ function resetDemo(db, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDev
   if (bangleDeviceID || sonoffDeviceID || paulmannDeviceID || bulpDeviceID) {
     const ids = [bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDeviceID].filter(Boolean);
     const placeholders = ids.map(() => "?").join(", ");
-    const resolved = db.prepare(
+    const resolved = database.prepare(
       "UPDATE care_insights SET status = 'resolved', dateTimeResolved = datetime('now', 'localtime') WHERE deviceID IN (" + placeholders + ") AND status IN ('open', 'acknowledged')"
     ).run(...ids);
     log("Offene Demo-Insights aufgelöst: " + resolved.changes, "✓");
   }
 
-  // 5. Delete SONOFF button presses from the last 2 hours (for a clean threshold demo)
+  // 5. Delete SONOFF button presses
   if (sonoffDeviceID) {
-    const deletedPresses = db.prepare(
+    const deletedPresses = database.prepare(
       "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'zigbee' AND property = 'button'"
     ).run(sonoffDeviceID);
-    log("SONOFF Button-Presses (letzte 2h) gelöscht: " + deletedPresses.changes, "✓");
+    log("SONOFF Button-Presses gelöscht: " + deletedPresses.changes, "✓");
   }
 
   // 6. Remove synthetic Bangle.js baseline (if left over from a previous demo run)
-  //    Identifiable: values between 68 and 74, within the demo time windows
-  //    Real measurements are left untouched — baseline will be re-seeded if needed.
   if (bangleDeviceID) {
-    const deletedBaseline = db.prepare(
+    const deletedBaseline = database.prepare(
       "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate'"
     ).run(bangleDeviceID);
     if (deletedBaseline.changes > 0) {
@@ -184,19 +180,17 @@ function resetDemo(db, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDev
   }
 }
 
-// ─── Check and optionally seed Bangle.js baseline ───────────────────────────
-
 /**
  * Checks whether enough real heart rate history is available.
  * If not, synthetic baseline values are seeded.
- * @param {Database} db
+ * @param {Database} database
  * @param {string} deviceID
  * @returns {number} Number of existing (+ seeded) history entries
  */
-function ensureBangleBaseline(db, deviceID) {
+function ensureBangleBaseline(database, deviceID) {
   logSection("BANGLE.JS 2: Puls-Baseline prüfen");
 
-  const existingCount = db.prepare(
+  const existingCount = database.prepare(
     "SELECT COUNT(*) AS cnt FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
   ).get(deviceID, HISTORY_SIZE).cnt;
 
@@ -210,13 +204,13 @@ function ensureBangleBaseline(db, deviceID) {
   const missing = MIN_HISTORY_ENTRIES + 2 - existingCount; // 2 buffer entries
   log("Zu wenig History (" + existingCount + "/" + MIN_HISTORY_ENTRIES + ") — säe " + missing + " synthetische Normalwerte ...", "⟳");
 
-  // Synthetic normal values: 68–74 bpm, spread over the last 90 minutes
-  const baselineValues = [70, 72, 71, 69, 73, 70, 71, 72, 68, 74, 70, 71, 69, 72];
+  const baselineValues = [70, 72, 71, 69, 73, 70, 71, 72, 68, 74, 70, 71, 69, 72];  // Synthetic normal values: 68–74 bpm, spread over the last 90 minutes
+
   const now            = Date.now();
 
   baselineValues.slice(0, missing).forEach((bpm, index) => {
     const timestamp = now - (90 - index * (80 / missing)) * 60 * 1000;
-    db.prepare(
+    database.prepare(
       "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(deviceID, "bluetooth", "heartrate", String(bpm), bpm, timestamp);
   });
@@ -224,8 +218,6 @@ function ensureBangleBaseline(db, deviceID) {
   log("Synthetische Baseline gesät: " + missing + " Einträge (68–74 bpm)", "✓");
   return existingCount + missing;
 }
-
-// ─── Setup ────────────────────────────────────────────────────────────────────
 
 /**
  * Creates CareInsight rules and scenarios for the real devices.
@@ -240,18 +232,17 @@ function ensureBangleBaseline(db, deviceID) {
  * dynamically (current_sum + SONOFF_PRESS_THRESHOLD), so that exactly
  * SONOFF_PRESSES_NEEDED more presses will trigger the insight.
  *
- * @param {Database} db
+ * @param {Database} database - DB connection
  * @param {Object} bangle  - { deviceID, bridge } — required for the scenario trigger
  * @param {Object} sonoff  - { deviceID, bridge } — required for threshold query and scenario trigger
  * @param {Object} paulmann  - { deviceID, bridge } — required for scenario trigger
  * @param {Object} bulp  - { deviceID, bridge } — required for scenario trigger
  */
-function setupDemo(db, bangle, sonoff, paulmann, bulp) {
+function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   logSection("SETUP: CareInsight-Regeln & Szenarien anlegen");
 
-  // ── SONOFF: Query current button-press sum in the last hour ───────────────
   const oneHourAgo  = Date.now() - 60 * 60 * 1000;
-  const sonoffCurrent = db.prepare(
+  const sonoffCurrent = database.prepare(
     "SELECT COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = 'button' AND dateTimeAsNumeric >= ?"
   ).get(sonoff.deviceID, sonoff.bridge, oneHourAgo);
 
@@ -266,7 +257,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   // device ultimately triggers the rule is determined solely by the scenario trigger.
 
   // Rule 1: Heart rate anomaly (fires for any device that sends "heartrate")
-  const bangleRule = db.prepare(
+  const bangleRule = database.prepare(
     "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?)"
   ).run(
     DEMO_PREFIX + "Ungewöhnlicher Puls",
@@ -280,7 +271,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   log("CareInsight-Regel: Puls-Anomalie (ID " + bangleRuleID + ", Schwelle: " + ANOMALY_THRESHOLD + ")", "✓");
 
   // Rule 2: Frequent pressing (fires for any device that sends "button")
-  const sonoffRule = db.prepare(
+  const sonoffRule = database.prepare(
     "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
   ).run(
     DEMO_PREFIX + "Häufiger Hilferuf",
@@ -299,7 +290,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   // the trigger to the specific target device, even though the rule itself is generic.
 
   // Scenario 1: Bangle.js heart rate anomaly → Notification
-  const bangleScenario = db.prepare(
+  const bangleScenario = database.prepare(
     "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 8, ?)"
   ).run(
     DEMO_PREFIX + "Hoher Puls → Push-Nachricht",
@@ -308,12 +299,11 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   );
   const bangleScenarioID = bangleScenario.lastInsertRowid;
 
-  // Trigger: rule fires + device must be Bangle.js 2
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
   ).run(bangleScenarioID, "care_insight_opened", String(bangleRuleID), bangle.deviceID, bangle.bridge);
 
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
   ).run(
     bangleScenarioID,
@@ -323,7 +313,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
     0
   );
 
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, bridge, deviceID) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run(
     bangleScenarioID,
@@ -335,10 +325,10 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
     paulmann.deviceID
   );
 
-  log("Szenario: Hoher Puls → Notification → Lichtänderung (ID " + bangleScenarioID + ")", "✓");
+  log("Szenario: Hoher Puls → Push-Nachricht → Lichtänderung (ID " + bangleScenarioID + ")", "✓");
 
   // Scenario 2: SONOFF frequent pressing → Push notification
-  const sonoffScenario = db.prepare(
+  const sonoffScenario = database.prepare(
     "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 9, ?)"
   ).run(
     DEMO_PREFIX + "Häufiges Drücken → Push-Nachricht",
@@ -347,12 +337,11 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
   );
   const sonoffScenarioID = sonoffScenario.lastInsertRowid;
 
-  // Trigger: rule fires + device must be SONOFF SNZB-01P
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
   ).run(sonoffScenarioID, "care_insight_opened", String(sonoffRuleID), sonoff.deviceID, sonoff.bridge);
 
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
   ).run(
     sonoffScenarioID,
@@ -362,7 +351,7 @@ function setupDemo(db, bangle, sonoff, paulmann, bulp) {
     0
   );
 
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, bridge, deviceID) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run(
     sonoffScenarioID,
@@ -414,8 +403,6 @@ function padRight(str, length) {
   return str.length >= length ? str.slice(0, length) : str + " ".repeat(length - str.length);
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
 async function main() {
   console.log("");
   console.log("╔══════════════════════════════════════════════════════════╗");
@@ -423,24 +410,23 @@ async function main() {
   console.log("║    " + new Date().toLocaleString("de-DE") + "                         ║");
   console.log("╚══════════════════════════════════════════════════════════╝");
 
-  // ── Open database ─────────────────────────────────────────────────────────
-  let db;
+  let database;
   try {
-    db = new Database(DB_PATH);
+    database = new Database(DB_PATH);
     log("Datenbank geöffnet: " + DB_PATH, "✓");
   }
-  catch (err) {
-    log("Datenbank konnte nicht geöffnet werden: " + err.message, "✗");
+  catch (error) {
+    log("Datenbank konnte nicht geöffnet werden: " + error.message, "✗");
     log("Stelle sicher, dass Healthcore gestartet wurde, damit die DB existiert.", "  ");
     process.exit(1);
   }
-  // ── Find real devices ───────────────────────────────────────────────────
+
   logSection("GERÄTE SUCHEN");
 
-  const bangle = findBangleDevice(db);
-  const sonoff = findSonoffDevice(db);
-  const paulmann = findPaulmannDevice(db);
-  const bulp = findBulpDevice(db);
+  const bangle    = findBangleDevice(database);
+  const sonoff    = findSonoffDevice(database);
+  const paulmann  = findPaulmannDevice(database);
+  const bulp      = findBulpDevice(database);
 
   let hasError = false;
 
@@ -479,23 +465,23 @@ async function main() {
   if (hasError) {
     log("", "");
     log("Demo kann nicht gestartet werden — bitte zuerst fehlende Geräte verbinden.", "⚠️");
-    db.close();
+    database.close();
     process.exit(1);
   }
 
-  resetDemo(db, bangle.deviceID, sonoff.deviceID, paulmann.deviceID, bulp.deviceID);
+  resetDemo(database, bangle.deviceID, sonoff.deviceID, paulmann.deviceID, bulp.deviceID);
   await sleep(1000);
 
-  ensureBangleBaseline(db, bangle.deviceID);
+  ensureBangleBaseline(database, bangle.deviceID);
 
-  const { sonoffThreshold } = setupDemo(db, bangle, sonoff, paulmann, bulp);
+  const { sonoffThreshold } = setupDemo(database, bangle, sonoff, paulmann, bulp);
 
   printInstructions(bangle, sonoff, sonoffThreshold);
 
-  db.close();
+  database.close();
 }
 
-main().catch((err) => {
-  console.error("\n✗ Unbehandelter Fehler:", err.message);
+main().catch((error) => {
+  console.error("\n✗ Unbehandelter Fehler:", error.message);
   process.exit(1);
 });

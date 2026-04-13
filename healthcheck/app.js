@@ -187,11 +187,11 @@ async function startHealthcheck() {
    */
   app.get("/api/config", (req, res) => {
     res.json({
-      serverBaseUrl:                    appConfig.CONF_baseURL + ":" + appConfig.CONF_portServer,
+      serverBaseUrl:                    "http://" + req.hostname + ":" + appConfig.CONF_portServer,
       apiKey:                           appConfig.CONF_apiKey || "",
-      dashboardRefreshIntervalMs:       appConfig.CONF_dashboardRefreshIntervalMs       || 30000,
-      dashboardRecentInsightsCount:     appConfig.CONF_dashboardRecentInsightsCount     || 5,
-      dashboardRecentNotificationsCount: appConfig.CONF_dashboardRecentNotificationsCount || 3
+      dashboardRefreshIntervalMs:       appConfig.CONF_dashboardRefreshIntervalMs,
+      dashboardRecentInsightsCount:     appConfig.CONF_dashboardRecentInsightsCount,
+      dashboardRecentNotificationsCount: appConfig.CONF_dashboardRecentNotificationsCount
     });
   });
 
@@ -208,13 +208,8 @@ async function startHealthcheck() {
     res.sendFile(__dirname + "/dashboard/dashboard.html");
   });
 
-  /**
-   * =============================================================================================
-   * Server
-   * ======
-   */
-  app.listen(appConfig.CONF_portHealthcheck, "127.0.0.1", function () { // bind to localhost only
-    common.conLog("Healthcheck server listening only on 127.0.0.1:" + appConfig.CONF_portHealthcheck, "gre");
+  app.listen(appConfig.CONF_portHealthcheck, function () { // bind to localhost only
+    common.conLog("Healthcheck server listening on " + common.getOwnIP() + ":" + appConfig.CONF_portHealthcheck, "gre");
   });
 }
 

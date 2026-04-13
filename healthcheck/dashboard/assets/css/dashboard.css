@@ -1,7 +1,7 @@
 /**
  * =============================================================================================
  * Healthcheck Dashboard — Stylesheet
- * ===================================
+ * ==================================
  */
 @font-face {
     font-family: "Poppins";
@@ -46,7 +46,6 @@
 }
 
 :root {
-    /* Bulma primary colour override → deep purple #311B92 */
     --bulma-primary-h: 263deg;
     --bulma-primary-s: 69%;
     --bulma-primary-l: 34%;
@@ -54,31 +53,33 @@
     --bulma-link-s:    69%;
     --bulma-link-l:    34%;
 
-    /* ── Healthcore colour palette ──────────────────────────────────────────
-       Single source of truth for all status and chart colours.
-       Used by CSS rules below AND read at runtime by dashboard.js via
-       getComputedStyle so Chart.js charts stay in sync automatically.
-       ──────────────────────────────────────────────────────────────────── */
     --hc-color-primary:              #311B92;
     --hc-color-primary-mid:          #673ab7;
     --hc-color-primary-alpha:        rgba(49, 27, 146, 0.1);
 
-    --hc-color-insight-open:         #ff9800;
-    --hc-color-insight-acknowledged: #2196f3;
+    --hc-color-insight-open:         #ffc107;
+    --hc-color-insight-acknowledged: #FF4081;
     --hc-color-insight-resolved:     #4caf50;
     --hc-color-insight-critical:     #ff5722;
 
     --hc-color-connected:            #4caf50;
     --hc-color-disconnected:         #ff5722;
+
+    --bulma-family-primary: Poppins;    
+
+    --bulma-size-small: 1rem;    
+    --bulma-size-normal: 1.25rem;
+    --bulma-size-medium: 1.5rem;  
+    --bulma-size-large: 5rem;
+
+    --hc-color-text-contrast: #ffffff;    
 }
 
-/* Replace Bulma's default stack (BlinkMacSystemFont, …) with Poppins.
-   Bulma 1.x sets html/body to #fafafa — override to pure white. */
 html,
 body {
-    font-family:      "Poppins", sans-serif;
     background-color: #ffffff;
-    color:            #222222;
+    color:            #000;
+    background: url("../backgrounds/background_1.png") no-repeat bottom 30px left 30px / 20% fixed;    
 }
 
 /* Navbar background and text colour */
@@ -90,59 +91,42 @@ body {
 .hc-lang-btn.is-active {
     background-color: #ffffff !important;
     color:            #311B92 !important;
-    font-weight:      600;
-}
-
-/* Status bar */
-#hc-status-bar {
-    background-color: #ffffff;
+    font-weight:      bold;
 }
 
 /* Red colour for the error state */
 #hc-status-message.is-error {
-    color:       #c62828 !important;
-    font-weight: 600;
+    color:       #ff5722 !important;
+    font-weight: bold;
 }
 
 /* Padding for tab panels to give content some breathing room */
 .hc-tab-panel {
-    padding: 1.25rem 1rem;
+    padding: 1.25rem 1.25rem;
 }
 
 /* Stat cards — center text and add a top border for visual separation */
 .hc-stat-card {
     text-align: center;
-    border-top: 4px solid var(--hc-color-primary);
-}
-
-/* Orange accent for warning stats (e.g. critical signals) */
-.hc-stat-card.is-warning {
-    border-top-color: #ff5722;
 }
 
 /* The number in the stat card — large, bold, and with a specific colour */
 .hc-stat-number {
     display:     block;
-    font-size:   2.5rem;
+    font-size:   var(--bulma-size-large);
     font-weight: 700;
-    color:       var(--hc-color-primary);
+    color:       #000;
     line-height: 1.1;
     margin-top:  0.2rem;
-}
-
-/* Red colour for warning stats (e.g. critical signals) */
-.hc-stat-number.is-warning {
-    color: #ff5722;
 }
 
 /* Label below the number, styled as uppercase with a smaller font size and lighter colour */
 .hc-stat-label {
     display:        block;
-    font-size:      0.7rem;
-    color:          #666;
+    color:          #000;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top:     0.2rem;
+    font-weight: bold;
+    font-size:      var(--bulma-size-small);
 }
 
 /* Chart box — centers the chart and limits its maximum width for better readability on large screens */
@@ -182,6 +166,26 @@ body {
     background-color: #f5f5f5;
 }
 
+.box {
+    background-color: var(--hc-color-primary);
+    color: #fff;
+}
+
+.box .title,
+.box .subtitle {
+    color: #fff;
+    font-size: var(--bulma-size-medium);    
+}
+
+.hc-box-color-critical {
+    background-color: var(--hc-color-insight-critical);
+}
+
+.hc-box-color-open {
+    background-color: var(--hc-color-insight-open);
+}
+
+
 /* Signal chart container */
 .hc-signal-chart-container {
     position:   relative;
@@ -190,12 +194,43 @@ body {
 }
 
 /* Colour-coded tags for signal states and connection status. The !important is used to override any conflicting styles from Bulma or other libraries, ensuring our custom colours are applied consistently. */
-.hc-tag-open         { background-color: var(--hc-color-insight-open)         !important; color: #ffffff !important; }
-.hc-tag-acknowledged { background-color: var(--hc-color-insight-acknowledged) !important; color: #ffffff !important; }
-.hc-tag-resolved     { background-color: var(--hc-color-insight-resolved)     !important; color: #ffffff !important; }
-.hc-tag-critical     { background-color: var(--hc-color-insight-critical)     !important; color: #ffffff !important; }
-.hc-tag-connected    { background-color: var(--hc-color-connected)            !important; color: #ffffff !important; }
-.hc-tag-disconnected { background-color: var(--hc-color-disconnected)         !important; color: #ffffff !important; }
+.hc-tag-open         { 
+    background-color: var(--hc-color-insight-open) !important;
+    color: #000 !important;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.hc-tag-acknowledged { 
+    background-color: var(--hc-color-insight-acknowledged) !important;
+    color: #000 !important;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.hc-tag-resolved     { 
+    background-color: var(--hc-color-insight-resolved) !important;
+    color: #000 !important;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.hc-tag-critical     { 
+    background-color: var(--hc-color-insight-critical) !important;
+    color: #000 !important;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.hc-tag-connected    { 
+    background-color: var(--hc-color-connected) !important;
+    color: #000 !important;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+.hc-tag-disconnected { 
+    background-color: var(--hc-color-disconnected) !important;
+    color: #000 !important;
+    text-transform: uppercase;
+    font-weight: bold;
+}
 
 /* Overview — recent-data row separator */
 .hc-overview-recent-row {
@@ -221,7 +256,7 @@ body {
 }
 
 #logo {
-    font-size: 2em;
+    font-size: var(--bulma-size-medium);
 }
 
 #logo-pre {
