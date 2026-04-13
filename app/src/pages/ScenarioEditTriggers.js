@@ -4,7 +4,7 @@
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { bridgeTranslate } from "../services/helper.js";
+import { bridgeTranslate, stringCut } from "../services/helper.js";
 
 export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerSelectedDevice = null;
@@ -689,7 +689,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
             operatorInfo = window.Translation.get("Equals");
         }
         cardTitle    = item.deviceName;
-        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
         cardContent  = `
             <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
             <ion-text color="light">${operatorInfo}</ion-text>
@@ -698,17 +698,17 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       }
       else if (String(type) === "device_disconnected") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeDeviceDisconnected")}</ion-text>`;
       }
       else if (String(type) === "device_connected") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`; 
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeDeviceConnected")}</ion-text>`;
       }
       else if (String(type) === "battery_low") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
       }
       else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {

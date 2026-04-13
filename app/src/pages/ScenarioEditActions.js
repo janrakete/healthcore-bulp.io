@@ -4,7 +4,7 @@
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { bridgeTranslate } from "../services/helper.js";
+import { bridgeTranslate, stringCut } from "../services/helper.js";
 
 export const ScenarioEditActions = (Base) => class extends Base {
   actionSelectedDevice  = null;
@@ -527,7 +527,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       if (String(type) === "set_device_value") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
         cardContent  = `
             <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
             <ion-text color="light">${window.Translation.get("SetTo")}</ion-text>

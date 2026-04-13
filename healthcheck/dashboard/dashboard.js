@@ -155,7 +155,6 @@ async function fetchConfig() {
         if (data.dashboardRecentNotificationsCount) { OVERVIEW_RECENT_NOTIFICATIONS_COUNT = data.dashboardRecentNotificationsCount; }
     }
     catch (error) {
-        setStatusMessage("ErrorServerUnreachable", true);
         console.error("fetchConfig failed:", error);
     }
 }
@@ -377,12 +376,6 @@ async function fetchNotifications() {
  *   endpoint does not prevent the others from updating.
  */
 async function refreshAllData() {
-    if (!serverBaseUrl) {
-        setStatusMessage("ErrorServerUnreachable", true);
-        return;
-    }
-
-    setStatusMessage("Loading");
 
     const [devices, individuals, rooms, insights, insightStats, notifications, serverInfo] = await Promise.all([
         fetchDevices(),
@@ -403,7 +396,6 @@ async function refreshAllData() {
     dashboardState.serverInfo    = serverInfo;
 
     // Clear the loading message on successful refresh
-    setStatusMessage("");
     renderActiveTab();
     updateLastUpdatedTimestamp();
 }
@@ -453,9 +445,9 @@ function initTabNavigation() {
  */
 function renderActiveTab() {
     const tab = dashboardState.activeTab;
+
     if (tab === "overview") {
         renderOverview();
-
     }
     else if (tab === "care-insights") {
         renderInsights();
@@ -498,8 +490,8 @@ function renderOverview() {
     cardsContainer.innerHTML = "";
 
     // Build stat cards — open and critical insights only
-    cardsContainer.appendChild(buildStatCard("Open",     dashboardState.insightStats.open,     dashboardState.insightStats.open > 0     ? "is-warning" : ""));
-    cardsContainer.appendChild(buildStatCard("Critical", dashboardState.insightStats.critical, dashboardState.insightStats.critical > 0 ? "is-warning" : ""));
+    cardsContainer.appendChild(buildStatCard("Critical", dashboardState.insightStats.critical, "hc-box-color-critical"));
+    cardsContainer.appendChild(buildStatCard("Open",     dashboardState.insightStats.open,     "hc-box-color-open"));
 
     // Update the two doughnut charts
     renderInsightStatusChart();
@@ -547,23 +539,19 @@ function renderOverviewRecentInsights() {
         topLine.appendChild(buildInsightStatusTag(insight.status));
 
         const summary = document.createElement("span");
-        summary.className   = "is-size-7 has-text-weight-semibold";
+        summary.className   = "is-small has-text-weight-bold";
         summary.textContent = insight.summary || i18n.t("Unknown");
         topLine.appendChild(summary);
 
-        if (insight.score !== undefined && insight.score !== null) {
-            topLine.appendChild(buildScoreTag(insight.score));
-        }
-
         // Bottom line: last-updated timestamp (muted, right-aligned)
         const bottomLine = document.createElement("div");
-        bottomLine.className   = "is-size-7 has-text-grey";
+        bottomLine.className   = "is-small";
         bottomLine.textContent = insight.dateTimeUpdated
-            ? i18n.t("UpdatedOn") + ": " + formatDateTime(insight.dateTimeUpdated)
+            ? formatDateTime(insight.dateTimeUpdated) + ":"
             : "";
 
-        row.appendChild(topLine);
         row.appendChild(bottomLine);
+        row.appendChild(topLine);
         container.appendChild(row);
     }
 }
@@ -596,28 +584,27 @@ function renderOverviewRecentNotifications() {
         const row = document.createElement("div");
         row.className = "hc-overview-recent-row";
 
-        // Title line
+        if (notification.dateTime) {
+            const ts = document.createElement("div");
+            ts.className   = "";
+            ts.textContent = formatDateTime(notification.dateTime) + ":";
+            row.appendChild(ts);
+        }
+
+
         const title = document.createElement("div");
-        title.className   = "is-size-7 has-text-weight-semibold";
+        title.className   = "has-text-weight-bold";
         title.textContent = notification.text || i18n.t("Unknown");
         row.appendChild(title);
 
-        // Description — truncated at 80 characters to keep the panel compact
         if (notification.description) {
             const desc = document.createElement("div");
-            desc.className   = "is-size-7 has-text-grey";
+            desc.className   = "";
             const fullText   = notification.description;
             desc.textContent = fullText.length > 80 ? fullText.substring(0, 80) + "…" : fullText;
             row.appendChild(desc);
         }
 
-        // Timestamp (right-aligned, extra muted) — formatted for the active language
-        if (notification.dateTime) {
-            const ts = document.createElement("div");
-            ts.className   = "is-size-7 has-text-grey-light";
-            ts.textContent = formatDateTime(notification.dateTime);
-            row.appendChild(ts);
-        }
 
         container.appendChild(row);
     }
@@ -647,8 +634,8 @@ function buildStatCard(labelKey, value, colorClass = "") {
     label.className   = "hc-stat-label";
     label.textContent = i18n.t(labelKey);
 
-    box.appendChild(number);
     box.appendChild(label);
+    box.appendChild(number);
     column.appendChild(box);
     return column;
 }
@@ -697,7 +684,8 @@ function renderInsightStatusChart() {
         options: {
             responsive:  true,
             plugins: {
-                legend: { position: "bottom" }
+                legend: { 
+                    position: "bottom", labels: { color: cssVar("--hc-color-text-contrast") } }
             }
         }
     });
@@ -742,7 +730,7 @@ function renderDeviceStatusChart() {
         options: {
             responsive: true,
             plugins: {
-                legend: { position: "bottom" }
+                legend: { position: "bottom", labels: { color: cssVar("--hc-color-text-contrast") } }
             }
         }
     });
@@ -811,11 +799,9 @@ function buildInsightCard(insight) {
     summaryText.textContent = insight.summary || i18n.t("Unknown");
 
     const statusTag  = buildInsightStatusTag(insight.status);
-    const scoreLabel = buildScoreTag(insight.score);
 
     metaWrapper.appendChild(summaryText);
     metaWrapper.appendChild(statusTag);
-    metaWrapper.appendChild(scoreLabel);
 
     // Expand / collapse toggle button
     const expandBtn = document.createElement("button");
@@ -1696,23 +1682,6 @@ function buildInsightStatusTag(status) {
 }
 
 /**
- * Builds a small score badge tag showing the numeric score of a Care Insight.
- * The score is a number between 0 and 100 generated by the Care Insights engine.
- * @function buildScoreTag
- * @param {number|string} score - The numeric score value.
- * @returns {HTMLElement} A <span class="tag is-light"> element showing the score.
- */
-function buildScoreTag(score) {
-    const tag       = document.createElement("span");
-    tag.className   = "tag is-light is-size-7";
-
-    if (score !== undefined && score !== null) {
-        tag.textContent = i18n.t("Score") + ": " + parseFloat(score).toFixed(1);
-    }
-    return tag;
-}
-
-/**
  * Builds a Bulma tag <span> for a device connection status.
  * @function buildConnectionTag
  * @param {boolean} isConnected - Whether the device is currently connected.
@@ -1757,24 +1726,6 @@ function updateLastUpdatedTimestamp() {
     const seconds = String(now.getSeconds()).padStart(2, "0");
 
     element.textContent = i18n.t("LastUpdated") + ": " + hours + ":" + minutes + ":" + seconds;
-}
-
-/**
- * Displays a message in the #hc-status-message element in the status bar.
- * An empty key clears the message. The "is-error" CSS class applies a red colour.
- * @function setStatusMessage
- * @param {string}  messageKey        - i18n key of the message to display, or "" to clear.
- * @param {boolean} [isError=false]   - If true, applies the red error style.
- * @returns {void}
- */
-function setStatusMessage(messageKey, isError = false) {
-    const element = document.getElementById("hc-status-message");
-    if (!element) { 
-        return; 
-    }
-
-    element.textContent = messageKey ? i18n.t(messageKey) : "";
-    element.classList.toggle("is-error", isError);
 }
 
 /**

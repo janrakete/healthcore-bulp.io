@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,9 +11,13 @@
 
   <nav id="hc-nav" class="navbar" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
-      <span class="navbar-item has-text-white is-size-5"><span id="logo"><span id="logo-pre">bulp</span><span id="logo-post">.io</span> - Healthcheck</span></span>
+      <span class="navbar-item has-text-white"><span id="logo"><span id="logo-pre">bulp</span><span id="logo-post">.io</span> - Healthcheck</span></span>
     </div>
     <div class="navbar-end">
+      <div class="navbar-item">
+        <span id="hc-last-updated" class="has-text-white"></span>
+      </div>
+
       <div class="navbar-item">
         <div class="buttons">
           <button id="hc-lang-de" class="button is-small is-light hc-lang-btn" data-i18n="German">German</button>
@@ -49,48 +53,35 @@
     </ul>
   </div>
 
-  <div id="hc-status-bar" class="level px-4 py-2 mb-0">
-    <div class="level-left">
-      <div class="level-item">
-        <span id="hc-status-message"></span>
-      </div>
-    </div>
-    <div class="level-right">
-      <div class="level-item">
-        <span id="hc-last-updated" class="is-size-7 has-text-grey"></span>
-      </div>
-    </div>
-  </div>
-
   <section id="tab-overview" class="hc-tab-panel">
 
     <div class="columns">
       <div class="column is-half">
         <div class="box">
-          <h3 class="title is-6 mb-3" data-i18n="RecentInsights">Recent Care Insights</h3>
+          <h3 class="title is-normal mb-3" data-i18n="RecentInsights">Recent Care Insights</h3>
           <div id="overview-recent-insights"></div>
         </div>
       </div>
       <div class="column is-half">
         <div class="box">
-          <h3 class="title is-6 mb-3" data-i18n="RecentNotifications">Recent Notifications</h3>
+          <h3 class="title is-normal mb-3" data-i18n="RecentNotifications">Recent Notifications</h3>
           <div id="overview-recent-notifications"></div>
         </div>
       </div>
     </div>
 
-    <div class="columns is-multiline" id="overview-stats-cards"></div>
+    <div class="columns is-multiline is-centered" id="overview-stats-cards"></div>
 
     <div class="columns" id="overview-charts">
       <div class="column is-half">
         <div class="box hc-chart-box">
-          <h3 class="hc-chart-title" data-i18n="CareInsightsTitle">Care Insights</h3>
+          <h3 class="hc-chart-title is-medium" data-i18n="CareInsightsTitle">Care Insights</h3>
           <canvas id="chart-insights-status"></canvas>
         </div>
       </div>
       <div class="column is-half">
         <div class="box hc-chart-box">
-          <h3 class="hc-chart-title" data-i18n="DevicesTitle">Devices</h3>
+          <h3 class="hc-chart-title is-medium" data-i18n="DevicesTitle">Devices</h3>
           <canvas id="chart-devices-status"></canvas>
         </div>
       </div>
