@@ -136,7 +136,7 @@ Then open a browser und type:
 ```bash
 http://localhost:9990
 ```
-(9990 is the standard port Healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want) 
+9990 is the standard port Healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want. If you also want to call the Healthcheck from another client in the same network, please use the IP that is displayed in the console after start. 
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
