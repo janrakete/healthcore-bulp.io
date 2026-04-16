@@ -32,12 +32,12 @@
       <li class="is-active" data-tab="overview">
         <a data-i18n="Overview">Overview</a>
       </li>
-      <li data-tab="notifications">
-        <a data-i18n="NotificationsTitle">Notifications</a>
-      </li>      
       <li data-tab="care-insights">
         <a data-i18n="CareInsightsTitle">Care Insights</a>
       </li>
+      <li data-tab="notifications">
+        <a data-i18n="NotificationsTitle">Notifications</a>
+      </li>      
       <li data-tab="devices">
         <a data-i18n="DevicesTitle">Devices</a>
       </li>
@@ -55,6 +55,8 @@
 
   <section id="tab-overview" class="hc-tab-panel">
 
+    <div class="columns is-multiline is-centered" id="overview-stats-cards"></div>
+
     <div class="columns">
       <div class="column is-half">
         <div class="box">
@@ -70,18 +72,16 @@
       </div>
     </div>
 
-    <div class="columns is-multiline is-centered" id="overview-stats-cards"></div>
-
     <div class="columns" id="overview-charts">
       <div class="column is-half">
         <div class="box hc-chart-box">
-          <h3 class="hc-chart-title is-medium" data-i18n="CareInsightsTitle">Care Insights</h3>
+          <h3 class="title is-4 mb-3" data-i18n="CareInsightsTitle">Care Insights</h3>
           <canvas id="chart-insights-status"></canvas>
         </div>
       </div>
       <div class="column is-half">
         <div class="box hc-chart-box">
-          <h3 class="hc-chart-title is-medium" data-i18n="DevicesTitle">Devices</h3>
+          <h3 class="title is-4 mb-3" data-i18n="DevicesTitle">Devices</h3>
           <canvas id="chart-devices-status"></canvas>
         </div>
       </div>

@@ -3,33 +3,24 @@
  * Healthcheck Dashboard — Main JavaScript
  * ========================================
  *
- * This script drives the entire Healthcheck dashboard. It fetches read-only data from
- * the Healthcore server, renders it into the DOM using Bulma components, and keeps
- * everything up to date via polling intervals.
- *
- * The Services tab functionality is ported directly from the old monitor.js and provides
- * real-time log streaming and start/stop controls for the six backend services.
+ * Drives the Healthcheck dashboard: fetches read-only data from the Healthcore server,
+ * renders it into the DOM using Bulma components, and keeps data fresh via polling.
  *
  * Dependencies (loaded before this script in dashboard.html):
- *   - Chart.js          (libs/chart.umd.min.js)
- *   - i18n module       (i18n.js)
+ *   - Chart.js   (libs/chart.umd.min.js)
+ *   - i18n module (i18n.js)
  *
- * Structure of this file:
- *   Section A  — Constants and central state
- *   Section B  — Runtime configuration fetch
- *   Section C  — Healthcore server API fetch functions
- *   Section D  — Healthcheck server API (services / logs)
- *   Section E  — Central data refresh
- *   Section F  — Tab navigation
- *   Section G  — Overview tab rendering
- *   Section H  — Care Insights tab rendering
- *   Section I  — Devices tab rendering
- *   Section J  — People tab rendering
- *   Section K  — Rooms tab rendering
- *   Section L  — Notifications tab rendering
- *   Section M  — Status tab rendering
- *   Section N  — Utility functions
- *   Section O  — Initialisation entry point
+ * Sections:
+ *   A — Constants and state          E — Tab navigation
+ *   B — Runtime config fetch         F — Overview rendering
+ *   C — API fetch functions          G — Care Insights rendering
+ *   D — Central data refresh         H — Devices rendering
+ *                                    I — People rendering
+ *                                    J — Rooms rendering
+ *                                    K — Notifications rendering
+ *                                    L — Status rendering
+ *                                    M — Utility functions
+ *                                    N — Initialisation
  */
 
 
@@ -51,7 +42,7 @@ let REFRESH_INTERVAL_MS = 30000;
  * Maximum number of Care Insights shown in the Overview recent-insights panel.
  * Initialised to the .env default; overridden at runtime from /api/config.
  */
-let OVERVIEW_RECENT_INSIGHTS_COUNT = 5;
+let OVERVIEW_RECENT_INSIGHTS_COUNT = 3;
 
 /**
  * @type {number} OVERVIEW_RECENT_NOTIFICATIONS_COUNT
@@ -183,6 +174,23 @@ function buildApiHeaders() {
  */
 
 /**
+ * Fetches a JSON array from a Healthcore API endpoint.
+ * Returns data.results as an array, or [] on error.
+ * @async
+ * @param {string} path - Path appended to serverBaseUrl (e.g. "/devices/all").
+ * @returns {Promise<Array>}
+ */
+async function fetchArray(path) {
+    try {
+        const data = await (await fetch(serverBaseUrl + path, { headers: buildApiHeaders() })).json();
+        return Array.isArray(data.results) ? data.results : [];
+    } catch (error) {
+        console.error("fetchArray failed [" + path + "]:", error);
+        return [];
+    }
+}
+
+/**
  * Fetches all registered devices from the Healthcore server.
  * Each device object is enriched by the server with individual and room data.
  * @async
@@ -190,17 +198,7 @@ function buildApiHeaders() {
  * @returns {Promise<Array>} Array of enriched device objects, or an empty array on error.
  * @description Calls GET {serverBaseUrl}/devices/all. Returns data.results on success.
  */
-async function fetchDevices() {
-    try {
-        const response = await fetch(serverBaseUrl + "/devices/all", { headers: buildApiHeaders() });
-        const data     = await response.json();
-        return Array.isArray(data.results) ? data.results : [];
-    }
-    catch (error) {
-        console.error("fetchDevices failed:", error);
-        return [];
-    }
-}
+async function fetchDevices()       { return fetchArray("/devices/all"); }
 
 /**
  * Fetches all individuals (people) from the Healthcore server.
@@ -209,17 +207,7 @@ async function fetchDevices() {
  * @returns {Promise<Array>} Array of individual objects, or an empty array on error.
  * @description Calls GET {serverBaseUrl}/data/individuals.
  */
-async function fetchIndividuals() {
-    try {
-        const response = await fetch(serverBaseUrl + "/data/individuals", { headers: buildApiHeaders() });
-        const data     = await response.json();
-        return Array.isArray(data.results) ? data.results : [];
-    }
-    catch (error) {
-        console.error("fetchIndividuals failed:", error);
-        return [];
-    }
-}
+async function fetchIndividuals()   { return fetchArray("/data/individuals"); }
 
 /**
  * Fetches all rooms from the Healthcore server.
@@ -228,17 +216,7 @@ async function fetchIndividuals() {
  * @returns {Promise<Array>} Array of room objects, or an empty array on error.
  * @description Calls GET {serverBaseUrl}/data/rooms.
  */
-async function fetchRooms() {
-    try {
-        const response = await fetch(serverBaseUrl + "/data/rooms", { headers: buildApiHeaders() });
-        const data     = await response.json();
-        return Array.isArray(data.results) ? data.results : [];
-    }
-    catch (error) {
-        console.error("fetchRooms failed:", error);
-        return [];
-    }
-}
+async function fetchRooms()         { return fetchArray("/data/rooms"); }
 
 /**
  * Fetches Care Insights from the Healthcore server, optionally filtered by status.
@@ -342,17 +320,7 @@ async function fetchInfo() {
  * @description Calls GET {serverBaseUrl}/data/notifications?orderBy=dateTime,DESC.
  *   Notification columns: ID, text, description, scenarioID, icon, dateTime.
  */
-async function fetchNotifications() {
-    try {
-        const response = await fetch(serverBaseUrl + "/data/notifications?orderBy=dateTime,DESC", { headers: buildApiHeaders() });
-        const data     = await response.json();
-        return Array.isArray(data.results) ? data.results : [];
-    }
-    catch (error) {
-        console.error("fetchNotifications failed:", error);
-        return [];
-    }
-}
+async function fetchNotifications() { return fetchArray("/data/notifications?orderBy=dateTime,DESC"); }
 
 
 
@@ -533,8 +501,7 @@ function renderOverviewRecentInsights() {
 
         // Top line: status tag + summary text
         const topLine = document.createElement("div");
-        topLine.className = "is-flex is-align-items-center mb-1";
-        topLine.style.gap = "6px";
+        topLine.className = "is-flex is-align-items-center mb-1 hc-flex-gap-xs";
 
         topLine.appendChild(buildInsightStatusTag(insight.status));
 
@@ -624,14 +591,14 @@ function buildStatCard(labelKey, value, colorClass = "") {
     column.className = "column is-2";
 
     const box = document.createElement("div");
-    box.className = "box hc-stat-card" + (colorClass ? " " + colorClass : "");
+    box.className = "box has-text-centered" + (colorClass ? " " + colorClass : "");
 
     const number = document.createElement("span");
     number.className   = "hc-stat-number" + (colorClass ? " " + colorClass : "");
     number.textContent = String(value);
 
     const label = document.createElement("span");
-    label.className   = "hc-stat-label";
+    label.className   = "hc-stat-label is-uppercase has-text-weight-bold";
     label.textContent = i18n.t(labelKey);
 
     box.appendChild(label);
@@ -649,46 +616,15 @@ function buildStatCard(labelKey, value, colorClass = "") {
  *   Colours: open=#ff9800, acknowledged=#2196f3, resolved=#4caf50.
  */
 function renderInsightStatusChart() {
-    if (chartInstances.insightStatus !== null) {
-        chartInstances.insightStatus.destroy();
-        chartInstances.insightStatus = null;
-    }
-
-    const canvas = document.getElementById("chart-insights-status");
-    if (!canvas) { 
-        return; 
-    }
-
-    const stats = dashboardState.insightStats;
-
-    chartInstances.insightStatus = new Chart(canvas, {
-        type: "doughnut",
-        data: {
-            labels: [
-                i18n.t("Open"),
-                i18n.t("Acknowledged"),
-                i18n.t("Resolved"),
-                i18n.t("Critical")
-            ],
-            datasets: [{
-                data: [stats.open, stats.acknowledged, stats.resolved, stats.critical],
-                backgroundColor: [
-                    cssVar("--hc-color-insight-open"),
-                    cssVar("--hc-color-insight-acknowledged"),
-                    cssVar("--hc-color-insight-resolved"),
-                    cssVar("--hc-color-insight-critical")
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive:  true,
-            plugins: {
-                legend: { 
-                    position: "bottom", labels: { color: cssVar("--hc-color-text-contrast") } }
-            }
-        }
-    });
+    if (chartInstances.insightStatus) { chartInstances.insightStatus.destroy(); }
+    const s = dashboardState.insightStats;
+    chartInstances.insightStatus = buildDoughnutChart(
+        "chart-insights-status",
+        [i18n.t("Open"), i18n.t("Acknowledged"), i18n.t("Resolved"), i18n.t("Critical")],
+        [s.open, s.acknowledged, s.resolved, s.critical],
+        [cssVar("--hc-color-insight-open"), cssVar("--hc-color-insight-acknowledged"),
+         cssVar("--hc-color-insight-resolved"), cssVar("--hc-color-insight-critical")]
+    );
 }
 
 /**
@@ -701,39 +637,14 @@ function renderInsightStatusChart() {
  *   Colours: connected=#4caf50, disconnected=#ff5722.
  */
 function renderDeviceStatusChart() {
-    if (chartInstances.deviceStatus !== null) {
-        chartInstances.deviceStatus.destroy();
-        chartInstances.deviceStatus = null;
-    }
-
-    const canvas = document.getElementById("chart-devices-status");
-    if (!canvas) { 
-        return; 
-    }
-
-    const connectedCount    = dashboardState.devices.filter(d => Number(d.connected) === 1).length;
-    const disconnectedCount = dashboardState.devices.length - connectedCount;
-
-    chartInstances.deviceStatus = new Chart(canvas, {
-        type: "doughnut",
-        data: {
-            labels: [i18n.t("Connected"), i18n.t("Disconnected")],
-            datasets: [{
-                data: [connectedCount, disconnectedCount],
-                backgroundColor: [
-                    cssVar("--hc-color-connected"),
-                    cssVar("--hc-color-disconnected")
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: "bottom", labels: { color: cssVar("--hc-color-text-contrast") } }
-            }
-        }
-    });
+    if (chartInstances.deviceStatus) { chartInstances.deviceStatus.destroy(); }
+    const connected = dashboardState.devices.filter(d => Number(d.connected) === 1).length;
+    chartInstances.deviceStatus = buildDoughnutChart(
+        "chart-devices-status",
+        [i18n.t("Connected"), i18n.t("Disconnected")],
+        [connected, dashboardState.devices.length - connected],
+        [cssVar("--hc-color-connected"), cssVar("--hc-color-disconnected")]
+    );
 }
 
 
@@ -751,23 +662,7 @@ function renderDeviceStatusChart() {
  * @returns {void}
  */
 function renderInsights() {
-    const container = document.getElementById("insights-list");
-    if (!container) { 
-        return; 
-    }
-    container.innerHTML = "";
-
-    if (dashboardState.insights.length === 0) {
-        const message = document.createElement("p");
-        message.className   = "notification is-light";
-        message.textContent = i18n.t("NoData");
-        container.appendChild(message);
-        return;
-    }
-
-    for (const insight of dashboardState.insights) {
-        container.appendChild(buildInsightCard(insight));
-    }
+    renderList("insights-list", dashboardState.insights, buildInsightCard);
 }
 
 /**
@@ -791,11 +686,10 @@ function buildInsightCard(insight) {
     const metaWrapper = document.createElement("div");
     metaWrapper.className = "is-flex is-align-items-center is-flex-wrap-wrap" +
                             " card-header-title" +
-                            " is-flex-grow-1 py-2 gap-2";
-    metaWrapper.style.gap = "8px";
+                            " is-flex-grow-1 py-2 hc-flex-gap-sm";
 
     const summaryText = document.createElement("span");
-    summaryText.className   = "has-text-weight-semibold mr-2";
+    summaryText.className   = "has-text-weight-bold mr-2";
     summaryText.textContent = insight.summary || i18n.t("Unknown");
 
     const statusTag  = buildInsightStatusTag(insight.status);
@@ -816,10 +710,7 @@ function buildInsightCard(insight) {
     cardContent.className = "card-content";
 
     const metaGrid = document.createElement("div");
-    metaGrid.style.display             = "grid";
-    metaGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(180px, 1fr))";
-    metaGrid.style.gap                 = "4px 12px";
-    metaGrid.className                 = "is-size-7 has-text-grey";
+    metaGrid.className = "hc-insight-meta-grid is-size-7 has-text-grey";
 
     // Individual (person)
     if (insight.individual) {
@@ -1243,77 +1134,28 @@ function buildDeviceRow(device) {
  * @returns {void}
  */
 function renderPeople() {
-    const container = document.getElementById("people-list");
-    if (!container) {
-        return; 
-    }
-    container.innerHTML = "";
-
-    if (dashboardState.individuals.length === 0) {
-        const message = document.createElement("p");
-        message.className   = "notification is-light";
-        message.textContent = i18n.t("NoData");
-        container.appendChild(message);
-        return;
-    }
-
-    for (const individual of dashboardState.individuals) {
-        // Resolve the room this person lives in
-        const room = dashboardState.rooms.find(r => r.roomID === individual.roomID);
-        const roomName = room ? room.name : "";
-
-        // Collect names of all devices assigned to this person
-        const deviceNames = dashboardState.devices
-            .filter(d => d.individualID === individual.individualID)
-            .map(d => d.name || d.deviceID);
-
-        container.appendChild(buildPersonCard(individual, roomName, deviceNames));
-    }
+    renderList("people-list", dashboardState.individuals, buildPersonCard);
 }
 
 /**
  * Builds a single person card DOM element.
  * @function buildPersonCard
- * @param {Object} individual   - Individual object {individualID, firstname, lastname, roomID}.
- * @param {string} roomName     - Resolved room name, or empty string if unassigned.
- * @param {Array}  deviceNames  - Array of device name strings assigned to this person.
+ * @param {Object} individual - Individual object {individualID, firstname, lastname, roomID}.
  * @returns {HTMLElement} A Bulma column > .card element.
  */
-function buildPersonCard(individual, roomName, deviceNames) {
-    const column        = document.createElement("div");
-    column.className    = "column is-3";
-
-    const card      = document.createElement("div");
-    card.className  = "card hc-data-card";
-
-    // Card header: full name
-    const cardHeader        = document.createElement("header");
-    cardHeader.className    = "card-header";
-
-    const headerTitle       = document.createElement("p");
-    headerTitle.className   = "card-header-title";
-    headerTitle.textContent = individual.firstname + " " + individual.lastname;
-    cardHeader.appendChild(headerTitle);
-
-    // Card content: room + device list
-    const cardContent       = document.createElement("div");
-    cardContent.className   = "card-content";
-
-    // Room row
-    const roomSection = buildDataCardSection(i18n.t("Room"), roomName || "—");
-    cardContent.appendChild(roomSection);
-
-    // Devices list
-    const devicesSection = buildDataCardSection(
-        i18n.t("DevicesTitle"),
-        deviceNames.length > 0 ? deviceNames.join(", ") : "—"
+function buildPersonCard(individual) {
+    const room        = dashboardState.rooms.find(r => r.roomID === individual.roomID);
+    const roomName    = room ? room.name : "—";
+    const deviceNames = dashboardState.devices
+        .filter(d => d.individualID === individual.individualID)
+        .map(d => d.name || d.deviceID);
+    return buildDataCard(
+        (individual.firstname + " " + individual.lastname).trim(),
+        [
+            { label: i18n.t("Room"),        value: roomName },
+            { label: i18n.t("DevicesTitle"), value: deviceNames.length > 0 ? deviceNames.join(", ") : "—" }
+        ]
     );
-    cardContent.appendChild(devicesSection);
-
-    card.appendChild(cardHeader);
-    card.appendChild(cardContent);
-    column.appendChild(card);
-    return column;
 }
 
 
@@ -1330,77 +1172,29 @@ function buildPersonCard(individual, roomName, deviceNames) {
  * @returns {void}
  */
 function renderRooms() {
-    const container = document.getElementById("rooms-list");
-    if (!container) {
-        return; 
-    }
-    container.innerHTML = "";
-
-    if (dashboardState.rooms.length === 0) {
-        const message = document.createElement("p");
-        message.className   = "notification is-light";
-        message.textContent = i18n.t("NoData");
-        container.appendChild(message);
-        return;
-    }
-
-    for (const room of dashboardState.rooms) {
-        // Collect full names of all people assigned to this room
-        const personNames = dashboardState.individuals
-            .filter(ind => ind.roomID === room.roomID)
-            .map(ind => (ind.firstname + " " + ind.lastname).trim());
-
-        // Collect names of all devices assigned to this room
-        const deviceNames = dashboardState.devices
-            .filter(d => d.roomID === room.roomID)
-            .map(d => d.name || d.deviceID);
-
-        container.appendChild(buildRoomCard(room, personNames, deviceNames));
-    }
+    renderList("rooms-list", dashboardState.rooms, buildRoomCard);
 }
 
 /**
  * Builds a single room card DOM element.
  * @function buildRoomCard
- * @param {Object} room         - Room object {roomID, name}.
- * @param {Array}  personNames  - Array of full name strings for people in this room.
- * @param {Array}  deviceNames  - Array of device name strings in this room.
+ * @param {Object} room - Room object {roomID, name}.
  * @returns {HTMLElement} A Bulma column > .card element.
  */
-function buildRoomCard(room, personNames, deviceNames) {
-    const column        = document.createElement("div");
-    column.className    = "column is-3";
-
-    const card      = document.createElement("div");
-    card.className  = "card hc-data-card";
-
-    // Card header: room name
-    const cardHeader        = document.createElement("header");
-    cardHeader.className    = "card-header";
-
-    const headerTitle       = document.createElement("p");
-    headerTitle.className   = "card-header-title";
-    headerTitle.textContent = room.name;
-    cardHeader.appendChild(headerTitle);
-
-    // Card content: people + device list
-    const cardContent       = document.createElement("div");
-    cardContent.className   = "card-content";
-
-    cardContent.appendChild(buildDataCardSection(
-        i18n.t("IndividualsTitle"),
-        personNames.length > 0 ? personNames.join(", ") : "—"
-    ));
-
-    cardContent.appendChild(buildDataCardSection(
-        i18n.t("DevicesTitle"),
-        deviceNames.length > 0 ? deviceNames.join(", ") : "—"
-    ));
-
-    card.appendChild(cardHeader);
-    card.appendChild(cardContent);
-    column.appendChild(card);
-    return column;
+function buildRoomCard(room) {
+    const personNames = dashboardState.individuals
+        .filter(ind => ind.roomID === room.roomID)
+        .map(ind => (ind.firstname + " " + ind.lastname).trim());
+    const deviceNames = dashboardState.devices
+        .filter(d => d.roomID === room.roomID)
+        .map(d => d.name || d.deviceID);
+    return buildDataCard(
+        room.name,
+        [
+            { label: i18n.t("IndividualsTitle"), value: personNames.length > 0 ? personNames.join(", ") : "—" },
+            { label: i18n.t("DevicesTitle"),     value: deviceNames.length > 0 ? deviceNames.join(", ") : "—" }
+        ]
+    );
 }
 
 /**
@@ -1441,23 +1235,7 @@ function buildDataCardSection(label, value) {
  * @returns {void}
  */
 function renderNotifications() {
-    const container = document.getElementById("notifications-list");
-    if (!container) { 
-        return;
-    }
-    container.innerHTML = "";
-
-    if (dashboardState.notifications.length === 0) {
-        const message = document.createElement("p");
-        message.className   = "notification is-light";
-        message.textContent = i18n.t("NoData");
-        container.appendChild(message);
-        return;
-    }
-
-    for (const notification of dashboardState.notifications) {
-        container.appendChild(buildNotificationCard(notification));
-    }
+    renderList("notifications-list", dashboardState.notifications, buildNotificationCard);
 }
 
 /**
@@ -1547,7 +1325,7 @@ function renderStatus() {
     serverCard.className    = "box mb-5";
 
     const serverTitle       = document.createElement("h3");
-    serverTitle.className   = "title is-6 mb-4";
+    serverTitle.className   = "title mb-4";
     serverTitle.textContent = i18n.t("StatusServerInfo");
     serverCard.appendChild(serverTitle);
 
@@ -1566,12 +1344,11 @@ function renderStatus() {
         const tr = document.createElement("tr");
 
         const th        = document.createElement("th");
-        th.className    = "has-text-grey is-size-7 is-uppercase";
-        th.style.width  = "180px";
+        th.className    = "has-text-weight-bold has-text-white hc-status-table-th";
         th.textContent  = label;
 
         const td        = document.createElement("td");
-        td.className    = "is-size-6";
+        td.className    = "";
         td.textContent  = value;
 
         tr.appendChild(th);
@@ -1584,9 +1361,7 @@ function renderStatus() {
 
     // ── Bridge status cards ────────────────────────────────────────────────────
     const bridgesTitle          = document.createElement("h3");
-    bridgesTitle.className      = "title is-6 mb-3";
-    bridgesTitle.textContent    = i18n.t("StatusBridges");
-    container.appendChild(bridgesTitle);
+    bridgesTitle.className      = "title mb-3";
 
     const bridgesGrid       = document.createElement("div");
     bridgesGrid.className   = "columns is-multiline";
@@ -1612,11 +1387,10 @@ function renderStatus() {
 
         // Bridge name + status tag on one line
         const header        = document.createElement("div");
-        header.className     = "is-flex is-align-items-center mb-2";
-        header.style.gap    = "8px";
+        header.className    = "is-flex is-align-items-center mb-2 hc-flex-gap-sm";
 
         const nameSpan          = document.createElement("span");
-        nameSpan.className      = "has-text-weight-semibold";
+        nameSpan.className      = "has-text-weight-bold";
         nameSpan.textContent    = capitalise(bridge.bridge);
 
         const statusTag         = document.createElement("span");
@@ -1629,7 +1403,7 @@ function renderStatus() {
 
         // Port number
         const portLine          = document.createElement("p");
-        portLine.className      = "is-size-7 has-text-grey";
+        portLine.className      = "is-size-7 has-text-white-ter";
         portLine.textContent    = i18n.t("StatusPort") + ": " + (bridge.port || "—");
         card.appendChild(portLine);
 
@@ -1657,6 +1431,86 @@ function renderStatus() {
  */
 function cssVar(name) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/**
+ * Builds a "no data" notification element used by all list renderers.
+ * @returns {HTMLElement}
+ */
+function buildNoDataMessage() {
+    const p = document.createElement("p");
+    p.className   = "notification is-light";
+    p.textContent = i18n.t("NoData");
+    return p;
+}
+
+/**
+ * Generic list renderer. Clears containerID, shows buildNoDataMessage() when items
+ * is empty, otherwise calls buildFn(item) for each item and appends the result.
+ * @param {string}   containerID - ID of the target DOM element.
+ * @param {Array}    items       - Data array to render.
+ * @param {Function} buildFn     - Called with each item; must return an HTMLElement.
+ */
+function renderList(containerID, items, buildFn) {
+    const container = document.getElementById(containerID);
+    if (!container) { return; }
+    container.innerHTML = "";
+    if (items.length === 0) { container.appendChild(buildNoDataMessage()); return; }
+    for (const item of items) { container.appendChild(buildFn(item)); }
+}
+
+/**
+ * Builds a generic data card (used for People and Rooms tabs).
+ * @param {string} title    - Text shown in the card header.
+ * @param {Array}  sections - Array of {label, value} objects for the card body.
+ * @returns {HTMLElement} A Bulma column > .card element.
+ */
+function buildDataCard(title, sections) {
+    const column = document.createElement("div");
+    column.className = "column is-3";
+
+    const card = document.createElement("div");
+    card.className = "card hc-data-card";
+
+    const cardHeader = document.createElement("header");
+    cardHeader.className = "card-header";
+    const headerTitle = document.createElement("p");
+    headerTitle.className   = "card-header-title";
+    headerTitle.textContent = title;
+    cardHeader.appendChild(headerTitle);
+
+    const cardContent = document.createElement("div");
+    cardContent.className = "card-content";
+    for (const { label, value } of sections) {
+        cardContent.appendChild(buildDataCardSection(label, value));
+    }
+
+    card.appendChild(cardHeader);
+    card.appendChild(cardContent);
+    column.appendChild(card);
+    return column;
+}
+
+/**
+ * Builds a doughnut Chart.js instance. Destroys any previous instance stored in
+ * the provided ref object under the given key before creating a new one.
+ * @param {string} canvasID - ID of the <canvas> element.
+ * @param {Array}  labels   - Chart legend labels.
+ * @param {Array}  data     - Numeric data values.
+ * @param {Array}  colors   - Background colours matching data.
+ * @returns {Chart|null}
+ */
+function buildDoughnutChart(canvasID, labels, data, colors) {
+    const canvas = document.getElementById(canvasID);
+    if (!canvas) { return null; }
+    return new Chart(canvas, {
+        type: "doughnut",
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2 }] },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: "bottom", labels: { color: cssVar("--hc-color-text-contrast") } } }
+        }
+    });
 }
 
 /**
@@ -1781,7 +1635,9 @@ function initLanguageToggle() {
         btnDe.addEventListener("click", function () {
             i18n.setLanguage("de");
             updateLangButtons();
-            renderActiveTab(); // re-render dynamic strings in the visible tab
+            i18n.applyToDOM();
+            renderActiveTab();
+            updateLastUpdatedTimestamp();
         });
     }
 
@@ -1789,7 +1645,9 @@ function initLanguageToggle() {
         btnEn.addEventListener("click", function () {
             i18n.setLanguage("en");
             updateLangButtons();
+            i18n.applyToDOM();
             renderActiveTab();
+            updateLastUpdatedTimestamp();
         });
     }
 

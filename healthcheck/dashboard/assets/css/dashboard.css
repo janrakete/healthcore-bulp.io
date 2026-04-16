@@ -5,145 +5,142 @@
  */
 @font-face {
     font-family: "Poppins";
-    src:         url("../fonts/Poppins/Poppins-ExtraLight.ttf") format("truetype");
+    src: url("../fonts/Poppins/Poppins-ExtraLight.ttf") format("truetype");
     font-weight: 200;
-    font-style:  normal;
+    font-style: normal;
 }
 
 @font-face {
     font-family: "Poppins";
-    src:         url("../fonts/Poppins/Poppins-Light.ttf") format("truetype");
+    src: url("../fonts/Poppins/Poppins-Light.ttf") format("truetype");
     font-weight: 300;
-    font-style:  normal;
+    font-style: normal;
 }
 
 @font-face {
     font-family: "Poppins";
-    src:         url("../fonts/Poppins/Poppins-Regular.ttf") format("truetype");
+    src: url("../fonts/Poppins/Poppins-Regular.ttf") format("truetype");
     font-weight: 400;
-    font-style:  normal;
+    font-style: normal;
 }
 
 @font-face {
     font-family: "Poppins";
-    src:         url("../fonts/Poppins/Poppins-Medium.ttf") format("truetype");
+    src: url("../fonts/Poppins/Poppins-Medium.ttf") format("truetype");
     font-weight: 500;
-    font-style:  normal;
+    font-style: normal;
 }
 
 @font-face {
     font-family: "Poppins";
-    src:         url("../fonts/Poppins/Poppins-SemiBold.ttf") format("truetype");
+    src: url("../fonts/Poppins/Poppins-SemiBold.ttf") format("truetype");
     font-weight: 600;
-    font-style:  normal;
+    font-style: normal;
 }
 
 @font-face {
     font-family: "Poppins";
-    src:         url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype");
+    src: url("../fonts/Poppins/Poppins-Bold.ttf") format("truetype");
     font-weight: 700;
-    font-style:  normal;
+    font-style: normal;
 }
 
 :root {
     --bulma-primary-h: 263deg;
     --bulma-primary-s: 69%;
     --bulma-primary-l: 34%;
-    --bulma-link-h:    263deg;
-    --bulma-link-s:    69%;
-    --bulma-link-l:    34%;
+    --bulma-link-h: 263deg;
+    --bulma-link-s: 69%;
+    --bulma-link-l: 34%;
 
-    --hc-color-primary:              #311B92;
-    --hc-color-primary-mid:          #673ab7;
-    --hc-color-primary-alpha:        rgba(49, 27, 146, 0.1);
+    --hc-color-primary: #311B92;
+    --hc-color-primary-mid: #673ab7;
+    --hc-color-primary-alpha: rgba(49, 27, 146, 0.1);
 
-    --hc-color-insight-open:         #ffc107;
+    --hc-color-insight-open: #ffc107;
     --hc-color-insight-acknowledged: #FF4081;
-    --hc-color-insight-resolved:     #4caf50;
-    --hc-color-insight-critical:     #ff5722;
+    --hc-color-insight-resolved: #4caf50;
+    --hc-color-insight-critical: #ff5722;
 
-    --hc-color-connected:            #4caf50;
-    --hc-color-disconnected:         #ff5722;
+    --hc-color-connected: #4caf50;
+    --hc-color-disconnected: #ff5722;
 
-    --bulma-family-primary: Poppins;    
+    --bulma-family-primary: Poppins;
 
-    --bulma-size-small: 1rem;    
+    --bulma-size-small: 1rem;
     --bulma-size-normal: 1.25rem;
-    --bulma-size-medium: 1.5rem;  
+    --bulma-size-medium: 1.5rem;
     --bulma-size-large: 5rem;
 
-    --hc-color-text-contrast: #ffffff;    
+    --hc-color-text-contrast: #ffffff;
+    --hc-color-text-on-tile: #000000;
 }
 
-html,
-body {
-    background-color: #ffffff;
-    color:            #000;
-    background: url("../backgrounds/background_1.png") no-repeat bottom 30px left 30px / 20% fixed;    
+html, body {
+    background: url("../backgrounds/background_1.png") no-repeat bottom 30px left 30px / 20% fixed;
 }
 
 /* Navbar background and text colour */
 #hc-nav.navbar {
-    background-color: #311B92;
+    background-color: var(--hc-color-primary);
 }
 
 /* Active-state highlight for the language toggle buttons */
 .hc-lang-btn.is-active {
     background-color: #ffffff !important;
-    color:            #311B92 !important;
-    font-weight:      bold;
+    color: var(--hc-color-primary) !important;
+    font-weight: bold;
 }
 
-/* Red colour for the error state */
-#hc-status-message.is-error {
-    color:       #ff5722 !important;
-    font-weight: bold;
+/* Tab bar — remove separator line and add top spacing */
+#hc-dashboard-tabs {
+    --bulma-tabs-border-bottom-color: transparent;
+    margin-top: 0.5rem;
+}
+
+/* Active tab — purple background, white text, rounded corners on all sides */
+#hc-dashboard-tabs .is-active a {
+    background-color: var(--hc-color-primary) !important;
+    color: #fff !important;
+    border-radius: var(--bulma-radius);
+    border-bottom-color: transparent !important;
 }
 
 /* Padding for tab panels to give content some breathing room */
 .hc-tab-panel {
-    padding: 1.25rem 1.25rem;
+    padding: 1.25rem;
 }
 
-/* Stat cards — center text and add a top border for visual separation */
-.hc-stat-card {
-    text-align: center;
-}
-
-/* The number in the stat card — large, bold, and with a specific colour */
+/* The number in the stat card — large, bold, and prominent */
 .hc-stat-number {
-    display:     block;
-    font-size:   var(--bulma-size-large);
+    display: block;
+    font-size: var(--bulma-size-large);
     font-weight: 700;
-    color:       #000;
+    color: var(--hc-color-text-on-tile);
     line-height: 1.1;
-    margin-top:  0.2rem;
+    margin-top: 0.2rem;
 }
 
-/* Label below the number, styled as uppercase with a smaller font size and lighter colour */
+/* Label below the number — text-transform and font-weight come from Bulma helpers in JS */
 .hc-stat-label {
-    display:        block;
-    color:          #000;
-    text-transform: uppercase;
-    font-weight: bold;
-    font-size:      var(--bulma-size-small);
+    display: block;
+    color: var(--hc-color-text-on-tile);
+    font-size: var(--bulma-size-small);
 }
 
-/* Chart box — centers the chart and limits its maximum width for better readability on large screens */
+/* Chart box — centres the canvas and caps its width for readability on large screens */
 .hc-chart-box {
-    max-width:  380px;
-    margin:     0 auto;
+    max-width: 380px;
+    margin: 0 auto;
     text-align: center;
 }
 
-/* Filter bar (Bulma's .field.is-grouped handles layout) */
+/* Filter bar — left accent border, Bulma's .field.is-grouped handles the layout */
 .hc-filter-bar {
-    background-color: #ffffff;
-    border-left:      4px solid var(--hc-color-primary);
-    border-bottom:    1px solid #e8e8e8;
-    padding:          0.5rem 1rem;
-    margin-bottom:    1rem;
-    align-items:      center;
+    border-left: 4px solid var(--hc-color-primary);
+    border-bottom: 1px solid #e8e8e8;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
 }
 
 /* Care Insights — expand / collapse mechanism */
@@ -151,19 +148,20 @@ body {
     display: none;
 }
 
-/* When the .is-visible class is added, show the detail section */
+/* When .is-visible is added, show the detail section with padding */
 .hc-insight-detail.is-visible {
     display: block;
+    padding: 1rem 1.5rem 1.5rem;
 }
 
-/* Pointer cursor and hover background on clickable card headers */
+/* Pointer cursor and hover background on clickable insight card headers */
 .hc-insight-card .card-header {
     cursor: pointer;
+    background-color: var(--hc-color-primary-alpha);
 }
 
-/* Subtle background change on hover to indicate interactivity */
 .hc-insight-card .card-header:hover {
-    background-color: #f5f5f5;
+    background-color: rgba(49, 27, 146, 0.18);
 }
 
 .box {
@@ -171,10 +169,11 @@ body {
     color: #fff;
 }
 
+/* Bulma's .title has its own color variable that wins over inheritance, so we override explicitly */
 .box .title,
 .box .subtitle {
     color: #fff;
-    font-size: var(--bulma-size-medium);    
+    font-size: var(--bulma-size-medium);
 }
 
 .hc-box-color-critical {
@@ -185,57 +184,31 @@ body {
     background-color: var(--hc-color-insight-open);
 }
 
-
 /* Signal chart container */
 .hc-signal-chart-container {
-    position:   relative;
-    height:     220px;
+    position: relative;
+    height: 220px;
     margin-top: 1rem;
 }
 
-/* Colour-coded tags for signal states and connection status. The !important is used to override any conflicting styles from Bulma or other libraries, ensuring our custom colours are applied consistently. */
-.hc-tag-open         { 
-    background-color: var(--hc-color-insight-open) !important;
+/* Colour-coded tags — shared typography, individual background colours */
+[class*="hc-tag-"] {
     color: #000 !important;
     text-transform: uppercase;
     font-weight: bold;
 }
 
-.hc-tag-acknowledged { 
-    background-color: var(--hc-color-insight-acknowledged) !important;
-    color: #000 !important;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-.hc-tag-resolved     { 
-    background-color: var(--hc-color-insight-resolved) !important;
-    color: #000 !important;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-.hc-tag-critical     { 
-    background-color: var(--hc-color-insight-critical) !important;
-    color: #000 !important;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-.hc-tag-connected    { 
-    background-color: var(--hc-color-connected) !important;
-    color: #000 !important;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-.hc-tag-disconnected { 
-    background-color: var(--hc-color-disconnected) !important;
-    color: #000 !important;
-    text-transform: uppercase;
-    font-weight: bold;
-}
+.hc-tag-open         { background-color: var(--hc-color-insight-open)        !important; }
+.hc-tag-acknowledged { background-color: var(--hc-color-insight-acknowledged) !important; }
+.hc-tag-resolved     { background-color: var(--hc-color-insight-resolved)     !important; }
+.hc-tag-critical     { background-color: var(--hc-color-insight-critical)     !important; }
+.hc-tag-connected    { background-color: var(--hc-color-connected)            !important; }
+.hc-tag-disconnected { background-color: var(--hc-color-disconnected)         !important; }
 
-/* Overview — recent-data row separator */
+/* Overview — recent-data row separator (inside purple .box, so use a white-alpha border) */
 .hc-overview-recent-row {
-    padding:       0.45rem 0;
-    border-bottom: 1px solid #e8e8e8;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 /* Remove the bottom border from the last row for a cleaner look */
@@ -244,26 +217,68 @@ body {
     padding-bottom: 0;
 }
 
-/* Data card — top border accent */
-.hc-data-card {
+/* Top border accent shared by People, Rooms and Care Insight cards */
+.hc-data-card,
+.hc-insight-card {
     border-top: 4px solid var(--hc-color-primary-mid);
-    height:     100%;
 }
 
-/* Status tab — bridge card sizing */
+.hc-data-card {
+    height: 100%;
+}
+
+/* Subtle purple tint on all data and insight card headers */
+.hc-data-card .card-header,
+.hc-insight-card .card-header {
+    background-color: var(--hc-color-primary-alpha);
+}
+
+/* Devices table — purple theme via Bulma table variables */
+#devices-table {
+    --bulma-table-background-color: var(--hc-color-primary);
+    --bulma-table-color: #fff;
+    --bulma-table-cell-border-color: var(--hc-color-primary-mid);
+    --bulma-table-head-cell-color: rgba(255, 255, 255, 0.65);
+    --bulma-table-striped-row-even-background-color: rgba(255, 255, 255, 0.06);
+    --bulma-table-row-hover-background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Status tab — purple theme via Bulma table variables */
+#status-content .table {
+    --bulma-table-background-color: var(--hc-color-primary);
+    --bulma-table-color: #fff;
+    --bulma-table-cell-border-color: var(--hc-color-primary-mid);
+    --bulma-table-head-cell-color: rgba(255, 255, 255, 0.65);
+    --bulma-table-striped-row-even-background-color: rgba(255, 255, 255, 0.06);
+    --bulma-table-row-hover-background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Status tab — bridge card minimum width */
 .hc-status-bridge-card {
     min-width: 160px;
 }
+
+/* Status tab — fixed width for the label column in the server-info table */
+.hc-status-table-th {
+    width: 180px;
+}
+
+/* Metadata grid inside insight card content */
+.hc-insight-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 4px 12px;
+}
+
+/* Flex gap utilities */
+.hc-flex-gap-xs { gap: 6px; }
+.hc-flex-gap-sm { gap: 8px; }
 
 #logo {
     font-size: var(--bulma-size-medium);
 }
 
+/* font-family comes from --bulma-family-primary: Poppins — no override needed */
 #logo-pre {
-    font-family: "Poppins";
     font-weight: bold;
-}
-
-#logo-post {
-    font-family: "Poppins";
 }
