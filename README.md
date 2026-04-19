@@ -30,7 +30,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 📁 [Folder structure](#-folder-structure)
 - 💻 [Installation (software)](#-installation-software)
 - 🔧 [Installation (hardware)](#-installation-hardware)
-- 📈 [Healthcheck - a monitor for Healthcore](#-healthcheck---a-monitor-for-healthcore)
+- 📈 [Healthcheck](#-healthcheck)
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
 - 🔐 [Security](#-security)
@@ -124,10 +124,10 @@ production-start.sh uses the process manager, so that a service is restarted if 
 - **Connections**  
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
-## 📈 Healthcheck - a monitor for Healthcore
-Healthcore has an integrated interface (= healthcheck) to view the status of the individual bridges, brokers and servers and to start and stop them. All outputs are displayed in a console. Healthcheck only works locally.
+## 📈 Healthcheck
+Healthcore has an integrated dashboard (= Healthcheck) to view the status of the system and to display several data from the APIs.
 
-How to start healthcheck:
+How to start Healthcheck:
 ```bash
 node healthcheck/app.js
 ```
@@ -136,7 +136,7 @@ Then open a browser und type:
 ```bash
 http://localhost:9990
 ```
-(9990 is the standard port healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want) 
+9990 is the standard port Healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want. If you also want to call the Healthcheck from another client in the same network, please use the IP that is displayed in the console after start. 
 
 ## 🧩 Own converters
 The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:

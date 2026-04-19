@@ -75,7 +75,7 @@ class DeviceEdit extends HTMLElement {
   async initializeData() {
     await Promise.all([
       this.loadSelectionData(),
-      this.loadData(),
+      this.dataLoad(),
     ]);
   }
 
@@ -206,7 +206,7 @@ class DeviceEdit extends HTMLElement {
     }
   }
 
-  async loadData() {
+  async dataLoad() {
     try {
       const data = await apiGET("/devices/" + this.BRIDGE + "/" + this.ID);
       console.log("API call - Output:", data);

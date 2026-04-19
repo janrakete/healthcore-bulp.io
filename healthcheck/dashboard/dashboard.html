@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Healthcheck</title>
+  <link rel="stylesheet" href="assets/css/bulma.min.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+</head>
+<body>
+
+  <nav id="hc-nav" class="navbar" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <span class="navbar-item has-text-white"><span id="logo"><span id="logo-pre">bulp</span><span id="logo-post">.io</span> - Healthcheck</span></span>
+    </div>
+    <div class="navbar-end">
+      <div class="navbar-item">
+        <span id="hc-last-updated" class="has-text-white"></span>
+      </div>
+
+      <div class="navbar-item">
+        <div class="buttons">
+          <button id="hc-lang-de" class="button is-small is-light hc-lang-btn" data-i18n="German">German</button>
+          <button id="hc-lang-en" class="button is-small is-light hc-lang-btn" data-i18n="English">English</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="tabs is-centered hc-tab-bar" id="hc-dashboard-tabs">
+    <ul>
+      <li class="is-active" data-tab="overview">
+        <a data-i18n="Overview">Overview</a>
+      </li>
+      <li data-tab="care-insights">
+        <a data-i18n="CareInsightsTitle">Care Insights</a>
+      </li>
+      <li data-tab="notifications">
+        <a data-i18n="NotificationsTitle">Notifications</a>
+      </li>      
+      <li data-tab="devices">
+        <a data-i18n="DevicesTitle">Devices</a>
+      </li>
+      <li data-tab="people">
+        <a data-i18n="IndividualsTitle">People</a>
+      </li>
+      <li data-tab="rooms">
+        <a data-i18n="RoomsTitle">Rooms</a>
+      </li>
+      <li data-tab="status">
+        <a data-i18n="StatusTitle">Status</a>
+      </li>
+    </ul>
+  </div>
+
+  <section id="tab-overview" class="hc-tab-panel">
+
+    <div class="columns is-multiline is-centered" id="overview-stats-cards"></div>
+
+    <div class="columns">
+      <div class="column is-half">
+        <div class="box">
+          <h3 class="title is-normal mb-3" data-i18n="RecentInsights">Recent Care Insights</h3>
+          <div id="overview-recent-insights"></div>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="box">
+          <h3 class="title is-normal mb-3" data-i18n="RecentNotifications">Recent Notifications</h3>
+          <div id="overview-recent-notifications"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="columns" id="overview-charts">
+      <div class="column is-half">
+        <div class="box hc-chart-box">
+          <h3 class="title is-4 mb-3" data-i18n="CareInsightsTitle">Care Insights</h3>
+          <canvas id="chart-insights-status"></canvas>
+        </div>
+      </div>
+      <div class="column is-half">
+        <div class="box hc-chart-box">
+          <h3 class="title is-4 mb-3" data-i18n="DevicesTitle">Devices</h3>
+          <canvas id="chart-devices-status"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Tab panel: Care Insights                                                             -->
+  <!-- =================================================================================== -->
+  <section id="tab-care-insights" class="hc-tab-panel is-hidden">
+
+    <!-- Filter bar for status (Bulma field is-grouped) -->
+    <div class="hc-filter-bar field is-grouped is-align-items-center">
+      <label class="label is-small my-auto mr-3" data-i18n="Filter">Filter</label>
+      <div class="control">
+        <div class="select is-small">
+          <select id="filter-insights-status">
+            <option value=""             data-i18n="AllStatuses">All statuses</option>
+            <option value="open"         data-i18n="Open">Open</option>
+            <option value="acknowledged" data-i18n="Acknowledged">Acknowledged</option>
+            <option value="resolved"     data-i18n="Resolved">Resolved</option>
+            <option value="critical"     data-i18n="Critical">Critical</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Care insight cards (built dynamically in dashboard.js) -->
+    <div id="insights-list"></div>
+
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Tab panel: Devices                                                                   -->
+  <!-- =================================================================================== -->
+  <section id="tab-devices" class="hc-tab-panel is-hidden">
+
+    <!-- Filter bar for bridge type (Bulma field is-grouped) -->
+    <div class="hc-filter-bar field is-grouped is-align-items-center">
+      <label class="label is-small my-auto mr-3" data-i18n="Filter">Filter</label>
+      <div class="control">
+        <div class="select is-small">
+          <select id="filter-devices-bridge">
+            <option value=""          data-i18n="AllBridges">All bridges</option>
+            <option value="bluetooth" data-i18n="Bluetooth">Bluetooth</option>
+            <option value="zigbee"    data-i18n="Zigbee">ZigBee</option>
+            <option value="lora"      data-i18n="LoRa">LoRa</option>
+            <option value="http"      data-i18n="Wifi">HTTP</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Device table -->
+    <div class="table-container">
+      <table class="table is-fullwidth is-striped is-hoverable" id="devices-table">
+        <thead>
+          <tr>
+            <th data-i18n="Name">Name</th>
+            <th data-i18n="ProductName">Product Name</th>
+            <th data-i18n="Bridge">Bridge</th>
+            <th>Status</th>
+            <th data-i18n="AssignedPerson">Assigned person</th>
+            <th data-i18n="AssignedRoom">Assigned room</th>
+            <th>Power</th>
+          </tr>
+        </thead>
+        <tbody id="devices-table-body">
+          <!-- Rows built dynamically in dashboard.js -->
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Tab panel: People                                                                    -->
+  <!-- =================================================================================== -->
+  <section id="tab-people" class="hc-tab-panel is-hidden">
+    <div class="columns is-multiline" id="people-list">
+      <!-- Cards built dynamically in dashboard.js -->
+    </div>
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Tab panel: Rooms                                                                     -->
+  <!-- =================================================================================== -->
+  <section id="tab-rooms" class="hc-tab-panel is-hidden">
+    <div class="columns is-multiline" id="rooms-list">
+      <!-- Cards built dynamically in dashboard.js -->
+    </div>
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Tab panel: Notifications                                                             -->
+  <!-- =================================================================================== -->
+  <section id="tab-notifications" class="hc-tab-panel is-hidden">
+    <div id="notifications-list">
+      <!-- Cards built dynamically in dashboard.js -->
+    </div>
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Tab panel: Status (server info + bridge connectivity from GET /info)               -->
+  <!-- =================================================================================== -->
+  <section id="tab-status" class="hc-tab-panel is-hidden">
+    <div id="status-content">
+      <!-- Built dynamically in dashboard.js -->
+    </div>
+  </section>
+
+  <!-- =================================================================================== -->
+  <!-- Scripts — load order matters: Chart.js first, then i18n, then the dashboard logic  -->
+  <!-- =================================================================================== -->
+  <script src="assets/libs/chart.umd.min.js"></script>
+  <script src="assets/i18n/i18n.js"></script>
+  <script src="dashboard.js"></script>
+
+</body>
+</html>

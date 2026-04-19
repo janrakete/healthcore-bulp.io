@@ -40,12 +40,12 @@ class CareInsightRules extends HTMLElement {
     });
 
     this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => {
-      await this.loadData();
+      await this.dataLoad();
       event.target.complete();
     });
 
     this.actionSheetSetup();
-    this.loadData();
+    this.dataLoad();
   }
 
   actionSheetSetup() {
@@ -87,7 +87,7 @@ class CareInsightRules extends HTMLElement {
     });
   }
 
-  async loadData() {
+  async dataLoad() {
     const spinner = spinnerShow("#care-insight-rules-list");
 
     try {

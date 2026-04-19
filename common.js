@@ -220,4 +220,21 @@ function sendResponse(response, data, routeName, errorLabel = "Request") {
     return (response.status(statusCode).json(data));
 }
 
-module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray, sendResponse };
+/**
+ * Retrieves the local IP address of the machine.
+ * @returns {string} The local IP address, or "127.0.0.1" if none is found.
+ */
+function getOwnIP() {
+    const os = require("os");
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === "IPv4" && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return "127.0.0.1";
+}
+
+module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray, sendResponse, getOwnIP };

@@ -1,30 +1,21 @@
 /**
  * =============================================================================================
- * Healthcore Demo Script — Echte Geräte
- * ======================================
- * Simuliert zwei Szenarien mit physischen Geräten:
+ * Healthcore Demo Script — Real Devices
+ * =====================================
+ * Simulates two scenarios with physical devices:
  *
  *  1. Bangle.js 2 (Bluetooth)
- *     → Drücke im Watch-Menü: "Demo: Hoher Puls (155 bpm)"
- *     → CareInsightsEngine (anomaly_detection) erkennt Abweichung
- *     → Szenario feuert → Notification in der App
- *
+ *     → Press in the watch menu: "Demo: High Heart Rate (155 bpm)"
+ *     → CareInsightsEngine (anomaly_detection) detects a deviation
+ *     → Scenario fires → Push notification → Changes color of Paulmann bulb
+ *     
  *  2. SONOFF SNZB-01P (ZigBee)
- *     → Drücke den Taster 6 Mal innerhalb einer Minute
- *     → CareInsightsEngine (sum_above_threshold) schlägt an
- *     → Szenario feuert → Push-Notification
+ *     → Press the button 6 times within one minute
+ *     → CareInsightsEngine (sum_above_threshold) triggers
+ *     → Scenario fires → Push notification → Activates alarm on BULP sensor  
  *
- * Voraussetzung:
- *   - Healthcore läuft (broker/app.js + server/app.js)
- *   - Bangle.js 2 ist über den Bluetooth-Bridge mit Healthcore verbunden
- *   - SONOFF SNZB-01P ist über den ZigBee-Bridge mit Healthcore verbunden
- *   - Neue bulp.app.js auf die Bangle.js 2 laden (enthält "Demo: Hoher Puls"-Menü)
- *
- * Starten:
+ * Start:
  *   node tests/demo-real-devices.js
- *
- * Nur reset/aufräumen:
- *   node tests/demo-real-devices.js --reset-only
  * =============================================================================================
  */
 
@@ -37,27 +28,20 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 dotenv.config({ path: path.resolve(__dirname, "../.env.local"), override: true });
 
 const Database = require("better-sqlite3");
-
-// ─── Configuration ────────────────────────────────────────────────────────────
+const { find } = require("async");
 
 const DB_FILENAME = process.env.CONF_databaseFilename || "../healthcore_database.db";
-// DB_FILENAME ist relativ zum Projektverzeichnis (z.B. "../healthcore_database.db").
-// Da __dirname das tests/-Verzeichnis ist, reicht ein einfaches path.resolve ohne
-// zusätzliches ".."-Segment — sonst wird eine Ebene zu weit nach oben navigiert.
 const DB_PATH     = path.resolve(__dirname, DB_FILENAME);
+const DEMO_PREFIX = "[Demo] ";
 
-const DEMO_PREFIX = "DEMO - ";
-
-// CareInsights-Parameter aus .env
+// CareInsights parameters from .env
 const ANOMALY_THRESHOLD   = parseFloat(process.env.CONF_careInsightsAnomalyThreshold) || 0.6;
 const MIN_HISTORY_ENTRIES = parseInt(process.env.CONF_careInsightsMinHistoryEntries)   || 10;
 const HISTORY_SIZE        = parseInt(process.env.CONF_careInsightsHistorySize)          || 200;
 
-// Anzahl Button-Drücke, die den Threshold überschreiten sollen
+// Number of button presses required to exceed the threshold
 const SONOFF_PRESS_THRESHOLD = 5;  // Schwelle: mehr als 5 Drücke/Stunde
 const SONOFF_PRESSES_NEEDED  = 6;  // 6 Drücke → Summe 6 > 5 → Insight
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function log(msg = "", symbol = " ") {
   console.log(symbol + " " + msg);
@@ -74,16 +58,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// ─── Geräte in der Datenbank finden ──────────────────────────────────────────
-
 /**
- * Sucht das Bangle.js 2 in der DB (zuerst per ProductName, dann per Bridge).
- * @param {Database} db
+ * Finds the Bangle.js 2 in the DB (first by ProductName, then by bridge).
+ * @param {Database} database
  * @returns {Object|null} device row
  */
-function findBangleDevice(db) {
-  // Suche mit Converter-ProductName-Pattern
-  const device = db.prepare(
+function findBangleDevice(database) {
+  // Search using the converter product name pattern
+  const device = database.prepare(
     "SELECT * FROM devices WHERE bridge = 'bluetooth' AND productName LIKE 'Bangle.js%' ORDER BY dateTimeAdded DESC LIMIT 1"
   ).get();
 
@@ -91,37 +73,61 @@ function findBangleDevice(db) {
 }
 
 /**
- * Sucht das SONOFF SNZB-01P in der DB.
- * @param {Database} db
+ * Finds the SONOFF SNZB-01P in the DB.
+ * @param {Database} database
  * @returns {Object|null} device row
  */
-function findSonoffDevice(db) {
-  const device = db.prepare(
+function findSonoffDevice(database) {
+  const device = database.prepare(
     "SELECT * FROM devices WHERE bridge = 'zigbee' AND productName = 'SNZB-01P' ORDER BY dateTimeAdded DESC LIMIT 1"
   ).get();
 
   return device || null;
 }
 
-// ─── Reset ────────────────────────────────────────────────────────────────────
+/**
+ * Finds the Paulmann Smart Home device in the DB.
+ * @param {Database} database
+ * @returns {Object|null} device row
+ */
+function findPaulmannDevice(database) {
+  const device = database.prepare(
+    "SELECT * FROM devices WHERE bridge = 'zigbee' AND productName LIKE 'RGB%' ORDER BY dateTimeAdded DESC LIMIT 1"
+  ).get();
+
+  return device || null;
+}
 
 /**
- * Löscht alle Demo-spezifischen Konfigurations-Daten.
- * Echte Messwert-History wird NICHT gelöscht — nur SONOFF-Button-Presses
- * der letzten 2 Stunden werden bereinigt (für einen sauberen Schwellwert-Demo).
+ * Finds the BULP in the DB.
+ * @param {Database} database
+ * @returns {Object|null} device row
  */
-function resetDemo(db, bangleDeviceID, sonoffDeviceID) {
+function findBulpDevice(database) {
+  const device = database.prepare(
+    "SELECT * FROM devices WHERE bridge = 'bluetooth' AND productName LIKE 'bulp%' ORDER BY dateTimeAdded DESC LIMIT 1"
+  ).get();
+
+  return device || null;
+}
+
+/**
+ * Deletes all demo-specific configuration data.
+ * Real measurement history is NOT deleted — only SONOFF button presses
+ * from the last 2 hours are cleared (for a clean threshold demo).
+ */
+function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDeviceID) {
   logSection("RESET: Vorherige Demo-Daten löschen");
 
-  // 1. Demo-Notifications via Szenario-IDs löschen (vor der Szenario-Löschung!)
-  const demoScenarios = db.prepare(
+  // 1. Delete demo notifications via scenario IDs (before deleting the scenarios!)
+  const demoScenarios = database.prepare(
     "SELECT scenarioID FROM scenarios WHERE name LIKE ?"
   ).all(DEMO_PREFIX + "%");
 
   if (demoScenarios.length > 0) {
     const ids          = demoScenarios.map((s) => s.scenarioID);
     const placeholders = ids.map(() => "?").join(", ");
-    const deletedN = db.prepare(
+    const deletedN = database.prepare(
       "DELETE FROM notifications WHERE scenarioID IN (" + placeholders + ")"
     ).run(...ids);
     log("Demo-Notifications gelöscht: " + deletedN.changes, "✓");
@@ -130,67 +136,61 @@ function resetDemo(db, bangleDeviceID, sonoffDeviceID) {
     log("Demo-Notifications gelöscht: 0", "✓");
   }
 
-  // 2. Demo-Szenarien löschen
+  // 2. Delete demo scenarios
   demoScenarios.forEach((s) => {
-    db.prepare("DELETE FROM scenarios_triggers   WHERE scenarioID = ?").run(s.scenarioID);
-    db.prepare("DELETE FROM scenarios_actions    WHERE scenarioID = ?").run(s.scenarioID);
-    db.prepare("DELETE FROM scenarios_executions WHERE scenarioID = ?").run(s.scenarioID);
-    db.prepare("DELETE FROM scenarios            WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios_triggers   WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios_actions    WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios_executions WHERE scenarioID = ?").run(s.scenarioID);
+    database.prepare("DELETE FROM scenarios            WHERE scenarioID = ?").run(s.scenarioID);
   });
   log("Demo-Szenarien gelöscht: " + demoScenarios.length, "✓");
 
-  // 3. Demo-CareInsight-Regeln löschen
-  const deletedRules = db.prepare(
+  // 3. Delete demo CareInsight rules
+  const deletedRules = database.prepare(
     "DELETE FROM care_insight_rules WHERE title LIKE ?"
   ).run(DEMO_PREFIX + "%");
   log("CareInsight-Regeln gelöscht: " + deletedRules.changes, "✓");
 
-  // 4. Offene Demo-Insights auflösen
-  if (bangleDeviceID || sonoffDeviceID) {
-    const ids = [bangleDeviceID, sonoffDeviceID].filter(Boolean);
+  // 4. Resolve open demo insights
+  if (bangleDeviceID || sonoffDeviceID || paulmannDeviceID || bulpDeviceID) {
+    const ids = [bangleDeviceID, sonoffDeviceID, paulmannDeviceID, bulpDeviceID].filter(Boolean);
     const placeholders = ids.map(() => "?").join(", ");
-    const resolved = db.prepare(
+    const resolved = database.prepare(
       "UPDATE care_insights SET status = 'resolved', dateTimeResolved = datetime('now', 'localtime') WHERE deviceID IN (" + placeholders + ") AND status IN ('open', 'acknowledged')"
     ).run(...ids);
     log("Offene Demo-Insights aufgelöst: " + resolved.changes, "✓");
   }
 
-  // 5. SONOFF Button-Presses der letzten 2 Stunden löschen (für sauberen Threshold-Demo)
+  // 5. Delete SONOFF button presses
   if (sonoffDeviceID) {
-    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
-    const deletedPresses = db.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'zigbee' AND property = 'button' AND dateTimeAsNumeric >= ?"
-    ).run(sonoffDeviceID, twoHoursAgo);
-    log("SONOFF Button-Presses (letzte 2h) gelöscht: " + deletedPresses.changes, "✓");
+    const deletedPresses = database.prepare(
+      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'zigbee' AND property = 'button'"
+    ).run(sonoffDeviceID);
+    log("SONOFF Button-Presses gelöscht: " + deletedPresses.changes, "✓");
   }
 
-  // 6. Synthetische Bangle.js-Baseline entfernen (falls vom vorherigen Demo-Lauf)
-  //    Erkennbar: Werte zwischen 68 und 74, innerhalb der Demo-Zeitfenster
-  //    Wir lassen echte Messwerte unangetastet — Baseline wird ggf. neu gesät.
+  // 6. Remove synthetic Bangle.js baseline (if left over from a previous demo run)
   if (bangleDeviceID) {
-    const baselineStart = Date.now() - 100 * 60 * 1000; // vor max 100 Minuten
-    const deletedBaseline = db.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate' AND valueAsNumeric BETWEEN 68 AND 74 AND dateTimeAsNumeric >= ?"
-    ).run(bangleDeviceID, baselineStart);
+    const deletedBaseline = database.prepare(
+      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate'"
+    ).run(bangleDeviceID);
     if (deletedBaseline.changes > 0) {
       log("Synthetische Bangle.js-Baseline entfernt: " + deletedBaseline.changes + " Einträge", "✓");
     }
   }
 }
 
-// ─── Bangle.js Baseline prüfen und ggf. säen ─────────────────────────────────
-
 /**
- * Prüft, ob genug echte Puls-History vorhanden ist.
- * Falls nicht, werden synthetische Baseline-Werte gesät.
- * @param {Database} db
+ * Checks whether enough real heart rate history is available.
+ * If not, synthetic baseline values are seeded.
+ * @param {Database} database
  * @param {string} deviceID
- * @returns {number} Anzahl der vorhandenen (+ gesäten) History-Einträge
+ * @returns {number} Number of existing (+ seeded) history entries
  */
-function ensureBangleBaseline(db, deviceID) {
+function ensureBangleBaseline(database, deviceID) {
   logSection("BANGLE.JS 2: Puls-Baseline prüfen");
 
-  const existingCount = db.prepare(
+  const existingCount = database.prepare(
     "SELECT COUNT(*) AS cnt FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
   ).get(deviceID, HISTORY_SIZE).cnt;
 
@@ -201,16 +201,16 @@ function ensureBangleBaseline(db, deviceID) {
     return existingCount;
   }
 
-  const missing = MIN_HISTORY_ENTRIES + 2 - existingCount; // 2 Puffer
+  const missing = MIN_HISTORY_ENTRIES + 2 - existingCount; // 2 buffer entries
   log("Zu wenig History (" + existingCount + "/" + MIN_HISTORY_ENTRIES + ") — säe " + missing + " synthetische Normalwerte ...", "⟳");
 
-  // Synthetische Normalwerte: 68–74 bpm, verteilt auf die letzten 90 Minuten
-  const baselineValues = [70, 72, 71, 69, 73, 70, 71, 72, 68, 74, 70, 71, 69, 72];
+  const baselineValues = [70, 72, 71, 69, 73, 70, 71, 72, 68, 74, 70, 71, 69, 72];  // Synthetic normal values: 68–74 bpm, spread over the last 90 minutes
+
   const now            = Date.now();
 
   baselineValues.slice(0, missing).forEach((bpm, index) => {
     const timestamp = now - (90 - index * (80 / missing)) * 60 * 1000;
-    db.prepare(
+    database.prepare(
       "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(deviceID, "bluetooth", "heartrate", String(bpm), bpm, timestamp);
   });
@@ -219,31 +219,30 @@ function ensureBangleBaseline(db, deviceID) {
   return existingCount + missing;
 }
 
-// ─── Setup ────────────────────────────────────────────────────────────────────
-
 /**
- * Legt CareInsight-Regeln und Szenarien für die echten Geräte an.
+ * Creates CareInsight rules and scenarios for the real devices.
  *
- * Trennung von Verantwortlichkeiten:
- *   - Eine CareInsight-Regel ist geräteunabhängig: Sie lauscht nur auf eine Property
- *     (z.B. "heartrate") und feuert für jedes Gerät, das diese Property sendet.
- *   - Die Gerätebindung erfolgt ausschließlich im Szenario-Trigger über deviceID und bridge:
- *     Das Szenario reagiert nur, wenn die Regel für das konkrete Zielgerät ausgelöst wurde.
+ * Separation of concerns:
+ *   - A CareInsight rule is device-agnostic: it only listens to a property
+ *     (e.g. "heartrate") and fires for any device that sends this property.
+ *   - Device binding is done exclusively in the scenario trigger via deviceID and bridge:
+ *     The scenario only reacts when the rule was triggered for the specific target device.
  *
- * Für SONOFF wird der aktuelle Button-Press-Sum abgefragt und die Schwelle
- * dynamisch gesetzt (current_sum + SONOFF_PRESS_THRESHOLD), so dass genau
- * SONOFF_PRESSES_NEEDED weitere Drücke den Insight auslösen.
+ * For SONOFF, the current button-press sum is queried and the threshold is set
+ * dynamically (current_sum + SONOFF_PRESS_THRESHOLD), so that exactly
+ * SONOFF_PRESSES_NEEDED more presses will trigger the insight.
  *
- * @param {Database} db
- * @param {Object} bangle  - { deviceID, bridge } — wird für den Szenario-Trigger benötigt
- * @param {Object} sonoff  - { deviceID, bridge } — wird für Threshold-Query und Szenario-Trigger benötigt
+ * @param {Database} database - DB connection
+ * @param {Object} bangle  - { deviceID, bridge } — required for the scenario trigger
+ * @param {Object} sonoff  - { deviceID, bridge } — required for threshold query and scenario trigger
+ * @param {Object} paulmann  - { deviceID, bridge } — required for scenario trigger
+ * @param {Object} bulp  - { deviceID, bridge } — required for scenario trigger
  */
-function setupDemo(db, bangle, sonoff) {
+function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   logSection("SETUP: CareInsight-Regeln & Szenarien anlegen");
 
-  // ── SONOFF: Aktuellen Sum in letzter Stunde abfragen ─────────────────────
   const oneHourAgo  = Date.now() - 60 * 60 * 1000;
-  const sonoffCurrent = db.prepare(
+  const sonoffCurrent = database.prepare(
     "SELECT COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = 'button' AND dateTimeAsNumeric >= ?"
   ).get(sonoff.deviceID, sonoff.bridge, oneHourAgo);
 
@@ -253,15 +252,15 @@ function setupDemo(db, bangle, sonoff) {
   log("SONOFF Button-Sum (letzte 1h): " + currentSum, "📊");
   log("SONOFF Schwelle gesetzt auf:   " + sonoffThreshold + " (aktuell " + currentSum + " + " + SONOFF_PRESS_THRESHOLD + ")", "📊");
 
-  // ── CareInsight-Regeln ─────────────────────────────────────────────────────
-  // Regeln sind geräteunabhängig und lauschen nur auf eine Property. Welches
-  // Gerät die Regel schlussendlich auslöst, entscheidet erst der Szenario-Trigger.
+  // ── CareInsight Rules ──────────────────────────────────────────────────────
+  // Rules are device-agnostic and only listen to a single property. Which
+  // device ultimately triggers the rule is determined solely by the scenario trigger.
 
-  // Regel 1: Puls-Anomalie (feuert für jedes Gerät, das "heartrate" sendet)
-  const bangleRule = db.prepare(
+  // Rule 1: Heart rate anomaly (fires for any device that sends "heartrate")
+  const bangleRule = database.prepare(
     "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?)"
   ).run(
-    DEMO_PREFIX + "Puls-Anomalie",
+    DEMO_PREFIX + "Ungewöhnlicher Puls",
     "heartrate",
     "anomaly_detection",
     ANOMALY_THRESHOLD,
@@ -271,169 +270,105 @@ function setupDemo(db, bangle, sonoff) {
   const bangleRuleID = bangleRule.lastInsertRowid;
   log("CareInsight-Regel: Puls-Anomalie (ID " + bangleRuleID + ", Schwelle: " + ANOMALY_THRESHOLD + ")", "✓");
 
-  // Regel 2: Häufiges Drücken (feuert für jedes Gerät, das "button" sendet)
-  const sonoffRule = db.prepare(
+  // Rule 2: Frequent pressing (fires for any device that sends "button")
+  const sonoffRule = database.prepare(
     "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
   ).run(
-    DEMO_PREFIX + "Häufiger Taserdruck",
+    DEMO_PREFIX + "Häufiger Hilferuf",
     "button",
     "sum_above_threshold",
-    1,                // 1-Stunden-Fenster
-    sonoffThreshold,  // dynamisch: aktuell + 5
+    1,                // 1-hour window
+    sonoffThreshold,  // dynamic: current sum + 5
     1,
     "Patientenzimmer aufsuchen und nach dem Befinden fragen."
   );
   const sonoffRuleID = sonoffRule.lastInsertRowid;
-  log("CareInsight-Regel: Häufiger Taserdruck (ID " + sonoffRuleID + ", Schwelle: >" + sonoffThreshold + " Drücke/h)", "✓");
+  log("CareInsight-Regel: Häufiger Tastendruck (ID " + sonoffRuleID + ", Schwelle: >" + sonoffThreshold + " Drücke/h)", "✓");
 
-  // ── Szenarien ─────────────────────────────────────────────────────────────
-  // Die Gerätebindung erfolgt im Szenario-Trigger: deviceID und bridge begrenzen
-  // die Auslösung auf das konkrete Zielgerät, obwohl die Regel selbst generisch ist.
+  // ── Scenarios ─────────────────────────────────────────────────────────────
+  // Device binding is done in the scenario trigger: deviceID and bridge restrict
+  // the trigger to the specific target device, even though the rule itself is generic.
 
-  // Szenario 1: Bangle.js Puls-Anomalie → Notification
-  const bangleScenario = db.prepare(
+  // Scenario 1: Bangle.js heart rate anomaly → Notification
+  const bangleScenario = database.prepare(
     "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 8, ?)"
   ).run(
-    DEMO_PREFIX + "Hoher Puls → Notification",
-    "Bangle.js 2: Anomaler Puls erkannt",
+    DEMO_PREFIX + "Hoher Puls → Push-Nachricht",
+    "Ungewöhnlicher Puls erkannt",
     "heart"
   );
   const bangleScenarioID = bangleScenario.lastInsertRowid;
 
-  // Trigger: Regel feuert + Gerät muss Bangle.js 2 sein
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
   ).run(bangleScenarioID, "care_insight_opened", String(bangleRuleID), bangle.deviceID, bangle.bridge);
 
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
   ).run(
     bangleScenarioID,
-    "notification",
-    "⚠️ Ungewöhnlich hoher Puls erkannt!",
-    "Bangle.js 2 hat einen Puls gemessen, der deutlich vom Normalwert abweicht.",
+    "push_notification",
+    "Ungewöhnlicher Puls erkannt",
+    "Puls-Uhr hat einen Puls gemessen, der deutlich vom Normalwert abweicht.",
     0
   );
-  log("Szenario: Hoher Puls → Notification (ID " + bangleScenarioID + ")", "✓");
 
-  // Szenario 2: SONOFF häufiges Drücken → Push-Notification
-  const sonoffScenario = db.prepare(
+  database.prepare(
+    "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, bridge, deviceID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(
+    bangleScenarioID,
+    "set_device_value",
+    250,
+    "hue",
+    1,
+    paulmann.bridge,
+    paulmann.deviceID
+  );
+
+  log("Szenario: Hoher Puls → Push-Nachricht → Lichtänderung (ID " + bangleScenarioID + ")", "✓");
+
+  // Scenario 2: SONOFF frequent pressing → Push notification
+  const sonoffScenario = database.prepare(
     "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 9, ?)"
   ).run(
-    DEMO_PREFIX + "Häufiges Drücken → Push",
-    "SONOFF SNZB-01P: Taster wird ungewöhnlich oft gedrückt",
+    DEMO_PREFIX + "Häufiges Drücken → Push-Nachricht",
+    "Hilfe-Taster wird ungewöhnlich oft gedrückt",
     "hand-left"
   );
   const sonoffScenarioID = sonoffScenario.lastInsertRowid;
 
-  // Trigger: Regel feuert + Gerät muss SONOFF SNZB-01P sein
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
   ).run(sonoffScenarioID, "care_insight_opened", String(sonoffRuleID), sonoff.deviceID, sonoff.bridge);
 
-  db.prepare(
+  database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
   ).run(
     sonoffScenarioID,
     "push_notification",
-    "🔔 Patient drückt wiederholt den Notruf-Taster!",
-    "Der SONOFF-Taster wurde innerhalb einer Stunde häufiger als üblich gedrückt.",
+    "Patient drückt wiederholt den Hilfe-Taster",
+    "Der Hilfe-Taster wurde innerhalb einer Stunde häufiger als üblich gedrückt.",
     0
   );
-  log("Szenario: Häufiges Drücken → Push (ID " + sonoffScenarioID + ")", "✓");
+
+  database.prepare(
+    "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, bridge, deviceID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(
+    sonoffScenarioID,
+    "set_device_value",
+    "on",
+    "speaker",
+    0,
+    bulp.bridge,
+    bulp.deviceID
+  );
+
+  log("Szenario: Häufiges Drücken → Push-Nachricht → Lautsprecher einschalten (ID " + sonoffScenarioID + ")", "✓");
 
   return { bangleRuleID, sonoffRuleID, bangleScenarioID, sonoffScenarioID, sonoffThreshold };
 }
 
-// ─── Live-Monitoring ──────────────────────────────────────────────────────────
-
-/**
- * Wartet auf neue Care Insights für die angegebenen Device-IDs und gibt
- * eine Meldung aus, sobald sie in der DB erscheinen.
- * Bricht nach `timeoutSeconds` Sekunden ab.
- *
- * @param {Database} db
- * @param {string[]} deviceIDs
- * @param {number} timeoutSeconds
- */
-async function waitForInsights(db, deviceIDs, timeoutSeconds = 120) {
-  logSection("WARTE AUF EVENTS ...");
-  log("Timeout: " + timeoutSeconds + " Sekunden", "⏱");
-  log("");
-
-  const placeholders = deviceIDs.map(() => "?").join(", ");
-  const seenIDs      = new Set();
-  const startTime    = Date.now();
-  const deadline     = startTime + timeoutSeconds * 1000;
-
-  let dotCount = 0;
-
-  while (Date.now() < deadline) {
-    const insights = db.prepare(
-      "SELECT * FROM care_insights WHERE deviceID IN (" + placeholders + ") AND status = 'open' ORDER BY insightID DESC LIMIT 10"
-    ).all(...deviceIDs);
-
-    for (const insight of insights) {
-      if (!seenIDs.has(insight.insightID)) {
-        seenIDs.add(insight.insightID);
-        process.stdout.write("\n");
-        log("CARE INSIGHT erkannt! (ID " + insight.insightID + ")", "🚨");
-        log("Gerät:   " + insight.deviceID + " [" + insight.bridge + "]", "   ");
-        log("Typ:     " + insight.type, "   ");
-        log("Score:   " + Number(insight.score).toFixed(2), "   ");
-        log("Titel:   " + insight.title, "   ");
-        log("Summary: " + insight.summary, "   ");
-
-        // Auf zugehörige Notification/Execution warten
-        await sleep(800);
-
-        const notification = db.prepare(
-          "SELECT * FROM notifications ORDER BY notificationID DESC LIMIT 1"
-        ).get();
-
-        if (notification && (Date.now() - new Date(notification.dateTime).getTime()) < 5000) {
-          log("Notification erstellt: \"" + notification.text + "\"", "✅");
-        }
-
-        const execution = db.prepare(
-          "SELECT se.*, s.name AS scenarioName FROM scenarios_executions se JOIN scenarios s ON se.scenarioID = s.scenarioID WHERE s.name LIKE ? ORDER BY se.executionID DESC LIMIT 1"
-        ).get(DEMO_PREFIX + "%");
-
-        if (execution) {
-          log("Szenario ausgeführt: \"" + execution.scenarioName + "\"", "✅");
-        }
-
-        log("");
-      }
-    }
-
-    // Fortschritts-Punkt ausgeben
-    process.stdout.write(".");
-    dotCount++;
-    if (dotCount % 30 === 0) {
-      const remaining = Math.ceil((deadline - Date.now()) / 1000);
-      process.stdout.write(" (" + remaining + "s)\n");
-    }
-
-    await sleep(1000);
-  }
-
-  process.stdout.write("\n");
-
-  if (seenIDs.size === 0) {
-    log("Timeout — keine neuen Care Insights empfangen.", "⏱");
-    log("Überprüfe:", "  ");
-    log("  • Ist die Bangle.js 2 über Bluetooth verbunden?", "  ");
-    log("  • Wurde 'Demo: Hoher Puls' im Watch-Menü gedrückt?", "  ");
-    log("  • Wurde der SONOFF-Taster " + SONOFF_PRESSES_NEEDED + "× gedrückt?", "  ");
-    log("  • Laufen broker/app.js und server/app.js?", "  ");
-  }
-  else {
-    log("" + seenIDs.size + " Care Insight(s) empfangen. Demo erfolgreich!", "🎉");
-  }
-}
-
-// ─── Demo-Anleitung ausgeben ──────────────────────────────────────────────────
+// ─── Print demo instructions ─────────────────────────────────────────────────
 
 function printInstructions(bangle, sonoff, sonoffThreshold) {
   logSection("BEREIT — Bitte Geräte auslösen");
@@ -448,7 +383,6 @@ function printInstructions(bangle, sonoff, sonoffThreshold) {
   console.log("  │  → Öffne das bulp-Menü auf der Bangle.js 2          │");
   console.log("  │  → Tippe auf: \"Demo: Hoher Puls (155 bpm)\"          │");
   console.log("  │                                                      │");
-  console.log("  │  Erwartung: Notification in der Healthcore-App       │");
   console.log("  └──────────────────────────────────────────────────────┘");
   console.log("");
   console.log("  ┌──────────────────────────────────────────────────────┐");
@@ -460,7 +394,6 @@ function printInstructions(bangle, sonoff, sonoffThreshold) {
   console.log("  │  → Drücke den Taster " + SONOFF_PRESSES_NEEDED + "× hintereinander             │");
   console.log("  │  → Schwelle: >" + sonoffThreshold + " Drücke in der letzten Stunde        │");
   console.log("  │                                                      │");
-  console.log("  │  Erwartung: Push-Notification auf dem Smartphone     │");
   console.log("  └──────────────────────────────────────────────────────┘");
   console.log("");
 }
@@ -470,8 +403,6 @@ function padRight(str, length) {
   return str.length >= length ? str.slice(0, length) : str + " ".repeat(length - str.length);
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
 async function main() {
   console.log("");
   console.log("╔══════════════════════════════════════════════════════════╗");
@@ -479,25 +410,23 @@ async function main() {
   console.log("║    " + new Date().toLocaleString("de-DE") + "                         ║");
   console.log("╚══════════════════════════════════════════════════════════╝");
 
-  const resetOnly = process.argv.includes("--reset-only");
-
-  // ── Datenbank öffnen ──────────────────────────────────────────────────────
-  let db;
+  let database;
   try {
-    db = new Database(DB_PATH);
+    database = new Database(DB_PATH);
     log("Datenbank geöffnet: " + DB_PATH, "✓");
   }
-  catch (err) {
-    log("Datenbank konnte nicht geöffnet werden: " + err.message, "✗");
+  catch (error) {
+    log("Datenbank konnte nicht geöffnet werden: " + error.message, "✗");
     log("Stelle sicher, dass Healthcore gestartet wurde, damit die DB existiert.", "  ");
     process.exit(1);
   }
 
-  // ── Echte Geräte suchen ───────────────────────────────────────────────────
   logSection("GERÄTE SUCHEN");
 
-  const bangle = findBangleDevice(db);
-  const sonoff = findSonoffDevice(db);
+  const bangle    = findBangleDevice(database);
+  const sonoff    = findSonoffDevice(database);
+  const paulmann  = findPaulmannDevice(database);
+  const bulp      = findBulpDevice(database);
 
   let hasError = false;
 
@@ -506,8 +435,6 @@ async function main() {
   }
   else {
     log("Bangle.js 2 nicht gefunden!", "✗");
-    log("  → Starte den Bluetooth-Bridge (node \"bridge - bluetooth/app.js\")", "  ");
-    log("  → Verbinde die Bangle.js 2 und stelle sicher, dass sie in Healthcore registriert ist.", "  ");
     hasError = true;
   }
 
@@ -516,50 +443,45 @@ async function main() {
   }
   else {
     log("SONOFF SNZB-01P nicht gefunden!", "✗");
-    log("  → Starte den ZigBee-Bridge (node \"bridge - zigbee/app.js\")", "  ");
-    log("  → Koppele das SONOFF und stelle sicher, dass es in Healthcore registriert ist.", "  ");
+    hasError = true;
+  }
+
+  if (paulmann) {
+    log("Paulmann Smart Home gefunden: " + paulmann.deviceID + " (" + (paulmann.name || paulmann.productName) + ")", "✓");
+  }
+  else {
+    log("Paulmann Smart Home nicht gefunden!", "✗");
+    hasError = true;
+  }
+
+  if (bulp) {
+    log("BULP gefunden:           " + bulp.deviceID + " (" + (bulp.name || bulp.productName) + ")", "✓");
+  }
+  else {
+    log("BULP nicht gefunden!", "✗");
     hasError = true;
   }
 
   if (hasError) {
     log("", "");
     log("Demo kann nicht gestartet werden — bitte zuerst fehlende Geräte verbinden.", "⚠️");
-    db.close();
+    database.close();
     process.exit(1);
   }
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
-  resetDemo(db, bangle.deviceID, sonoff.deviceID);
+  resetDemo(database, bangle.deviceID, sonoff.deviceID, paulmann.deviceID, bulp.deviceID);
+  await sleep(1000);
 
-  if (resetOnly) {
-    log("", "");
-    log("Reset abgeschlossen (--reset-only). Demo nicht gestartet.", "✓");
-    db.close();
-    return;
-  }
+  ensureBangleBaseline(database, bangle.deviceID);
 
-  // ── Bangle.js Baseline sicherstellen ──────────────────────────────────────
-  ensureBangleBaseline(db, bangle.deviceID);
+  const { sonoffThreshold } = setupDemo(database, bangle, sonoff, paulmann, bulp);
 
-  // ── Szenarien & Regeln anlegen ────────────────────────────────────────────
-  const { sonoffThreshold } = setupDemo(db, bangle, sonoff);
-
-  // ── Anleitung ausgeben ────────────────────────────────────────────────────
   printInstructions(bangle, sonoff, sonoffThreshold);
 
-  // ── Live-Monitoring ───────────────────────────────────────────────────────
-  await waitForInsights(db, [bangle.deviceID, sonoff.deviceID], 120);
-
-  console.log("");
-  console.log("╔══════════════════════════════════════════════════════════╗");
-  console.log("║  Wiederholung: node tests/demo-real-devices.js          ║");
-  console.log("╚══════════════════════════════════════════════════════════╝");
-  console.log("");
-
-  db.close();
+  database.close();
 }
 
-main().catch((err) => {
-  console.error("\n✗ Unbehandelter Fehler:", err.message);
+main().catch((error) => {
+  console.error("\n✗ Unbehandelter Fehler:", error.message);
   process.exit(1);
 });

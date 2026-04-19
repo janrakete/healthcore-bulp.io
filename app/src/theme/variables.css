@@ -203,6 +203,14 @@ ion-img.image-arrow {
     width: 50%;
 }
 
+ion-grid.custom {    
+    --ion-grid-padding: 0px;
+}
+
+ion-col.custom {
+    --ion-grid-column-padding: 0px;
+}
+
 /*
 @media (prefers-color-scheme: dark) {
     ion-toolbar::part(background) {

@@ -138,3 +138,16 @@ export function entriesNoDataMessage(containerSelector, showAddNew = true) {
         </div>
       `;
 }
+
+/**
+ * Cuts a string to a specified length and adds ellipsis if it exceeds that length.
+ * @param {String} str - The string to be cut.
+ * @param {Number} maxLength - The maximum length of the string before cutting.
+ * @returns {String} - The cut string with ellipsis if it exceeds the maximum length.
+ */
+export function stringCut(text, maxLength) {
+    if (text.length > maxLength) {
+        return text.substring(0, maxLength) + " ...";
+    }
+    return text;
+}

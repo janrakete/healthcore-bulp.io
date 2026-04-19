@@ -4,7 +4,7 @@
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
-import { bridgeTranslate } from "../services/helper.js";
+import { bridgeTranslate, stringCut } from "../services/helper.js";
 
 export const ScenarioEditActions = (Base) => class extends Base {
   actionSelectedDevice  = null;
@@ -172,7 +172,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
       this.resetActionEditModalFields();
       this.actionUpdateFieldVisibility("set_device_value");
       this.actionEnabledDisable();
-      this.loadDataActionDevices();
+      this.dataLoadActionDevices();
 
       const modal = document.querySelector("#action-edit-modal");
       await modal.present();
@@ -211,7 +211,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     this.querySelector("ion-select[name='editActionDevice']").addEventListener("ionChange", async (event) => {
       const deviceID  = event.detail.value;
       const bridge    = event.target.querySelector(`ion-select-option[value="${deviceID}"]`)?.getAttribute("data-bridge");
-      await this.loadDataActionDeviceProperties(bridge, deviceID);
+      await this.dataLoadActionDeviceProperties(bridge, deviceID);
       this.actionEnabledDisable();
     });
 
@@ -220,7 +220,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
      */    
     this.querySelector("ion-select[name='editActionProperty']").addEventListener("ionChange", async (event) => {
       const propertyName  = event.detail.value;
-      await this.loadDataActionDevicePropertiesValues(propertyName);
+      await this.dataLoadActionDevicePropertiesValues(propertyName);
       this.actionEnabledDisable();
     });
   }
@@ -369,7 +369,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * @param {number|null} selectedDeviceID - Device ID to pre-select (optional)
    * @returns {Promise<void>}
    */
-  async loadDataActionDevices(selectedDeviceID = null) {
+  async dataLoadActionDevices(selectedDeviceID = null) {
     try {
       const data = await apiGET("/devices/all");
       console.log("API call - Output:", data);
@@ -399,7 +399,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * @param {String} deviceID 
    * @param {String} selectedProperty - Property to pre-select (optional)
    */  
-  async loadDataActionDeviceProperties(bridge, deviceID, selectedProperty = null) {
+  async dataLoadActionDeviceProperties(bridge, deviceID, selectedProperty = null) {
     try {
       const data = await apiGET("/devices/" + bridge + "/" + deviceID);
       console.log("API call - Output:", data);
@@ -461,7 +461,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
    * @param {String} propertyName 
    * @param {String|null} selectedValue 
    */
-  async loadDataActionDevicePropertiesValues(propertyName, selectedValue = null) {
+  async dataLoadActionDevicePropertiesValues(propertyName, selectedValue = null) {
     const property        = this.actionSelectedDevice.properties.find(item => String(item.name) === String(propertyName));
     const valueContainer  = document.querySelector("#edit-action-value-container");
 
@@ -527,7 +527,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       if (String(type) === "set_device_value") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${item.deviceID} (${bridgeInfo})`;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
         cardContent  = `
             <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
             <ion-text color="light">${window.Translation.get("SetTo")}</ion-text>
@@ -594,9 +594,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
         document.querySelector("ion-input[name='editActionDelay']").value = Number(actionData.delay) > 0 ? actionData.delay : "";
 
         if (String(type) === "set_device_value") {
-          await this.loadDataActionDevices(actionData.deviceID);
-          await this.loadDataActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
-          await this.loadDataActionDevicePropertiesValues(actionData.property, actionData.value);
+          await this.dataLoadActionDevices(actionData.deviceID);
+          await this.dataLoadActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
+          await this.dataLoadActionDevicePropertiesValues(actionData.property, actionData.value);
         }
         else if (String(type) === "push_notification") {
           document.querySelector("ion-input[name='editActionPushTitle']").value   = actionData.value || "";
