@@ -7,7 +7,7 @@
 - Write code in a detailed manner rather than abbreviating it to the point of being incomprehensible
 - Add comments at relevant points in the code
 
-## Testing#
+## Testing
 - Use /tests/setup.js to run tests
 - Add tests when you create new features
 - Update /tests/MANUAL.md if things need to be tested manually

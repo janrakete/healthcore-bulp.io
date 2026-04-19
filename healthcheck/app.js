@@ -8,8 +8,6 @@ const common      = require("../common");
 
 /**
  * Start the healthcheck server
- * This server monitors the status of various services and allows starting/stopping them.
- * It provides a web interface to view the status and logs of these services.
  * @async
  * @function startHealthcheck
  * @description This function initializes an Express server, sets up routes for service status and logs.
@@ -21,7 +19,6 @@ async function startHealthcheck() {
   const express           = require("express");
   const cors              = require("cors");
   const bodyParser        = require("body-parser");
-  const { spawn }         = require("child_process");
 
   const app = express();
 
@@ -48,138 +45,13 @@ async function startHealthcheck() {
   });
 
   /**
-   * Variables, services and calls
-   */
-  const logs            = {};
-  const processes       = {};
-  const services        = {
-      broker:         'node "../broker/app.js"',
-      server:         'node "../server/app.js"',
-      bluetooth:      'node "../bridge - bluetooth/app.js"',
-      zigbee:         'node "../bridge - zigbee/app.js"',
-      lora:           'node "../bridge - lora/app.js"',
-      http:           'node "../bridge - http/app.js"'
-  };
-
-  for (let service in services) {
-    logs[service] = [];
-  }
-
-  /**
-   * This function adds a log entry to the logs array, ensuring it does not exceed the maximum
-   * @param {*} service 
-   * @param {*} log 
-   */
-  function appendLog(service, log) {
-    if (log.match(/^\[\d{2}:\d{2}:\d{2}\]/)) {
-      if (logs[service].length >= appConfig.CONF_healthcheckMaxLogs) {
-        logs[service].shift(); // remove the oldest log entry if we have reached the maximum number of logs
-      }
-
-      logs[service].push(log);
-    } 
-  }
-
-  /**
    * =============================================================================================
    * Routes
    * ====== 
    */
 
   /**
-   * This route returns the status of all monitored services. It checks if each service is running and returns a JSON object with the status.
-   * @route GET /api/status
-   * @returns {Object} status - An object containing the status of each service
-   * @description This route iterates over each service defined in the services object and checks if it is running by looking for its process in the processes object. It returns a JSON object where each key is a service name and the value is a boolean indicating whether the service is running.
-   */
-  app.get("/api/status", (req, res) => {
-    const status = {};
-    for (let service in services) { // iterate over each service
-      status[service] = !!processes[service]; // check if the service is running by looking for its process in the processes object; double negation converts it to a boolean
-    }
-    res.json(status);
-  }); 
-
-  /**
-   * This route allows starting or stopping a service. It checks the action parameter to determine whether to start or stop the service. If the service is already running, it returns an error for start requests. If the service is not running, it starts it and logs the output.
-   * @route POST /api/:service/:action
-   * @param {string} service - The name of the service to start or stop
-   * @param {string} action - The action to perform on the service (start or stop)
-   * @param {Object} req - The request object containing the service and action parameters
-   * @param {Object} res - The response object used to send the status back to the client
-   * @returns {Object} status - An object containing the status of the action performed
-   * @description This route checks if the service exists in the services object. If it does, it checks the action parameter. If the action is "start", it starts the service using spawn and logs its output. If the action is "stop", it stops the service if it is running. It returns a JSON object with the status of the action performed (started or stopped) or an error message if the service is not found or already running.
-   */
-  app.post("/api/:service/:action", (req, res) => {
-    const { service, action } = req.params;
-    if (!services[service]) {
-      return res.status(404).json({ error: "Unknown service" });
-    }
-   
-    if (action === "start") {
-        if (processes[service]) { // check if the service is already running
-          return res.status(400).json({ error: "Already running" });
-        }
-        const proc = spawn(services[service], { shell: true }); // start the service
-        processes[service] = proc;
-        proc.stdout.on("data", chunk => appendLog(service, chunk.toString())); // log the output of standard output
-        proc.stderr.on("data", chunk => appendLog(service, "[" + new Date().toTimeString().slice(0, 8) + "] " + "\x1B[31m" + chunk.toString() + "\x1B[39m")); // log the output of standard error
-        proc.on("exit", function () {
-          if (processes[service] === proc) { // only clean up if this is still the active process (guards against race with stop+restart)
-            delete processes[service];
-          }
-          appendLog(service, "[" + new Date().toTimeString().slice(0, 8) + "] " + "\x1B[32mExited " + service + "\x1B[39m");
-        });
-        return res.json({ status: "started" });
-    }
-    else if (action === "stop") { // check if the action is to stop the service
-      const proc = processes[service];
-      if (!proc) {
-        return res.status(400).json({ error: "Not running" });
-      }
-
-      if (process.platform === "win32") { // if the platform is Windows, use taskkill to stop the process
-        spawn("taskkill", ["/pid", proc.pid.toString(), "/f", "/t"]);
-      }
-      else {
-        proc.kill("SIGINT");
-      }
-
-      delete processes[service]; // allow immediate restart; exit callback has a PID guard to avoid clobbering
-      return res.json({ status: "stopped" });
-    }
-    res.status(400).json({ error: "Invalid action" });
-  });
-
-  /**
-   * This route returns the logs of all services. It returns a JSON object containing the logs array.
-   * @route GET /api/logs
-   * @param {Object} req - The request object
-   * @param {Object} res - The response object used to send the logs back to the client
-   * @returns {Array} logs - An array containing the logs of all services
-   * @description This route simply returns the logs array, which contains the output of all services. The logs are appended to this array as the services run, and it is limited to a maximum number of lines defined in the configuration.
-   */
-  app.get("/api/logs", (req, res) => {
-    const snapshot = {};
-    for (let service in logs) {
-      snapshot[service] = logs[service].slice(); // copy the logs for each service
-      logs[service].length = 0; // clear the logs after copying
-    }
-    res.json(snapshot);
-  });
-
-  /**
-   * This route serves the static files for the healthcheck monitor. It serves the HTML file and the CSS file for the monitor interface.
-   * @route GET /
-   * @param {Object} req - The request object
-   * @param {Object} res - The response object used to send the HTML file back
-   * @returns {File} monitor.html - The HTML file for the healthcheck monitor interface
-   * @description This route serves the monitor.html file located in the monitor directory. It uses the express.static middleware to serve static files from the monitor directory, allowing the client to access the healthcheck monitor interface.  
-   */
-  /**
-   * This route returns the runtime configuration needed by the browser-based dashboard.
-   * The Healthcore server base URL and optional API key are injected here so the
-   * frontend never has to hard-code connection details.
+   * This route returns the runtime configuration needed by the browser-based dashboard. The Healthcore server base URL and optional API key are injected here so the frontend never has to hard-code connection details.
    * @route GET /api/config
    * @returns {Object} config - An object with serverBaseUrl and apiKey fields
    * @description Reads CONF_baseURL, CONF_portServer and CONF_apiKey from the app
@@ -187,29 +59,27 @@ async function startHealthcheck() {
    */
   app.get("/api/config", (req, res) => {
     res.json({
-      serverBaseUrl:                    "http://" + req.hostname + ":" + appConfig.CONF_portServer,
-      apiKey:                           appConfig.CONF_apiKey || "",
-      dashboardRefreshIntervalMs:       appConfig.CONF_dashboardRefreshIntervalMs,
-      dashboardRecentInsightsCount:     appConfig.CONF_dashboardRecentInsightsCount,
-      dashboardRecentNotificationsCount: appConfig.CONF_dashboardRecentNotificationsCount
+      CONF_serverBaseUrl:                     "http://" + req.hostname + ":" + appConfig.CONF_portServer,
+      CONF_apiKey:                            appConfig.CONF_apiKey || "",
+      CONF_dashboardRefreshIntervalMs:        appConfig.CONF_dashboardRefreshIntervalMs,
+      CONF_dashboardRecentInsightsCount:      appConfig.CONF_dashboardRecentInsightsCount,
+      CONF_dashboardRecentNotificationsCount: appConfig.CONF_dashboardRecentNotificationsCount
     });
   });
 
-  // Serve all static files (JS, CSS, libraries) from the dashboard folder
-  app.use(express.static(__dirname + "/dashboard"));
+  app.use(express.static(__dirname + "/dashboard")); // Serve all static files (JS, CSS, libraries) from the dashboard folder
 
   /**
-   * This route serves the dashboard HTML page. The dashboard is the single entry point
-   * for the healthcheck interface and replaces the old monitor page.
+   * This route serves the dashboard HTML page. The dashboard is the single entry point for the healthcheck interface and replaces the old monitor page.
    * @route GET /
    * @returns {File} dashboard.html - The HTML file for the healthcheck dashboard
    */
-  app.get("/", function (req, res) {
-    res.sendFile(__dirname + "/dashboard/dashboard.html");
+  app.get("/", function (request, response) {
+    response.sendFile(__dirname + "/dashboard/dashboard.html");
   });
 
   app.listen(appConfig.CONF_portHealthcheck, function () { // bind to localhost only
-    common.conLog("Healthcheck server listening on " + common.getOwnIP() + ":" + appConfig.CONF_portHealthcheck, "gre");
+    common.conLog("Healthcheck server listening on " + common.getOwnIP() + ":" + appConfig.CONF_portHealthcheck, "green");
   });
 }
 

@@ -25,7 +25,7 @@ export function barLoadingStart(element, attribute="textContent", interval = 200
     return loadingInterval;
 }
 
-/** * Stops the loading bar animation in the specified element.
+/** Stops the loading bar animation in the specified element.
  * @param {number} loadingInterval - The interval ID returned by barLoadingStart.
  * @param {string} element - The selector of the element where the loading animation was displayed.
  */

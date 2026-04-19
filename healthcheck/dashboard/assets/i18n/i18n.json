@@ -24,12 +24,12 @@
         "de": "Aktualisieren"
     },
     "Loading": {
-        "en": "Loading...",
-        "de": "Wird geladen..."
+        "en": "Loading ...",
+        "de": "Wird geladen ..."
     },
     "ErrorServerUnreachable": {
         "en": "Healthcore server unreachable",
-        "de": "Healthcore-Server nicht erreichbar"
+        "de": "Healthcore-Server nicht erreichbar."
     },
     "Statistics": {
         "en": "Statistics",
@@ -77,11 +77,7 @@
     },
     "NoData": {
         "en": "No data available",
-        "de": "Keine Daten verfügbar"
-    },
-    "Filter": {
-        "en": "Filter",
-        "de": "Filter"
+        "de": "Keine Daten verfügbar."
     },
     "DateTime": {
         "en": "Date / Time",

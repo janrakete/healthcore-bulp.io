@@ -11,7 +11,7 @@
 
   <nav id="hc-nav" class="navbar" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
-      <span class="navbar-item has-text-white"><span id="logo"><span id="logo-pre">bulp</span><span id="logo-post">.io</span> - Healthcheck</span></span>
+      <span class="navbar-item has-text-white"><span id="logo"><span class="has-text-weight-bold">bulp</span>.io - Healthcheck</span></span>
     </div>
     <div class="navbar-end">
       <div class="navbar-item">
@@ -90,25 +90,9 @@
   </section>
 
   <!-- =================================================================================== -->
-  <!-- Tab panel: Care Insights                                                             -->
+  <!-- Tab panel: Care Insights                                                                  -->
   <!-- =================================================================================== -->
   <section id="tab-care-insights" class="hc-tab-panel is-hidden">
-
-    <!-- Filter bar for status (Bulma field is-grouped) -->
-    <div class="hc-filter-bar field is-grouped is-align-items-center">
-      <label class="label is-small my-auto mr-3" data-i18n="Filter">Filter</label>
-      <div class="control">
-        <div class="select is-small">
-          <select id="filter-insights-status">
-            <option value=""             data-i18n="AllStatuses">All statuses</option>
-            <option value="open"         data-i18n="Open">Open</option>
-            <option value="acknowledged" data-i18n="Acknowledged">Acknowledged</option>
-            <option value="resolved"     data-i18n="Resolved">Resolved</option>
-            <option value="critical"     data-i18n="Critical">Critical</option>
-          </select>
-        </div>
-      </div>
-    </div>
 
     <!-- Care insight cards (built dynamically in dashboard.js) -->
     <div id="insights-list"></div>
@@ -116,38 +100,22 @@
   </section>
 
   <!-- =================================================================================== -->
-  <!-- Tab panel: Devices                                                                   -->
+  <!-- Tab panel: Devices                                                                  -->
   <!-- =================================================================================== -->
   <section id="tab-devices" class="hc-tab-panel is-hidden">
 
-    <!-- Filter bar for bridge type (Bulma field is-grouped) -->
-    <div class="hc-filter-bar field is-grouped is-align-items-center">
-      <label class="label is-small my-auto mr-3" data-i18n="Filter">Filter</label>
-      <div class="control">
-        <div class="select is-small">
-          <select id="filter-devices-bridge">
-            <option value=""          data-i18n="AllBridges">All bridges</option>
-            <option value="bluetooth" data-i18n="Bluetooth">Bluetooth</option>
-            <option value="zigbee"    data-i18n="Zigbee">ZigBee</option>
-            <option value="lora"      data-i18n="LoRa">LoRa</option>
-            <option value="http"      data-i18n="Wifi">HTTP</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
     <!-- Device table -->
     <div class="table-container">
-      <table class="table is-fullwidth is-striped is-hoverable" id="devices-table">
+      <table class="table is-fullwidth is-striped" id="devices-table">
         <thead>
           <tr>
             <th data-i18n="Name">Name</th>
             <th data-i18n="ProductName">Product Name</th>
             <th data-i18n="Bridge">Bridge</th>
-            <th>Status</th>
+            <th data-i18n="Status">Status</th>
             <th data-i18n="AssignedPerson">Assigned person</th>
             <th data-i18n="AssignedRoom">Assigned room</th>
-            <th>Power</th>
+            <th data-i18n="Power">Power</th>
           </tr>
         </thead>
         <tbody id="devices-table-body">
