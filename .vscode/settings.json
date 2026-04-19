@@ -1,9 +1,0 @@
-{
-    "chat.tools.terminal.autoApprove": {
-        "/^cd \"c:\\\\Users\\\\jan\\\\Desktop\\\\Programmierung\\\\bulp\\.io - Beta\"; node -e \"\nconst DB = require\\('better-sqlite3'\\);\nconst db = new DB\\('\\./healthcore_database\\.db'\\);\nconst tables = \\['scenarios', 'scenarios_triggers', 'scenarios_actions', 'scenarios_executions', 'notifications', 'care_insight_rules'\\];\ntables\\.forEach\\(t => \\{\n  const cols = db\\.prepare\\('PRAGMA table_info\\(' \\+ t \\+ '\\)'\\)\\.all\\(\\);\n  console\\.log\\('\\\\n' \\+ t \\+ ':'\\);\n  cols\\.forEach\\(c => console\\.log\\('  ' \\+ c\\.name \\+ ' ' \\+ c\\.type \\+ \\(c\\.notnull \\? ' NOT NULL' : ''\\) \\+ \\(c\\.dflt_value \\? ' DEFAULT ' \\+ c\\.dflt_value : ''\\)\\)\\);\n\\}\\);\ndb\\.close\\(\\);\n\"$/": {
-            "approve": true,
-            "matchCommandLine": true
-        },
-        "ForEach-Object": true
-    }
-}
