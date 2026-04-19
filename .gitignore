@@ -3,12 +3,12 @@
 .env.local
 cert.pem
 key.pem
-./.vscode
+/.vscode
 .DS_Store
 *.log
 *.tmp*
 /bridge - zigbee/devices.db
 app/android/app/google-services.json
 push-firebase-admin.json
-./.claude
+/.claude
 healthcore_database.db
