@@ -1429,6 +1429,21 @@ class ConverterStandard {
             valueType:  "Numeric",
             dataFormat: "UInt8"
         };
+
+        this.propertiesStandard = { ...this.properties };
+        this.properties = {};
+    }
+
+    /**
+     * Merges full standard property definitions into this.properties for all entries with standard: true.
+     * @description This method iterates through the `properties` object and checks for entries where `standard` is set to true. For each of these entries, it merges the full standard property definition from `propertiesStandard` into the corresponding entry in `properties`. This ensures that all standard properties have their complete definitions available in `properties`.    
+     */
+    resolveStandardProperties() {
+        for (const [uuid, partial] of Object.entries(this.properties)) {
+            if (partial.standard === true && this.propertiesStandard[uuid] !== undefined) {
+                this.properties[uuid] = { ...this.propertiesStandard[uuid], ...partial };
+            }
+        }
     }
 
     /**

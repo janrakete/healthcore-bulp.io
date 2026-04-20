@@ -57,7 +57,7 @@ class DevicesAddBluetooth extends HTMLElement {
                             <ion-card data-id="${device.deviceID}" color="primary">
                                 <ion-card-header>
                                     <ion-card-title>${device.productName}</ion-card-title>
-                                    <ion-card-subtitle>${device.vendorName}</ion-card-subtitle>
+                                    <ion-card-subtitle>${device.vendorName ? device.vendorName : ""}</ion-card-subtitle>
                                 </ion-card-header>
                                 <ion-card-content>
                                     ${device.deviceID}

@@ -410,11 +410,10 @@ router.get("/:bridge/scan/info", async function (request, response) {
         const results       = await database.prepare(statement).all("server/devices/discover", payload.callID); // ... query the database for discovered devices
 
         const devices       = results.map(row => JSON.parse(row.message));
-
-        // remove duplicates based on device ID, keep only the first occurrence and remove callID from the device info
-        const uniqueDevices = {};
+        
+        const uniqueDevices = {}; 
         devices.forEach(device => {
-            delete device.callID;
+            delete device.callID; // remove duplicates based on device ID, keep only the first occurrence and remove callID from the device info
             if (device.deviceID && !uniqueDevices[device.deviceID]) {
                 uniqueDevices[device.deviceID] = device;
             }

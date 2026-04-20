@@ -486,7 +486,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         const selectRule = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
 
         selectRule.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + this.triggerCareInsightRules.map(item => {
-          return `<ion-select-option value="${item.ruleID}">${item.title} (${item.aggregationType})</ion-select-option>`;
+          return `<ion-select-option value="${item.ruleID}">${item.title} (${window.Translation.get(item.aggregationType)})</ion-select-option>`;
         }).join("");
 
         if (selectedRuleID !== null) {
@@ -712,13 +712,12 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
       }
       else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
-        cardTitle = window.Translation.get(String(type) === "care_insight_opened" ? "TriggerTypeCareInsightOpened" : String(type) === "care_insight_updated" ? "TriggerTypeCareInsightUpdated" : "TriggerTypeCareInsightResolved");
-        cardSubtitle = item.ruleTitle || item.property;
-        const deviceInfo = item.deviceID ? `${item.deviceName || item.deviceID} (${bridgeInfo})` : window.Translation.get("AllDevices");
+        cardTitle    = item.deviceName;
+        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
         cardContent = `
-            <ion-text color="light">${window.Translation.get("CareInsightRule")}: ${item.ruleTitle || item.property}</ion-text>
+            <ion-text color="light">${window.Translation.get(String(type) === "care_insight_opened" ? "TriggerTypeCareInsightOpened" : String(type) === "care_insight_updated" ? "TriggerTypeCareInsightUpdated" : "TriggerTypeCareInsightResolved")}</ion-text>
             <br />
-            <ion-text color="light">${window.Translation.get("Device")}: ${deviceInfo}</ion-text>
+            <ion-text color="light">${window.Translation.get("CareInsightRule")}: ${item.ruleTitle || item.property}</ion-text>
         `;
       }
       else if (String(type) === "time") {

@@ -546,7 +546,7 @@ describe("Care Insight Trigger Scenarios", () => {
 
     careRuleID = db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
-    ).run("Hydration risk detected", "drink_ml", "sum_below_threshold", 72, 1500, 3).lastInsertRowid;
+    ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3).lastInsertRowid;
 
     const scenarioResult = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
@@ -571,7 +571,7 @@ describe("Care Insight Trigger Scenarios", () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 1,
       ruleID: careRuleID,
-      insightType: "sum_below_threshold",
+      insightType: "SumBelowThreshold",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",
@@ -591,7 +591,7 @@ describe("Care Insight Trigger Scenarios", () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 2,
       ruleID: careRuleID,
-      insightType: "sum_below_threshold",
+      insightType: "SumBelowThreshold",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",
@@ -624,7 +624,7 @@ describe("Care Insight Trigger Scenarios", () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 10,
       ruleID: careRuleID,
-      insightType: "sum_below_threshold",
+      insightType: "SumBelowThreshold",
       score: 0.8,
       deviceID: "glass_001",
       bridge: "http",
@@ -643,7 +643,7 @@ describe("Care Insight Trigger Scenarios", () => {
     await global.scenarios.handleEvent("care_insight_opened", {
       insightID: 11,
       ruleID: careRuleID,
-      insightType: "sum_below_threshold",
+      insightType: "SumBelowThreshold",
       score: 0.8,
       deviceID: "glass_999",
       bridge: "http",

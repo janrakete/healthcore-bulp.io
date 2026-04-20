@@ -185,7 +185,7 @@ function createTestDatabase() {
       title TEXT NOT NULL,
       enabled BOOLEAN DEFAULT 1,
       sourceProperty TEXT NOT NULL,
-      aggregationType TEXT NOT NULL DEFAULT 'sum_below_threshold',
+      aggregationType TEXT NOT NULL DEFAULT 'SumBelowThreshold',
       aggregationWindowHours INTEGER DEFAULT 24,
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
