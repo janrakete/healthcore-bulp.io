@@ -6,12 +6,12 @@
  *
  *  1. Bangle.js 2 (Bluetooth)
  *     → Press in the watch menu: "Demo: High Heart Rate (155 bpm)"
- *     → CareInsightsEngine (anomaly_detection) detects a deviation
+ *     → CareInsightsEngine (AnomalyDetection) detects a deviation
  *     → Scenario fires → Push notification → Changes color of Paulmann bulb
  *     
  *  2. SONOFF SNZB-01P (ZigBee)
  *     → Press the button 6 times within one minute
- *     → CareInsightsEngine (sum_above_threshold) triggers
+ *     → CareInsightsEngine (SumAboveThreshold) triggers
  *     → Scenario fires → Push notification → Activates alarm on BULP sensor  
  *
  * Start:
@@ -262,7 +262,7 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   ).run(
     DEMO_PREFIX + "Ungewöhnlicher Puls",
     "heartrate",
-    "anomaly_detection",
+    "AnomalyDetection",
     ANOMALY_THRESHOLD,
     MIN_HISTORY_ENTRIES,
     "Ruhepuls messen und ggf. medizinisches Fachpersonal informieren."
@@ -276,7 +276,7 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   ).run(
     DEMO_PREFIX + "Häufiger Hilferuf",
     "button",
-    "sum_above_threshold",
+    "SumAboveThreshold",
     1,                // 1-hour window
     sonoffThreshold,  // dynamic: current sum + 5
     1,

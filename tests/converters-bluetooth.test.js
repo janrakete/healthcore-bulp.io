@@ -14,14 +14,28 @@ describe("BLE ConverterStandard", () => {
 
   beforeEach(() => {
     converter = new ConverterStandard();
+
+    converter.properties = {
+      "2a00": { standard: true },
+      "2a19": { standard: true },
+      "2a37": { standard: true },
+      "2a6e": { standard: true },
+      "2a6f": { standard: true },
+      "2a6d": { standard: true },
+      "2a7b": { standard: true },
+      "2a6c": { standard: true },
+      "2a23": { standard: true }
+    };
+    converter.resolveStandardProperties();
   });
 
-  test("should have standard BLE properties defined", () => {
+  test("should resolve only requested standard BLE properties", () => {
     expect(converter.properties["2a00"]).toBeDefined(); // deviceName
     expect(converter.properties["2a19"]).toBeDefined(); // batteryLevel
     expect(converter.properties["2a37"]).toBeDefined(); // heartRateMeasurement
     expect(converter.properties["2a6e"]).toBeDefined(); // temperature
     expect(converter.properties["2a6f"]).toBeDefined(); // humidity
+    expect(converter.properties["2a01"]).toBeUndefined(); // appearance (not requested)
   });
 
   test("getPropertyByUUID should return property for valid UUID", () => {
@@ -138,6 +152,7 @@ describe("BLE ConverterStandard", () => {
 // Converter_BangleJS2BLE
 // =====================================================================
 const { Converter_BangleJS2BLE } = require("../bridge - bluetooth/converters/Converter_BangleJS2BLE");
+const { Converter_BulpSensorBLE } = require("../bridge - bluetooth/converters/Converter_BulpSensorBLE");
 
 describe("Converter_BangleJS2BLE", () => {
   let converter;
@@ -222,5 +237,39 @@ describe("Converter_BangleJS2BLE", () => {
       expect(result.name).toBe("heartrate");
       expect(result.value).toBe(98);
     });
+  });
+});
+
+describe("Converter_BulpSensorBLE", () => {
+  let converter;
+
+  beforeEach(() => {
+    converter = new Converter_BulpSensorBLE();
+  });
+
+  test("should only include custom properties plus requested standard battery", () => {
+    const uuids = Object.keys(converter.properties);
+
+    expect(uuids).toEqual(expect.arrayContaining([
+      "19b10000e8f2537e4f6cd104768a1217",
+      "19b10000e8f2537e4f6cd104768a1219",
+      "19b10000e8f2537e4f6cd104768a1218",
+      "19b10000e8f2537e4f6cd104768a1216",
+      "2a19"
+    ]));
+    expect(uuids).toHaveLength(5);
+    expect(converter.properties["2a00"]).toBeUndefined();
+  });
+
+  test("should hydrate battery standard property definition", () => {
+    const battery = converter.properties["2a19"];
+
+    expect(battery).toBeDefined();
+    expect(battery.name).toBe("battery");
+    expect(battery.notify).toBe(true);
+    expect(battery.valueType).toBe("Numeric");
+    expect(battery.dataFormat).toBe("UInt8");
+    expect(battery.read).toBe(true);
+    expect(battery.standard).toBe(true);
   });
 });

@@ -468,12 +468,12 @@ async function startBridgeAndServer() {
       message.softwareBuildID    = data.device.softwareBuildID;
       message.type               = data.device.type;
       message.bridge             = BRIDGE_PREFIX;
+      message.callID             = bridgeStatus.deviceScanCallID; // add callID if device is discovered during scanning
 
       if (data.device.interviewState === "PENDING") {
         common.conLog("ZigBee: device is currently interviewing", "yel");
         common.conLog(message, "std", false);
 
-        message.callID = bridgeStatus.deviceScanCallID; // add callID if device is discovered during scanning
         mqttClient.publish("server/devices/discover", JSON.stringify(message)); // ... publish to MQTT broker
       }
       else if (data.device.interviewState === "SUCCESSFUL") {
@@ -491,6 +491,7 @@ async function startBridgeAndServer() {
         }
 
         common.conLog(message, "std", false);
+        mqttClient.publish("server/devices/discover", JSON.stringify(message)); // make a final publish with all information about the device after interview is complete (including converter info if available)
 
         message.forceReconnect = true; // because this is ZigBee, reconnect device after creation
 

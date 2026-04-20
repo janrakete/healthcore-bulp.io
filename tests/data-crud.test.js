@@ -68,7 +68,7 @@ describe("POST /data/:table (Insert)", () => {
       .send({
         title: "Hydration Risk",
         sourceProperty: "drink_ml",
-        aggregationType: "sum_below_threshold",
+        aggregationType: "SumBelowThreshold",
         aggregationWindowHours: 72,
         thresholdMin: 1500,
         minReadings: 3,
@@ -78,13 +78,13 @@ describe("POST /data/:table (Insert)", () => {
     expect(typeof res.body.ID).toBe("number");
   });
 
-  test("Insert sum_above_threshold care_insight_rule → 200 with ID", async () => {
+  test("Insert SumAboveThreshold care_insight_rule → 200 with ID", async () => {
     const res = await request(app)
       .post("/data/care_insight_rules")
       .send({
         title: "Activity too high",
         sourceProperty: "steps",
-        aggregationType: "sum_above_threshold",
+        aggregationType: "SumAboveThreshold",
         aggregationWindowHours: 24,
         thresholdMax: 500,
         minReadings: 3,

@@ -32,9 +32,9 @@ class CareInsightRuleEdit extends HTMLElement {
                 </ion-item>
                 <ion-item color="light">
                   <ion-select label="${window.Translation.get("Aggregation")}" label-placement="stacked" name="editAggregationType" interface="popover" class="custom">
-                    <ion-select-option value="sum_below_threshold">${window.Translation.get("RuleTypeSumBelowThreshold")}</ion-select-option>
-                    <ion-select-option value="sum_above_threshold">${window.Translation.get("RuleTypeSumAboveThreshold")}</ion-select-option>
-                    <ion-select-option value="anomaly_detection">${window.Translation.get("RuleTypeAnomalyDetection")}</ion-select-option>
+                    <ion-select-option value="SumBelowThreshold">${window.Translation.get("SumBelowThreshold")}</ion-select-option>
+                    <ion-select-option value="SumAboveThreshold">${window.Translation.get("SumAboveThreshold")}</ion-select-option>
+                    <ion-select-option value="AnomalyDetection">${window.Translation.get("AnomalyDetection")}</ion-select-option>
                   </ion-select>
                 </ion-item>
                 <ion-item color="light" id="field-aggregation-window-hours">
@@ -64,7 +64,7 @@ class CareInsightRuleEdit extends HTMLElement {
       </ion-content>
     `;
 
-    this.querySelector("ion-select[name='editAggregationType']").value       = "sum_below_threshold";
+    this.querySelector("ion-select[name='editAggregationType']").value       = "SumBelowThreshold";
     this.querySelector("ion-input[name='editAggregationWindowHours']").value = 24;
     this.querySelector("ion-input[name='editMinReadings']").value            = 1;
 
@@ -79,9 +79,9 @@ class CareInsightRuleEdit extends HTMLElement {
   }
 
   updateFieldVisibility() {
-    const aggregationType = this.querySelector("ion-select[name='editAggregationType']")?.value || "sum_below_threshold";
-    const isSumBelow      = String(aggregationType) === "sum_below_threshold";
-    const isSumAbove      = String(aggregationType) === "sum_above_threshold";
+    const aggregationType = this.querySelector("ion-select[name='editAggregationType']")?.value || "SumBelowThreshold";
+    const isSumBelow      = String(aggregationType) === "SumBelowThreshold";
+    const isSumAbove      = String(aggregationType) === "SumAboveThreshold";
     const isSumRule        = isSumBelow || isSumAbove;
 
     this.querySelector("#field-aggregation-window-hours").style.display = isSumRule ? "" : "none";
@@ -145,7 +145,7 @@ class CareInsightRuleEdit extends HTMLElement {
         this.querySelector("ion-input[name='editTitle']").value                   = item.title;
         this.querySelector("ion-toggle[name='editEnabled']").checked              = Number(item.enabled) === 1;
         this.querySelector("ion-input[name='editSourceProperty']").value          = item.sourceProperty || "";
-        this.querySelector("ion-select[name='editAggregationType']").value        = item.aggregationType || "sum_below_threshold";
+        this.querySelector("ion-select[name='editAggregationType']").value        = item.aggregationType || "SumBelowThreshold";
         this.querySelector("ion-input[name='editAggregationWindowHours']").value  = item.aggregationWindowHours;
         this.querySelector("ion-input[name='editThresholdMin']").value            = item.thresholdMin;
         this.querySelector("ion-input[name='editThresholdMax']").value            = item.thresholdMax;

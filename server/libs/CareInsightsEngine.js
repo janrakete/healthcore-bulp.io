@@ -174,7 +174,7 @@ class CareInsightsEngine {
         return;
       }
 
-      if (rule.aggregationType === "anomaly_detection") {
+      if (rule.aggregationType === "AnomalyDetection") {
         this.evaluateAnomalyRule(rule, data, property, valueData, context);
         return;
       }
@@ -239,13 +239,13 @@ class CareInsightsEngine {
     const threshold = Number(rule.thresholdMin) || appConfig.CONF_careInsightsAnomalyThreshold;
 
     if (deviation.score < threshold) {
-      this.resolveOpenInsights({ ruleID: rule.ruleID, type: "anomaly_detection", deviceID: data.deviceID, bridge: data.bridge, property: property });
+      this.resolveOpenInsights({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: data.deviceID, bridge: data.bridge, property: property });
       return;
     }
 
     const insight = this.upsertInsight({
       ruleID:           rule.ruleID,
-      type:             "anomaly_detection",
+      type:             "AnomalyDetection",
       score:            deviation.score,
       title:            this.buildRuleTitle(rule, context.device),
       summary:          this.buildNumericSummary(context.device, property, valueData.value),
@@ -359,11 +359,11 @@ class CareInsightsEngine {
    * @returns {boolean}
    */
   ruleThresholdReached(rule, aggregation) {
-    if (rule.aggregationType === "sum_below_threshold") {
+    if (rule.aggregationType === "SumBelowThreshold") {
       return aggregation.total < Number(rule.thresholdMin || 0);
     }
 
-    if (rule.aggregationType === "sum_above_threshold") {
+    if (rule.aggregationType === "SumAboveThreshold") {
       return aggregation.total > Number(rule.thresholdMax || 0);
     }
 
@@ -377,7 +377,7 @@ class CareInsightsEngine {
    * @returns {number}
    */
   ruleScore(rule, aggregation) {
-    if (rule.aggregationType === "sum_below_threshold") {
+    if (rule.aggregationType === "SumBelowThreshold") {
       const threshold = Number(rule.thresholdMin || 0);
       if (threshold <= 0) {
         return 0;
@@ -385,7 +385,7 @@ class CareInsightsEngine {
       return Math.max(0, Math.min(1, (threshold - aggregation.total) / threshold));
     }
 
-    if (rule.aggregationType === "sum_above_threshold") {
+    if (rule.aggregationType === "SumAboveThreshold") {
       const threshold = Number(rule.thresholdMax || 0);
       if (threshold <= 0) {
         return 0;
@@ -575,11 +575,11 @@ class CareInsightsEngine {
   buildRuleSummary(rule, aggregation, context) {
     const label = this.buildRuleContextLabel(context);
 
-    if (rule.aggregationType === "sum_below_threshold") {
-      return this.translate("careInsightSummarySumBelow", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
+    if (rule.aggregationType === "SumBelowThreshold") {
+      return this.translate("careInsightSummarySumBelow", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
     }
-    else if (rule.aggregationType === "sum_above_threshold") {
-      return this.translate("careInsightSummarySumAbove", label, rule.sourceProperty, aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
+    else if (rule.aggregationType === "SumAboveThreshold") {
+      return this.translate("careInsightSummarySumAbove", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
     }
     else {
       return this.translate("careInsightSummaryRuleMatched", label);
@@ -593,11 +593,11 @@ class CareInsightsEngine {
    * @returns {string}
    */
   buildRuleExplanation(rule, aggregation) {
-    if (rule.aggregationType === "sum_below_threshold") {
-      return this.translate("careInsightExplanationSumBelow", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+    if (rule.aggregationType === "SumBelowThreshold") {
+      return this.translate("careInsightExplanationSumBelow", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
-    else if (rule.aggregationType === "sum_above_threshold") {
-      return this.translate("careInsightExplanationSumAbove", rule.sourceProperty, aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+    else if (rule.aggregationType === "SumAboveThreshold") {
+      return this.translate("careInsightExplanationSumAbove", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {
       return this.translate("careInsightExplanationRuleActive");
@@ -671,7 +671,7 @@ class CareInsightsEngine {
    */
   buildNumericSummary(device, property, value) {
     const deviceName = this.getDeviceName(device);
-    return this.translate("careInsightSummaryAnomaly", deviceName, property, value);
+    return this.translate("careInsightSummaryAnomaly", deviceName, this.translateProperty(property), value);
   }
 
   /**
@@ -682,7 +682,7 @@ class CareInsightsEngine {
    * @returns {string}
    */
   buildNumericExplanation(property, value, deviation) {
-    return this.translate("careInsightExplanationAnomaly", property, value, deviation.median, deviation.normalizedDeviation.toFixed(2));
+    return this.translate("careInsightExplanationAnomaly", this.translateProperty(property), value, deviation.median, deviation.normalizedDeviation.toFixed(2));
   }
 
   /**
@@ -712,6 +712,23 @@ class CareInsightsEngine {
     }
 
     return this.translate("careInsightDeviceFallback");
+  }
+
+  /**
+   * Returns a translated label for a property name using i18n.json.
+   * @param {string} property
+   * @returns {string}
+   */
+  translateProperty(property) {
+    const lang  = appConfig.CONF_careInsightsLanguage;
+    const key = translations[property];
+
+    if (key && key[lang]) {
+      return key[lang];
+    }
+    else {
+      return property;
+    }
   }
 
   /**

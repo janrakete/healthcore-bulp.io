@@ -540,7 +540,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
         cardSubtitle = "";
         cardContent  = `
             <ion-text color="light">${item.value}</ion-text>
-            ${item.property ? `<br/><ion-text color="medium">${item.property}</ion-text>` : ""}
+            ${item.property ? `<br /><br /><ion-text color="light">${item.property}</ion-text>` : ""}
         `;
       }
       else if (String(type) === "notification") {

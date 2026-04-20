@@ -51,6 +51,8 @@ class Converter_BangleJS2BLE extends ConverterStandard {
                 }
             }
         };
+
+        this.resolveStandardProperties();
     }
 
     /**

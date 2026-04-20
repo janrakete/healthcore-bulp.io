@@ -82,10 +82,10 @@ function seedValues(values) {
 // ─── Care Insights engine ──────────────────────────────────────────────────
 
 describe("Care Insights engine", () => {
-  test("creates anomaly_detection insight", () => {
+  test("creates Anomaly Detection insight", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
 
@@ -100,7 +100,7 @@ describe("Care Insights engine", () => {
       }
     });
 
-    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'anomaly_detection'").get();
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'AnomalyDetection'").get();
     expect(insight).toBeDefined();
     expect(insight.status).toBe("open");
     expect(insight.individualID).toBeGreaterThan(0);
@@ -114,7 +114,7 @@ describe("Care Insights engine", () => {
   test("detects anomaly when baseline is constant but latest value differs", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
 
@@ -129,7 +129,7 @@ describe("Care Insights engine", () => {
       }
     });
 
-    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'anomaly_detection'").get();
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'AnomalyDetection'").get();
     expect(insight).toBeDefined();
     expect(insight.status).toBe("open");
   });
@@ -157,10 +157,10 @@ describe("Care Insights engine", () => {
     expect(insight.status).toBe("resolved");
   });
 
-  test("auto-resolves anomaly_detection insight when values normalize", () => {
+  test("auto-resolves Anomaly Detection insight when values normalize", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
@@ -169,7 +169,7 @@ describe("Care Insights engine", () => {
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
     });
 
-    let insight = db.prepare("SELECT * FROM care_insights WHERE type = 'anomaly_detection'").get();
+    let insight = db.prepare("SELECT * FROM care_insights WHERE type = 'AnomalyDetection'").get();
     expect(insight).toBeDefined();
     expect(insight.status).toBe("open");
 
@@ -188,7 +188,7 @@ describe("Care Insights engine", () => {
   test("limits signals per insight to configured maximum", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
 
@@ -200,7 +200,7 @@ describe("Care Insights engine", () => {
       });
     }
 
-    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'anomaly_detection'").get();
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'AnomalyDetection'").get();
     const signals = db.prepare("SELECT * FROM care_insight_signals WHERE insightID = ?").all(insight.insightID);
     expect(signals.length).toBeLessThanOrEqual(5);
   });
@@ -208,7 +208,7 @@ describe("Care Insights engine", () => {
   test("creates configured hydration insight from care_insight_rules", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
-    ).run("Hydration risk detected", "drink_ml", "sum_below_threshold", 72, 1500, 3, "Encourage fluid intake and review the recent drinking pattern.");
+    ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3, "Encourage fluid intake and review the recent drinking pattern.");
 
     const now = Date.now();
     [300, 200, 250].forEach((value, index) => {
@@ -228,16 +228,16 @@ describe("Care Insights engine", () => {
       }
     });
 
-    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'sum_below_threshold'").get();
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'SumBelowThreshold'").get();
     expect(insight).toBeDefined();
     expect(insight.ruleID).toBeGreaterThan(0);
     expect(insight.individualID).toBeGreaterThan(0);
   });
 
-  test("creates sum_above_threshold insight when total exceeds maximum", () => {
+  test("creates SumAboveThreshold insight when total exceeds maximum", () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
-    ).run("Activity too high", "steps", "sum_above_threshold", 24, 500, 3);
+    ).run("Activity too high", "steps", "SumAboveThreshold", 24, 500, 3);
 
     const now = Date.now();
     [200, 200, 200].forEach((value, index) => {
@@ -257,7 +257,7 @@ describe("Care Insights engine", () => {
       }
     });
 
-    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'sum_above_threshold'").get();
+    const insight = db.prepare("SELECT * FROM care_insights WHERE type = 'SumAboveThreshold'").get();
     expect(insight).toBeDefined();
     expect(insight.score).toBeGreaterThan(0);
   });
@@ -265,7 +265,7 @@ describe("Care Insights engine", () => {
   test("configured hydration insight can trigger a scenario", async () => {
     const ruleResult = db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
-    ).run("Hydration risk detected", "drink_ml", "sum_below_threshold", 72, 1500, 3);
+    ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3);
 
     const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ? LIMIT 1").get("Mia");
     const room = db.prepare("SELECT * FROM rooms WHERE name = ? LIMIT 1").get("Care Room");
@@ -312,7 +312,7 @@ describe("Care Insights API", () => {
   test("GET /care-insights returns created insights", async () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
@@ -341,7 +341,7 @@ describe("Care Insights API", () => {
   test("GET /care-insights caps limit at CONF_tablesMaxEntriesReturned", async () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
@@ -359,7 +359,7 @@ describe("Care Insights API", () => {
   test("GET /care-insights applies default limit without query param", async () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
@@ -377,7 +377,7 @@ describe("Care Insights API", () => {
   test("GET /care-insights/:id returns insight with signals", async () => {
     db.prepare(
       "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "anomaly_detection", 0.6);
+    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);
     careInsights.handleDeviceValues({

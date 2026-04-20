@@ -331,8 +331,6 @@ async function startBridgeAndServer() {
     }
   }
 
-
-
   /**
    * Creates a fingerprint object from the Bluetooth device advertisement.
    * @param {Object} deviceRaw - The Bluetooth device object.

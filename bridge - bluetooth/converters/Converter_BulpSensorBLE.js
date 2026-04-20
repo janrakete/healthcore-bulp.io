@@ -48,6 +48,13 @@ class Converter_BulpSensorBLE extends ConverterStandard {
             anyValue:    ["on", "off"],
             valueType:   "Options"
         };
+
+        this.properties["2a19"] = {
+            standard:   true,
+            read:       true
+        };
+
+        this.resolveStandardProperties();
     }
 
     /**
