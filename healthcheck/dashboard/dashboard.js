@@ -392,7 +392,7 @@ function renderOverviewRecentInsights() {
 
     if (recent.length === 0) {
         const empty       = document.createElement("p");
-        empty.className   = "has-text-grey is-size-7";
+        empty.className   = "has-text-white";
         empty.textContent = i18n.t("NoData");
         container.appendChild(empty);
         return;
@@ -437,7 +437,7 @@ function renderOverviewRecentNotifications() {
 
     if (recent.length === 0) {
         const empty       = document.createElement("p");
-        empty.className   = "has-text-grey is-size-7";
+        empty.className   = "has-text-white";
         empty.textContent = i18n.t("NoData");
         container.appendChild(empty);
         return;
@@ -461,7 +461,7 @@ function renderOverviewRecentNotifications() {
 
         if (notification.description) {
             const desc = document.createElement("div");
-            desc.className   = "";
+            desc.className   = "has-text-white";
             desc.textContent = notification.description
             row.appendChild(desc);
         }
@@ -688,14 +688,6 @@ function toggleInsightDetail(insightID, detailSection, toggleButton) {
 async function loadAndShowInsightDetail(insightID, detailSection, toggleButton) {
     const result = await fetchInsightDetail(insightID);
 
-    if (!result) { // Show an error message inside the detail section
-        detailSection.innerHTML = "<p class='notification is-danger'>" + i18n.t("ErrorServerUnreachable") + "</p>";
-        detailSection.classList.add("is-visible");
-        toggleButton.textContent = i18n.t("CollapseDetails");
-        detailSection.setAttribute("data-loaded", "true");
-        return;
-    }
-
     const insight = result.insight;
     const signals = result.signals;
 
@@ -742,7 +734,7 @@ async function loadAndShowInsightDetail(insightID, detailSection, toggleButton) 
     }
     else {
         const noSignals = document.createElement("p");
-        noSignals.className   = "is-size-7 has-text-grey";
+        noSignals.className   = "notification is-danger mt-3";
         noSignals.textContent = i18n.t("NoData");
         detailSection.appendChild(noSignals);
     }
@@ -885,8 +877,19 @@ function renderDevices() {
 
     const devicesList = dashboardState.devices;
 
-    for (const device of devicesList) {
-        tableBody.appendChild(buildDeviceRow(device));
+    if (devicesList.length === 0) {
+        const table = document.getElementById("devices-table");
+        if (table) {
+            table.remove();
+        }
+
+        const container = document.getElementById("devices-list");
+        container.appendChild(buildNoDataMessage());
+    }
+    else {
+        for (const device of devicesList) {
+            tableBody.appendChild(buildDeviceRow(device));
+        }
     }
 }
 
@@ -1099,16 +1102,7 @@ function renderStatus() {
     }
     container.innerHTML = "";
 
-    const info = dashboardState.serverInfo;
-
-    if (!info) { // Show an error message if server info is not available
-        const error         = document.createElement("p");
-        error.className     = "notification is-danger";
-        error.textContent   = i18n.t("ErrorServerUnreachable");
-        container.appendChild(error);
-        return;
-    }
-
+    const info              = dashboardState.serverInfo;
     const serverCard        = document.createElement("div");
     serverCard.className    = "card";
 
@@ -1128,7 +1122,7 @@ function renderStatus() {
         ["Status",                 info.status           || "—"]
     ];
 
-    const serverContent = document.createElement("div");
+    const serverContent     = document.createElement("div");
     serverContent.className = "card-content";
 
     for (const [label, value] of rows) { // Build a table row for each label/value pair
@@ -1154,7 +1148,7 @@ function renderStatus() {
 
     if (bridges.length === 0) {
         const empty         = document.createElement("p");
-        empty.className     = "notification is-light";
+        empty.className     = "notification is-danger";
         empty.textContent   = i18n.t("NoData");
         container.appendChild(empty);
         return;
@@ -1242,7 +1236,9 @@ function renderList(containerID, items, buildFn) {
 
     container.innerHTML = "";
     if (items.length === 0) { 
-        container.appendChild(buildNoDataMessage()); return;
+        container.classList.remove("columns");
+        container.appendChild(buildNoDataMessage());
+        return;
     }
 
     for (const item of items) {
