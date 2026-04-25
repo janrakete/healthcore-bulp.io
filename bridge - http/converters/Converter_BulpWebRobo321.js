@@ -7,6 +7,7 @@ const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_BulpWebRobo321 extends ConverterStandard {
     static productName = "Bulp Web-Robo 321";
+    static vendorName  = "bulp";
 
     constructor() {
         super();
