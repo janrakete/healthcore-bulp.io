@@ -7,6 +7,7 @@ const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_BulpSensorBLE extends ConverterStandard {
     static productName = "bulp - Sensor BLE";
+    static vendorName  = "bulp";
 
     constructor() {
         super();
