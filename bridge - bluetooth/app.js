@@ -10,6 +10,35 @@ const common          = require("../common");
 const BRIDGE_PREFIX   = "bluetooth"; 
 
 /**
+ * Loads the Bluetooth SIG company identifiers from devices_companies.yaml
+ * @description This function reads the devices_companies.yaml file, extracts the company IDs and names, and returns them as a Map for quick lookup. The company ID is read from the manufacturer data of Bluetooth advertisements to identify the vendor of a device.
+ * @returns {Map<number, string>}
+ */
+function companiesLoadIdentifiers() {
+  const fs        = require("fs");
+  const content   = fs.readFileSync(__dirname + "/devices_companies.yaml", "utf8");
+  const companies  = new Map();
+
+  let currentValue = null;
+  for (const line of content.split("\n")) {
+    const valueMatch = line.match(/value:\s*(0x[0-9A-Fa-f]+)/);
+    const nameMatch  = line.match(/name:\s+'(.*)'/);
+
+    if (valueMatch) {
+      currentValue = parseInt(valueMatch[1], 16);
+    }
+    else if (nameMatch && currentValue !== null) {
+      companies.set(currentValue, nameMatch[1]);
+      currentValue = null;
+    }
+  }
+
+  return companies;
+}
+
+const companiesIdentifiersList = companiesLoadIdentifiers();
+
+/**
  * Load converters for devices
  */
 const { Converters } = require("./Converters.js");
@@ -293,6 +322,13 @@ async function startBridgeAndServer() {
                   message.properties  = device.deviceConverter ? common.devicePropertiesToArray(device.deviceConverter.properties) || "" : "";
                   message.name        = device.name || "";
                   message.description = device.description || "";
+
+                  if (device.deviceConverter && device.deviceConverter.vendorName) {
+                    message.vendorName = device.deviceConverter.vendorName;
+                  }
+                  else {
+                    message.vendorName = (manufacturerData && manufacturerData.length >= 2) ? (companiesIdentifiersList.get(manufacturerData.readUInt16LE(0)) || "?") : "?"; // try to get vendor name from manufacturer data, if available
+                  }
 
                   message.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
 

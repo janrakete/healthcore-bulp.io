@@ -6,7 +6,8 @@
 const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_BangleJS2BLE extends ConverterStandard {
-    static productName = "Bangle.js 5f2c";
+    static productName  = "Bangle.js 5f2c";
+    static vendorName   = "Espruino";
 
     constructor() {
         super();
