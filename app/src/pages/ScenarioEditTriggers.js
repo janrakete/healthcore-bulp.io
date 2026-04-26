@@ -18,17 +18,17 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
   parseTriggerDeviceOptionValue(value) {
     if ((value === undefined) || (value === null) || (value === "")) {
-      return { deviceID: null, bridge: null };
+      return { uuid: null, bridge: null };
     }
 
     const separatorIndex = String(value).indexOf("::");
     if (Number(separatorIndex) === -1) {
-      return { deviceID: String(value), bridge: null };
+      return { uuid: String(value), bridge: null };
     }
 
     return {
       bridge: String(value).slice(0, separatorIndex),
-      deviceID: String(value).slice(separatorIndex + 2)
+      uuid: String(value).slice(separatorIndex + 2)
     };
   }
 
@@ -132,7 +132,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       
       const selectedDeviceData    = this.parseTriggerDeviceOptionValue(deviceSelect.value);
       const isCareInsightTrigger  = ["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type);
-      const triggerDevice         = selectedDeviceData.deviceID || null;
+      const triggerDevice         = selectedDeviceData.uuid || null;
       const triggerBridge         = selectedDeviceData.bridge || this.triggerSelectedDevice?.bridge || null;
       const selectedDevice        = triggerDevice === null ? null : this.triggerSelectedDevice;
       const selectedRuleID        = isCareInsightTrigger ? (careInsightRuleSelect.value || null) : null;
@@ -142,7 +142,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         triggerID:        Date.now(),
         type:             type,
         bridge:           String(type) === "time" ? null : (isCareInsightTrigger ? (triggerBridge || null) : triggerBridge),
-        deviceID:         String(type) === "time" ? null : (isCareInsightTrigger ? (triggerDevice || null) : triggerDevice),
+        uuid:             String(type) === "time" ? null : (isCareInsightTrigger ? (triggerDevice || null) : triggerDevice),
         deviceName:       String(type) === "time" ? null : (isCareInsightTrigger ? (selectedDevice?.name || selectedDevice?.productName || null) : (selectedDevice?.name || selectedDevice?.productName || null)),
         property:         String(type) === "device_value" ? propertySelect.value : (isCareInsightTrigger ? selectedRuleID : null),
         operator:         String(type) === "device_value" ? operatorSelect.value : null,
@@ -235,18 +235,18 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
      */
     this.querySelector("ion-select[name='editTriggerDevice']").addEventListener("ionChange", async (event) => {
       const selectedDeviceData = this.parseTriggerDeviceOptionValue(event.detail.value);
-      const deviceID  = selectedDeviceData.deviceID;
-      const bridge    = selectedDeviceData.bridge;
-      const type      = document.querySelector("ion-select[name='editTriggerType']")?.value || "device_value";
+      const uuid   = selectedDeviceData.uuid;
+      const bridge = selectedDeviceData.bridge;
+      const type   = document.querySelector("ion-select[name='editTriggerType']")?.value || "device_value";
 
-      this.setTriggerSelectedDevice(deviceID, bridge);
+      this.setTriggerSelectedDevice(uuid, bridge);
 
       if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) { // Care Insight trigger doesn't require loading properties
         this.triggerEnabledDisable();
         return;
       }
 
-      await this.dataLoadTriggerDeviceProperties(bridge, deviceID);
+      await this.dataLoadTriggerDeviceProperties(bridge, uuid);
 
       if (String(type) === "battery_low") { // Battery low trigger requires numeric input instead of property value options
         const valueContainer = document.querySelector("#edit-trigger-value-container");
@@ -450,14 +450,14 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         this.triggerDevices = data.results || [];
         const selectDevice = document.querySelector("ion-select[name='editTriggerDevice']");
         if ((selectedDeviceID !== null) && (selectedBridge !== null)) {
-          const selectedDevice = this.triggerDevices.find(item => String(item.deviceID) === String(selectedDeviceID) && String(item.bridge) === String(selectedBridge));
+          const selectedDevice = this.triggerDevices.find(item => String(item.uuid) === String(selectedDeviceID) && String(item.bridge) === String(selectedBridge));
           if (selectedDevice !== undefined) {
             this.triggerSelectedDevice = selectedDevice;
           }
         }
 
         selectDevice.innerHTML  = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + data.results.map(item => {
-          return `<ion-select-option value="${this.buildTriggerDeviceOptionValue(item.deviceID, item.bridge)}" data-bridge="${item.bridge}">${item.name} (${item.deviceID}, ${item.bridge})</ion-select-option>`;
+          return `<ion-select-option value="${this.buildTriggerDeviceOptionValue(item.uuid, item.bridge)}" data-bridge="${item.bridge}">${item.name} (${item.uuid}, ${item.bridge})</ion-select-option>`;
         }).join("");
 
         if ((selectedDeviceID !== null) && (selectedBridge !== null)) {
@@ -503,13 +503,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     }
   }
 
-  setTriggerSelectedDevice(deviceID, bridge) {
-    if ((deviceID === undefined) || (deviceID === null) || (deviceID === "")) {
+  setTriggerSelectedDevice(uuid, bridge) {
+    if ((uuid === undefined) || (uuid === null) || (uuid === "")) {
       this.triggerSelectedDevice = null;
       return;
     }
 
-    const selectedDevice = this.triggerDevices.find(item => String(item.deviceID) === String(deviceID) && String(item.bridge) === String(bridge));
+    const selectedDevice = this.triggerDevices.find(item => String(item.uuid) === String(uuid) && String(item.bridge) === String(bridge));
     this.triggerSelectedDevice = selectedDevice || null;
   }
 
@@ -689,7 +689,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
             operatorInfo = window.Translation.get("Equals");
         }
         cardTitle    = item.deviceName;
-        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
+        cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent  = `
             <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
             <ion-text color="light">${operatorInfo}</ion-text>
@@ -698,22 +698,22 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       }
       else if (String(type) === "device_disconnected") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
+        cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeDeviceDisconnected")}</ion-text>`;
       }
       else if (String(type) === "device_connected") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`; 
+        cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`; 
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeDeviceConnected")}</ion-text>`;
       }
       else if (String(type) === "battery_low") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
+        cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
       }
       else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
+        cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent = `
             <ion-text color="light">${window.Translation.get(String(type) === "care_insight_opened" ? "TriggerTypeCareInsightOpened" : String(type) === "care_insight_updated" ? "TriggerTypeCareInsightUpdated" : "TriggerTypeCareInsightResolved")}</ion-text>
             <br />
@@ -768,17 +768,20 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         document.querySelector("ion-select[name='editTriggerType']").value = type;
         this.triggerUpdateFieldVisibility(type);
 
+        const triggerUUID   = triggerData.deviceUUID   || triggerData.uuid   || null;
+        const triggerBridge = triggerData.deviceBridge || triggerData.bridge || null;
+
         if (type !== "time") {
-          await this.dataLoadTriggerDevices(triggerData.deviceID, triggerData.bridge);
+          await this.dataLoadTriggerDevices(triggerUUID, triggerBridge);
         }
 
         if (String(type) === "device_value") {
-          await this.dataLoadTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID, triggerData.property);
+          await this.dataLoadTriggerDeviceProperties(triggerBridge, triggerUUID, triggerData.property);
           await this.dataLoadTriggerDeviceOperator(triggerData.operator);
           await this.dataLoadTriggerDevicePropertiesValues(triggerData.property, triggerData.value);
         }
         else if (String(type) === "battery_low") {
-          await this.dataLoadTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID);
+          await this.dataLoadTriggerDeviceProperties(triggerBridge, triggerUUID);
           const valueContainer = document.querySelector("#edit-trigger-value-container");
           valueContainer.innerHTML = `<ion-input type="number" label="${window.Translation.get("BatteryThreshold")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom"></ion-input>`;
           valueContainer.querySelector("ion-input[name='editTriggerValue']").value = triggerData.value;
@@ -791,12 +794,12 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         }
         else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
           await this.dataLoadCareInsightRules(triggerData.property || null);
-          if (triggerData.deviceID) {
-            await this.dataLoadTriggerDevices(triggerData.deviceID, triggerData.bridge);
+          if (triggerUUID) {
+            await this.dataLoadTriggerDevices(triggerUUID, triggerBridge);
           }
         }
         else {
-          await this.dataLoadTriggerDeviceProperties(triggerData.bridge, triggerData.deviceID);
+          await this.dataLoadTriggerDeviceProperties(triggerBridge, triggerUUID);
         }
 
         this.triggerEnabledDisable();

@@ -27,8 +27,8 @@ function enrichInsight(insight) {
 
     const enrichedInsight = { ...insight };
 
-    if ((insight.deviceID !== undefined) && (insight.deviceID !== null) && (String(insight.deviceID).trim() !== "") && (insight.bridge !== undefined) && (insight.bridge !== null)) {
-        const device = database.prepare("SELECT deviceID, bridge, name, productName, vendorName, description FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").get(insight.deviceID, insight.bridge);
+    if ((insight.deviceID !== undefined) && (insight.deviceID !== null) && Number(insight.deviceID) > 0) {
+        const device = database.prepare("SELECT deviceID, uuid, bridge, name, productName, vendorName, description FROM devices WHERE deviceID = ? LIMIT 1").get(insight.deviceID);
 
         if (device !== undefined) {
             enrichedInsight.device = device;

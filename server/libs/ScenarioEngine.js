@@ -20,6 +20,7 @@
  */
 
 const appConfig = require("../../config");
+const { getDeviceIDByUUID } = require("./DeviceLookup");
 
 class ScenarioEngine {
   constructor() {
@@ -42,9 +43,17 @@ class ScenarioEngine {
         ).all(eventType);
       }
       else {
+        if (eventData.uuid && eventData.bridge && !eventData.deviceID) { // if deviceID is not provided but UUID and bridge are available, look up deviceID (for backward compatibility with older event sources that don't provide deviceID)
+          eventData.deviceID = getDeviceIDByUUID(database, eventData.uuid, eventData.bridge);
+        }
+
+        if (!eventData.deviceID) { // cannot evaluate device-based triggers without deviceID
+          return; 
+        }
+
         scenarios = database.prepare(
-          "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? AND st.bridge = ? ORDER BY s.priority DESC"
-        ).all(eventType, eventData.deviceID || "", eventData.bridge || "");
+          "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? AND st.deviceID = ? ORDER BY s.priority DESC"
+        ).all(eventType, eventData.deviceID);
       }
 
       for (const scenario of scenarios) {
@@ -83,7 +92,7 @@ class ScenarioEngine {
    */
   async evaluateScenario(scenario, eventType, eventData) {
     try {
-      const cooldownKey   = scenario.scenarioID + "-" + (eventData.deviceID || "time") + "-" + (eventData.property || eventType); // check cooldown to prevent rapid re-execution
+      const cooldownKey   = scenario.scenarioID + "-" + (eventData.uuid || eventData.deviceID || "time") + "-" + (eventData.property || eventType); // check cooldown to prevent rapid re-execution
       const lastExecution = this.executionCooldowns.get(cooldownKey);
       const now           = Date.now();
 
@@ -132,10 +141,10 @@ class ScenarioEngine {
 
       case "device_disconnected":
       case "device_connected":
-        return trigger.type === eventType && trigger.deviceID === eventData.deviceID && trigger.bridge === eventData.bridge;
+        return trigger.type === eventType && trigger.deviceID === eventData.deviceID;
 
       case "battery_low":
-        return trigger.type === eventType && trigger.deviceID === eventData.deviceID && trigger.bridge === eventData.bridge && parseFloat(eventData.value) < parseFloat(trigger.value);
+        return trigger.type === eventType && trigger.deviceID === eventData.deviceID && parseFloat(eventData.value) < parseFloat(trigger.value);
 
       case "care_insight_opened":
       case "care_insight_updated":
@@ -188,10 +197,6 @@ class ScenarioEngine {
       return false;
     }
 
-    if (trigger.bridge && trigger.bridge !== eventData.bridge) {
-      return false;
-    }
-
     return true;
   }
 
@@ -202,15 +207,14 @@ class ScenarioEngine {
    * @returns {boolean} - Whether the trigger condition is satisfied
    */
   async evaluateDeviceValueTrigger(trigger, eventData) {
-    const isSameDevice   = trigger.deviceID === eventData.deviceID; // check whether this trigger refers to the exact device, ...
-    const isSameBridge   = trigger.bridge   === eventData.bridge; // ... bridge, ...
-    const isSameProperty = trigger.property === eventData.property; // ... and property (if trigger.property is null/empty, it matches any property, so we don't require equality in that case)
+    const isSameDevice   = trigger.deviceID === eventData.deviceID;
+    const isSameProperty = trigger.property === eventData.property; // check if property matches
 
-    if (isSameDevice && isSameBridge && isSameProperty) { // the trigger matches the event directly – use the value from the event payload without querying the database
+    if (isSameDevice && isSameProperty) { // the trigger matches the event directly – use the value from the event payload without querying the database
       return this.compareValues(eventData.value, trigger.operator, trigger.value, trigger.valueType);
     }
     else {
-      const currentValue = await this.getCurrentDeviceValue(trigger.deviceID, trigger.bridge, trigger.property); // the trigger refers to a different device or property (this happens in scenarios with multiple triggers (e.g. "If sensor A > 30 AND switch B = on"), so load current value from the database) 
+      const currentValue = await this.getCurrentDeviceValue(trigger.deviceID, trigger.property); // the trigger refers to a different device or property — load current value from the database
       if (currentValue === null) { // no stored value available – the trigger cannot be satisfied
         return false;
       }
@@ -297,9 +301,9 @@ class ScenarioEngine {
    * @param {string} property - Property name
    * @returns {any|null} - Current value or null if not found
    */
-  async getCurrentDeviceValue(deviceID, bridge, property) {
+  async getCurrentDeviceValue(deviceID, property) {
     try {
-      const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, bridge, property);
+      const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, property);
 
       if (!result) { // no row found for this device/bridge/property
         return null;
@@ -327,7 +331,7 @@ class ScenarioEngine {
       const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID);  // get all actions for this scenario
 
       database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(
-        scenario.scenarioID, triggerData.deviceID || "", triggerData.property || "", String(triggerData.value || ""), 1
+        scenario.scenarioID, triggerData.deviceID || null, triggerData.property || "", String(triggerData.value || ""), 1
       );
 
       for (const action of actions) {
@@ -345,7 +349,7 @@ class ScenarioEngine {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
 
       database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, success, dateTimeExecutedAt, error) VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(
-        scenario.scenarioID, triggerData.deviceID || "", triggerData.property || "", String(triggerData.value || ""), 0, error.message
+        scenario.scenarioID, triggerData.deviceID || null, triggerData.property || "", String(triggerData.value || ""), 0, error.message
       );
     }
   }
@@ -358,8 +362,8 @@ class ScenarioEngine {
     try {
       const scenario = database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
       if (scenario) {
-        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(  // log execution
-          scenario.scenarioID, "manually", "manually", "manually", 1
+        database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(  // log execution; triggerDeviceID is NULL for manual execution, triggerProperty is "manually", triggerValue is "manually"
+          scenario.scenarioID, null, "manually", "manually", 1
         );
 
         const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenarioID);  // get all actions for this scenario
@@ -396,16 +400,22 @@ class ScenarioEngine {
       switch (action.type) {
 
         case "set_device_value":
+          const device = database.prepare("SELECT uuid, bridge FROM devices WHERE deviceID = ? LIMIT 1").get(action.deviceID);
+          if (!device) {
+            common.conLog("Scenario Engine: Action set_device_value - device " + action.deviceID + " not found", "red");
+            break;
+          }
+
           const message                   = {};
-          message.deviceID                = action.deviceID;
-          message.bridge                  = action.bridge;
+          message.uuid                    = device.uuid;
+          message.bridge                  = device.bridge;
           message.values                  = {};
           message.values[action.property] = this.convertValue(action.value, action.valueType);
 
-          const topic = action.bridge + "/devices/values/set";
+          const topic = device.bridge + "/devices/values/set";
           mqttClient.publish(topic, JSON.stringify(message));
 
-          common.conLog("Scenario Engine: Action set_device_value - " + action.deviceID + "/" + action.property + " = " + action.value, "yel");
+          common.conLog("Scenario Engine: Action set_device_value - " + device.uuid + "/" + action.property + " = " + action.value, "yel");
           break;
 
         case "push_notification":

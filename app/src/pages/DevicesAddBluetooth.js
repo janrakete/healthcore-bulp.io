@@ -54,15 +54,15 @@ class DevicesAddBluetooth extends HTMLElement {
                         const listElement = this.querySelector("#devices-list-container");
                         listElement.innerHTML = "<center><ion-text>" +  window.Translation.get("DevicesScanFound") + "</ion-text></center>";
                         listElement.innerHTML += scanData.data.devices.map(device => `
-                            <ion-card data-id="${device.deviceID}" color="primary">
+                            <ion-card data-id="${device.uuid}" color="primary">
                                 <ion-card-header>
                                     <ion-card-title>${device.productName}</ion-card-title>
                                     <ion-card-subtitle>${device.vendorName ? device.vendorName : ""}</ion-card-subtitle>
                                 </ion-card-header>
                                 <ion-card-content>
-                                    ${device.deviceID}
+                                    ${device.uuid}
                                 </ion-card-content>
-                                <ion-button data-id="${device.deviceID}" id="connect-${device.deviceID}" class="action-connect-option"><ion-icon slot="start" name="swap-horizontal-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Connect")}</ion-text></ion-button>
+                                <ion-button data-id="${device.uuid}" id="connect-${device.uuid}" class="action-connect-option"><ion-icon slot="start" name="swap-horizontal-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Connect")}</ion-text></ion-button>
                             </ion-card>
                         `).join("");
                     }

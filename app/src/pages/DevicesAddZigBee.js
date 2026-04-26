@@ -51,7 +51,7 @@ class DevicesAddZigBee extends HTMLElement {
                                     <ion-card-subtitle>${device.vendorName}</ion-card-subtitle>
                                 </ion-card-header>
                                 <ion-card-content>
-                                    ${device.deviceID}
+                                    ${device.uuid}
                                 </ion-card-content>
                             </ion-card>
                         `).join("");

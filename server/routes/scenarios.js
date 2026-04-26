@@ -5,6 +5,7 @@
  */
 const appConfig     = require("../../config");
 const router        = require("express").Router();
+const { getDeviceIDByUUID } = require("../libs/DeviceLookup");
 
 /**
  * @swagger
@@ -54,7 +55,7 @@ const router        = require("express").Router();
  *               type:
  *                 type: string
  *                 example: "device_value"
- *               deviceID:
+ *               deviceUUID:
  *                 type: string
  *                 example: "12345"
  *               bridge:
@@ -95,7 +96,7 @@ const router        = require("express").Router();
  *               type:
  *                 type: string
  *                 example: "set_device_value"
- *               deviceID:
+ *               deviceUUID:
  *                 type: string
  *                 example: "12345"
  *               bridge:
@@ -178,8 +179,8 @@ router.get("/all", async function (request, response) {
         common.conLog("Execute statement: " + statement, "std", false);
 
         for (const result of results) {
-          result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
-          result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+          result.triggers = await database.prepare("SELECT st.*, d.uuid AS deviceUUID, d.bridge AS deviceBridge, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+          result.actions  = await database.prepare("SELECT sa.*, d.uuid AS deviceUUID, d.bridge AS deviceBridge, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(result.scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
 
           for (const trigger of result.triggers) {
               if (trigger.deviceProperties) {
@@ -270,8 +271,8 @@ router.get("/:scenarioID", async function (request, response) {
         if (result) {
             result.enabled          = result.enabled === 1 ? true : false;
 
-            result.triggers = await database.prepare("SELECT st.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
-            result.actions  = await database.prepare("SELECT sa.*, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.triggers = await database.prepare("SELECT st.*, d.uuid AS deviceUUID, d.bridge AS deviceBridge, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID WHERE st.scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
+            result.actions  = await database.prepare("SELECT sa.*, d.uuid AS deviceUUID, d.bridge AS deviceBridge, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType FROM scenarios_actions sa LEFT JOIN devices d ON sa.deviceID = d.deviceID WHERE sa.scenarioID = ? ORDER BY sa.delay ASC LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
 
             for (const trigger of result.triggers) {
                 if (trigger.deviceProperties) {
@@ -363,7 +364,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                     type:
  *                       type: string
  *                       example: "device_value"
- *                     deviceID:
+ *                     uuid:
  *                       type: string
  *                       example: "12345"
  *                     bridge:
@@ -390,7 +391,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                     type:
  *                       type: string
  *                       example: "set_device_value"
- *                     deviceID:
+ *                     uuid:
  *                       type: string
  *                       example: "12345"
  *                     bridge:
@@ -446,11 +447,11 @@ router.post("/", async function (request, response) {
                 data.status = "ok";
                 
                 const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))");
-                const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                const insertTrigger     = database.prepare("INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                const insertAction      = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
                 const transaction = database.transaction(() => {
-                    
+
                     const result = insertScenario.run( // Insert scenario
                         payload.name,
                         payload.description || "",
@@ -463,29 +464,35 @@ router.post("/", async function (request, response) {
 
                     const scenarioID = result.lastInsertRowid;
 
-                    for (const trigger of payload.triggers) { // Insert triggers
+                    for (const trigger of payload.triggers) { // Insert triggers — translate uuid+bridge → numeric deviceID
+                        const triggerUUID   = trigger.uuid || null;
+                        const triggerBridge = trigger.bridge || null;
+                        const deviceID      = (triggerUUID && triggerBridge) ? getDeviceIDByUUID(database, triggerUUID, triggerBridge) : null;
+
                         insertTrigger.run(
-                        scenarioID,
-                        trigger.type || "device_value",
-                        trigger.deviceID || null,
-                        trigger.bridge || null,
-                        trigger.property || null,
-                        trigger.operator || "equals",
-                        typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null),
-                        trigger.valueType || "String"
+                            scenarioID,
+                            trigger.type || "device_value",
+                            deviceID,
+                            trigger.property || null,
+                            trigger.operator || "equals",
+                            typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null),
+                            trigger.valueType || "String"
                         );
                     }
-                   
-                    for (const action of payload.actions) { // Insert actions
+
+                    for (const action of payload.actions) { // Insert actions — translate uuid+bridge → numeric deviceID
+                        const actionUUID   = action.uuid || null;
+                        const actionBridge = action.bridge || null;
+                        const deviceID     = (actionUUID && actionBridge) ? getDeviceIDByUUID(database, actionUUID, actionBridge) : null;
+
                         insertAction.run(
-                        scenarioID,
-                        action.type || "set_device_value",
-                        action.deviceID || null,
-                        action.bridge || null,
-                        action.property || null,
-                        typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null),
-                        action.valueType || "String",
-                        action.delay || 0
+                            scenarioID,
+                            action.type || "set_device_value",
+                            deviceID,
+                            action.property || null,
+                            typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null),
+                            action.valueType || "String",
+                            action.delay || 0
                         );
                     }
 
@@ -568,7 +575,7 @@ router.post("/", async function (request, response) {
  *                     type:
  *                       type: string
  *                       example: "device_value"
- *                     deviceID:
+ *                     uuid:
  *                       type: string
  *                       example: "12345"
  *                     bridge:
@@ -594,7 +601,7 @@ router.post("/", async function (request, response) {
  *                     type:
  *                       type: string
  *                       example: "set_device_value"
- *                     deviceID:
+ *                     uuid:
  *                       type: string
  *                       example: "12345"
  *                     bridge:
@@ -660,26 +667,33 @@ router.patch("/:scenarioID", async function (request, response) {
             common.conLog("PATCH Request: access table 'scenarios'", "gre");
         }
 
-        if (payload.triggers) {  // Update triggers if provided 
+        if (payload.triggers) {  // Update triggers if provided
           database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID); // Delete existing triggers
 
-          const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, type, deviceID, bridge, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); // Insert new triggers
+          const insertTrigger = database.prepare("INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"); // Insert new triggers — translate uuid+bridge → numeric deviceID
 
           for (const trigger of payload.triggers) {
-            insertTrigger.run(scenarioID, trigger.type || "device_value", trigger.deviceID || null, trigger.bridge || null, trigger.property || null, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null), trigger.valueType || "String");
+            const triggerUUID   = trigger.uuid || null;
+            const triggerBridge = trigger.bridge || null;
+            const deviceID      = (triggerUUID && triggerBridge) ? getDeviceIDByUUID(database, triggerUUID, triggerBridge) : null;
+
+            insertTrigger.run(scenarioID, trigger.type || "device_value", deviceID, trigger.property || null, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null), trigger.valueType || "String");
           }
           common.conLog("PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
         }
 
-        
         if (payload.actions) { // Update actions if provided
           database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID); // Delete existing actions
 
-          const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, bridge, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); // Insert new actions
+          const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)"); // Insert new actions — translate uuid+bridge → numeric deviceID
 
           for (const action of payload.actions) {
-            insertAction.run(scenarioID, action.type || "set_device_value", action.deviceID || null, action.bridge || null, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", action.delay || 0);
+            const actionUUID   = action.uuid || null;
+            const actionBridge = action.bridge || null;
+            const deviceID     = (actionUUID && actionBridge) ? getDeviceIDByUUID(database, actionUUID, actionBridge) : null;
+
+            insertAction.run(scenarioID, action.type || "set_device_value", deviceID, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", action.delay || 0);
           }
           common.conLog("PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);

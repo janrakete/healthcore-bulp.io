@@ -599,7 +599,7 @@ function buildInsightCard(insight) {
     }
 
     if (insight.device) {
-        metaGrid.appendChild(buildMetaItem(i18n.t("Device"), insight.device.name || insight.device.deviceID));
+        metaGrid.appendChild(buildMetaItem(i18n.t("Device"), insight.device.name || insight.device.uuid));
     }
 
     if (insight.room) {
@@ -954,7 +954,7 @@ function buildPersonCard(individual) {
 
     const roomName    = room ? room.name : "—";
 
-    const deviceNames = dashboardState.devices.filter(device => device.individualID === individual.individualID).map(device => device.name || device.deviceID);
+    const deviceNames = dashboardState.devices.filter(device => device.individualID === individual.individualID).map(device => device.name || device.uuid);
 
     return buildDataCard(
         (individual.firstname + " " + individual.lastname).trim(),
@@ -989,7 +989,7 @@ function renderRooms() {
 function buildRoomCard(room) {
     const personNames = dashboardState.individuals.filter(individual => individual.roomID === room.roomID).map(individual => (individual.firstname + " " + individual.lastname).trim());
 
-    const deviceNames = dashboardState.devices.filter(device => device.roomID === room.roomID).map(device => device.name || device.deviceID);
+    const deviceNames = dashboardState.devices.filter(device => device.roomID === room.roomID).map(device => device.name || device.uuid);
 
     return buildDataCard(
         room.name,

@@ -125,8 +125,8 @@ async function startBridgeAndServer() {
   /**
    * Class representing the status of the LoRa bridge. Contains arrays for connected devices and registered devices at the server.
    * @class
-   * @property {Map<string, Object>} devicesConnected - Map of currently connected LoRa devices (keyed by deviceID).
-   * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by deviceID)
+   * @property {Map<string, Object>} devicesConnected - Map of currently connected LoRa devices (keyed by UUID).
+   * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by UUID)
    * @property {boolean} portOpened - Indicates whether the serial port for the LoRa adapter is opened.
    * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the LoRa bridge, including connected devices and those registered at the server.
@@ -247,23 +247,23 @@ async function startBridgeAndServer() {
 
           data = Buffer.from(data, "hex").toString("utf8");
           
-          if (data.length < 17) { // validate minimum payload length (16 chars device ID + at least 1 char value)
+          if (data.length < 17) { // validate minimum payload length (16 chars UUID + at least 1 char value)
             common.conLog("LoRa: Payload too short (expected at least 17 chars, got " + data.length + "), ignoring packet", "red");
             common.conLog("LoRa: Decoded data: " + data, "std", false);
           }
           else {
-            const deviceID = data.substring(0, 16); // get device ID from data (first 16 characters)
-            const device   = bridgeStatus.devicesConnected.get(deviceID); 
+            const uuid     = data.substring(0, 16); // get UUID from data (first 16 characters)
+            const device   = bridgeStatus.devicesConnected.get(uuid); 
 
             if (device) { // if device is in map of connected devices, build message and send it to MQTT broker
-              common.conLog("LoRa: Device " + deviceID + " is connected - trying to convert data", "yel");
+              common.conLog("LoRa: Device " + uuid + " is connected - trying to convert data", "yel");
 
               let message        = {};
-              message.deviceID   = deviceID;
+              message.uuid       = uuid;
               message.bridge     = BRIDGE_PREFIX;
               message.values     = data.substring(16);
 
-              common.conLog("LoRa: Request for sending values of device " + deviceID, "yel", false);
+              common.conLog("LoRa: Request for sending values of device " + uuid, "yel", false);
 
               mqttDevicesValuesGet(message); 
             }
@@ -331,7 +331,7 @@ async function startBridgeAndServer() {
    * @description This function creates the information of a registered device.
    */
   function mqttDevicesCreate(data) {
-    common.conLog("LoRa: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+    common.conLog("LoRa: Request to create device " + data.uuid + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
     
     const deviceConverter = convertersList.find(data.productName); // get converter for device from list of converters
     if (deviceConverter === undefined) { 
@@ -355,8 +355,8 @@ async function startBridgeAndServer() {
    * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
-    bridgeStatus.devicesConnected.delete(data.deviceID); // remove device from map of connected devices
-    bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of registered devices
+    bridgeStatus.devicesConnected.delete(data.uuid); // remove device from map of connected devices
+    bridgeStatus.devicesRegisteredAtServer.delete(data.uuid); // remove device from map of registered devices
     mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker    
   }
 
@@ -366,16 +366,16 @@ async function startBridgeAndServer() {
    * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
-     common.conLog("LoRa: Request to update device " + data.deviceID, "yel");
-     
+     common.conLog("LoRa: Request to update device " + data.uuid, "yel");
+
      if (data && typeof data.updates === "object") {
-       const deviceToUpdateReg = bridgeStatus.devicesRegisteredAtServer.get(data.deviceID);
+       const deviceToUpdateReg = bridgeStatus.devicesRegisteredAtServer.get(data.uuid);
        if (deviceToUpdateReg) {
-         bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
+         bridgeStatus.devicesRegisteredAtServer.set(data.uuid, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
        }
-       const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.deviceID);
+       const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.uuid);
        if (deviceToUpdateCon) {
-         bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
+         bridgeStatus.devicesConnected.set(data.uuid, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
        }
  
        common.conLog("LoRa: Updated bridge status (registered and connected devices)", "gre", false);
@@ -395,11 +395,11 @@ async function startBridgeAndServer() {
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer.clear();
     for (const device of data.devices) {
-      bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
+      bridgeStatus.devicesRegisteredAtServer.set(device.uuid, device);
     }
     bridgeStatus.devicesConnected.clear(); // reset map of connected devices
     for (const device of bridgeStatus.devicesRegisteredAtServer.values()) { // rebuild map of connected devices
-      bridgeStatus.devicesConnected.set(device.deviceID, device);
+      bridgeStatus.devicesConnected.set(device.uuid, device);
     }
 
     for (let device of bridgeStatus.devicesConnected.values()) { // for each device in map of connected devices
@@ -440,17 +440,17 @@ async function startBridgeAndServer() {
 
   /**
    * If message is for getting properties and values of a connected device
-   * @param {Object} data - The data object containing the device ID and values to be converted.
+   * @param {Object} data - The data object containing the UUID and values to be converted.
    * @description This function retrieves the properties and values of a connected device, converts them using the device's converter, and publishes the results to the MQTT broker.
    */
   function mqttDevicesValuesGet(data) {
     let message        = {};
-    message.deviceID   = data.deviceID;
+    message.uuid       = data.uuid;
     message.bridge     = BRIDGE_PREFIX;
     message.callID     = data.callID;
     message.values     = {};
 
-    const device = bridgeStatus.devicesConnected.get(message.deviceID);  
+    const device = bridgeStatus.devicesConnected.get(message.uuid);  
     if (device) { // if device is in map of connected devices, convert values
       message.values = device.deviceConverter.get(data.values);
     }
