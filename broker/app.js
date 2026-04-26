@@ -10,6 +10,9 @@ const common    = require("../common");
  * SQLite
  */
 const database = require("better-sqlite3")(appConfig.CONF_databaseFilename);
+database.pragma("foreign_keys = ON");
+
+const { getDeviceIDByUUID } = require("../server/libs/DeviceLookup");
 
 /**
  * Prepared SQLite statements (hoisted to avoid re-compilation on every publish)
@@ -19,7 +22,7 @@ const statementInsertHistory = database.prepare(
 );
 
 const statementInsertValue = database.prepare(
-    "INSERT INTO mqtt_history_devices_values (deviceID, dateTime, dateTimeAsNumeric, bridge, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO mqtt_history_devices_values (deviceID, dateTime, dateTimeAsNumeric, property, value, valueAsNumeric, weekday, weekdaySin, weekdayCos, hour, hourSin, hourCos, month) VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 
 /**
@@ -184,15 +187,21 @@ function startServer() {
 
                 if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for Care Insights and related analytics
                     const timeFeatures = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
- 
+
                     if (!data.values || typeof data.values !== "object" || Array.isArray(data.values)) { // validate that data.values exists and is an object (not an array)
                         common.conLog("Broker: data.values is missing or not an object, skipping value insertion", "red");
                         return callback(null, true);
                     }
- 
+
+                    const deviceID = getDeviceIDByUUID(database, data.uuid, data.bridge); // translate uuid and bridge to numeric deviceID once for this message
+                    if (deviceID === null) {
+                        common.conLog("Broker: Device uuid '" + data.uuid + "' not found in database, skipping value insertion", "red");
+                        return callback(null, true);
+                    }
+
                     for (const [property, value] of Object.entries(data.values)) { // iterate over each property
                         statementInsertValue.run(
-                            data.deviceID, timeFeatures.dateTimeAsNumeric, data.bridge, property, value.value, value.valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
+                            deviceID, timeFeatures.dateTimeAsNumeric, property, value.value, value.valueAsNumeric, timeFeatures.weekday, timeFeatures.weekdaySin, timeFeatures.weekdayCos, timeFeatures.hour, timeFeatures.hourSin, timeFeatures.hourCos, timeFeatures.month);
                     }
                     common.conLog("Broker: MQTT device values inserted into database", "gre");
                 }

@@ -122,7 +122,7 @@ class CareInsights extends HTMLElement {
     }
 
     if (item.device) {
-      parts.push(window.Translation.get("Device") + ": " + (item.device.name || item.device.productName || item.device.deviceID));
+      parts.push(window.Translation.get("Device") + ": " + (item.device.name || item.device.productName || item.device.uuid));
     }
 
     parts.push(dateFormat(item.dateTimeUpdated, window.appConfig.CONF_dateLocale));

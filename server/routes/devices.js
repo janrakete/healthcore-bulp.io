@@ -5,6 +5,7 @@
  */
 const appConfig     = require("../../config");
 const router        = require("express").Router();
+const { getDeviceByUUID, getDeviceIDByUUID } = require("../libs/DeviceLookup");
 
 /**
  * =============================================================================================
@@ -75,13 +76,13 @@ function enrichDeviceWithAssignment(device) {
 }
 
 /**
- * Returns a single device by ID and bridge.
- * @param {string} deviceID
+ * Returns a single device by UUID and bridge.
+ * @param {string} uuid
  * @param {string} bridge
  * @returns {Object|undefined}
  */
-function getDevice(deviceID, bridge) {
-    return database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").get(deviceID, bridge);
+function getDevice(uuid, bridge) {
+    return getDeviceByUUID(database, uuid, bridge) ?? undefined; // normalize null → undefined to match existing === undefined checks
 }
 
 /**
@@ -127,7 +128,7 @@ function getRoom(roomID) {
  *                    items:
  *                      type: object
  *                      properties:
- *                        deviceID:
+ *                        uuid:
  *                          type: string
  *                          example: "12345"
  *                        bridge:
@@ -370,7 +371,7 @@ router.post("/:bridge/scan", async function (request, response) {
  *                         items:
  *                           type: object
  *                           properties:
- *                             deviceID:
+ *                             uuid:
  *                               type: string
  *                               example: "12345"
  *                             productName:
@@ -411,11 +412,11 @@ router.get("/:bridge/scan/info", async function (request, response) {
 
         const devices       = results.map(row => JSON.parse(row.message));
         
-        const uniqueDevices = {}; 
+        const uniqueDevices = {};
         devices.forEach(device => {
-            delete device.callID; // remove duplicates based on device ID, keep only the first occurrence and remove callID from the device info
-            if (device.deviceID && !uniqueDevices[device.deviceID]) {
-                uniqueDevices[device.deviceID] = device;
+            delete device.callID; // remove duplicates based on UUID, keep only the first occurrence and remove callID from the device info
+            if (device.uuid && !uniqueDevices[device.uuid]) {
+                uniqueDevices[device.uuid] = device;
             }
         });
         
@@ -437,7 +438,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
 
 /**
  * @swagger
- *   /devices/{bridge}/{deviceID}/connect:
+ *   /devices/{bridge}/{uuid}/connect:
  *     post:
  *       summary: Connect a device via ID (only Bluetooth and ZigBee - but only with powerType = "mains")
  *       description: This endpoint allows you to connect a device using its ID.
@@ -452,9 +453,9 @@ router.get("/:bridge/scan/info", async function (request, response) {
  *             type: string
  *             example: bluetooth
  *         - in: path
- *           name: deviceID
+ *           name: uuid
  *           required: true
- *           description: The ID of the device.
+ *           description: The UUID of the device.
  *           schema:
  *             type: string
  *             example: 12345
@@ -486,7 +487,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
  *                       callID:
  *                         type: string
  *                         example: "In58F8lxhMEe6a4G"
- *                       deviceID:
+ *                       uuid:
  *                         type: string
  *                         example: "12345"
  *                       productName:
@@ -509,10 +510,10 @@ router.get("/:bridge/scan/info", async function (request, response) {
  *                     type: string
  *                     example: "Error message"
  */
-router.post("/:bridge/:deviceID/connect", async function (request, response) {
+router.post("/:bridge/:uuid/connect", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
     payload.body         = request.body;
 
     let data       = {};
@@ -521,20 +522,20 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
 
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            message.deviceID            = payload.deviceID.trim();
+        if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+            message.uuid                = payload.uuid.trim();
             message.callID              = common.randomHash(); // create a unique call ID to identify the request
             message.bridge              = bridge;
             message.addDeviceToServer   = payload.body?.addDeviceToServer === true;
 
             mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("POST request for device connect via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            common.conLog("POST request for device connect via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
             handlePendingMqttResponse(message.callID, response);
         }
         else {
             data.status = "error";
-            data.error  = "No ID or product name provided";
+            data.error  = "No UUID or product name provided";
         }
     }
     else {
@@ -550,7 +551,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
 
 /**
  * @swagger
- *   /devices/{bridge}/{deviceID}/disconnect:
+ *   /devices/{bridge}/{uuid}/disconnect:
  *     post:
  *       summary: Disconnect a device (only Bluetooth)
  *       description: This endpoint allows you to disconnect a device using its ID.
@@ -565,9 +566,9 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  *             type: string
  *             example: bluetooth
  *         - in: path
- *           name: deviceID
+ *           name: uuid
  *           required: true
- *           description: The ID of the device.
+ *           description: The UUID of the device.
  *           schema:
  *             type: string
  *             example: 12345
@@ -585,7 +586,7 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  *                   data:
  *                     type: object
  *                     properties:
- *                       deviceID:
+ *                       uuid:
  *                         type: string
  *                         example: "12345"
  *                       bridge:
@@ -608,10 +609,10 @@ router.post("/:bridge/:deviceID/connect", async function (request, response) {
  *                     type: string
  *                     example: "Error message"
  */
-router.post("/:bridge/:deviceID/disconnect", async function (request, response) {
+router.post("/:bridge/:uuid/disconnect", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
 
     let data       = {};
     let message    = {};
@@ -619,19 +620,19 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
 
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            message.deviceID    = payload.deviceID.trim();
-            message.callID      = common.randomHash(); // create a unique call ID to identify the request
-            message.bridge      = bridge;
+        if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+            message.uuid    = payload.uuid.trim();
+            message.callID  = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge  = bridge;
 
             mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("POST request for device disconnect via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            common.conLog("POST request for device disconnect via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
             handlePendingMqttResponse(message.callID, response);
         }
         else {
             data.status = "error";
-            data.error  = "No ID provided";
+            data.error  = "No UUID provided";
         }
     }
     else {
@@ -646,7 +647,7 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
 
 /**
  * @swagger
- *  /devices/{bridge}/{deviceID}:
+ *  /devices/{bridge}/{uuid}:
  *    delete:
  *      summary: Remove a device
  *      description: This endpoint removes a device from the system.
@@ -661,9 +662,9 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
  *            type: string
  *            example: bluetooth
  *        - in: path
- *          name: deviceID
+ *          name: uuid
  *          required: true
- *          description: The ID of the device.
+ *          description: The UUID of the device.
  *          schema:
  *            type: string
  *            example: 12345
@@ -681,7 +682,7 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
  *                  data:
  *                    type: object
  *                    properties:
- *                      deviceID:
+ *                      uuid:
  *                        type: string
  *                        example: "12345"
  *                      bridge:
@@ -704,30 +705,30 @@ router.post("/:bridge/:deviceID/disconnect", async function (request, response) 
  *                    type: string
  *                    example: "Error message"
  */
-router.delete("/:bridge/:deviceID", async function (request, response) {
+router.delete("/:bridge/:uuid", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
-    
+    payload.uuid         = request.params.uuid;
+
     let data       = {};
     let message    = {};
 
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
 
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            message.deviceID    = payload.deviceID.trim();
-            message.callID      = common.randomHash(); // create a unique call ID to identify the request
-            message.bridge      = bridge;
+        if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+            message.uuid    = payload.uuid.trim();
+            message.callID  = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge  = bridge;
 
             mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("DELETE request for device remove via ID " + message.deviceID + " forwarded via MQTT", "gre");
+            common.conLog("DELETE request for device remove via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
             handlePendingMqttResponse(message.callID, response);
         }
         else {
             data.status = "error";
-            data.error  = "No ID provided";
+            data.error  = "No UUID provided";
         }
     }
     else {
@@ -742,7 +743,7 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
 
 /**
  * @swagger
- *  /devices/{bridge}/{deviceID}:
+ *  /devices/{bridge}/{uuid}:
  *    post:
  *      summary: Add a new device
  *      description: This endpoint adds a new device to the system.
@@ -757,9 +758,9 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
  *            type: string
  *            example: bluetooth
  *        - in: path
- *          name: deviceID
+ *          name: uuid
  *          required: true
- *          description: The ID of the device.
+ *          description: The UUID of the device.
  *          schema:
  *            type: string
  *            example: 12345
@@ -796,7 +797,7 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
  *                  data:
  *                    type: object
  *                    properties:
- *                      deviceID:
+ *                      uuid:
  *                        type: string
  *                        example: "12345"
  *                      bridge:
@@ -819,10 +820,10 @@ router.delete("/:bridge/:deviceID", async function (request, response) {
  *                    type: string
  *                    example: "Error message"
  */
-router.post("/:bridge/:deviceID", async function (request, response) {
+router.post("/:bridge/:uuid", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
     payload.body         = request.body;
 
     let data       = {};
@@ -832,8 +833,8 @@ router.post("/:bridge/:deviceID", async function (request, response) {
         if (payload.bridge !== undefined) {
             const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
+            if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+                message.uuid        = payload.uuid.trim();
                 message.callID      = common.randomHash(); // create a unique call ID to identify the request
                 message.bridge      = bridge;
                 message.productName = payload.body.productName;
@@ -842,13 +843,13 @@ router.post("/:bridge/:deviceID", async function (request, response) {
                 message.powerType   = payload.body.powerType;
 
                 mqttClient.publish(bridge + "/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for device add via ID " + message.deviceID + " forwarded via MQTT", "gre");
+                common.conLog("POST request for device add via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
                 handlePendingMqttResponse(message.callID, response);
             }
             else {
                 data.status = "error";
-                data.error  = "No ID provided";
+                data.error  = "No UUID provided";
             }
         }
         else {
@@ -869,7 +870,7 @@ router.post("/:bridge/:deviceID", async function (request, response) {
 
 /**
  * @swagger
- *  /devices/{bridge}/{deviceID}:
+ *  /devices/{bridge}/{uuid}:
  *    patch:
  *      summary: Update a device
  *      description: This endpoint updates the information of a device. You can update the name, description, or other properties of the device (you can get all properties with a GET request on table "devices", see "Data manipulation").
@@ -884,9 +885,9 @@ router.post("/:bridge/:deviceID", async function (request, response) {
  *            type: string
  *            example: bluetooth
  *        - in: path
- *          name: deviceID
+ *          name: uuid
  *          required: true
- *          description: The ID of the device.
+ *          description: The UUID of the device.
  *          schema:
  *            type: string
  *            example: 12345
@@ -925,7 +926,7 @@ router.post("/:bridge/:deviceID", async function (request, response) {
  *                  data:
  *                    type: object
  *                    properties:
- *                      deviceID:
+ *                      uuid:
  *                        type: string
  *                        example: "12345"
  *                      bridge:
@@ -957,10 +958,10 @@ router.post("/:bridge/:deviceID", async function (request, response) {
  *                    type: string
  *                    example: "Error message"
  */
-router.patch("/:bridge/:deviceID", async function (request, response) {
+router.patch("/:bridge/:uuid", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
     payload.body         = request.body;
 
     let data       = {};
@@ -970,12 +971,12 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
         if (payload.bridge !== undefined) {
             const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                const deviceID = payload.deviceID.trim();
+            if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+                const uuid = payload.uuid.trim();
 
                 // Update individualID and roomID directly in the database (these are server-side fields, not bridge-side)
                 if (payload.body.individualID !== undefined || payload.body.roomID !== undefined) {
-                    const device = getDevice(deviceID, bridge);
+                    const device = getDevice(uuid, bridge);
 
                     if (device === undefined) {
                         data.status = "error";
@@ -998,8 +999,8 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
                         return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
                     }
 
-                    database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE deviceID = ? AND bridge = ?").run(individualID, roomID, deviceID, bridge);
-                    common.conLog("PATCH request for device assignment update via ID " + deviceID + " successful", "gre");
+                    database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE uuid = ? AND bridge = ?").run(individualID, roomID, uuid, bridge);
+                    common.conLog("PATCH request for device assignment update via UUID " + uuid + " successful", "gre");
                 }
 
                 // Forward remaining fields (name, description, etc.) to the bridge via MQTT
@@ -1008,27 +1009,27 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
                 delete bridgeFields.roomID;
 
                 if (Object.keys(bridgeFields).length > 0) {
-                    message.deviceID    = deviceID;
-                    message.callID      = common.randomHash();
-                    message.bridge      = bridge;
-                    message.updates     = bridgeFields;
+                    message.uuid    = uuid;
+                    message.callID  = common.randomHash();
+                    message.bridge  = bridge;
+                    message.updates = bridgeFields;
 
                     mqttClient.publish(bridge + "/devices/update", JSON.stringify(message));
-                    common.conLog("PATCH request for device update via ID " + message.deviceID + " forwarded via MQTT", "gre");
+                    common.conLog("PATCH request for device update via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
                     handlePendingMqttResponse(message.callID, response);
                 }
                 else {
                     // Only assignment fields were updated, no MQTT needed
                     data.status = "ok";
-                    data.device = getDevice(deviceID, bridge);
+                    data.device = getDevice(uuid, bridge);
                     enrichDeviceWithAssignment(data.device);
                     return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
                 }
             }
             else {
                 data.status = "error";
-                data.error  = "No ID provided";
+                data.error  = "No UUID provided";
             }
         }
         else {
@@ -1048,7 +1049,7 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
 
 /**
  * @swagger
- * /devices/{bridge}/{deviceID}/values:
+ * /devices/{bridge}/{uuid}/values:
  *   get:
  *     summary: Get current device values
  *     description: This endpoint retrieves the current values of a connected device.
@@ -1063,9 +1064,9 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
  *           type: string
  *           example: bluetooth
  *       - in: path
- *         name: deviceID
+ *         name: uuid
  *         required: true
- *         description: The ID of the device.
+ *         description: The UUID of the device.
  *         schema:
  *           type: string
  *           example: 12345
@@ -1089,7 +1090,7 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
  *                     bridge:
  *                       type: string
  *                       example: "bluetooth"
- *                     deviceID:
+ *                     uuid:
  *                       type: string
  *                       example: "12345"
  *                     values:
@@ -1111,10 +1112,10 @@ router.patch("/:bridge/:deviceID", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.get("/:bridge/:deviceID/values", async function (request, response) {
+router.get("/:bridge/:uuid/values", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
 
     let data       = {};
     let message    = {};
@@ -1122,21 +1123,29 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
 
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            message.deviceID    = payload.deviceID.trim();
-            message.callID      = common.randomHash(); // create a unique call ID to identify the request
-            message.bridge      = bridge;
-            message.values      = {};
-
-            handlePendingMqttResponse(message.callID, response);
+        if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+            message.uuid    = payload.uuid.trim();
+            message.callID  = common.randomHash(); // create a unique call ID to identify the request
+            message.bridge  = bridge;
+            message.values  = {};
 
             if (message.bridge === "bluetooth" || message.bridge === "zigbee") { // Request latest values from the device via MQTT, i.e. Bluetooth or Zigbee
+                handlePendingMqttResponse(message.callID, response);
                 mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("GET request for device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+                common.conLog("GET request for device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
             }
-            else { // Get latest values from database for the device, i.e. HTTP or LoRa
-                const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? GROUP BY property ORDER BY property ASC");
-                const results   = await statement.all(message.deviceID, message.bridge);
+            else { // Get latest values from database for the device, i.e. HTTP or LoRa — use numeric deviceID
+                const deviceID = getDeviceIDByUUID(database, message.uuid, bridge);
+                if (deviceID === null) {
+                    data.status = "error";
+                    data.error  = "Device not found";
+                    return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device values");
+                }
+
+                handlePendingMqttResponse(message.callID, response);
+
+                const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_history_devices_values WHERE deviceID = ? GROUP BY property ORDER BY property ASC");
+                const results   = statement.all(deviceID);
 
                 for (const result of results) {
                     message.values[result.property] = { value: result.value, valueAsNumeric: result.valueAsNumeric };
@@ -1146,7 +1155,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
         }
         else {
             data.status = "error";
-            data.error  = "No ID provided";
+            data.error  = "No UUID provided";
         }
     }
     else {
@@ -1162,7 +1171,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
 
 /**
  * @swagger
- * /devices/{bridge}/{deviceID}/values:
+ * /devices/{bridge}/{uuid}/values:
  *   post:
  *     summary: Set device values (only Bluetooth and ZigBee)
  *     description: This endpoint sets new values for a connected device.
@@ -1177,9 +1186,9 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
  *           type: string
  *           example: bluetooth
  *       - in: path
- *         name: deviceID
+ *         name: uuid
  *         required: true
- *         description: The ID of the device.
+ *         description: The UUID of the device.
  *         schema:
  *           type: string
  *           example: 12345
@@ -1210,7 +1219,7 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
  *                     callID:
  *                       type: string
  *                       example: "In58F8lxhMEe6a4G"
- *                     deviceID:
+ *                     uuid:
  *                       type: string
  *                       example: "12345"
  *                     values:
@@ -1230,10 +1239,10 @@ router.get("/:bridge/:deviceID/values", async function (request, response) {
  *                   type: string
  *                   example: "Error message"
  */
-router.post("/:bridge/:deviceID/values", async function (request, response) {
+router.post("/:bridge/:uuid/values", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
     payload.body         = request.body;
 
     let data       = {};
@@ -1243,20 +1252,20 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
         if (payload.bridge !== undefined) {
             const bridge = payload.bridge.trim();
 
-            if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-                message.deviceID    = payload.deviceID.trim();
-                message.callID      = common.randomHash(); // create a unique call ID to identify the request
+            if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+                message.uuid    = payload.uuid.trim();
+                message.callID  = common.randomHash(); // create a unique call ID to identify the request
                 message.values  = payload.body;
-                message.bridge      = bridge;
+                message.bridge  = bridge;
 
                 mqttClient.publish(bridge + "/devices/values/set", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for setting device values via ID " + message.deviceID + " forwarded via MQTT", "gre");
+                common.conLog("POST request for setting device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
                 handlePendingMqttResponse(message.callID, response);
             }
             else {
                 data.status = "error";
-                data.error  = "No ID provided";
+                data.error  = "No UUID provided";
             }
         }
         else {
@@ -1315,7 +1324,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
  *                       items:
  *                         type: object
  *                         properties:
- *                           deviceID:
+ *                           uuid:
  *                             type: string
  *                             example: "12345"
  *                           bridge:
@@ -1329,7 +1338,7 @@ router.post("/:bridge/:deviceID/values", async function (request, response) {
  *                       items:
  *                         type: object
  *                         properties:
- *                           deviceID:
+ *                           uuid:
  *                             type: string
  *                             example: "54321"
  *                           bridge:
@@ -1382,7 +1391,7 @@ router.get("/:bridge/list", async function (request, response) {
 
 /**
  * @swagger
- *  /devices/{bridge}/{deviceID}:
+ *  /devices/{bridge}/{uuid}:
  *    get:
  *      summary: Get device info via ID
  *      description: This endpoint retrieves detailed information about a specific device using its ID.
@@ -1397,9 +1406,9 @@ router.get("/:bridge/list", async function (request, response) {
  *            type: string
  *            example: bluetooth
  *        - in: path
- *          name: deviceID
+ *          name: uuid
  *          required: true
- *          description: The ID of the device.
+ *          description: The UUID of the device.
  *          schema:
  *            type: string
  *            example: 12345
@@ -1417,7 +1426,7 @@ router.get("/:bridge/list", async function (request, response) {
  *                  device:
  *                    type: object
  *                    properties:
- *                      deviceID:
+ *                      uuid:
  *                        type: string
  *                        example: "12345"
  *                      bridge:
@@ -1484,16 +1493,16 @@ router.get("/:bridge/list", async function (request, response) {
  *                    type: string
  *                    example: "Error message"
  */
-router.get("/:bridge/:deviceID", async function (request, response) {
+router.get("/:bridge/:uuid", async function (request, response) {
     const payload        = {};
     payload.bridge       = request.params.bridge;
-    payload.deviceID     = request.params.deviceID;
+    payload.uuid         = request.params.uuid;
     let data             = {};
 
     if (payload.bridge !== undefined) {
         const bridge = payload.bridge.trim();
-        if ((payload.deviceID !== undefined) && (payload.deviceID.trim() !== "")) { // check if deviceID is provided
-            const device = getDevice(payload.deviceID.trim(), bridge);
+        if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
+            const device = getDevice(payload.uuid.trim(), bridge);
             if (device !== undefined) {
                 data.status = "ok";
                 data.device = device;
@@ -1505,12 +1514,12 @@ router.get("/:bridge/:deviceID", async function (request, response) {
                         data.status             = "error";
                         data.error              = "Fatal error: " + (error.stack).slice(0, 128);
                         data.device.properties  = {};
-                    }   
+                    }
                 }
 
                 enrichDeviceWithAssignment(data.device);
 
-                common.conLog("GET request for device info via ID " + payload.deviceID + " successful", "gre");
+                common.conLog("GET request for device info via UUID " + payload.uuid + " successful", "gre");
             }
             else {
                 data.status = "error";
@@ -1519,7 +1528,7 @@ router.get("/:bridge/:deviceID", async function (request, response) {
         }
         else {
             data.status = "error";
-            data.error  = "No ID provided";
+            data.error  = "No UUID provided";
         }
     }
     else {

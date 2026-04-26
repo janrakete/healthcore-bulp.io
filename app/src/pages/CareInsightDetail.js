@@ -45,7 +45,7 @@ class CareInsightDetail extends HTMLElement {
               <p><strong>${window.Translation.get("Summary")}:</strong> ${item.summary}</p><br />
               ${item.explanation ? `<p><strong>${window.Translation.get("Explanation")}:</strong> ${item.explanation}</p><br />` : ""}
               ${item.recommendation ? `<p><strong>${window.Translation.get("Recommendation")}:</strong> ${item.recommendation}</p><br />` : ""}
-              ${item.device ? `<p><strong>${window.Translation.get("Device")}:</strong> ${item.device.name || item.device.productName || item.device.deviceID}</p><br />` : ""}
+              ${item.device ? `<p><strong>${window.Translation.get("Device")}:</strong> ${item.device.name || item.device.productName || item.device.uuid}</p><br />` : ""}
               ${item.individual ? `<p><strong>${window.Translation.get("AssignedPerson")}:</strong> ${item.individual.firstname} ${item.individual.lastname}</p><br />` : ""}
               ${item.room ? `<p><strong>${window.Translation.get("AssignedRoom")}:</strong> ${item.room.name}</p><br />` : ""}
 

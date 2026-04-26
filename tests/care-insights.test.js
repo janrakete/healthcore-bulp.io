@@ -25,6 +25,7 @@ const request = require("supertest");
 const { createTestDatabase, setupGlobals, createTestApp, insertTestDevice } = require("./setup");
 
 let app, db, careInsights;
+let careDevice001ID; // numeric PK for care_device_001
 
 beforeAll(() => {
   db = createTestDatabase();
@@ -40,14 +41,15 @@ beforeAll(() => {
   const roomResult = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Care Room");
   const individualResult = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Mia", "Muster", roomResult.lastInsertRowid);
 
-  insertTestDevice(db, {
-    deviceID:     "care_device_001",
+  const careDevice = insertTestDevice(db, {
+    uuid:         "care_device_001",
     bridge:       "http",
     productName:  "CareSensor",
     name:         "Room Sensor",
     individualID: individualResult.lastInsertRowid,
     roomID:       roomResult.lastInsertRowid,
   });
+  careDevice001ID = careDevice.deviceID;
 });
 
 afterAll(() => {
@@ -74,8 +76,8 @@ function seedValues(values) {
   const now = Date.now();
   values.forEach((value, index) => {
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("care_device_001", "http", "heartrate", String(value), value, now - index);
+      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", String(value), value, now - index);
   });
 }
 
@@ -90,7 +92,7 @@ describe("Care Insights engine", () => {
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
 
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         heartrate: {
@@ -119,7 +121,7 @@ describe("Care Insights engine", () => {
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
 
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         heartrate: {
@@ -136,7 +138,7 @@ describe("Care Insights engine", () => {
 
   test("creates and resolves connectivity insight", () => {
     careInsights.handleDeviceStatus({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       status: "offline"
     });
@@ -148,7 +150,7 @@ describe("Care Insights engine", () => {
     expect(insight.roomID).toBeGreaterThan(0);
 
     careInsights.handleDeviceStatus({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       status: "online"
     });
@@ -164,7 +166,7 @@ describe("Care Insights engine", () => {
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
     });
@@ -176,7 +178,7 @@ describe("Care Insights engine", () => {
     db.prepare("DELETE FROM mqtt_history_devices_values").run();
     seedValues([71, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "71", valueAsNumeric: 71 } }
     });
@@ -194,7 +196,7 @@ describe("Care Insights engine", () => {
 
     for (let i = 0; i < 8; i++) {
       careInsights.handleDeviceValues({
-        deviceID: "care_device_001",
+        uuid: "care_device_001",
         bridge: "http",
         values: { heartrate: { value: String(240 + i), valueAsNumeric: 240 + i } }
       });
@@ -213,12 +215,12 @@ describe("Care Insights engine", () => {
     const now = Date.now();
     [300, 200, 250].forEach((value, index) => {
       db.prepare(
-        "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-      ).run("care_device_001", "http", "drink_ml", String(value), value, now - index);
+        "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         drink_ml: {
@@ -242,12 +244,12 @@ describe("Care Insights engine", () => {
     const now = Date.now();
     [200, 200, 200].forEach((value, index) => {
       db.prepare(
-        "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-      ).run("care_device_001", "http", "steps", String(value), value, now - index);
+        "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      ).run(careDevice001ID, "steps", String(value), value, now - index);
     });
 
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         steps: {
@@ -284,12 +286,12 @@ describe("Care Insights engine", () => {
     const now = Date.now();
     [300, 200, 250].forEach((value, index) => {
       db.prepare(
-        "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-      ).run("care_device_001", "http", "drink_ml", String(value), value, now - index);
+        "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         drink_ml: {
@@ -316,7 +318,7 @@ describe("Care Insights API", () => {
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         heartrate: {
@@ -345,7 +347,7 @@ describe("Care Insights API", () => {
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
     });
@@ -363,7 +365,7 @@ describe("Care Insights API", () => {
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
     });
@@ -381,7 +383,7 @@ describe("Care Insights API", () => {
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);
     careInsights.handleDeviceValues({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       values: {
         heartrate: {
@@ -407,7 +409,7 @@ describe("Care Insights API", () => {
 
   test("PATCH /care-insights/:id updates status", async () => {
     careInsights.handleDeviceStatus({
-      deviceID: "care_device_001",
+      uuid: "care_device_001",
       bridge: "http",
       status: "offline"
     });

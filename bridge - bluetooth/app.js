@@ -145,7 +145,7 @@ async function startBridgeAndServer() {
   /**
    * Searches for a device by its productName within a given Map of devices.
    * @param {string} productName - The device product name to search for.
-   * @param {Map<string, Object>} devices - The Map of known device objects (keyed by deviceID).
+   * @param {Map<string, Object>} devices - The Map of known device objects (keyed byUUID).
    * @returns {Object|undefined} The matching device object, or `undefined` if not found.
    * @description This function iterates through the Map of devices and returns the first device that matches the provided product name. If no matching device is found, it returns `undefined`.
    */
@@ -160,7 +160,7 @@ async function startBridgeAndServer() {
 
   /**
    * Connects to a Bluetooth device, discovers its services and characteristics, subscribes to notifications, and updates bridge status.
-   * @param {Object} device - Device metadata (deviceID, name, etc.).
+   * @param {Object} device - Device metadata (uuid, name, etc.).
    * @param {Object} deviceRaw - The raw Bluetooth device object.
    * @param {string} callID - Optional call ID to associate with the device (used for scan results).
    * @param {boolean} addDeviceToServer - Whether to add the device to the server after connecting (used for MQTT-triggered connections).
@@ -173,34 +173,34 @@ async function startBridgeAndServer() {
 
     if (device.connectable === true) {
       deviceRaw.connect(function (error) { 
-        if (error) {    
+        if (error) {
           common.conLog("Bluetooth: Error while connecting to device:", "red");
           common.conLog(error, "std", false);
-          bridgeStatus.devicesConnecting.delete(device.deviceID); // connection failed — remove from connecting guard
+          bridgeStatus.devicesConnecting.delete(device.uuid); // connection failed — remove from connecting guard
         }
         else {
           deviceRaw.once("disconnect", function (error) { // if device is connect, set event handler for disconnecting
-            common.conLog("Bluetooth: Device disconnected: " + device.deviceID + " (" + device.productName + ")", "red");
-            bridgeStatus.devicesConnected.delete(device.deviceID); // remove device from map of connected devices
-            
+            common.conLog("Bluetooth: Device disconnected: " + device.uuid + " (" + device.productName + ")", "red");
+            bridgeStatus.devicesConnected.delete(device.uuid); // remove device from map of connected devices
+
             delete device.deviceRaw; // remove device object from device, because stringify will not work with object
             delete device.deviceConverter; // remove device converter from device, because stringify will not work with object
             delete device._buffers; // clear UART fragment buffers to avoid stale data on reconnect
-            bridgeStatus.devicesConnecting.delete(device.deviceID); // ensure connecting-guard is cleared on disconnect
+            bridgeStatus.devicesConnecting.delete(device.uuid); // ensure connecting-guard is cleared on disconnect
             mqttClient.publish("server/devices/disconnect", JSON.stringify(device)); // publish disconnected device to MQTT broker
 
             let message       = {}; // create message for MQTT broker about device status
-            message.deviceID  = device.deviceID;
+            message.uuid      = device.uuid;
             message.bridge    = BRIDGE_PREFIX;
             message.status    = "offline";
             mqttClient.publish("server/devices/status", JSON.stringify(message));
-           
-            if (bridgeStatus.devicesRegisteredAtServer.get(device.deviceID) !== undefined && bridgeStatus.status === "online" && bluetooth.state === "poweredOn") { // if device is registered at server and bridge is online, trigger an immediate scan so the maintenance loop doesn't have to wait for the next cycle
-              common.conLog("Bluetooth: Device lost - triggering immediate scan for " + device.deviceID, "yel");
+
+            if (bridgeStatus.devicesRegisteredAtServer.get(device.uuid) !== undefined && bridgeStatus.status === "online" && bluetooth.state === "poweredOn") { // if device is registered at server and bridge is online, trigger an immediate scan so the maintenance loop doesn't have to wait for the next cycle
+              common.conLog("Bluetooth: Device lost - triggering immediate scan for " + device.uuid, "yel");
               bluetooth.startScanning([], true);
               setTimeout(() => {
                 bluetooth.stopScanning();
-                common.conLog("Bluetooth: Immediate reconnect scan finished for " + device.deviceID, "gre");
+                common.conLog("Bluetooth: Immediate reconnect scan finished for " + device.uuid, "gre");
               }, appConfig.CONF_devicesBluetoothMaintenanceScanDurationSeconds * 1000);
             }
           });
@@ -208,16 +208,16 @@ async function startBridgeAndServer() {
           const discoverDelay = (process.platform === "darwin") ? 1000 : 0; // on macOS, a short delay before service discovery prevents CoreBluetooth from hanging when services are not yet cached
 
           setTimeout(() => {
-            common.conLog("Bluetooth: Starting service discovery for " + device.deviceID + " (platform: " + process.platform + ")", "yel");
+            common.conLog("Bluetooth: Starting service discovery for " + device.uuid + " (platform: " + process.platform + ")", "yel");
 
             deviceRaw.discoverServices([], function (error, services) { // First: discover all services
               if (error || !services || services.length === 0) {
-                common.conLog("Bluetooth: Service discovery failed for " + device.deviceID + " - error: " + error + ", services: " + (services ? services.length : "null"), "red");
+                common.conLog("Bluetooth: Service discovery failed for " + device.uuid + " - error: " + error + ", services: " + (services ? services.length : "null"), "red");
                 deviceRaw.disconnect();
                 return;
               }
 
-              common.conLog("Bluetooth: Found " + services.length + " service(s) for " + device.deviceID, "yel");
+              common.conLog("Bluetooth: Found " + services.length + " service(s) for " + device.uuid, "yel");
 
               let servicesRemaining = services.length; // counter to know when all services are processed
 
@@ -235,9 +235,9 @@ async function startBridgeAndServer() {
                 }
                 else {
                   for (const service of services) { // for each service of device
-                    common.conLog("Bluetooth: " + device.deviceID + " - Service: " + service.uuid, "yel");
+                    common.conLog("Bluetooth: " + device.uuid + " - Service: " + service.uuid, "yel");
                     for (const characteristic of service.characteristics || []) { // for each characteristic of service
-                      common.conLog("Bluetooth: " + device.deviceID + " - Characteristic: " + characteristic.uuid + " [" + (characteristic.properties || []).join(",") + "]", "yel");
+                      common.conLog("Bluetooth: " + device.uuid + " - Characteristic: " + characteristic.uuid + " [" + (characteristic.properties || []).join(",") + "]", "yel");
                       const property = device.deviceConverter.getPropertyByUUID(characteristic.uuid); // get property by UUID from converter
                       if (property !== undefined) {
                         if ((property.notify === true) && characteristic.properties.includes("notify")) { // if characteristic has notify value, subscribe to it
@@ -257,7 +257,7 @@ async function startBridgeAndServer() {
                               }
 
                               characteristic.on("data", function (value) { // if value is received from device, log it
-                                deviceUpdateLastSeen(device.deviceID); // update watchdog timestamp
+                                deviceUpdateLastSeen(device.uuid); // update watchdog timestamp
 
                                 if (property.valueType === "Subproperties") { // if property has multiple subproperties (text-based UART)
                                   device._buffers[characteristic.uuid] += (Buffer.isBuffer(value) ? value.toString("utf8") : String(value)); // Append incoming fragment to buffer and process only complete newline-terminated lines
@@ -274,23 +274,23 @@ async function startBridgeAndServer() {
                                     const subproperty = device.deviceConverter.getSubproperty(property, Buffer.from(trimmedLine));
                                     if (subproperty !== undefined) { // if subproperty is found in converter
                                       let message         = {};
-                                      message.deviceID    = device.deviceID;
+                                      message.uuid        = device.uuid;
                                       message.values      = {};
                                       message.bridge      = BRIDGE_PREFIX;
                                       message.values[subproperty.name] = { value: subproperty.value, valueAsNumeric: subproperty.valueAsNumeric };
                                       mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-                                      deviceBatteryCheck(device.deviceID, message.values); // check for low battery and publish alert if needed
+                                      deviceBatteryCheck(device.uuid, message.values); // check for low battery and publish alert if needed
                                     }
                                   }
                                 }
                                 else {
                                   let message                     = {};
-                                  message.deviceID                = device.deviceID;
+                                  message.uuid                    = device.uuid;
                                   message.values                  = {}; // create empty object for properties
                                   message.bridge                  = BRIDGE_PREFIX;
                                   message.values[property.name]   = device.deviceConverter.get(property, value);
                                   mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-                                  deviceBatteryCheck(device.deviceID, message.values); // check for low battery and publish alert if needed
+                                  deviceBatteryCheck(device.uuid, message.values); // check for low battery and publish alert if needed
                                 }
                               }); 
                             }
@@ -304,18 +304,18 @@ async function startBridgeAndServer() {
                   }
                 }
 
-                common.conLog("Bluetooth: Device connected: " + device.deviceID + " (" + device.productName + ")", "gre");
+                common.conLog("Bluetooth: Device connected: " + device.uuid + " (" + device.productName + ")", "gre");
                 mqttClient.publish("server/devices/connect", JSON.stringify(device)); // publish connected device to MQTT broker
 
                 let message       = {}; // create message for MQTT broker about device status
-                message.deviceID  = device.deviceID;
+                message.uuid      = device.uuid;
                 message.bridge    = BRIDGE_PREFIX;
                 message.status    = "online";
                 mqttClient.publish("server/devices/status", JSON.stringify(message));
 
                 if (addDeviceToServer === true) { // if device should be added to server (only if it was connected via mqtt message with addDeviceToServer flag)
                   let message         = {};
-                  message.deviceID    = device.deviceID;
+                  message.uuid        = device.uuid;
                   message.bridge      = device.bridge || "";
                   message.powerType   = device.deviceConverter ? device.deviceConverter.powerType || "" : ""; // if converter defines a powerType, use it; otherwise empty string
                   message.productName = device.productName || "";
@@ -333,13 +333,13 @@ async function startBridgeAndServer() {
                   message.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
 
                   mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
-                  common.conLog("Try to add device " + message.deviceID + " to server", "yel");
+                  common.conLog("Try to add device " + message.uuid + " to server", "yel");
                 }
 
                 device.deviceRaw = deviceRaw; // save device object for later use
-                bridgeStatus.devicesConnected.set(device.deviceID, device); // add device to map of connected devices
-                bridgeStatus.devicesConnecting.delete(device.deviceID); // connection complete — remove from connecting guard
-                deviceUpdateLastSeen(device.deviceID); // initialize watchdog timestamp on connect
+                bridgeStatus.devicesConnected.set(device.uuid, device); // add device to map of connected devices
+                bridgeStatus.devicesConnecting.delete(device.uuid); // connection complete — remove from connecting guard
+                deviceUpdateLastSeen(device.uuid); // initialize watchdog timestamp on connect
               }
 
               const characteristicsDiscoverDelay = (process.platform === "darwin") ? 500 : 0; // on macOS, a short delay between service discoveries prevents CoreBluetooth from hanging when services are not yet cached
@@ -363,7 +363,7 @@ async function startBridgeAndServer() {
       });
     }
     else {
-      common.conLog("Bluetooth: Device " + device.deviceID + " (" + device.productName + ") is not connectable", "red"); 
+      common.conLog("Bluetooth: Device " + device.uuid + " (" + device.productName + ") is not connectable", "red");
     }
   }
 
@@ -391,34 +391,34 @@ async function startBridgeAndServer() {
   /**
    * Class representing the status of the Bluetooth bridge. Contains arrays for connected devices and registered devices at the server.
    * @class
-   * @property {Map<string, Object>} devicesConnected - Map of currently connected Bluetooth devices (keyed by deviceID).
-   * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by deviceID)
-   * @property {Map<string, Object>} devicesFoundViaScan - Map of devices found via scanning (keyed by deviceID).
+   * @property {Map<string, Object>} devicesConnected - Map of currently connected Bluetooth devices (keyed by UUID).
+   * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by UUID)
+   * @property {Map<string, Object>} devicesFoundViaScan - Map of devices found via scanning (keyed by UUID).
    * @property {number|null} deviceScanCallID - ID of call if scanning is initiated.
    * @property {string} status - Status of the bridge ("online" or "offline").
    * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
-      this.devicesConnected              = new Map(); // Map of currently connected Bluetooth devices (keyed by deviceID)
-      this.devicesConnecting             = new Map(); // Map of deviceIDs currently in the process of connecting (prevents duplicate connect attempts)
-      this.devicesRegisteredAtServer     = new Map(); // Map of devices registered at the server (keyed by deviceID)
-      this.devicesFoundViaScan           = new Map(); // Map of devices found via scanning (keyed by deviceID)
+      this.devicesConnected              = new Map(); // Map of currently connected Bluetooth devices (keyed by UUID)
+      this.devicesConnecting             = new Map(); // Map of UUIDs currently in the process of connecting (prevents duplicate connect attempts)
+      this.devicesRegisteredAtServer     = new Map(); // Map of devices registered at the server (keyed by UUID)
+      this.devicesFoundViaScan           = new Map(); // Map of devices found via scanning (keyed by UUID)
       this.deviceScanCallID              = undefined; // ID of call if scanning is initiated
       this.status                        = "offline"; // Status of the bridge
       this.maintenanceInterval           = undefined; // Interval timer for the unified maintenance loop (watchdog + signal strength + background scan)
-      this.batteryAlertsSent             = new Map(); // Map of deviceID -> timestamp of last battery alert (to prevent alert spam)
-      this.deviceLastSeen                = new Map(); // Map of deviceID -> timestamp of last data received (for watchdog)
+      this.batteryAlertsSent             = new Map(); // Map of UUID -> timestamp of last battery alert (to prevent alert spam)
+      this.deviceLastSeen                = new Map(); // Map of UUID -> timestamp of last data received (for watchdog)
     }
   }
   const bridgeStatus = new BridgeStatus(); // create new object for bridge status
 
   /**
    * Updates the last-seen timestamp for a device. Called whenever data is received from or read for a device.
-   * @param {string} deviceID - The device ID.
+   * @param {string} uuid - The UUID of the device.
    */
-  function deviceUpdateLastSeen(deviceID) {
-    bridgeStatus.deviceLastSeen.set(deviceID, Date.now());
+  function deviceUpdateLastSeen(uuid) {
+    bridgeStatus.deviceLastSeen.set(uuid, Date.now());
   }
 
   /**
@@ -447,7 +447,7 @@ async function startBridgeAndServer() {
         const now = Date.now();
 
         for (const device of bridgeStatus.devicesConnected.values()) {
-          const lastSeen = bridgeStatus.deviceLastSeen.get(device.deviceID);
+          const lastSeen = bridgeStatus.deviceLastSeen.get(device.uuid);
 
           if (lastSeen === undefined) { // device just connected, no data yet — skip until first data arrives
             continue;
@@ -456,11 +456,11 @@ async function startBridgeAndServer() {
           const silentDuration = now - lastSeen;
 
           if (silentDuration > appConfig.CONF_devicesBluetoothWatchdogTimeoutSeconds * 1000) {
-            common.conLog("Bluetooth: WATCHDOG - Device " + device.deviceID + " (" + device.productName + ") is unresponsive (no data for " + Math.round(silentDuration / 1000) + "s)", "red");
+            common.conLog("Bluetooth: WATCHDOG - Device " + device.uuid + " (" + device.productName + ") is unresponsive (no data for " + Math.round(silentDuration / 1000) + "s)", "red");
 
             const alert = {
               bridge:         BRIDGE_PREFIX,
-              deviceID:       device.deviceID,
+              uuid:           device.uuid,
               productName:    device.productName,
               type:           "unresponsive",
               silentSeconds:  Math.round(silentDuration / 1000),
@@ -478,21 +478,21 @@ async function startBridgeAndServer() {
         if (device.deviceRaw && typeof device.deviceRaw.updateRssi === "function") {
           device.deviceRaw.updateRssi(function (error, rssi) {
             if (error) {
-              common.conLog("Bluetooth: Error reading signal strength for " + device.deviceID + ": " + error.message, "red");
+              common.conLog("Bluetooth: Error reading signal strength for " + device.uuid + ": " + error.message, "red");
               return;
             }
 
             const strength = Math.min(100, Math.max(0, Math.round((rssi + 100) * (100 / 70)))); // normalize RSSI (-100…-30 dBm) to percentage (0–100)
 
             const message = {
-              deviceID:    device.deviceID,
+              uuid:        device.uuid,
               bridge:      BRIDGE_PREFIX,
               strength:    strength,
               timestamp:   Date.now()
             };
 
             mqttClient.publish("server/devices/strength", JSON.stringify(message));
-            common.conLog("Bluetooth: Signal strength for " + device.deviceID + ": " + strength + "% (RSSI: " + rssi + " dBm)", "std", false);
+            common.conLog("Bluetooth: Signal strength for " + device.uuid + ": " + strength + "% (RSSI: " + rssi + " dBm)", "std", false);
           });
         }
       }
@@ -500,7 +500,7 @@ async function startBridgeAndServer() {
       // Phase 3: Background scan for disconnected registered devices
       let hasDisconnectedRegistered = false;
       for (const device of bridgeStatus.devicesRegisteredAtServer.values()) {
-        if (!bridgeStatus.devicesConnected.has(device.deviceID)) {
+        if (!bridgeStatus.devicesConnected.has(device.uuid)) {
           hasDisconnectedRegistered = true;
           break;
         }
@@ -531,10 +531,10 @@ async function startBridgeAndServer() {
 
   /**
    * Checks if the given values contain a battery level reading and publishes a low-battery alert if the level is at or below the threshold. Alerts are rate-limited per device to avoid spam.
-   * @param {string} deviceID - The device ID.
+   * @param {string} uuid - The UUID.
    * @param {Object} values - The values object (property name -> { value, valueAsNumeric }).
    */
-  function deviceBatteryCheck(deviceID, values) {
+  function deviceBatteryCheck(uuid, values) {
     if (!values || !values.battery) {
       return;
     }
@@ -544,22 +544,22 @@ async function startBridgeAndServer() {
       return; 
     }
 
-    common.conLog("Bluetooth: Battery level for " + deviceID + ": " + batteryValue + "%", "std", false);
+    common.conLog("Bluetooth: Battery level for " + uuid + ": " + batteryValue + "%", "std", false);
 
     if (batteryValue <= appConfig.CONF_devicesBluetoothBatteryThresholdPercent) {
-      const lastAlert = bridgeStatus.batteryAlertsSent.get(deviceID); // check when the last alert for this device was sent to prevent alert spam
+      const lastAlert = bridgeStatus.batteryAlertsSent.get(uuid); // check when the last alert for this device was sent to prevent alert spam
       const now       = Date.now();
 
       if (lastAlert && (now - lastAlert) < appConfig.CONF_devicesBluetoothBatteryAlertCooldownHours * 60 * 60 * 1000) {
-        common.conLog("Bluetooth: Low battery alert for " + deviceID + " suppressed (cooldown active)", "std", false);
+        common.conLog("Bluetooth: Low battery alert for " + uuid + " suppressed (cooldown active)", "std", false);
         return;
       }
 
-      bridgeStatus.batteryAlertsSent.set(deviceID, now);
+      bridgeStatus.batteryAlertsSent.set(uuid, now);
 
       const alert = {
         bridge:      BRIDGE_PREFIX,
-        deviceID:    deviceID,
+        uuid:        uuid,
         type:        "low_battery",
         value:       batteryValue,
         threshold:   appConfig.CONF_devicesBluetoothBatteryThresholdPercent,
@@ -568,20 +568,20 @@ async function startBridgeAndServer() {
 
       mqttClient.publish("server/devices/alert", JSON.stringify(alert));
 
-      common.conLog("Bluetooth: Low battery alert for " + deviceID + ": " + batteryValue + "% (threshold: " + appConfig.CONF_devicesBluetoothBatteryThresholdPercent + "%)", "red");
+      common.conLog("Bluetooth: Low battery alert for " + uuid + ": " + batteryValue + "% (threshold: " + appConfig.CONF_devicesBluetoothBatteryThresholdPercent + "%)", "red");
     }
   }
 
    /**
    * Handles an on-demand signal strength request for a single device or all connected devices.
-   * @param {Object} data - The data object. If data.deviceID is set, only that device's signal strength is read; otherwise all connected devices.
+   * @param {Object} data - The data object. If data.uuid is set, only that device's signal strength is read; otherwise all connected devices.
    */
   function mqttDevicesStrength(data) {
-    // If deviceID is provided, get only that device; otherwise use all connected devices
+    // If uuid is provided, get only that device; otherwise use all connected devices
     let devices = [];
-    if (data.deviceID) {
-      if (bridgeStatus.devicesConnected.has(data.deviceID)) {
-        devices = [bridgeStatus.devicesConnected.get(data.deviceID)];
+    if (data.uuid) {
+      if (bridgeStatus.devicesConnected.has(data.uuid)) {
+        devices = [bridgeStatus.devicesConnected.get(data.uuid)];
       }
     } else {
       devices = [...bridgeStatus.devicesConnected.values()];
@@ -596,14 +596,14 @@ async function startBridgeAndServer() {
       if (device.deviceRaw && typeof device.deviceRaw.updateRssi === "function") {
         device.deviceRaw.updateRssi(function (error, rssi) {
           if (error) {
-            common.conLog("Bluetooth: Error reading signal strength for " + device.deviceID + ": " + error.message, "red");
+            common.conLog("Bluetooth: Error reading signal strength for " + device.uuid + ": " + error.message, "red");
             return;
           }
 
           const strength = Math.min(100, Math.max(0, Math.round((rssi + 100) * (100 / 70)))); // normalize RSSI (-100…-30 dBm) to percentage (0–100)
 
           const message = {
-            deviceID:    device.deviceID,
+            uuid:        device.uuid,
             bridge:      BRIDGE_PREFIX,
             strength:    strength,
             callID:      data.callID,
@@ -611,7 +611,7 @@ async function startBridgeAndServer() {
           };
 
           mqttClient.publish("server/devices/strength", JSON.stringify(message));
-          common.conLog("Bluetooth: Signal strength for " + device.deviceID + ": " + strength + "% (RSSI: " + rssi + " dBm)", "gre");
+          common.conLog("Bluetooth: Signal strength for " + device.uuid + ": " + strength + "% (RSSI: " + rssi + " dBm)", "gre");
         });
       }
     }
@@ -635,35 +635,35 @@ async function startBridgeAndServer() {
   bluetooth.on("discover", function (deviceRaw) {
     let data             = {};
 
-    data.deviceID        = (process.platform === "darwin") ? fingerprintCreate(deviceRaw) : deviceRaw.uuid; // if platform is macOS, create fingerprint from deviceRaw, otherwise use uuid
-    data.productName     = deviceRaw.advertisement.localName; 
+    data.uuid            = (process.platform === "darwin") ? fingerprintCreate(deviceRaw) : deviceRaw.uuid; // if platform is macOS, create fingerprint from deviceRaw, otherwise use uuid
+    data.productName     = deviceRaw.advertisement.localName;
     data.rssi            = deviceRaw.rssi;
     data.connectable     = deviceRaw.connectable;
     data.bridge          = BRIDGE_PREFIX;
 
-    if (((data.deviceID !== undefined) && (data.deviceID.trim() !== "")) && ((data.productName !== undefined) && (data.productName.trim() !== ""))) {
-      common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") discovered", "yel");
+    if (((data.uuid !== undefined) && (data.uuid.trim() !== "")) && ((data.productName !== undefined) && (data.productName.trim() !== ""))) {
+      common.conLog("Bluetooth: Device " + data.uuid + " (" + data.productName + ") discovered", "yel");
 
       // always check if discovered device is registered at server and not yet connected/connecting - auto-connect if so
-      const registeredDevice  = bridgeStatus.devicesRegisteredAtServer.get(data.deviceID);
-      const alreadyConnected  = bridgeStatus.devicesConnected.get(data.deviceID);
-      const alreadyConnecting = bridgeStatus.devicesConnecting.has(data.deviceID); // guard against duplicate connect attempts (device may be re-discovered while connection is in progress)
+      const registeredDevice  = bridgeStatus.devicesRegisteredAtServer.get(data.uuid);
+      const alreadyConnected  = bridgeStatus.devicesConnected.get(data.uuid);
+      const alreadyConnecting = bridgeStatus.devicesConnecting.has(data.uuid); // guard against duplicate connect attempts (device may be re-discovered while connection is in progress)
 
       if (registeredDevice && !alreadyConnected && !alreadyConnecting) {
-        common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") is registered at server - trying to connect", "yel");
-        bridgeStatus.devicesConnecting.set(data.deviceID, true); // mark as connecting to prevent duplicate attempts
+        common.conLog("Bluetooth: Device " + data.uuid + " (" + data.productName + ") is registered at server - trying to connect", "yel");
+        bridgeStatus.devicesConnecting.set(data.uuid, true); // mark as connecting to prevent duplicate attempts
         deviceConnectAndDiscover(data, deviceRaw);
       }
 
       if (bridgeStatus.deviceScanCallID !== undefined) { // if a scan is active, also collect scan results
-        const existingDevice        = bridgeStatus.devicesFoundViaScan.get(data.deviceID);
+        const existingDevice        = bridgeStatus.devicesFoundViaScan.get(data.uuid);
         const previouslyConnectable = existingDevice !== undefined && existingDevice.connectable === true; // check if device was already found in previous scan and if it was connectable, because it can change during scan
 
         const nowConnectable  = deviceRaw.connectable === true;
         data.connectable      = nowConnectable || previouslyConnectable;
         data.deviceRaw        = deviceRaw;
 
-        bridgeStatus.devicesFoundViaScan.set(data.deviceID, data); // add or update device in map of devices found via scan
+        bridgeStatus.devicesFoundViaScan.set(data.uuid, data); // add or update device in map of devices found via scan
 
         const deviceWithoutRaw = { ...data }; // create a copy of the device object without the raw device object, because it cannot be stringified
         delete deviceWithoutRaw.deviceRaw;
@@ -843,7 +843,7 @@ async function startBridgeAndServer() {
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer.clear();
     for (const device of data.devices) {
-      bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
+      bridgeStatus.devicesRegisteredAtServer.set(device.uuid, device);
     }
 
     // Reconnection of disconnected registered devices is handled by the maintenance loop (Phase 3).
@@ -877,16 +877,16 @@ async function startBridgeAndServer() {
    * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
-    common.conLog("Bluetooth: Request to update device " + data.deviceID, "yel");
-    
+    common.conLog("Bluetooth: Request to update device " + data.uuid, "yel");
+
     if (data && typeof data.updates === "object") {
-      const deviceToUpdateReg = bridgeStatus.devicesRegisteredAtServer.get(data.deviceID);
+      const deviceToUpdateReg = bridgeStatus.devicesRegisteredAtServer.get(data.uuid);
       if (deviceToUpdateReg) {
-        bridgeStatus.devicesRegisteredAtServer.set(data.deviceID, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
+        bridgeStatus.devicesRegisteredAtServer.set(data.uuid, { ...deviceToUpdateReg, ...data.updates }); // update device with new data
       }
-      const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.deviceID);
+      const deviceToUpdateCon = bridgeStatus.devicesConnected.get(data.uuid);
       if (deviceToUpdateCon) {
-        bridgeStatus.devicesConnected.set(data.deviceID, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
+        bridgeStatus.devicesConnected.set(data.uuid, { ...deviceToUpdateCon, ...data.updates }); // update device with new data
       }
 
       common.conLog("Bluetooth: Updated bridge status (registered and connected devices)", "gre", false);
@@ -906,7 +906,7 @@ async function startBridgeAndServer() {
   function mqttDevicesReconnect(data) {
     bridgeStatus.devicesRegisteredAtServer.clear(); // reset map of registered devices
     for (const device of data.devices) {
-      bridgeStatus.devicesRegisteredAtServer.set(device.deviceID, device);
+      bridgeStatus.devicesRegisteredAtServer.set(device.uuid, device);
     }
 
     bridgeStatus.devicesFoundViaScan.clear(); // reset map of devices found via scan
@@ -921,78 +921,78 @@ async function startBridgeAndServer() {
 
   /**
    * If message is for connecting to a single device, search for it in the list of devices found via scan
-   * @param {Object} data - The data object containing the device ID or product name to connect to.
+   * @param {Object} data - The data object containing the UUID or product name to connect to.
    * @description This function handles the request to connect to a single Bluetooth device by searching for it in the list of devices found via scan.
    */
   function mqttDevicesConnect(data) {
-    common.conLog("Bluetooth: Request for connecting to single device " + data.deviceID + " (" + data.productName + ")", "yel");
+    common.conLog("Bluetooth: Request for connecting to single device " + data.uuid + " (" + data.productName + ")", "yel");
 
     let device = {}; // create empty device object
 
-    if (data.deviceID !== undefined) {
-      device = bridgeStatus.devicesFoundViaScan.get(data.deviceID); // search device in map of devices found via scan
+    if (data.uuid !== undefined) {
+      device = bridgeStatus.devicesFoundViaScan.get(data.uuid); // search device in map of devices found via scan
     }
     else if (data.productName !== undefined) {
       device = deviceFindByProductName(data.productName, bridgeStatus.devicesFoundViaScan); // search device in map of devices found via scan
     }
     else {
-      common.conLog("Bluetooth: No device ID or product name given", "red");
-      device = undefined; // if no device ID or product name given, set device to undefined
+      common.conLog("Bluetooth: No UUID or product name given", "red");
+      device = undefined; // if no UUID or product name given, set device to undefined
     }
 
     if (device) { // if device is in array of devices found via scan, try to connect
-      common.conLog("Bluetooth: Device " + device.deviceID + " (" + device.productName + ") found - trying to connect", "yel");
+      common.conLog("Bluetooth: Device " + device.uuid + " (" + device.productName + ") found - trying to connect", "yel");
       deviceConnectAndDiscover(device, device.deviceRaw, data.callID, data.addDeviceToServer); // connect to device and discover services and characteristics
     }
     else {
-      common.conLog("Bluetooth: Device " + data.deviceID + " (" + data.productName + ") not found in array of devices found via scan", "red");
+      common.conLog("Bluetooth: Device " + data.uuid + " (" + data.productName + ") not found in array of devices found via scan", "red");
     }
   }
 
   /**
    * If message is for removing a connected device (this message is sent AFTER server removed device)
-   * @param {Object} data - The data object containing the device ID to remove.
+   * @param {Object} data - The data object containing the UUID to remove.
    * @description This function handles the request to remove a connected device by disconnecting it and removing it from the list of connected devices.
    * If the device is successfully disconnected, it publishes a message to the MQTT broker indicating that the device has been removed.
    */  
   function mqttDevicesRemove(data) {
-    common.conLog("Bluetooth: Request for removing " + data.deviceID, "yel");
+    common.conLog("Bluetooth: Request for removing " + data.uuid, "yel");
 
-    const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
+    const device = bridgeStatus.devicesConnected.get(data.uuid); // search device in map of connected devices
 
     if (device) { // if device is in map of connected devices, try to disconnect
       device.deviceRaw.disconnect(function (error) { // disconnect device
-        if (error) {    
+        if (error) {
           common.conLog("Bluetooth: Error while disconnecting device:", "red");
           common.conLog(error, "std", false);
         }
         else {
-          bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of devices registered at server
-          common.conLog("Bluetooth: Device disconnected and removed: " + data.deviceID, "gre");
+          bridgeStatus.devicesRegisteredAtServer.delete(data.uuid); // remove device from map of devices registered at server
+          common.conLog("Bluetooth: Device disconnected and removed: " + data.uuid, "gre");
           mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
         }
       });
     }
     else {
-      bridgeStatus.devicesRegisteredAtServer.delete(data.deviceID); // remove device from map of devices registered at server
-      common.conLog("Bluetooth: Device removed: " + data.deviceID, "gre");
+      bridgeStatus.devicesRegisteredAtServer.delete(data.uuid); // remove device from map of devices registered at server
+      common.conLog("Bluetooth: Device removed: " + data.uuid, "gre");
       mqttClient.publish("server/devices/remove", JSON.stringify(data)); // publish removed device to MQTT broker
     }
   }
 
   /**
    * If message is for disconnecting a connected device
-   * @param {Object} data - The data object containing the device ID to disconnect.
+   * @param {Object} data - The data object containing the UUID to disconnect.
    * @description This function handles the request to disconnect a connected device by searching for it in the list of connected devices.
    */
   function mqttDevicesDisconnect(data) {
-    common.conLog("Bluetooth: Request for disconnecting " + data.deviceID, "yel");
+    common.conLog("Bluetooth: Request for disconnecting " + data.uuid, "yel");
 
-    const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
+    const device = bridgeStatus.devicesConnected.get(data.uuid); // search device in map of connected devices
 
     if (device) { // if device is in map of connected devices, try to disconnect
       device.deviceRaw.disconnect(function (error) { // disconnect device
-        if (error) {    
+        if (error) {
           common.conLog("Bluetooth: Error while disconnecting device:", "red");
           common.conLog(error, "std", false);
         }
@@ -1000,21 +1000,21 @@ async function startBridgeAndServer() {
 
       mqttClient.publish("server/devices/disconnect", JSON.stringify(data)); // publish disconnected device to MQTT broker
     }
-    else { 
-      common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
+    else {
+      common.conLog("Bluetooth: Device " + data.uuid + " is not connected", "red");
     }
   }
   
   /**
    * If message is for setting values of a connected device
-   * @param {Object} data - The data object containing the device ID and properties to set.
+   * @param {Object} data - The data object containing the UUID and properties to set.
    * @description This function handles the request to set values for properties of a connected Bluetooth device.
    */
   async function mqttDevicesValuesSet(data) {
-    common.conLog("Bluetooth: Request for setting values of " + data.deviceID, "yel");
+    common.conLog("Bluetooth: Request for setting values of " + data.uuid, "yel");
 
     if (data.values) {
-      const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
+      const device = bridgeStatus.devicesConnected.get(data.uuid); // search device in map of connected devices
 
       if (device) { // if device is in map of connected devices, try do set desired values
         const services    = device.deviceRaw.services; // get services of device
@@ -1062,8 +1062,8 @@ async function startBridgeAndServer() {
 
         mqttDevicesValuesGet(data); // ... get new values of properties that were set and publish them to MQTT broker
       }
-      else { 
-        common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
+      else {
+        common.conLog("Bluetooth: Device " + data.uuid + " is not connected", "red");
       }
     }
     else {
@@ -1073,17 +1073,17 @@ async function startBridgeAndServer() {
 
   /**
    * If message is for getting properties and values of a connected device
-   * @param {Object} data - The data object containing the device ID and properties to get.
+   * @param {Object} data - The data object containing the UUID and properties to get.
    * @description This function handles the request to get properties and values of a connected Bluetooth device.
    */
   async function mqttDevicesValuesGet(data) {
-    common.conLog("Bluetooth: Request for getting properties and values of " + data.deviceID, "yel");
-  
-    const device = bridgeStatus.devicesConnected.get(data.deviceID); // search device in map of connected devices
+    common.conLog("Bluetooth: Request for getting properties and values of " + data.uuid, "yel");
+
+    const device = bridgeStatus.devicesConnected.get(data.uuid); // search device in map of connected devices
 
     if (device) { // if device is in map of connected devices, try do get desired values
       let message                      = {};
-      message.deviceID                 = data.deviceID;
+      message.uuid                     = data.uuid;
       message.callID                   = data.callID;
       message.values                   = {};
 
@@ -1126,12 +1126,12 @@ async function startBridgeAndServer() {
       
       await Promise.all(promises); // wait for all read operations to complete before publishing
       mqttClient.publish("server/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-      
-      deviceUpdateLastSeen(data.deviceID); // update watchdog timestamp since we just successfully read from the device
-      deviceBatteryCheck(data.deviceID, message.values); // check for low battery and publish alert if needed
+
+      deviceUpdateLastSeen(data.uuid); // update watchdog timestamp since we just successfully read from the device
+      deviceBatteryCheck(data.uuid, message.values); // check for low battery and publish alert if needed
     }
-    else { 
-      common.conLog("Bluetooth: Device " + data.deviceID + " is not connected", "red");
+    else {
+      common.conLog("Bluetooth: Device " + data.uuid + " is not connected", "red");
     }
   }
   
@@ -1141,7 +1141,7 @@ async function startBridgeAndServer() {
     * @description This function creates the information of a registered device.
     */
    function mqttDevicesCreate(data) {
-      common.conLog("Bluetooth: Request to create device " + data.deviceID + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
+      common.conLog("Bluetooth: Request to create device " + data.uuid + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
 
       const deviceConverter = convertersList.find(data.productName); // get converter for device from list of converters
       if (deviceConverter === undefined) { 
@@ -1169,13 +1169,13 @@ async function startBridgeAndServer() {
     const disconnectPromises = [...bridgeStatus.devicesConnected.values()].map(device => {
       return new Promise(function (resolve) {
         if (device.deviceRaw && typeof device.deviceRaw.disconnect === "function") {
-          common.conLog("Bluetooth: Disconnecting " + device.deviceID + " (" + device.productName + ") ...", "yel");
+          common.conLog("Bluetooth: Disconnecting " + device.uuid + " (" + device.productName + ") ...", "yel");
           device.deviceRaw.disconnect(function (error) {
             if (error) {
-              common.conLog("Bluetooth: Error disconnecting " + device.deviceID + ": " + error.message, "red");
+              common.conLog("Bluetooth: Error disconnecting " + device.uuid + ": " + error.message, "red");
             }
             else {
-              common.conLog("Bluetooth: Disconnected " + device.deviceID, "mag");
+              common.conLog("Bluetooth: Disconnected " + device.uuid, "mag");
             }
             resolve();
           });

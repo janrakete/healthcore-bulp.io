@@ -12,9 +12,12 @@ const Database = require("better-sqlite3");
 function createTestDatabase() {
   const db = new Database(":memory:");
 
+  db.pragma("foreign_keys = ON");
+
   db.exec(`
     CREATE TABLE "devices" (
-      deviceID TEXT PRIMARY KEY,
+      deviceID INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT NOT NULL,
       bridge TEXT NOT NULL,
       "powerType" TEXT NOT NULL,
       vendorName TEXT NOT NULL,
@@ -25,8 +28,11 @@ function createTestDatabase() {
       strength INTEGER,
       individualID INTEGER DEFAULT 0,
       roomID INTEGER DEFAULT 0,
-      dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now'))
+      dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(uuid, bridge)
     );
+
+    CREATE INDEX idx_devices_uuid_bridge ON devices(uuid, bridge);
 
     CREATE TABLE individuals (
       individualID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,10 +90,9 @@ function createTestDatabase() {
 
     CREATE TABLE "mqtt_history_devices_values" (
       valueID INTEGER PRIMARY KEY AUTOINCREMENT,
-      deviceID TEXT NOT NULL,
+      deviceID INTEGER NOT NULL REFERENCES devices(deviceID) ON DELETE CASCADE,
       dateTime TEXT NOT NULL DEFAULT (datetime('now')),
       dateTimeAsNumeric NUMERIC,
-      bridge TEXT NOT NULL,
       property TEXT,
       value TEXT NOT NULL,
       valueAsNumeric NUMERIC NOT NULL DEFAULT 0,
@@ -99,6 +104,8 @@ function createTestDatabase() {
       hourCos NUMERIC,
       month NUMERIC
     );
+
+    CREATE INDEX idx_mqtt_history_device_property ON mqtt_history_devices_values(deviceID, property);
 
     CREATE TABLE "scenarios" (
       scenarioID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,8 +123,7 @@ function createTestDatabase() {
       triggerID INTEGER PRIMARY KEY AUTOINCREMENT,
       scenarioID INTEGER NOT NULL,
       type TEXT NOT NULL DEFAULT 'device_value',
-      deviceID TEXT,
-      bridge TEXT,
+      deviceID INTEGER REFERENCES devices(deviceID) ON DELETE CASCADE,
       property TEXT,
       operator TEXT,
       value TEXT,
@@ -128,8 +134,7 @@ function createTestDatabase() {
       actionID INTEGER PRIMARY KEY AUTOINCREMENT,
       scenarioID INTEGER NOT NULL,
       type TEXT NOT NULL DEFAULT 'set_device_value',
-      deviceID TEXT,
-      bridge TEXT,
+      deviceID INTEGER REFERENCES devices(deviceID) ON DELETE CASCADE,
       property TEXT,
       value TEXT,
       valueType TEXT DEFAULT 'String',
@@ -139,7 +144,7 @@ function createTestDatabase() {
     CREATE TABLE scenarios_executions (
       executionID INTEGER PRIMARY KEY AUTOINCREMENT,
       scenarioID INTEGER NOT NULL,
-      triggerDeviceID TEXT NOT NULL,
+      triggerDeviceID INTEGER REFERENCES devices(deviceID) ON DELETE SET NULL,
       triggerProperty TEXT NOT NULL,
       triggerValue TEXT NOT NULL,
       dateTimeExecutedAt TEXT DEFAULT (datetime('now')),
@@ -157,8 +162,7 @@ function createTestDatabase() {
       summary TEXT NOT NULL,
       explanation TEXT,
       recommendation TEXT,
-      deviceID TEXT,
-      bridge TEXT,
+      deviceID INTEGER REFERENCES devices(deviceID) ON DELETE CASCADE,
       property TEXT,
       individualID INTEGER DEFAULT 0,
       roomID INTEGER DEFAULT 0,
@@ -171,8 +175,7 @@ function createTestDatabase() {
     CREATE TABLE care_insight_signals (
       signalID INTEGER PRIMARY KEY AUTOINCREMENT,
       insightID INTEGER NOT NULL,
-      deviceID TEXT,
-      bridge TEXT,
+      deviceID INTEGER REFERENCES devices(deviceID) ON DELETE CASCADE,
       property TEXT,
       value TEXT,
       valueAsNumeric NUMERIC,
@@ -265,25 +268,28 @@ function createTestApp() {
 
 /**
  * Inserts a test device into the database.
+ * Returns the device object with the numeric deviceID assigned by AUTOINCREMENT.
  */
 function insertTestDevice(db, overrides = {}) {
   const device = {
-    deviceID:       "test_device_001",
-    bridge:         "http",
-    powerType:      "MAINS",
-    vendorName:     "TestVendor",
-    productName:    "TestProduct",
-    properties:     JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
-    name:           "Test Device",
-    description:    "A test device",
-    individualID:   0,
-    roomID:         0,
+    uuid:         "test_device_001",
+    bridge:       "http",
+    powerType:    "MAINS",
+    vendorName:   "TestVendor",
+    productName:  "TestProduct",
+    properties:   JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
+    name:         "Test Device",
+    description:  "A test device",
+    individualID: 0,
+    roomID:       0,
     ...overrides,
   };
 
-  db.prepare(
-    "INSERT INTO devices (deviceID, bridge, powerType, vendorName, productName, properties, name, description, individualID, roomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(device.deviceID, device.bridge, device.powerType, device.vendorName, device.productName, device.properties, device.name, device.description, device.individualID, device.roomID);
+  const result = db.prepare(
+    "INSERT INTO devices (uuid, bridge, powerType, vendorName, productName, properties, name, description, individualID, roomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(device.uuid, device.bridge, device.powerType, device.vendorName, device.productName, device.properties, device.name, device.description, device.individualID, device.roomID);
+
+  device.deviceID = result.lastInsertRowid;
 
   return device;
 }

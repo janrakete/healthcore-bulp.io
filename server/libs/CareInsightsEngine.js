@@ -6,6 +6,7 @@
 
 const appConfig    = require("../../config");
 const translations = require("../../i18n.json");
+const { getDeviceByUUID } = require("./DeviceLookup");
 
 class CareInsightsEngine {
   /**
@@ -58,15 +59,14 @@ class CareInsightsEngine {
    */
   handleDeviceStatus(data) {
     try {
-     
-      if (appConfig.CONF_careInsightsActive !== true || !data || !data.deviceID || !data.bridge || !data.status) { // Device status insights require device identity and a status value
+      if (appConfig.CONF_careInsightsActive !== true || !data || !data.uuid || !data.bridge || !data.status) { // Device status insights require device identity and a status value
         return;
       }
 
-      if (data.status === "offline") { // "offline" opens or updates a connectivity risk insight
-        const device = this.getDevice(data.deviceID, data.bridge);
+      const device    = this.getDevice(data.uuid, data.bridge);
+      const deviceID  = device?.deviceID || null;
 
-        
+      if (data.status === "offline") { // "offline" opens or updates a connectivity risk insight
         const insight = this.upsertInsight({
           ruleID:         0,
           type:           "device_connectivity_risk",
@@ -75,8 +75,7 @@ class CareInsightsEngine {
           summary:        this.buildConnectivitySummary(device),
           explanation:    this.translate("careInsightExplanationDeviceOffline"),
           recommendation: this.translate("careInsightRecommendationDeviceOffline"),
-          deviceID:       data.deviceID,
-          bridge:         data.bridge,
+          deviceID:       deviceID,
           property:       "status",
           individualID:   Number(device?.individualID) || 0,
           roomID:         Number(device?.roomID) || 0,
@@ -84,18 +83,18 @@ class CareInsightsEngine {
         });
 
         this.insertSignal(insight.insightID, {
-          deviceID:       data.deviceID,
-          bridge:         data.bridge,
+          deviceID:       deviceID,
           property:       "status",
           value:          "offline",
           valueAsNumeric: 0,
-          weight:     0.9
+          weight:         0.9
         });
         return;
       }
 
       if (data.status === "online") { // "online" resolves open connectivity risks for the same device
-        this.resolveOpenInsights({ type: "device_connectivity_risk", deviceID: data.deviceID, bridge: data.bridge });       }
+        this.resolveOpenInsights({ type: "device_connectivity_risk", deviceID: deviceID });
+      }
     }
     catch (error) {
       common.conLog("Care Insights: Error while processing device status: " + error.message, "red");
@@ -109,10 +108,10 @@ class CareInsightsEngine {
    * @param {string} property
    * @returns {Object|null}
    */
-  getDeviationScore(deviceID, bridge, property) {
+  getDeviationScore(deviceID, property) { // deviceID is numeric FK
     const history = database.prepare( // Load recent history in descending order; newest reading is at index 0
-      "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
-    ).all(deviceID, bridge, property, appConfig.CONF_careInsightsHistorySize);
+      "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+    ).all(deviceID, property, appConfig.CONF_careInsightsHistorySize);
 
     if (!history || history.length < appConfig.CONF_careInsightsMinHistoryEntries) {
       return null;
@@ -168,7 +167,7 @@ class CareInsightsEngine {
     const rules = this.getMatchingRules(property);
 
     rules.forEach((rule) => {
-      const context = this.buildRuleContext(rule, data.deviceID, data.bridge);
+      const context = this.buildRuleContext(rule, data.uuid, data.bridge);
 
       if (!context) {
         return;
@@ -187,7 +186,7 @@ class CareInsightsEngine {
       }
 
       if (this.ruleThresholdReached(rule, aggregation) !== true) {
-        this.resolveOpenInsights({ ruleID: rule.ruleID, deviceID: context.deviceID, bridge: context.bridge, property: property });
+        this.resolveOpenInsights({ ruleID: rule.ruleID, deviceID: context.deviceID, property: property });
       }
       else {
         const insight = this.upsertInsight({
@@ -199,7 +198,6 @@ class CareInsightsEngine {
           explanation:      this.buildRuleExplanation(rule, aggregation),
           recommendation:   rule.recommendation || this.translate("careInsightRecommendationDefault"),
           deviceID:         context.deviceID,
-          bridge:           context.bridge,
           property:         property,
           individualID:     context.individualID,
           roomID:           context.roomID,
@@ -208,7 +206,6 @@ class CareInsightsEngine {
 
         this.insertSignal(insight.insightID, {
           deviceID:       context.deviceID,
-          bridge:         context.bridge,
           property:       property,
           value:          String(valueData.value ?? valueData.valueAsNumeric ?? ""),
           valueAsNumeric: valueData.valueAsNumeric ?? null,
@@ -231,7 +228,7 @@ class CareInsightsEngine {
       return;
     }
 
-    const deviation = this.getDeviationScore(data.deviceID, data.bridge, property);
+    const deviation = this.getDeviationScore(context.deviceID, property);
     if (!deviation) {
       return;
     }
@@ -239,7 +236,7 @@ class CareInsightsEngine {
     const threshold = Number(rule.thresholdMin) || appConfig.CONF_careInsightsAnomalyThreshold;
 
     if (deviation.score < threshold) {
-      this.resolveOpenInsights({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: data.deviceID, bridge: data.bridge, property: property });
+      this.resolveOpenInsights({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: context.deviceID, property: property });
       return;
     }
 
@@ -251,8 +248,7 @@ class CareInsightsEngine {
       summary:          this.buildNumericSummary(context.device, property, valueData.value),
       explanation:      this.buildNumericExplanation(property, valueData.value, deviation),
       recommendation:   rule.recommendation || this.translate("careInsightRecommendationAnomaly"),
-      deviceID:         data.deviceID,
-      bridge:           data.bridge,
+      deviceID:         context.deviceID,
       property:         property,
       individualID:     context.individualID,
       roomID:           context.roomID,
@@ -260,8 +256,7 @@ class CareInsightsEngine {
     });
 
     this.insertSignal(insight.insightID, {
-      deviceID:       data.deviceID,
-      bridge:         data.bridge,
+      deviceID:       context.deviceID,
       property:       property,
       value:          String(valueData.value),
       valueAsNumeric: valueData.valueAsNumeric,
@@ -285,11 +280,12 @@ class CareInsightsEngine {
    * @param {string} bridge
    * @returns {Object|null}
    */
-  buildRuleContext(rule, deviceID, bridge) {
-    const device = this.getDevice(deviceID, bridge);
+  buildRuleContext(rule, uuid, bridge) { 
+    const device = this.getDevice(uuid, bridge);
 
     const context = {
-      deviceID:     deviceID,
+      deviceID:     device?.deviceID || null,
+      uuid:         uuid,
       bridge:       bridge,
       individualID: Number(device?.individualID) || 0,
       roomID:       Number(device?.roomID) || 0,
@@ -310,14 +306,13 @@ class CareInsightsEngine {
    * @returns {boolean}
    */
   isValidRuleContext(rule, context) {
-    
     if (!rule) { // A rule can only be evaluated when it has a property and a concrete device target
       return false;
     }
 
     const hasProperty = (rule.sourceProperty !== undefined) && (String(rule.sourceProperty).trim() !== "");
-    const hasDeviceID = (context.deviceID !== undefined) && (String(context.deviceID).trim() !== "");
-    const hasBridge = (context.bridge !== undefined) && (String(context.bridge).trim() !== "");
+    const hasDeviceID = (context.deviceID !== null) && (context.deviceID !== undefined);
+    const hasBridge   = (context.bridge !== undefined) && (String(context.bridge).trim() !== "");
 
     if (!hasProperty || !hasDeviceID || !hasBridge) {
       return false;
@@ -338,8 +333,8 @@ class CareInsightsEngine {
     const thresholdTimestamp = Date.now() - (aggregationWindowHours * 60 * 60 * 1000);
 
     const result = database.prepare(
-      "SELECT COUNT(*) AS readings, COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = ? AND dateTimeAsNumeric >= ?"
-    ).get(context.deviceID, context.bridge, property, thresholdTimestamp);
+      "SELECT COUNT(*) AS readings, COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ? AND dateTimeAsNumeric >= ?"
+    ).get(context.deviceID, property, thresholdTimestamp);
 
     if (!result) {
       return null;
@@ -420,11 +415,6 @@ class CareInsightsEngine {
       params.push(filters.deviceID);
     }
 
-    if (filters.bridge !== undefined) {
-      conditions.push("bridge = ?");
-      params.push(filters.bridge);
-    }
-
     if (filters.property !== undefined) {
       conditions.push("property = ?");
       params.push(filters.property);
@@ -457,8 +447,8 @@ class CareInsightsEngine {
    */
   upsertInsight(payload) {
     const existing = database.prepare(
-      "SELECT * FROM care_insights WHERE ifnull(ruleID, 0) = ifnull(?, 0) AND type = ? AND ifnull(deviceID, '') = ifnull(?, '') AND ifnull(bridge, '') = ifnull(?, '') AND ifnull(property, '') = ifnull(?, '') AND status IN ('open', 'acknowledged') ORDER BY insightID DESC LIMIT 1"
-    ).get(payload.ruleID || 0, payload.type, payload.deviceID || "", payload.bridge || "", payload.property || "");
+      "SELECT * FROM care_insights WHERE ifnull(ruleID, 0) = ifnull(?, 0) AND type = ? AND ifnull(deviceID, 0) = ifnull(?, 0) AND ifnull(property, '') = ifnull(?, '') AND status IN ('open', 'acknowledged') ORDER BY insightID DESC LIMIT 1"
+    ).get(payload.ruleID || 0, payload.type, payload.deviceID || 0, payload.property || "");
 
     let insightID;
     let eventType   = "";
@@ -482,9 +472,9 @@ class CareInsightsEngine {
       eventType = hasChanged ? "care_insight_updated" : "";
     }
     else {
-      const result = database.prepare(
-        "INSERT INTO care_insights (ruleID, type, status, score, title, summary, explanation, recommendation, deviceID, bridge, property, individualID, roomID, source, dateTimeAdded, dateTimeUpdated) VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))"
-      ).run(payload.ruleID || 0, payload.type, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.deviceID || null, payload.bridge || null, payload.property || null, payload.individualID || 0, payload.roomID || 0, payload.source || "careinsights");
+      const result = database.prepare( 
+        "INSERT INTO care_insights (ruleID, type, status, score, title, summary, explanation, recommendation, deviceID, property, individualID, roomID, source, dateTimeAdded, dateTimeUpdated) VALUES (?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))"
+      ).run(payload.ruleID || 0, payload.type, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.deviceID || null, payload.property || null, payload.individualID || 0, payload.roomID || 0, payload.source || "careinsights");
 
       insightID = result.lastInsertRowid;
       eventType = "care_insight_opened";
@@ -504,17 +494,16 @@ class CareInsightsEngine {
    * @param {number} insightID
    * @param {Object} signal
    */
-  insertSignal(insightID, signal) {
+  insertSignal(insightID, signal) { 
     const signalDeviceID        = signal.deviceID || null;
-    const signalBridge          = signal.bridge || null;
     const signalProperty        = signal.property || null;
     const signalValue           = signal.value || null;
     const signalValueAsNumeric  = signal.valueAsNumeric ?? null;
     const signalWeight          = signal.weight ?? 1;
 
     database.prepare(
-      "INSERT INTO care_insight_signals (insightID, deviceID, bridge, property, value, valueAsNumeric, weight, dateTimeObserved) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
-    ).run(insightID, signalDeviceID, signalBridge, signalProperty, signalValue, signalValueAsNumeric, signalWeight);
+      "INSERT INTO care_insight_signals (insightID, deviceID, property, value, valueAsNumeric, weight, dateTimeObserved) VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
+    ).run(insightID, signalDeviceID, signalProperty, signalValue, signalValueAsNumeric, signalWeight);
 
     
     const maxSignals = appConfig.CONF_careInsightsMaxSignalsPerInsight // Keep only the newest N signals per insight to prevent unbounded growth
@@ -539,14 +528,8 @@ class CareInsightsEngine {
    * @param {string} bridge
    * @returns {Object|null}
    */
-  getDevice(deviceID, bridge) {
-    const result = database.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ? LIMIT 1").get(deviceID, bridge);
-
-    if (!result) {
-      return null;
-    }
-
-    return result;
+  getDevice(uuid, bridge) {
+    return getDeviceByUUID(database, uuid, bridge);
   }
 
 
@@ -648,14 +631,25 @@ class CareInsightsEngine {
     const individualID  = Number(insight.individualID) || 0;
     const roomID        = Number(insight.roomID) || 0;
 
+    let uuid   = "";
+    let bridge = "";
+    if (insight.deviceID) {
+      const device = database.prepare("SELECT uuid, bridge FROM devices WHERE deviceID = ? LIMIT 1").get(insight.deviceID);
+      if (device) {
+        uuid   = device.uuid;
+        bridge = device.bridge;
+      }
+    }
+
     return {
       insightID:    insight.insightID,
       ruleID:       ruleID,
       insightType:  insight.type,
       score:        score,
       status:       insight.status,
-      deviceID:     insight.deviceID || "",
-      bridge:       insight.bridge || "",
+      deviceID:     insight.deviceID || null,
+      uuid:         uuid,
+      bridge:       bridge,
       property:     insight.property || "",
       individualID: individualID,
       roomID:       roomID

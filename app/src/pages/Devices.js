@@ -181,17 +181,17 @@ class Devices extends HTMLElement {
 
       listElement.innerHTML = items.map(item => { // Second: generate HTML for each device
         const displayInfo    = bridgeTranslate(item.bridge);
-        const deviceAtServer = resultsRegisteredWithAssignments.find(device => String(device.deviceID) === String(item.deviceID) && String(device.bridge) === String(item.bridge));
+        const deviceAtServer = resultsRegisteredWithAssignments.find(device => String(device.uuid) === String(item.uuid) && String(device.bridge) === String(item.bridge));
         let deviceConnected  = 0; // 0 = not connected, 1 = connected, 2 = status not applicable
-      
+
         switch(item.bridge) {
           case "zigbee":
-            if (resultsConnected && resultsConnected.some(device => String(device.deviceID) === String(item.deviceID))) { // check if device is connected
+            if (resultsConnected && resultsConnected.some(device => String(device.uuid) === String(item.uuid))) { // check if device is connected
               deviceConnected = 1;
             }
             break;
           case "bluetooth":
-            if (resultsConnected && resultsConnected.some(device => String(device.deviceID) === String(item.deviceID))) { // check if device is connected
+            if (resultsConnected && resultsConnected.some(device => String(device.uuid) === String(item.uuid))) { // check if device is connected
               deviceConnected = 1;
             }
             break;
@@ -204,17 +204,17 @@ class Devices extends HTMLElement {
         }
       
         return `
-        <ion-card color="primary" data-id="${item.deviceID}">
+        <ion-card color="primary" data-id="${item.uuid}">
           <ion-card-header>
               <ion-card-title>${item.name} <ion-badge color="${Number(deviceConnected) === 1 ? "success" : Number(deviceConnected) === 0 ? "danger" : "medium"}">${Number(deviceConnected) === 1 ? window.Translation.get("Connected") : Number(deviceConnected) === 0 ? window.Translation.get("Disconnected") : window.Translation.get("Unknown")}</ion-badge></ion-card-title>
-              <ion-card-subtitle>${stringCut(item.deviceID, 20)} | ${displayInfo}</ion-card-subtitle>
+              <ion-card-subtitle>${stringCut(item.uuid, 20)} | ${displayInfo}</ion-card-subtitle>
           </ion-card-header>
           <ion-card-content>
             ${deviceAtServer?.individual ? `<p>${window.Translation.get("AssignedPerson") + ": " + deviceAtServer.individual.firstname + " " + deviceAtServer.individual.lastname}</p>` : ""}
             ${deviceAtServer?.room ? `<p>${window.Translation.get("AssignedRoom") + ": " + deviceAtServer.room.name}</p>` : ""}
           </ion-card-content>
-          <ion-button data-id="${item.deviceID}" id="edit-${item.deviceID}" data-bridge="${item.bridge}"class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
-          <ion-button data-id="${item.deviceID}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
+          <ion-button data-id="${item.uuid}" id="edit-${item.uuid}" data-bridge="${item.bridge}"class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
+          <ion-button data-id="${item.uuid}" data-bridge="${item.bridge}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
       `;
       }).join("");

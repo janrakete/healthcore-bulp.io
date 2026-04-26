@@ -110,7 +110,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
           actionID:         Date.now(),
           type:             type,
           bridge:           this.actionSelectedDevice.bridge,
-          deviceID:         deviceSelect.value,
+          uuid:             deviceSelect.value,
           deviceName:       this.actionSelectedDevice.name,
           property:         propertySelect.value,
           value:            valueSelect.value,
@@ -380,7 +380,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
         }
 
         selectDevice.innerHTML  = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + data.results.map(item => {
-          return `<ion-select-option value="${item.deviceID}" data-bridge="${item.bridge}">${item.name} (${item.deviceID}, ${item.bridge})</ion-select-option>`;
+          return `<ion-select-option value="${item.uuid}" data-bridge="${item.bridge}">${item.name} (${item.uuid}, ${item.bridge})</ion-select-option>`;
         }).join("");
       }
       else {
@@ -527,7 +527,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       if (String(type) === "set_device_value") {
         cardTitle    = item.deviceName;
-        cardSubtitle = `${stringCut(item.deviceID, 20)} | ${bridgeInfo}`;
+        cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent  = `
             <ion-text color="light">${item.propertyTranslated ? item.propertyTranslated : item.property}</ion-text>
             <ion-text color="light">${window.Translation.get("SetTo")}</ion-text>
@@ -594,8 +594,8 @@ export const ScenarioEditActions = (Base) => class extends Base {
         document.querySelector("ion-input[name='editActionDelay']").value = Number(actionData.delay) > 0 ? actionData.delay : "";
 
         if (String(type) === "set_device_value") {
-          await this.dataLoadActionDevices(actionData.deviceID);
-          await this.dataLoadActionDeviceProperties(actionData.bridge, actionData.deviceID, actionData.property);
+          await this.dataLoadActionDevices(actionData.deviceUUID || actionData.uuid);
+          await this.dataLoadActionDeviceProperties(actionData.deviceBridge || actionData.bridge, actionData.deviceUUID || actionData.uuid, actionData.property);
           await this.dataLoadActionDevicePropertiesValues(actionData.property, actionData.value);
         }
         else if (String(type) === "push_notification") {

@@ -55,7 +55,7 @@ describe("GET /devices/all", () => {
     secondIndividualID = individualResultSecond.lastInsertRowid;
 
     insertTestDevice(db, {
-      deviceID:      "dev_bt_001",
+      uuid:          "dev_bt_001",
       bridge:        "bluetooth",
       productName:   "BangleJS2",
       individualID:  individualResult.lastInsertRowid,
@@ -66,7 +66,7 @@ describe("GET /devices/all", () => {
       ]),
     });
     insertTestDevice(db, {
-      deviceID:    "dev_zb_001",
+      uuid:        "dev_zb_001",
       bridge:      "zigbee",
       productName: "IKEA TRADFRI",
       properties:  JSON.stringify([{ name: "state", dataType: "Boolean", access: "rw" }]),
@@ -83,7 +83,7 @@ describe("GET /devices/all", () => {
 
   test("device properties are parsed from JSON string to object", async () => {
     const res = await request(app).get("/devices/all");
-    const btDevice = res.body.results.find((d) => d.deviceID === "dev_bt_001");
+    const btDevice = res.body.results.find((d) => d.uuid === "dev_bt_001");
     expect(btDevice).toBeDefined();
     expect(Array.isArray(btDevice.properties)).toBe(true);
     expect(btDevice.properties[0].name).toBe("heartrate");
@@ -91,14 +91,14 @@ describe("GET /devices/all", () => {
 
   test("returns correct bridge info per device", async () => {
     const res = await request(app).get("/devices/all");
-    const zbDevice = res.body.results.find((d) => d.deviceID === "dev_zb_001");
+    const zbDevice = res.body.results.find((d) => d.uuid === "dev_zb_001");
     expect(zbDevice).toBeDefined();
     expect(zbDevice.bridge).toBe("zigbee");
   });
 
   test("returns individual and room data for assigned devices", async () => {
     const res = await request(app).get("/devices/all");
-    const btDevice = res.body.results.find((d) => d.deviceID === "dev_bt_001");
+    const btDevice = res.body.results.find((d) => d.uuid === "dev_bt_001");
 
     expect(btDevice.individualID).toBeGreaterThan(0);
     expect(btDevice.roomID).toBeGreaterThan(0);
@@ -132,7 +132,7 @@ describe("PATCH /devices/:bridge/:deviceID (assignment)", () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
 
-    const row = db.prepare("SELECT * FROM devices WHERE deviceID = ? AND bridge = ?").get("dev_bt_001", "bluetooth");
+    const row = db.prepare("SELECT * FROM devices WHERE uuid = ? AND bridge = ?").get("dev_bt_001", "bluetooth");
     expect(row.individualID).toBe(0);
     expect(row.roomID).toBe(0);
   });
@@ -164,7 +164,7 @@ describe("GET /devices/:bridge/:deviceID", () => {
     const res = await request(app).get("/devices/bluetooth/dev_bt_001");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ok");
-    expect(res.body.device.deviceID).toBe("dev_bt_001");
+    expect(res.body.device.uuid).toBe("dev_bt_001");
     expect(Array.isArray(res.body.device.properties)).toBe(true);
   });
 
@@ -228,7 +228,7 @@ describe("GET /devices/:bridge/scan/info", () => {
       "INSERT INTO mqtt_history (topic, message, callID) VALUES (?, ?, ?)"
     ).run(
       "server/devices/discover",
-      JSON.stringify({ deviceID: "discovered_001", productName: "SomeDevice" }),
+      JSON.stringify({ uuid: "discovered_001", productName: "SomeDevice" }),
       callID
     );
 
@@ -273,15 +273,15 @@ describe("MQTT pending responses (connect/disconnect)", () => {
 describe("GET /devices/:bridge/:deviceID/values", () => {
 
   test("HTTP/LoRa bridge — returns latest values from DB", async () => {
-    // Insert a device value for an HTTP device
-    insertTestDevice(db, { deviceID: "dev_http_001", bridge: "http", productName: "BulpWebRobo321" });
+    // Insert a device value for an HTTP device; capture the numeric deviceID
+    const httpDevice = insertTestDevice(db, { uuid: "dev_http_001", bridge: "http", productName: "BulpWebRobo321" });
 
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("dev_http_001", "http", "voltage", "3.3", 3.3, Date.now());
+      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(httpDevice.deviceID, "voltage", "3.3", 3.3, Date.now());
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("dev_http_001", "http", "switch", "tapped", 0, Date.now());
+      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(httpDevice.deviceID, "switch", "tapped", 0, Date.now());
 
     const res = await request(app).get("/devices/http/dev_http_001/values");
     expect(res.status).toBe(200);

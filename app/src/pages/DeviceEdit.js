@@ -22,7 +22,7 @@ class DeviceEdit extends HTMLElement {
         <ion-col>
         <ion-list inset="true">
           <ion-item color="light">
-            <ion-input type="text" label-placement="stacked" label="${window.Translation.get("DeviceID")}" name="editDeviceID" required="true" ${this.ID !== "[new]" ? 'disabled="true"' : ''} shape="round" fill="outline" class="custom"></ion-input>
+            <ion-input type="text" label-placement="stacked" label="${window.Translation.get("DeviceID")}" name="editDeviceUUID" required="true" ${this.ID !== "[new]" ? 'disabled="true"' : ''} shape="round" fill="outline" class="custom"></ion-input>
           </ion-item>
           <ion-item color="light">
             <ion-input type="text" label-placement="stacked" label="${window.Translation.get("VendorName")}" name="editVendorName" required="true" ${this.ID !== "[new]" ? 'disabled="true"' : ''} shape="round" fill="outline" class="custom"></ion-input>
@@ -90,7 +90,7 @@ class DeviceEdit extends HTMLElement {
     formData.description    = this.querySelector("ion-input[name='editDescription']").value;
 
     if (String(this.ID) === "[new]") {
-      formData.deviceID     = this.querySelector("ion-input[name='editDeviceID']").value;
+      formData.uuid         = this.querySelector("ion-input[name='editDeviceUUID']").value;
       formData.productName  = this.querySelector("ion-input[name='editProductName']").value;
       formData.vendorName   = this.querySelector("ion-input[name='editVendorName']").value;
     }
@@ -106,7 +106,7 @@ class DeviceEdit extends HTMLElement {
       let data = {};
 
       if (String(this.ID) === "[new]") {
-        data = await apiPOST("/devices/" + this.BRIDGE + "/" + formData.deviceID, formData);
+        data = await apiPOST("/devices/" + this.BRIDGE + "/" + formData.uuid, formData);
       }
       else {
         data = await apiPATCH("/devices/" + this.BRIDGE + "/" + this.ID, formData);
@@ -217,7 +217,7 @@ class DeviceEdit extends HTMLElement {
 
         this.querySelector("ion-input[name='editName']").value        = item.name;
         this.querySelector("ion-input[name='editDescription']").value = item.description;
-        this.querySelector("ion-input[name='editDeviceID']").value    = item.deviceID;
+        this.querySelector("ion-input[name='editDeviceUUID']").value    = item.uuid;
         this.querySelector("ion-input[name='editProductName']").value = item.productName;
         this.querySelector("ion-input[name='editVendorName']").value  = item.vendorName;
 
