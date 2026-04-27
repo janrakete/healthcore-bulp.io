@@ -12,8 +12,6 @@ const common    = require("../common");
 const database = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 database.pragma("foreign_keys = ON");
 
-const { getDeviceIDByUUID } = require("../server/libs/DeviceLookup");
-
 /**
  * Prepared SQLite statements (hoisted to avoid re-compilation on every publish)
  */
@@ -193,7 +191,7 @@ function startServer() {
                         return callback(null, true);
                     }
 
-                    const deviceID = getDeviceIDByUUID(database, data.uuid, data.bridge); // translate uuid and bridge to numeric deviceID once for this message
+                    const deviceID = common.deviceGetIDByUUID(data.uuid, data.bridge, database); // translate uuid and bridge to numeric deviceID once for this message
                     if (deviceID === null) {
                         common.conLog("Broker: Device uuid '" + data.uuid + "' not found in database, skipping value insertion", "red");
                         return callback(null, true);

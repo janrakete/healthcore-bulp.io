@@ -1,15 +1,7 @@
 {
-    "Dashboard": {
-        "en": "Dashboard",
-        "de": "Dashboard"
-    },
     "Overview": {
         "en": "Overview",
         "de": "Übersicht"
-    },
-    "Services": {
-        "en": "Services",
-        "de": "Dienste"
     },
     "NotificationsTitle": {
         "en": "Notifications",
@@ -19,21 +11,9 @@
         "en": "Last updated",
         "de": "Zuletzt aktualisiert"
     },
-    "Refresh": {
-        "en": "Refresh",
-        "de": "Aktualisieren"
-    },
     "Loading": {
         "en": "Loading ...",
         "de": "Wird geladen ..."
-    },
-    "ErrorServerUnreachable": {
-        "en": "Healthcore server unreachable",
-        "de": "Healthcore-Server nicht erreichbar."
-    },
-    "Statistics": {
-        "en": "Statistics",
-        "de": "Statistiken"
     },
     "StatusTitle": {
         "en": "Status",
@@ -46,10 +26,6 @@
     "StatusVersion": {
         "en": "Version",
         "de": "Version"
-    },
-    "StatusBridges": {
-        "en": "Bridges",
-        "de": "Bridges"
     },
     "StatusPort": {
         "en": "Port",
@@ -79,21 +55,9 @@
         "en": "No data available",
         "de": "Keine Daten verfügbar."
     },
-    "DateTime": {
-        "en": "Date / Time",
-        "de": "Datum / Uhrzeit"
-    },
     "Bridge": {
         "en": "Bridge",
         "de": "Bridge"
-    },
-    "AllStatuses": {
-        "en": "All statuses",
-        "de": "Alle Status"
-    },
-    "AllBridges": {
-        "en": "All bridges",
-        "de": "Alle Bridges"
     },
     "CollapseDetails": {
         "en": "Collapse details",
@@ -103,65 +67,17 @@
         "en": "Expand details",
         "de": "Details ausklappen"
     },
-    "Start": {
-        "en": "Start",
-        "de": "Starten"
-    },
-    "Stop": {
-        "en": "Stop",
-        "de": "Stoppen"
-    },
-    "Running": {
-        "en": "Running",
-        "de": "Läuft"
-    },
-    "Stopped": {
-        "en": "Stopped",
-        "de": "Gestoppt"
-    },
-    "Score": {
-        "en": "Score",
-        "de": "Bewertung"
-    },
     "Type": {
         "en": "Type",
         "de": "Typ"
-    },
-    "Source": {
-        "en": "Source",
-        "de": "Quelle"
-    },
-    "AddedOn": {
-        "en": "Added",
-        "de": "Hinzugefügt"
     },
     "UpdatedOn": {
         "en": "Updated",
         "de": "Aktualisiert"
     },
-    "Save": {
-        "en": "Save",
-        "de": "Speichern"
-    },
-    "Edit": {
-        "en": "Edit",
-        "de": "Bearbeiten"
-    },
-    "Back": {
-        "en": "Back",
-        "de": "Zurück"
-    },
-    "MessagesTitle": {
-        "en": "Messages",
-        "de": "Nachrichten"
-    },
     "IndividualsTitle": {
         "en": "People",
         "de": "Personen"
-    },
-    "SOSTitle": {
-        "en": "SOS",
-        "de": "SOS"
     },
     "RoomsTitle": {
         "en": "Rooms",
@@ -175,97 +91,13 @@
         "en": "Care Insights",
         "de": "Care Insights"
     },
-    "CareInsightRulesTitle": {
-        "en": "Insight Rules",
-        "de": "Insight-Regeln"
-    },
-    "ScenariosTitle": {
-        "en": "Scenarios",
-        "de": "Szenarien"
-    },
-    "SettingsTitle": {
-        "en": "Settings",
-        "de": "Einstellungen"
-    },
-    "Actions": {
-        "en": "Actions",
-        "de": "Aktionen"
-    },
-    "Delete": {
-        "en": "Delete",
-        "de": "Löschen"
-    },
-    "Cancel": {
-        "en": "Cancel",
-        "de": "Abbrechen"
-    },
     "Name": {
         "en": "Name",
         "de": "Name"
     },
-    "Phone": {
-        "en": "Phone number",
-        "de": "Telefonnummer"
-    },
-    "PageRoomsHeadline": {
-        "en": "Rooms",
-        "de": "Räume"
-    },
-    "PageCareInsightsHeadline": {
-        "en": "Care Insights",
-        "de": "Care Insights"
-    },
-    "PageCareInsightDetailHeadline": {
-        "en": "Care Insight",
-        "de": "Care Insight"
-    },
-    "PageIndividualsHeadline": {
-        "en": "People",
-        "de": "Personen"
-    },
-    "FirstName": {
-        "en": "First name",
-        "de": "Vorname"
-    },
-    "LastName": {
-        "en": "Last name",
-        "de": "Nachname"
-    },
     "Room": {
         "en": "Room",
         "de": "Raum"
-    },
-    "PleaseSelect": {
-        "en": "(please select)",
-        "de": "(bitte wählen)"
-    },
-    "None": {
-        "en": "(none)",
-        "de": "(keine)"
-    },
-    "PageDevicesHeadline": {
-        "en": "Devices",
-        "de": "Geräte"
-    },
-    "All": {
-        "en": "All",
-        "de": "Alle"
-    },
-    "Zigbee": {
-        "en": "ZigBee",
-        "de": "ZigBee"
-    },
-    "Bluetooth": {
-        "en": "Bluetooth",
-        "de": "Bluetooth"
-    },
-    "Wifi": {
-        "en": "Wi-Fi",
-        "de": "WLAN"
-    },
-    "LoRa": {
-        "en": "LoRa",
-        "de": "LoRa"
     },
     "Disconnected": {
         "en": "Disconnected",
@@ -291,37 +123,9 @@
         "en": "Resolved",
         "de": "Gelöst"
     },
-    "Dismissed": {
-        "en": "Dismissed",
-        "de": "Verworfen"
-    },
     "Critical": {
         "en": "Critical",
         "de": "Kritisch"
-    },
-    "High": {
-        "en": "High",
-        "de": "Hoch"
-    },
-    "Medium": {
-        "en": "Medium",
-        "de": "Mittel"
-    },
-    "Low": {
-        "en": "Low",
-        "de": "Niedrig"
-    },
-    "OpenDetail": {
-        "en": "Open details",
-        "de": "Details öffnen"
-    },
-    "Description": {
-        "en": "Description",
-        "de": "Beschreibung"
-    },
-    "Summary": {
-        "en": "Summary",
-        "de": "Zusammenfassung"
     },
     "Explanation": {
         "en": "Explanation",
@@ -335,73 +139,13 @@
         "en": "Signals",
         "de": "Signale"
     },
-    "Feedback": {
-        "en": "Feedback",
-        "de": "Feedback"
-    },
-    "Acknowledge": {
-        "en": "Acknowledged",
-        "de": "Bestätigt"
-    },
-    "Resolve": {
-        "en": "Resolved",
-        "de": "Gelöst"
-    },
-    "Dismiss": {
-        "en": "Dismissed",
-        "de": "Verworfen"
-    },
-    "Helpful": {
-        "en": "Helpful",
-        "de": "Hilfreich"
-    },
-    "Enabled": {
-        "en": "Enabled",
-        "de": "Aktiviert"
-    },
-    "Disabled": {
-        "en": "Disabled",
-        "de": "Deaktiviert"
-    },
-    "Priority": {
-        "en": "Priority",
-        "de": "Priorität"
-    },
-    "Severity": {
-        "en": "Severity",
-        "de": "Schweregrad"
-    },
     "Device": {
         "en": "Device",
         "de": "Gerät"
     },
-    "Title": {
-        "en": "Title",
-        "de": "Titel"
-    },
-    "Message": {
-        "en": "Message",
-        "de": "Nachricht"
-    },
-    "Text": {
-        "en": "Text",
-        "de": "Text"
-    },
-    "DeviceID": {
-        "en": "Device ID",
-        "de": "Geräte-ID"
-    },
     "ProductName": {
         "en": "Product Name",
         "de": "Produktname"
-    },
-    "VendorName": {
-        "en": "Manufacturer",
-        "de": "Hersteller"
-    },
-    "DeviceAssignment": {
-        "en": "Assignment",
-        "de": "Zuordnung"
     },
     "AssignedPerson": {
         "en": "Assigned person",
@@ -410,18 +154,6 @@
     "AssignedRoom": {
         "en": "Assigned room",
         "de": "Zugeordneter Raum"
-    },
-    "EntriesNone": {
-        "en": "No entries available.",
-        "de": "Keine Einträge vorhanden."
-    },
-    "EntriesNoneAddNew": {
-        "en": "No entries found.",
-        "de": "Keine Einträge gefunden."
-    },
-    "Property": {
-        "en": "Property",
-        "de": "Eigenschaft"
     },
     "English": {
         "en": "English",

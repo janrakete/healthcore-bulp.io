@@ -6,7 +6,7 @@
 
 const appConfig    = require("../../config");
 const translations = require("../../i18n.json");
-const { getDeviceByUUID } = require("./DeviceLookup");
+const common       = require("../../common");
 
 class CareInsightsEngine {
   /**
@@ -529,7 +529,7 @@ class CareInsightsEngine {
    * @returns {Object|null}
    */
   getDevice(uuid, bridge) {
-    return getDeviceByUUID(database, uuid, bridge);
+    return common.deviceGetByUUID(uuid, bridge);
   }
 
 

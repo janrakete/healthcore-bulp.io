@@ -219,6 +219,23 @@ function setupGlobals(db) {
       const statusCode = data.status === "ok" ? 200 : 400;
       return response.status(statusCode).json(data);
     },
+    deviceGetIDByUUID: (uuid, bridge, database = null) => {
+      const db = database || global.database;
+      if (!db) {
+        return null;
+      }
+
+      const row = db.prepare("SELECT deviceID FROM devices WHERE uuid = ? AND bridge = ? LIMIT 1").get(uuid, bridge);
+      return row ? row.deviceID : null;
+    },
+    deviceGetByUUID: (uuid, bridge, database = null) => {
+      const db = database || global.database;
+      if (!db) {
+        return null;
+      }
+
+      return db.prepare("SELECT * FROM devices WHERE uuid = ? AND bridge = ? LIMIT 1").get(uuid, bridge) || null;
+    },
     devicePropertiesToArray: jest.fn((properties) => properties),
   };
 
