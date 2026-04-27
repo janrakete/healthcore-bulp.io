@@ -5,7 +5,6 @@
  */
 const appConfig     = require("../../config");
 const router        = require("express").Router();
-const { getDeviceByUUID, getDeviceIDByUUID } = require("../libs/DeviceLookup");
 
 /**
  * =============================================================================================
@@ -82,7 +81,7 @@ function enrichDeviceWithAssignment(device) {
  * @returns {Object|undefined}
  */
 function getDevice(uuid, bridge) {
-    return getDeviceByUUID(database, uuid, bridge) ?? undefined; // normalize null → undefined to match existing === undefined checks
+    return common.deviceGetByUUID(uuid, bridge) ?? undefined; // normalize null → undefined to match existing === undefined checks
 }
 
 /**
@@ -1135,7 +1134,7 @@ router.get("/:bridge/:uuid/values", async function (request, response) {
                 common.conLog("GET request for device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
             }
             else { // Get latest values from database for the device, i.e. HTTP or LoRa — use numeric deviceID
-                const deviceID = getDeviceIDByUUID(database, message.uuid, bridge);
+                const deviceID = common.deviceGetIDByUUID(message.uuid, bridge);
                 if (deviceID === null) {
                     data.status = "error";
                     data.error  = "Device not found";

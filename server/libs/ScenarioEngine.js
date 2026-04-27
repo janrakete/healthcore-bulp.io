@@ -20,7 +20,7 @@
  */
 
 const appConfig = require("../../config");
-const { getDeviceIDByUUID } = require("./DeviceLookup");
+const common    = require("../../common");
 
 class ScenarioEngine {
   constructor() {
@@ -44,7 +44,7 @@ class ScenarioEngine {
       }
       else {
         if (eventData.uuid && eventData.bridge && !eventData.deviceID) { // if deviceID is not provided but UUID and bridge are available, look up deviceID (for backward compatibility with older event sources that don't provide deviceID)
-          eventData.deviceID = getDeviceIDByUUID(database, eventData.uuid, eventData.bridge);
+          eventData.deviceID = common.deviceGetIDByUUID(eventData.uuid, eventData.bridge);
         }
 
         if (!eventData.deviceID) { // cannot evaluate device-based triggers without deviceID

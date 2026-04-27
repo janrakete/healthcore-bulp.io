@@ -14,8 +14,6 @@ const database  = require("better-sqlite3")(appConfig.CONF_databaseFilename);
 global.database = database; // make SQLite database global
 database.pragma("foreign_keys = ON");
 
-const { getDeviceIDByUUID, getDeviceByUUID, invalidateCache } = require("./libs/DeviceLookup");
-
 /**
  * Start server
  * @async
@@ -358,8 +356,6 @@ async function startServer() {
           message.uuid      = data.uuid;
           message.bridge    = data.bridge;
 
-          invalidateCache(data.uuid, data.bridge); // clear any stale cache entry
-
           if (!data.forceReconnect) { // set forceReconnect to true if not provided
             data.forceReconnect = true;
           }
@@ -397,8 +393,6 @@ async function startServer() {
         if (await deviceCheckRegistered(data.uuid, data.bridge)) { // check if device is registered
 
           database.prepare("DELETE FROM devices WHERE uuid = ? AND bridge = ?").run(data.uuid, data.bridge); // remove device from database
-          invalidateCache(data.uuid, data.bridge); // clear cache entry
-
           message.status  = "ok";
           message.uuid    = data.uuid;
           message.bridge  = data.bridge;

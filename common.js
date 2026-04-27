@@ -224,7 +224,7 @@ function sendResponse(response, data, routeName, errorLabel = "Request") {
  * Retrieves the local IP address of the machine.
  * @returns {string} The local IP address, or "127.0.0.1" if none is found.
  */
-function getOwnIP() {
+function ipGetOwn() {
     const os = require("os");
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -237,4 +237,40 @@ function getOwnIP() {
     return "127.0.0.1";
 }
 
-module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray, sendResponse, getOwnIP };
+/**
+ * Returns the numeric deviceID for a given uuid and bridge, or null if not found.
+ * @param {string} uuid - Device UUID.
+ * @param {string} bridge - Bridge name.
+ * @param {Object|null} database - Better-SQLite3 database instance. If null, global.database is used.
+ * @returns {number|null} Numeric deviceID or null.
+ */
+function deviceGetIDByUUID(uuid, bridge, database = null) {
+    if (database === null) {
+        database = global.database;
+    }
+
+    const row = database.prepare("SELECT deviceID FROM devices WHERE uuid = ? AND bridge = ? LIMIT 1").get(uuid, bridge);
+
+    if (!row) {
+        return null;
+    }
+
+    return row.deviceID;
+}
+
+/**
+ * Returns the full device row for a given uuid+bridge, or null if not found.
+ * @param {string} uuid - Device UUID.
+ * @param {string} bridge - Bridge name.
+ * @param {Object|null} database - Better-SQLite3 database instance. If null, global.database is used.
+ * @returns {Object|null} Device row or null.
+ */
+function deviceGetByUUID(uuid, bridge, database = null) {
+    if (database === null) {
+        database = global.database;
+    }
+
+    return database.prepare("SELECT * FROM devices WHERE uuid = ? AND bridge = ? LIMIT 1").get(uuid, bridge) || null;
+}
+
+module.exports = { conLog, logoShow, pause, randomHash, createHashFromString, devicePropertiesToArray, sendResponse, ipGetOwn, deviceGetIDByUUID, deviceGetByUUID };

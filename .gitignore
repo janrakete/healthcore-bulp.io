@@ -12,3 +12,5 @@ app/android/app/google-services.json
 push-firebase-admin.json
 /.claude
 healthcore_database.db
+healthcore_database.db-shm
+healthcore_database.db-wal

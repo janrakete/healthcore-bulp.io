@@ -5,7 +5,6 @@
  */
 const appConfig     = require("../../config");
 const router        = require("express").Router();
-const { getDeviceIDByUUID } = require("../libs/DeviceLookup");
 
 /**
  * @swagger
@@ -467,7 +466,7 @@ router.post("/", async function (request, response) {
                     for (const trigger of payload.triggers) { // Insert triggers — translate uuid+bridge → numeric deviceID
                         const triggerUUID   = trigger.uuid || null;
                         const triggerBridge = trigger.bridge || null;
-                        const deviceID      = (triggerUUID && triggerBridge) ? getDeviceIDByUUID(database, triggerUUID, triggerBridge) : null;
+                        const deviceID      = (triggerUUID && triggerBridge) ? common.deviceGetIDByUUID(triggerUUID, triggerBridge) : null;
 
                         insertTrigger.run(
                             scenarioID,
@@ -483,7 +482,7 @@ router.post("/", async function (request, response) {
                     for (const action of payload.actions) { // Insert actions — translate uuid+bridge → numeric deviceID
                         const actionUUID   = action.uuid || null;
                         const actionBridge = action.bridge || null;
-                        const deviceID     = (actionUUID && actionBridge) ? getDeviceIDByUUID(database, actionUUID, actionBridge) : null;
+                        const deviceID     = (actionUUID && actionBridge) ? common.deviceGetIDByUUID(actionUUID, actionBridge) : null;
 
                         insertAction.run(
                             scenarioID,
@@ -675,7 +674,7 @@ router.patch("/:scenarioID", async function (request, response) {
           for (const trigger of payload.triggers) {
             const triggerUUID   = trigger.uuid || null;
             const triggerBridge = trigger.bridge || null;
-            const deviceID      = (triggerUUID && triggerBridge) ? getDeviceIDByUUID(database, triggerUUID, triggerBridge) : null;
+            const deviceID      = (triggerUUID && triggerBridge) ? common.deviceGetIDByUUID(triggerUUID, triggerBridge) : null;
 
             insertTrigger.run(scenarioID, trigger.type || "device_value", deviceID, trigger.property || null, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null), trigger.valueType || "String");
           }
@@ -691,7 +690,7 @@ router.patch("/:scenarioID", async function (request, response) {
           for (const action of payload.actions) {
             const actionUUID   = action.uuid || null;
             const actionBridge = action.bridge || null;
-            const deviceID     = (actionUUID && actionBridge) ? getDeviceIDByUUID(database, actionUUID, actionBridge) : null;
+            const deviceID     = (actionUUID && actionBridge) ? common.deviceGetIDByUUID(actionUUID, actionBridge) : null;
 
             insertAction.run(scenarioID, action.type || "set_device_value", deviceID, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", action.delay || 0);
           }
