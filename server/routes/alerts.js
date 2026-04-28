@@ -1,13 +1,13 @@
 /**
  * =============================================================================================
- * Routes for Care Insights
+ * Routes for Alerts
  * =============================================================================================
  */
-const appConfig          = require("../../config");
-const router             = require("express").Router();
-const CareInsightsEngine = require("../libs/CareInsightsEngine");
+const appConfig    = require("../../config");
+const router       = require("express").Router();
+const AlertsEngine = require("../libs/AlertsEngine");
 
-const allowedStatuses    = ["open", "acknowledged", "resolved", "critical"];
+const allowedStatuses = ["open", "acknowledged", "resolved", "critical"];
 
 /**
  * =============================================================================================
@@ -16,42 +16,50 @@ const allowedStatuses    = ["open", "acknowledged", "resolved", "critical"];
  */
 
 /**
- * Enriches a Care Insight with related device, person and room context.
- * @param {Object} insight
+ * Enriches an alert with related device, scenario, person and room context.
+ * @param {Object} alert
  * @returns {Object}
  */
-function enrichInsight(insight) {
-    if ((insight === undefined) || (insight === null)) {
-        return insight;
+function enrichAlert(alert) {
+    if ((alert === undefined) || (alert === null)) {
+        return alert;
     }
 
-    const enrichedInsight = { ...insight };
+    const enrichedAlert = { ...alert };
 
-    if ((insight.deviceID !== undefined) && (insight.deviceID !== null) && Number(insight.deviceID) > 0) {
-        const device = database.prepare("SELECT deviceID, uuid, bridge, name, productName, vendorName, description FROM devices WHERE deviceID = ? LIMIT 1").get(insight.deviceID);
+    if ((alert.deviceID !== undefined) && (alert.deviceID !== null) && Number(alert.deviceID) > 0) {
+        const device = database.prepare("SELECT deviceID, uuid, bridge, name, productName, vendorName, description FROM devices WHERE deviceID = ? LIMIT 1").get(alert.deviceID);
 
         if (device !== undefined) {
-            enrichedInsight.device = device;
+            enrichedAlert.device = device;
         }
     }
 
-    if (Number(insight.individualID) > 0) {
-        const individual = database.prepare("SELECT individualID, firstname, lastname, roomID FROM individuals WHERE individualID = ? LIMIT 1").get(insight.individualID);
+    if (Number(alert.scenarioID) > 0) {
+        const scenario = database.prepare("SELECT scenarioID, name, icon FROM scenarios WHERE scenarioID = ? LIMIT 1").get(alert.scenarioID);
+
+        if (scenario !== undefined) {
+            enrichedAlert.scenario = scenario;
+        }
+    }
+
+    if (Number(alert.individualID) > 0) {
+        const individual = database.prepare("SELECT individualID, firstname, lastname, roomID FROM individuals WHERE individualID = ? LIMIT 1").get(alert.individualID);
 
         if (individual !== undefined) {
-            enrichedInsight.individual = individual;
+            enrichedAlert.individual = individual;
         }
     }
 
-    if (Number(insight.roomID) > 0) {
-        const room = database.prepare("SELECT roomID, name FROM rooms WHERE roomID = ? LIMIT 1").get(insight.roomID);
+    if (Number(alert.roomID) > 0) {
+        const room = database.prepare("SELECT roomID, name FROM rooms WHERE roomID = ? LIMIT 1").get(alert.roomID);
 
         if (room !== undefined) {
-            enrichedInsight.room = room;
+            enrichedAlert.room = room;
         }
     }
 
-    return enrichedInsight;
+    return enrichedAlert;
 }
 
 /**
@@ -70,7 +78,6 @@ function validateSqlIdentifier(name) {
  * @param {string} table - The name of the table to build the condition for.
  * @param {object} payload - The JSON payload containing the conditions to be applied.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed WHERE condition.
- * @description This function checks if the keys in the payload match the columns of the specified table. If they do, it constructs a WHERE condition string for use in SQL queries. If any key does not match, it returns an error.
  */
 function buildWhereClause(table, payload) {
     let response = {};
@@ -164,7 +171,6 @@ function buildWhereClause(table, payload) {
  * @function buildLimitClause
  * @param {string|number} limitValue - The limit value for the SQL query.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed LIMIT clause.
- * @description This function checks if the provided limit value is a valid positive integer. If it is, it constructs a LIMIT clause for SQL queries. If not, it returns an error.
  */
 function buildLimitClause(limitValue) {
     let response = {};
@@ -188,7 +194,6 @@ function buildLimitClause(limitValue) {
  * @param {string} orderByString - The orderBy string in the format "column,direction" (e.g., "dateTime,DESC").
  * @param {string} table - The name of the table to validate the column against.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed ORDER BY clause.
- * @description This function checks if the specified column exists in the table. If it does, it constructs an ORDER BY clause with the specified direction (ASC or DESC). If the column does not exist, it returns an error.
  */
 function buildOrderByClause(orderByString, table) {
     const column   = orderByString.split(",")[0]; // first part column name
@@ -221,12 +226,12 @@ function buildOrderByClause(orderByString, table) {
 
 /**
  * @swagger
- * /care-insights:
+ * /alerts:
  *   get:
- *     summary: Get all Care Insights
- *     description: This endpoint retrieves stored Care Insights. Optional filters can be provided for status, type, device and property.
+ *     summary: Get all Alerts
+ *     description: This endpoint retrieves stored Alerts. Optional filters can be provided for status, type, device and property.
  *     tags:
- *       - Care Insights
+ *       - Alerts
  *     parameters:
  *       - in: query
  *         name: status
@@ -239,25 +244,19 @@ function buildOrderByClause(orderByString, table) {
  *         required: false
  *         schema:
  *           type: string
- *           example: hydration
+ *           example: AnomalyDetection
  *       - in: query
  *         name: deviceID
  *         required: false
  *         schema:
- *           type: string
- *           example: sensor-001
- *       - in: query
- *         name: bridge
- *         required: false
- *         schema:
- *           type: string
- *           example: zigbee
+ *           type: integer
+ *           example: 5
  *       - in: query
  *         name: property
  *         required: false
  *         schema:
  *           type: string
- *           example: hydration
+ *           example: heartRate
  *       - in: query
  *         name: ruleID
  *         required: false
@@ -279,7 +278,7 @@ function buildOrderByClause(orderByString, table) {
  *           example: 100
  *     responses:
  *       "200":
- *         description: Successfully retrieved Care Insights
+ *         description: Successfully retrieved Alerts
  *         content:
  *           application/json:
  *             schema:
@@ -293,37 +292,37 @@ function buildOrderByClause(orderByString, table) {
  *                   items:
  *                     type: object
  *                     properties:
- *                       insightID:
+ *                       alertID:
  *                         type: integer
  *                         example: 42
  *                       ruleID:
  *                         type: integer
  *                         example: 12
+ *                       scenarioID:
+ *                         type: integer
+ *                         example: 0
  *                       type:
  *                         type: string
- *                         example: hydration
+ *                         example: AnomalyDetection
  *                       status:
  *                         type: string
  *                         example: open
  *                       score:
  *                         type: number
- *                         example: 63.5
+ *                         example: 0.85
  *                       deviceID:
- *                         type: string
- *                         example: sensor-001
- *                       bridge:
- *                         type: string
- *                         example: zigbee
+ *                         type: integer
+ *                         example: 5
  *                       property:
  *                         type: string
- *                         example: hydration
+ *                         example: heartRate
  *                       individualID:
  *                         type: integer
  *                         example: 5
  *                       roomID:
  *                         type: integer
  *                         example: 3
- *                       dateTimeCreated:
+ *                       dateTimeAdded:
  *                         type: string
  *                         example: "2025-01-15 14:30:00"
  *                       dateTimeUpdated:
@@ -333,54 +332,6 @@ function buildOrderByClause(orderByString, table) {
  *                         type: string
  *                         nullable: true
  *                         example: null
- *                       device:
- *                         type: object
- *                         description: Enriched device data (if deviceID and bridge are set)
- *                         properties:
- *                           deviceID:
- *                             type: string
- *                             example: "sensor-001"
- *                           bridge:
- *                             type: string
- *                             example: "zigbee"
- *                           name:
- *                             type: string
- *                             example: "Hydration Sensor"
- *                           productName:
- *                             type: string
- *                             example: "Hydro Monitor"
- *                           vendorName:
- *                             type: string
- *                             example: "SensorCorp"
- *                           description:
- *                             type: string
- *                             example: "Monitors hydration levels"
- *                       individual:
- *                         type: object
- *                         description: Enriched individual data (if individualID is set)
- *                         properties:
- *                           individualID:
- *                             type: integer
- *                             example: 5
- *                           firstname:
- *                             type: string
- *                             example: "Max"
- *                           lastname:
- *                             type: string
- *                             example: "Mustermann"
- *                           roomID:
- *                             type: integer
- *                             example: 3
- *                       room:
- *                         type: object
- *                         description: Enriched room data (if roomID is set)
- *                         properties:
- *                           roomID:
- *                             type: integer
- *                             example: 3
- *                           name:
- *                             type: string
- *                             example: "Living Room"
  *       "400":
  *         description: Bad request or internal route error
  *         content:
@@ -401,12 +352,12 @@ router.get("/", async function (request, response) {
     try {
         data.status = "ok";
 
-        const condition = await buildWhereClause("care_insights", request.query);
+        const condition = await buildWhereClause("alerts", request.query);
         if (condition.status === "ok") {
-            let sql = "SELECT * FROM care_insights" + condition.condition;
+            let sql = "SELECT * FROM alerts" + condition.condition;
 
             if (!sql.toUpperCase().includes(" ORDER BY ")) { // if statement contains no ORDER BY clause, add a default one (insert before LIMIT if present)
-                const orderByClause = " ORDER BY dateTimeUpdated DESC, insightID DESC";
+                const orderByClause = " ORDER BY dateTimeUpdated DESC, alertID DESC";
                 const limitPos = sql.toUpperCase().indexOf(" LIMIT ");
                 if (limitPos !== -1) {
                     sql = sql.substring(0, limitPos) + orderByClause + sql.substring(limitPos);
@@ -419,10 +370,10 @@ router.get("/", async function (request, response) {
                 sql += " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
             }
 
-            common.conLog("GET Request: access table 'care_insights'", "gre");
+            common.conLog("GET Request: access table 'alerts'", "gre");
             common.conLog("Execute statement: " + sql, "std", false);
 
-            data.results = database.prepare(sql).all(condition.parameters).map((item) => enrichInsight(item));
+            data.results = database.prepare(sql).all(condition.parameters).map((item) => enrichAlert(item));
         }
         else {
             data.status = condition.status;
@@ -434,20 +385,20 @@ router.get("/", async function (request, response) {
         data.error  = "Fatal error: " + error.message;
     }
 
-    return common.sendResponse(response, data, "Server route 'Care Insights'", "GET request care insights");
+    return common.sendResponse(response, data, "Server route 'Alerts'", "GET request alerts");
 });
 
 /**
  * @swagger
- * /care-insights/stats:
+ * /alerts/stats:
  *   get:
- *     summary: Get Care Insight statistics
- *     description: This endpoint retrieves a compact statistics object for open, acknowledged, resolved and critical Care Insights.
+ *     summary: Get Alert statistics
+ *     description: This endpoint retrieves a compact statistics object for open, acknowledged, resolved and critical Alerts.
  *     tags:
- *       - Care Insights
+ *       - Alerts
  *     responses:
  *       "200":
- *         description: Successfully retrieved Care Insight statistics
+ *         description: Successfully retrieved Alert statistics
  *         content:
  *           application/json:
  *             schema:
@@ -489,39 +440,39 @@ router.get("/stats", async function (request, response) {
     let data = {};
 
     try {
-        data.status                  = "ok";
-        data.data                    = {};
-        data.data.open               = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'open'").get().total;
-        data.data.acknowledged       = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'acknowledged'").get().total;
-        data.data.resolved           = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'resolved'").get().total;
-        data.data.critical           = database.prepare("SELECT COUNT(*) AS total FROM care_insights WHERE status = 'critical'").get().total;
+        data.status            = "ok";
+        data.data              = {};
+        data.data.open         = database.prepare("SELECT COUNT(*) AS total FROM alerts WHERE status = 'open'").get().total;
+        data.data.acknowledged = database.prepare("SELECT COUNT(*) AS total FROM alerts WHERE status = 'acknowledged'").get().total;
+        data.data.resolved     = database.prepare("SELECT COUNT(*) AS total FROM alerts WHERE status = 'resolved'").get().total;
+        data.data.critical     = database.prepare("SELECT COUNT(*) AS total FROM alerts WHERE status = 'critical'").get().total;
     }
     catch (error) {
         data.status = "error";
         data.error  = "Fatal error: " + error.message;
     }
 
-    return common.sendResponse(response, data, "Server route 'Care Insights'", "GET request care insight stats");
+    return common.sendResponse(response, data, "Server route 'Alerts'", "GET request alert stats");
 });
 
 /**
  * @swagger
- * /care-insights/{insightID}:
+ * /alerts/{alertID}:
  *   get:
- *     summary: Get a specific Care Insight
- *     description: This endpoint retrieves one Care Insight together with its signals.
+ *     summary: Get a specific Alert
+ *     description: This endpoint retrieves one Alert together with its signals.
  *     tags:
- *       - Care Insights
+ *       - Alerts
  *     parameters:
  *       - in: path
- *         name: insightID
+ *         name: alertID
  *         required: true
  *         schema:
  *           type: integer
  *           example: 42
  *     responses:
  *       "200":
- *         description: Successfully retrieved Care Insight details
+ *         description: Successfully retrieved Alert details
  *         content:
  *           application/json:
  *             schema:
@@ -530,98 +481,31 @@ router.get("/stats", async function (request, response) {
  *                 status:
  *                   type: string
  *                   example: ok
- *                 insight:
+ *                 alert:
  *                   type: object
- *                   description: The Care Insight with enriched device, individual and room data
- *                   properties:
- *                     insightID:
- *                       type: integer
- *                       example: 42
- *                     ruleID:
- *                       type: integer
- *                       example: 12
- *                     type:
- *                       type: string
- *                       example: "hydration"
- *                     status:
- *                       type: string
- *                       example: "open"
- *                     score:
- *                       type: number
- *                       example: 63.5
- *                     deviceID:
- *                       type: string
- *                       example: "sensor-001"
- *                     bridge:
- *                       type: string
- *                       example: "zigbee"
- *                     property:
- *                       type: string
- *                       example: "hydration"
- *                     individualID:
- *                       type: integer
- *                       example: 5
- *                     roomID:
- *                       type: integer
- *                       example: 3
- *                     dateTimeCreated:
- *                       type: string
- *                       example: "2025-01-15 14:30:00"
- *                     dateTimeUpdated:
- *                       type: string
- *                       example: "2025-01-15 15:00:00"
- *                     dateTimeResolved:
- *                       type: string
- *                       nullable: true
- *                       example: null
+ *                   description: The Alert with enriched device, scenario, individual and room data
  *                 signals:
  *                   type: array
- *                   description: List of signals associated with this Care Insight, ordered by signalID descending
- *                   items:
- *                     type: object
- *                     properties:
- *                       signalID:
- *                         type: integer
- *                         example: 101
- *                       insightID:
- *                         type: integer
- *                         example: 42
- *                       value:
- *                         type: string
- *                         example: "45"
- *                       dateTime:
- *                         type: string
- *                         example: "2025-01-15 14:35:00"
+ *                   description: List of signals associated with this Alert, ordered by signalID descending
  *       "400":
- *         description: Invalid request or Care Insight not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: error
- *                 error:
- *                   type: string
- *                   example: Care Insight not found
+ *         description: Invalid request or Alert not found
  */
-router.get("/:insightID", async function (request, response) {
-    const insightID = Number.parseInt(request.params.insightID, 10);
-    let data        = {};
+router.get("/:alertID", async function (request, response) {
+    const alertID = Number.parseInt(request.params.alertID, 10);
+    let data      = {};
 
     try {
-        common.conLog("GET Request: access table 'care_insights' via ID " + insightID, "gre");
-        const insight = database.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insightID);
+        common.conLog("GET Request: access table 'alerts' via ID " + alertID, "gre");
+        const alert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
 
-        if (insight) {
+        if (alert) {
             data.status  = "ok";
-            data.insight = enrichInsight(insight);
-            data.signals = database.prepare("SELECT * FROM care_insight_signals WHERE insightID = ? ORDER BY signalID DESC").all(insightID);
+            data.alert   = enrichAlert(alert);
+            data.signals = database.prepare("SELECT * FROM alert_signals WHERE alertID = ? ORDER BY signalID DESC").all(alertID);
         }
         else {
             data.status = "error";
-            data.error  = "Care Insight not found";
+            data.error  = "Alert not found";
         }
     }
     catch (error) {
@@ -629,20 +513,20 @@ router.get("/:insightID", async function (request, response) {
         data.error  = "Fatal error: " + error.message;
     }
 
-    return common.sendResponse(response, data, "Server route 'Care Insights'", "GET request care insight detail");
+    return common.sendResponse(response, data, "Server route 'Alerts'", "GET request alert detail");
 });
 
 /**
  * @swagger
- * /care-insights/{insightID}:
+ * /alerts/{alertID}:
  *   patch:
- *     summary: Update Care Insight status
- *     description: This endpoint updates the workflow status of a Care Insight.
+ *     summary: Update Alert status
+ *     description: This endpoint updates the workflow status of an Alert.
  *     tags:
- *       - Care Insights
+ *       - Alerts
  *     parameters:
  *       - in: path
- *         name: insightID
+ *         name: alertID
  *         required: true
  *         schema:
  *           type: integer
@@ -662,17 +546,9 @@ router.get("/:insightID", async function (request, response) {
  *               - status
  *     responses:
  *       "200":
- *         description: Successfully updated the Care Insight
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: ok
+ *         description: Successfully updated the Alert
  *       "400":
- *         description: Invalid status, insight not found, or route error
+ *         description: Invalid status, alert not found, or route error
  *         content:
  *           application/json:
  *             schema:
@@ -683,10 +559,10 @@ router.get("/:insightID", async function (request, response) {
  *                   example: error
  *                 error:
  *                   type: string
- *                   example: Invalid status
+ *                   example: "Fatal error: <message>"
  */
-router.patch("/:insightID", async function (request, response) {
-    const insightID  = Number.parseInt(request.params.insightID, 10);
+router.patch("/:alertID", async function (request, response) {
+    const alertID    = Number.parseInt(request.params.alertID, 10);
     const nextStatus = String(request.body.status || "").trim();
     let data         = {};
 
@@ -696,21 +572,21 @@ router.patch("/:insightID", async function (request, response) {
             data.error  = "Invalid status";
         }
         else {
-            common.conLog("PATCH request for Care Insight via ID " + insightID, "gre");
-            const insight = database.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insightID);
+            common.conLog("PATCH request for Alert via ID " + alertID, "gre");
+            const alert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
 
-            if (insight) {
-                const previousStatus = insight.status;
+            if (alert) {
+                const previousStatus = alert.status;
 
-                database.prepare("UPDATE care_insights SET status = ?, dateTimeResolved = CASE WHEN ? = 'resolved' THEN datetime('now', 'localtime') ELSE dateTimeResolved END, dateTimeUpdated = datetime('now', 'localtime') WHERE insightID = ?").run(nextStatus, nextStatus, insightID);
+                database.prepare("UPDATE alerts SET status = ?, dateTimeResolved = CASE WHEN ? = 'resolved' THEN datetime('now', 'localtime') ELSE dateTimeResolved END, dateTimeUpdated = datetime('now', 'localtime') WHERE alertID = ?").run(nextStatus, nextStatus, alertID);
 
-                const updatedInsight = database.prepare("SELECT * FROM care_insights WHERE insightID = ?").get(insightID);
+                const updatedAlert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
                 if (previousStatus !== nextStatus) {
-                    if (nextStatus === "resolved") { // trigger special event for resolved status to allow scenario engine to react specifically on resolution (e.g. to stop a timer that was started when the insight was created)
-                        CareInsightsEngine.triggerScenarioEvent("care_insight_resolved", updatedInsight);
+                    if (nextStatus === "resolved") { // trigger special event for resolved status to allow scenario engine to react specifically on resolution
+                        AlertsEngine.triggerScenarioEvent("alert_resolved", updatedAlert);
                     }
-                    else { // trigger a general event for any status update to allow scenario engine to react on status changes (e.g. to send a notification when an insight is acknowledged or becomes critical)
-                        CareInsightsEngine.triggerScenarioEvent("care_insight_updated", updatedInsight);
+                    else { // trigger a general event for any status update to allow scenario engine to react on status changes (e.g. acknowledged or critical)
+                        AlertsEngine.triggerScenarioEvent("alert_updated", updatedAlert);
                     }
                 }
 
@@ -718,7 +594,7 @@ router.patch("/:insightID", async function (request, response) {
             }
             else {
                 data.status = "error";
-                data.error  = "Care Insight not found";
+                data.error  = "Alert not found";
             }
         }
     }
@@ -727,7 +603,7 @@ router.patch("/:insightID", async function (request, response) {
         data.error  = "Fatal error: " + error.message;
     }
 
-    return common.sendResponse(response, data, "Server route 'Care Insights'", "PATCH request care insight");
+    return common.sendResponse(response, data, "Server route 'Alerts'", "PATCH request alert");
 });
 
 module.exports = router;

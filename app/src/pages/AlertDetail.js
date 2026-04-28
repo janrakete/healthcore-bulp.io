@@ -1,24 +1,24 @@
 /**
- * Care Insight Detail Page
+ * Alert Detail Page
  */
 
-import { apiGET, apiPATCH, apiPOST } from "../services/api.js";
+import { apiGET, apiPATCH } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { dateFormat, spinnerShow } from "../services/helper.js";
 
-class CareInsightDetail extends HTMLElement {
+class AlertDetail extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/care-insights"></ion-back-button>
+            <ion-back-button default-href="/alerts"></ion-back-button>
           </ion-buttons>
-          <ion-title>${window.Translation.get("PageCareInsightDetailHeadline")}</ion-title>
+          <ion-title>${window.Translation.get("PageAlertDetailHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
-        <div id="care-insight-detail"></div>
+        <div id="alert-detail"></div>
       </ion-content>
     `;
 
@@ -26,19 +26,19 @@ class CareInsightDetail extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = spinnerShow("#care-insight-detail");
+    const spinner = spinnerShow("#alert-detail");
 
     try {
-      const data = await apiGET("/care-insights/" + this.ID);
+      const data = await apiGET("/alerts/" + this.ID);
       console.log("API call - Output:", data);
 
       if (String(data.status) === "ok") {
-        const item = data.insight;
+        const item = data.alert;
 
-        this.querySelector("#care-insight-detail").innerHTML = `
+        this.querySelector("#alert-detail").innerHTML = `
           <ion-card color="primary">
             <ion-card-header>
-              <ion-card-title>${item.title}</ion-card-title>
+              <ion-card-title>${item.icon ? `<ion-icon name="${item.icon}"></ion-icon> ` : ""}${item.title}</ion-card-title>
               <ion-card-subtitle>${this.getSubtitle(item)}</ion-card-subtitle>
             </ion-card-header>
             <ion-card-content>
@@ -53,6 +53,8 @@ class CareInsightDetail extends HTMLElement {
               <ion-button expand="block" id="status-acknowledged" color="tertiary">${window.Translation.get("Acknowledge")}</ion-button>
               <ion-button expand="block" id="status-resolved" color="success">${window.Translation.get("Resolve")}</ion-button>
               <ion-button expand="block" id="status-critical" color="danger">${window.Translation.get("AsCritical")}</ion-button>
+
+              ${item.scenario ? `<ion-button expand="block" href="/scenario-edit/${item.scenario.scenarioID}" color="medium"><ion-icon slot="start" name="unlink-sharp"></ion-icon>${window.Translation.get("ScenarioGoTo")}</ion-button>` : ""}
             </ion-card-content>
           </ion-card>
 
@@ -90,7 +92,7 @@ class CareInsightDetail extends HTMLElement {
 
   async updateStatus(status) {
     try {
-      const data = await apiPATCH("/care-insights/" + this.ID, { status: status });
+      const data = await apiPATCH("/alerts/" + this.ID, { status: status });
       if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");
         await this.dataLoad();
@@ -128,4 +130,4 @@ class CareInsightDetail extends HTMLElement {
   }
 }
 
-customElements.define("page-care-insight-detail", CareInsightDetail);
+customElements.define("page-alert-detail", AlertDetail);

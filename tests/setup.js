@@ -70,15 +70,6 @@ function createTestDatabase() {
       dateTimeAdded TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE "notifications" (
-      notificationID INTEGER PRIMARY KEY AUTOINCREMENT,
-      text TEXT NOT NULL,
-      description TEXT,
-      scenarioID INTEGER DEFAULT 0,
-      insightID INTEGER DEFAULT 0,
-      icon TEXT,
-      dateTime TEXT DEFAULT (datetime('now'))
-    );
 
     CREATE TABLE "mqtt_history" (
       historyID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,9 +143,10 @@ function createTestDatabase() {
       error TEXT
     );
 
-    CREATE TABLE care_insights (
-      insightID INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE alerts (
+      alertID INTEGER PRIMARY KEY AUTOINCREMENT,
       ruleID INTEGER DEFAULT 0,
+      scenarioID INTEGER DEFAULT 0,
       type TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
       score NUMERIC DEFAULT 0,
@@ -162,19 +154,20 @@ function createTestDatabase() {
       summary TEXT NOT NULL,
       explanation TEXT,
       recommendation TEXT,
+      icon TEXT,
       deviceID INTEGER REFERENCES devices(deviceID) ON DELETE CASCADE,
       property TEXT,
       individualID INTEGER DEFAULT 0,
       roomID INTEGER DEFAULT 0,
-      source TEXT NOT NULL DEFAULT 'careinsights',
+      source TEXT NOT NULL DEFAULT 'alerts',
       dateTimeAdded TEXT DEFAULT (datetime('now')),
       dateTimeUpdated TEXT DEFAULT (datetime('now')),
       dateTimeResolved TEXT
     );
 
-    CREATE TABLE care_insight_signals (
+    CREATE TABLE alert_signals (
       signalID INTEGER PRIMARY KEY AUTOINCREMENT,
-      insightID INTEGER NOT NULL,
+      alertID INTEGER NOT NULL,
       deviceID INTEGER REFERENCES devices(deviceID) ON DELETE CASCADE,
       property TEXT,
       value TEXT,
@@ -183,7 +176,7 @@ function createTestDatabase() {
       dateTimeObserved TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE care_insight_rules (
+    CREATE TABLE alert_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       enabled BOOLEAN DEFAULT 1,
@@ -273,12 +266,12 @@ function createTestApp() {
   const routesData     = require("../server/routes/data");
   const routesScenarios = require("../server/routes/scenarios");
   const routesDevices  = require("../server/routes/devices");
-  const routesCareInsights = require("../server/routes/care-insights");
+  const routesAlerts = require("../server/routes/alerts");
 
   app.use("/data",      apiKeyAuth, routesData);
   app.use("/scenarios", apiKeyAuth, routesScenarios);
   app.use("/devices",   apiKeyAuth, routesDevices);
-  app.use("/care-insights", apiKeyAuth, routesCareInsights);
+  app.use("/alerts",    apiKeyAuth, routesAlerts);
 
   return app;
 }

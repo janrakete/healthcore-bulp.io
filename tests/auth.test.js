@@ -6,7 +6,7 @@
 
 // Mock config — loaded before any route modules
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "care_insight_rules"],
+  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "alert_rules"],
   CONF_tablesMaxEntriesReturned:   500,
   CONF_apiKey:                     "test-secret-key-12345",
   CONF_apiCallTimeoutMilliseconds: 3000,
@@ -151,7 +151,7 @@ describe("Access Control", () => {
   });
 
   test("All allowed tables are accessible", async () => {
-    const allowedTables = ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"];
+    const allowedTables = ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "alert_rules"];
     for (const table of allowedTables) {
       const res = await request(app)
         .get(`/data/${table}`)

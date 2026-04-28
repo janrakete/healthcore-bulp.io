@@ -50,10 +50,10 @@
     --hc-color-primary-mid: #673ab7;
     --hc-color-primary-alpha: rgba(49, 27, 146, 0.1);
 
-    --hc-color-insight-open: #ffc107;
-    --hc-color-insight-acknowledged: #FF4081;
-    --hc-color-insight-resolved: #4caf50;
-    --hc-color-insight-critical: #ff5722;
+    --hc-color-alert-open: #ffc107;
+    --hc-color-alert-acknowledged: #FF4081;
+    --hc-color-alert-resolved: #4caf50;
+    --hc-color-alert-critical: #ff5722;
 
     --hc-color-connected: #4caf50;
     --hc-color-disconnected: #ff5722;
@@ -144,13 +144,13 @@ html, body {
     text-align: center;
 }
 
-/* Care Insights — expand / collapse mechanism */
-.hc-insight-detail {
+/* Alerts — expand / collapse mechanism */
+.hc-alert-detail {
     display: none;
 }
 
 /* When .is-visible is added, show the detail section with padding */
-.hc-insight-detail.is-visible {
+.hc-alert-detail.is-visible {
     display: block;
     padding: 1rem 1.5rem 1.5rem;
 }
@@ -168,11 +168,11 @@ html, body {
 }
 
 .hc-box-color-critical {
-    background-color: var(--hc-color-insight-critical);
+    background-color: var(--hc-color-alert-critical);
 }
 
 .hc-box-color-open {
-    background-color: var(--hc-color-insight-open);
+    background-color: var(--hc-color-alert-open);
 }
 
 /* Signal chart container */
@@ -190,19 +190,19 @@ html, body {
 }
 
 .hc-tag-open { 
-    background-color: var(--hc-color-insight-open) !important; 
+    background-color: var(--hc-color-alert-open) !important; 
 }
 
 .hc-tag-acknowledged { 
-    background-color: var(--hc-color-insight-acknowledged) !important; 
+    background-color: var(--hc-color-alert-acknowledged) !important; 
 }
 
 .hc-tag-resolved { 
-    background-color: var(--hc-color-insight-resolved)  !important; 
+    background-color: var(--hc-color-alert-resolved)  !important; 
 }
 
 .hc-tag-critical { 
-    background-color: var(--hc-color-insight-critical) !important; 
+    background-color: var(--hc-color-alert-critical) !important; 
 }
 
 .hc-tag-connected { 

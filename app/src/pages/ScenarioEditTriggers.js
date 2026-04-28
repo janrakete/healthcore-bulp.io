@@ -10,7 +10,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerSelectedDevice = null;
   triggerID             = null;
   triggerDevices        = [];
-  triggerCareInsightRules = [];
+  triggerAlertRules = [];
 
   buildTriggerDeviceOptionValue(deviceID, bridge) {
     return String(bridge || "") + "::" + String(deviceID || "");
@@ -55,9 +55,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                       <ion-select-option value="device_disconnected">${window.Translation.get("TriggerTypeDeviceDisconnected")}</ion-select-option>
                       <ion-select-option value="device_connected">${window.Translation.get("TriggerTypeDeviceConnected")}</ion-select-option>
                       <ion-select-option value="battery_low">${window.Translation.get("TriggerTypeBatteryLow")}</ion-select-option>
-                      <ion-select-option value="care_insight_opened">${window.Translation.get("TriggerTypeCareInsightOpened")}</ion-select-option>
-                      <ion-select-option value="care_insight_updated">${window.Translation.get("TriggerTypeCareInsightUpdated")}</ion-select-option>
-                      <ion-select-option value="care_insight_resolved">${window.Translation.get("TriggerTypeCareInsightResolved")}</ion-select-option>
+                      <ion-select-option value="alert_opened">${window.Translation.get("TriggerTypeAlertOpened")}</ion-select-option>
+                      <ion-select-option value="alert_updated">${window.Translation.get("TriggerTypeAlertUpdated")}</ion-select-option>
+                      <ion-select-option value="alert_resolved">${window.Translation.get("TriggerTypeAlertResolved")}</ion-select-option>
                       <ion-select-option value="time">${window.Translation.get("TriggerTypeTime")}</ion-select-option>
                     </ion-select>
                   </ion-item>  
@@ -71,8 +71,8 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
                       <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
                     </ion-select>
                   </ion-item>                  
-                  <ion-item color="light" id="trigger-field-care-insight-type">
-                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerCareInsightRule" label="${window.Translation.get("CareInsightRule")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
+                  <ion-item color="light" id="trigger-field-alert-type">
+                    <ion-select interface="popover" class="custom" label-placement="stacked" name="editTriggerAlertRule" label="${window.Translation.get("AlertRule")}" placeholder="${window.Translation.get("PleaseSelect")}" value="">
                       <ion-select-option value="">${window.Translation.get("None")}</ion-select-option>
                     </ion-select>
                   </ion-item>
@@ -118,7 +118,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       const typeSelect        = document.querySelector("ion-select[name='editTriggerType']");
       const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
       const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
-      const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+      const alertRuleSelect = document.querySelector("ion-select[name='editTriggerAlertRule']");
       const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
       const type              = typeSelect.value;
       
@@ -131,25 +131,25 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       }
       
       const selectedDeviceData    = this.parseTriggerDeviceOptionValue(deviceSelect.value);
-      const isCareInsightTrigger  = ["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type);
+      const isAlertTrigger  = ["alert_opened", "alert_updated", "alert_resolved"].includes(type);
       const triggerDevice         = selectedDeviceData.uuid || null;
       const triggerBridge         = selectedDeviceData.bridge || this.triggerSelectedDevice?.bridge || null;
       const selectedDevice        = triggerDevice === null ? null : this.triggerSelectedDevice;
-      const selectedRuleID        = isCareInsightTrigger ? (careInsightRuleSelect.value || null) : null;
-      const selectedRule          = isCareInsightTrigger ? this.triggerCareInsightRules.find(r => String(r.ruleID) === String(selectedRuleID)) : null;
+      const selectedRuleID        = isAlertTrigger ? (alertRuleSelect.value || null) : null;
+      const selectedRule          = isAlertTrigger ? this.triggerAlertRules.find(r => String(r.ruleID) === String(selectedRuleID)) : null;
 
       const newTrigger = {
         triggerID:        Date.now(),
         type:             type,
-        bridge:           String(type) === "time" ? null : (isCareInsightTrigger ? (triggerBridge || null) : triggerBridge),
-        uuid:             String(type) === "time" ? null : (isCareInsightTrigger ? (triggerDevice || null) : triggerDevice),
-        deviceName:       String(type) === "time" ? null : (isCareInsightTrigger ? (selectedDevice?.name || selectedDevice?.productName || null) : (selectedDevice?.name || selectedDevice?.productName || null)),
-        property:         String(type) === "device_value" ? propertySelect.value : (isCareInsightTrigger ? selectedRuleID : null),
+        bridge:           String(type) === "time" ? null : (isAlertTrigger ? (triggerBridge || null) : triggerBridge),
+        uuid:             String(type) === "time" ? null : (isAlertTrigger ? (triggerDevice || null) : triggerDevice),
+        deviceName:       String(type) === "time" ? null : (isAlertTrigger ? (selectedDevice?.name || selectedDevice?.productName || null) : (selectedDevice?.name || selectedDevice?.productName || null)),
+        property:         String(type) === "device_value" ? propertySelect.value : (isAlertTrigger ? selectedRuleID : null),
         operator:         String(type) === "device_value" ? operatorSelect.value : null,
         value:            String(type) === "time" ? document.querySelector("ion-input[name='editTriggerTime']").value : ((String(type) === "device_value" || String(type) === "battery_low") ? valueSelect.value : null),
         valueType:        (String(type) === "device_value" || String(type) === "battery_low") ? (isNaN(valueSelect.value) ? "String" : "Numeric") : null,
         deviceProperties: String(type) === "time" ? [] : (selectedDevice?.properties || []),
-        ruleTitle:        isCareInsightTrigger ? (selectedRule?.title || null) : null
+        ruleTitle:        isAlertTrigger ? (selectedRule?.title || null) : null
       };
       this.scenarioData.triggers.push(newTrigger);
 
@@ -183,7 +183,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       this.triggerEnabledDisable();
       this.dataLoadTriggerDevices();
       this.dataLoadTriggerDeviceOperator();
-      this.dataLoadCareInsightRules();
+      this.dataLoadAlertRules();
 
       const modal = document.querySelector("#trigger-edit-modal");
       await modal.present();
@@ -196,13 +196,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       const type              = event.detail.value;
       const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
       const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
-      const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+      const alertRuleSelect = document.querySelector("ion-select[name='editTriggerAlertRule']");
       const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
       const valueContainer    = document.querySelector("#edit-trigger-value-container");
 
       deviceSelect.value        = "";
       propertySelect.value      = "";
-      careInsightRuleSelect.value = "";
+      alertRuleSelect.value = "";
       operatorSelect.value      = "";
       valueContainer.innerHTML  = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>`;
       
@@ -213,7 +213,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       
       this.triggerSelectedDevice = null;
       this.triggerUpdateFieldVisibility(type);
-      if (!["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
+      if (!["alert_opened", "alert_updated", "alert_resolved"].includes(type)) {
         this.dataLoadTriggerDeviceOperator();
       }
       this.triggerEnabledDisable();
@@ -226,7 +226,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       this.triggerEnabledDisable();
     });
 
-    this.querySelector("ion-select[name='editTriggerCareInsightRule']")?.addEventListener("ionChange", () => {
+    this.querySelector("ion-select[name='editTriggerAlertRule']")?.addEventListener("ionChange", () => {
       this.triggerEnabledDisable();
     });
 
@@ -241,7 +241,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
       this.setTriggerSelectedDevice(uuid, bridge);
 
-      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) { // Care Insight trigger doesn't require loading properties
+      if (["alert_opened", "alert_updated", "alert_resolved"].includes(type)) { // Alert trigger doesn't require loading properties
         this.triggerEnabledDisable();
         return;
       }
@@ -283,14 +283,14 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     const typeSelect        = document.querySelector("ion-select[name='editTriggerType']");
     const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
     const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
-    const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+    const alertRuleSelect = document.querySelector("ion-select[name='editTriggerAlertRule']");
     const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
     const valueContainer    = document.querySelector("#edit-trigger-value-container");
 
     typeSelect.value         = "device_value";
     deviceSelect.value       = "";
     propertySelect.value     = "";
-    careInsightRuleSelect.value = "";
+    alertRuleSelect.value = "";
     operatorSelect.value     = "";
     valueContainer.innerHTML = `
       <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editTriggerValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
@@ -309,7 +309,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
     const typeSelect        = document.querySelector("ion-select[name='editTriggerType']");
     const deviceSelect      = document.querySelector("ion-select[name='editTriggerDevice']");
     const propertySelect    = document.querySelector("ion-select[name='editTriggerProperty']");
-    const careInsightRuleSelect = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+    const alertRuleSelect = document.querySelector("ion-select[name='editTriggerAlertRule']");
     const operatorSelect    = document.querySelector("ion-select[name='editTriggerOperator']");
 
     let valueSelect;
@@ -369,10 +369,10 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         }
         break;
 
-      case "care_insight_opened":
-      case "care_insight_updated":
-      case "care_insight_resolved":
-        if (careInsightRuleSelect.value !== "") {
+      case "alert_opened":
+      case "alert_updated":
+      case "alert_resolved":
+        if (alertRuleSelect.value !== "") {
           submitButton.disabled = false;
         }
         break;
@@ -393,14 +393,14 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
   triggerUpdateFieldVisibility(type) {
     const deviceField       = document.querySelector("#trigger-field-device");
     const propertyField     = document.querySelector("#trigger-field-property");
-    const insightTypeField  = document.querySelector("#trigger-field-care-insight-type");
+    const alertTypeField    = document.querySelector("#trigger-field-alert-type");
     const operatorField     = document.querySelector("#trigger-field-operator");
     const valueField        = document.querySelector("#trigger-field-value");
     const timeField         = document.querySelector("#trigger-field-time");
 
     deviceField.style.display       = "none";
     propertyField.style.display     = "none";
-    insightTypeField.style.display  = "none";
+    alertTypeField.style.display    = "none";
     operatorField.style.display     = "none";
     valueField.style.display        = "none";
     timeField.style.display         = "none";
@@ -424,10 +424,10 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         valueField.style.display    = "";
         break;
 
-      case "care_insight_opened":
-      case "care_insight_updated":
-      case "care_insight_resolved":
-        insightTypeField.style.display  = "";
+      case "alert_opened":
+      case "alert_updated":
+      case "alert_resolved":
+        alertTypeField.style.display  = "";
         deviceField.style.display       = "";
         break;
 
@@ -475,17 +475,17 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
   }
 
   /**
-   * Load Care Insight Rules into the select dropdown
+   * Load Alert Rules into the select dropdown
    * @param {string|null} selectedRuleID - Rule ID to pre-select (optional)
    */
-  async dataLoadCareInsightRules(selectedRuleID = null) {
+  async dataLoadAlertRules(selectedRuleID = null) {
     try {
-      const data = await apiGET("/data/care_insight_rules?orderBy=ruleID,DESC");
+      const data = await apiGET("/data/alert_rules?orderBy=ruleID,DESC");
       if (String(data.status) === "ok") {
-        this.triggerCareInsightRules = data.results || [];
-        const selectRule = document.querySelector("ion-select[name='editTriggerCareInsightRule']");
+        this.triggerAlertRules = data.results || [];
+        const selectRule = document.querySelector("ion-select[name='editTriggerAlertRule']");
 
-        selectRule.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + this.triggerCareInsightRules.map(item => {
+        selectRule.innerHTML = `<ion-select-option value="">${window.Translation.get("None")}</ion-select-option>` + this.triggerAlertRules.map(item => {
           return `<ion-select-option value="${item.ruleID}">${item.title} (${window.Translation.get(item.aggregationType)})</ion-select-option>`;
         }).join("");
 
@@ -711,13 +711,13 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent  = `<ion-text color="light">${window.Translation.get("TriggerTypeBatteryLow")} &lt; ${item.value}%</ion-text>`;
       }
-      else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
+      else if (["alert_opened", "alert_updated", "alert_resolved"].includes(type)) {
         cardTitle    = item.deviceName;
         cardSubtitle = `${stringCut(item.deviceUUID || item.uuid, 20)} | ${bridgeInfo}`;
         cardContent = `
-            <ion-text color="light">${window.Translation.get(String(type) === "care_insight_opened" ? "TriggerTypeCareInsightOpened" : String(type) === "care_insight_updated" ? "TriggerTypeCareInsightUpdated" : "TriggerTypeCareInsightResolved")}</ion-text>
+            <ion-text color="light">${window.Translation.get(String(type) === "alert_opened" ? "TriggerTypeAlertOpened" : String(type) === "alert_updated" ? "TriggerTypeAlertUpdated" : "TriggerTypeAlertResolved")}</ion-text>
             <br />
-            <ion-text color="light">${window.Translation.get("CareInsightRule")}: ${item.ruleTitle || item.property}</ion-text>
+            <ion-text color="light">${window.Translation.get("AlertRule")}: ${item.ruleTitle || item.property}</ion-text>
         `;
       }
       else if (String(type) === "time") {
@@ -792,8 +792,8 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
         else if (String(type) === "time") {
           document.querySelector("ion-input[name='editTriggerTime']").value = triggerData.value || "";
         }
-        else if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(type)) {
-          await this.dataLoadCareInsightRules(triggerData.property || null);
+        else if (["alert_opened", "alert_updated", "alert_resolved"].includes(type)) {
+          await this.dataLoadAlertRules(triggerData.property || null);
           if (triggerUUID) {
             await this.dataLoadTriggerDevices(triggerUUID, triggerBridge);
           }

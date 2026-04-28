@@ -40,14 +40,13 @@ class Start extends HTMLElement {
           </ion-row>
         </ion-grid>
 
-        <div id="notifications-list"></div>
+        <div id="alerts-list"></div>
 
-        <div id="care-insights-stats"></div>
+        <div id="alerts-stats"></div>
 
         <ion-grid>
           <ion-row>
-            <ion-col size="6"><ion-button class="selection" expand="block" href="/notifications"><div><div><ion-icon slot="start" name="notifications-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("MessagesTitle")}</ion-text></div></div></div></ion-button></ion-col>
-            <ion-col size="6"><ion-button class="selection" expand="block" href="/care-insights"><div><div><ion-icon slot="start" name="analytics-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("CareInsightsTitle")}</ion-text></div></div></ion-button></ion-col>
+            <ion-col size="12"><ion-button class="selection" expand="block" href="/alerts"><div><div><ion-icon slot="start" name="analytics-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("PageAlertsHeadline")}</ion-text></div></div></ion-button></ion-col>
           </ion-row>
           <ion-row>
             <ion-col size="12"><ion-button href="/sos" class="selection" color="tertiary" expand="block"><ion-icon slot="start" name="call-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("SOSTitle")}</ion-text></div></div></ion-button></ion-col>
@@ -87,25 +86,27 @@ class Start extends HTMLElement {
 
   async dataLoad() {
     if (window.appConfig.CONF_serverURL !== undefined) { // only load data if server URL is known, so server is connected
-      const spinner = spinnerShow("#notifications-list");        
+      const spinner = spinnerShow("#alerts-list");
       try {
-        const data = await apiGET("/data/notifications?orderBy=dateTime,DESC&limit=3");
+        const data = await apiGET("/alerts?limit=3");
         console.log("API call - Output:", data);
-        
-        if (String(data.status) === "ok") {
-          const listElement = this.querySelector("#notifications-list");
-          const items = data.results;
 
-          if (items && Number(items.length) > 0) {
-              listElement.innerHTML = items.map(item => `
-              <ion-card color="primary" data-id="${item.notificationID}" class="small">
+        if (String(data.status) === "ok") {
+          const listElement = this.querySelector("#alerts-list");
+          const items       = data.results;
+
+          // Always overwrite — if the list went from non-empty to empty, the old
+          // cards must disappear instead of lingering on screen.
+          listElement.innerHTML = (items && Number(items.length) > 0)
+            ? items.map(item => `
+              <ion-card color="primary" data-id="${item.alertID}" class="small" href="/alert/${item.alertID}">
                 <ion-card-header>
-                  <ion-card-title>${item.icon ? `<ion-icon name="${item.icon}" color="light"></ion-icon>` : ""} ${item.text}</ion-card-title>
-                  <ion-card-subtitle>${dateFormat(item.dateTime, window.appConfig.CONF_dateLocale)}</ion-card-subtitle>
+                  <ion-card-title>${item.icon ? `<ion-icon name="${item.icon}" color="light"></ion-icon> ` : ""}${item.title}</ion-card-title>
+                  <ion-card-subtitle>${dateFormat(item.dateTimeUpdated, window.appConfig.CONF_dateLocale)}</ion-card-subtitle>
                 </ion-card-header>
               </ion-card>
-            `).join("");
-          }
+            `).join("")
+            : "";
         }
         else {
           toastShow("Error: " + data.error, "danger");
@@ -117,7 +118,7 @@ class Start extends HTMLElement {
       }
 
       try {
-        const stats = await apiGET("/care-insights/stats");
+        const stats = await apiGET("/alerts/stats");
         console.log("API call - Output:", stats);
 
         if (String(stats.status) === "ok") {
@@ -131,17 +132,17 @@ class Start extends HTMLElement {
         console.error("API call - Error:", error);
         toastShow("Error: " + error.message, "danger");
       }
-      
+
       spinner.remove();
     }
   }
 
   renderStats(data) {
-    this.querySelector("#care-insights-stats").innerHTML = `
+    this.querySelector("#alerts-stats").innerHTML = `
       <ion-grid class="custom">
         <ion-row>
-          <ion-col size="6" class="custom"><ion-card color="danger" class="small" href="/care-insights"><ion-card-header><ion-card-title class="ion-text-center">${data.critical}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Critical")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
-          <ion-col size="6" class="custom"><ion-card color="warning" class="small" href="/care-insights"><ion-card-header><ion-card-title class="ion-text-center">${data.open}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Open")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
+          <ion-col size="6" class="custom"><ion-card color="danger" class="small" href="/alerts"><ion-card-header><ion-card-title class="ion-text-center">${data.critical}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Critical")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
+          <ion-col size="6" class="custom"><ion-card color="warning" class="small" href="/alerts"><ion-card-header><ion-card-title class="ion-text-center">${data.open}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Open")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
         </ion-row>
       </ion-grid>
     `;

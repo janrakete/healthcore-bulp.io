@@ -1,19 +1,19 @@
 /**
- * Care Insight Rule Edit Page
+ * Alert Rule Edit Page
  */
 
 import { apiGET, apiPATCH, apiPOST } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 
-class CareInsightRuleEdit extends HTMLElement {
+class AlertRuleEdit extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
         <ion-toolbar color="primary">
           <ion-buttons slot="start">
-            <ion-back-button default-href="/care-insight-rules"></ion-back-button>
+            <ion-back-button default-href="/alert-rules"></ion-back-button>
           </ion-buttons>
-          <ion-title>${window.Translation.get("PageCareInsightRuleEditHeadline")}</ion-title>
+          <ion-title>${window.Translation.get("PageAlertRuleEditHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
@@ -115,15 +115,15 @@ class CareInsightRuleEdit extends HTMLElement {
 
     try {
       if (Number(this.ID) === 0) {
-        data = await apiPOST("/data/care_insight_rules", formData);
+        data = await apiPOST("/data/alert_rules", formData);
       }
       else {
-        data = await apiPATCH("/data/care_insight_rules?ruleID=" + this.ID, formData);
+        data = await apiPATCH("/data/alert_rules?ruleID=" + this.ID, formData);
       }
 
       if (String(data.status) === "ok") {
         toastShow(window.Translation.get("EntrySaved"), "success");
-        document.querySelector("ion-router").push("/care-insight-rules");
+        document.querySelector("ion-router").push("/alert-rules");
       }
       else {
         toastShow("Error: " + data.error, "danger");
@@ -137,7 +137,7 @@ class CareInsightRuleEdit extends HTMLElement {
 
   async dataLoad() {
     try {
-      const data = await apiGET("/data/care_insight_rules?ruleID=" + this.ID);
+      const data = await apiGET("/data/alert_rules?ruleID=" + this.ID);
       console.log("API call - Output:", data);
 
       if (String(data.status) === "ok") {
@@ -165,4 +165,4 @@ class CareInsightRuleEdit extends HTMLElement {
   }
 }
 
-customElements.define("page-care-insight-rule-edit", CareInsightRuleEdit);
+customElements.define("page-alert-rule-edit", AlertRuleEdit);
