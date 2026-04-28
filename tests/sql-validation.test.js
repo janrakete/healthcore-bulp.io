@@ -31,7 +31,7 @@ describe("sqlCheckValidName", () => {
   });
 
   test("should accept all allowed table names from config", () => {
-    const allowed = ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"];
+    const allowed = ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "alert_rules"];
     allowed.forEach(name => {
       expect(sqlCheckValidName(name)).toBe(true);
     });

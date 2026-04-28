@@ -5,7 +5,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications"],
+  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "alert_rules"],
   CONF_tablesMaxEntriesReturned:   500,
   CONF_apiKey:                     "",  // dev mode
   CONF_apiCallTimeoutMilliseconds: 1000,  // short timeout for tests
