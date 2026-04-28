@@ -75,8 +75,8 @@ async function startServer() {
   app.use("/devices", apiKeyAuth, routesDevices);
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
   app.use("/scenarios", apiKeyAuth, routesScenarios);
-  const routesCareInsights = require("./routes/care-insights"); // import routes for care insights manipulation
-  app.use("/care-insights", apiKeyAuth, routesCareInsights);
+  const routesAlerts = require("./routes/alerts"); // import routes for alerts
+  app.use("/alerts", apiKeyAuth, routesAlerts);
   
   /**
    * Swagger
@@ -175,10 +175,10 @@ async function startServer() {
   });
 
   /**
-   * Care Insights
+   * Alerts Engine
    */
-  const CareInsightsEngine = require("./libs/CareInsightsEngine");
-  const careInsights       = new CareInsightsEngine();
+  const AlertsEngine = require("./libs/AlertsEngine");
+  global.alerts      = new AlertsEngine();
 
   /**
    * Push notifications
@@ -463,7 +463,7 @@ async function startServer() {
               }
             });
 
-            await careInsights.handleDeviceValues(data); // handle care insights based on device values
+            await global.alerts.handleDeviceValues(data); // handle alerts based on device values
           }
         }
         else {
@@ -616,7 +616,7 @@ async function startServer() {
               bridge: data.bridge
             });
 
-            careInsights.handleDeviceStatus(data); // handle care insights based on device status
+            global.alerts.handleDeviceStatus(data); // handle alerts based on device status
           }
           else {
             common.conLog("Server: Device with UUID " + data.uuid + " is not registered", "red");

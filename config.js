@@ -68,12 +68,12 @@ const appConfig = {
   CONF_baseURL                                        : process.env.CONF_baseURL,
   CONF_scanTimeDefaultSeconds                         : toInt(process.env.CONF_scanTimeDefaultSeconds),
   CONF_databaseFilename                               : process.env.CONF_databaseFilename,
-  CONF_careInsightsActive                             : toBool(process.env.CONF_careInsightsActive, true),
-  CONF_careInsightsAnomalyThreshold                   : toFloat(process.env.CONF_careInsightsAnomalyThreshold),
-  CONF_careInsightsHistorySize                        : toInt(process.env.CONF_careInsightsHistorySize),
-  CONF_careInsightsMinHistoryEntries                  : toInt(process.env.CONF_careInsightsMinHistoryEntries),
-  CONF_careInsightsMaxSignalsPerInsight               : toInt(process.env.CONF_careInsightsMaxSignalsPerInsight),
-  CONF_careInsightsLanguage                           : process.env.CONF_careInsightsLanguage,
+  CONF_alertsActive                                   : toBool(process.env.CONF_alertsActive, true),
+  CONF_alertsAnomalyThreshold                         : toFloat(process.env.CONF_alertsAnomalyThreshold),
+  CONF_alertsHistorySize                              : toInt(process.env.CONF_alertsHistorySize),
+  CONF_alertsMinHistoryEntries                        : toInt(process.env.CONF_alertsMinHistoryEntries),
+  CONF_alertsMaxSignalsPerAlert                       : toInt(process.env.CONF_alertsMaxSignalsPerAlert),
+  CONF_alertsLanguage                                 : process.env.CONF_alertsLanguage,
   CONF_tablesAllowedForAPI                            : (process.env.CONF_tablesAllowedForAPI || "").split(",").map(table => table.trim()).filter(Boolean),
   CONF_tablesMaxEntriesReturned                       : toInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds                     : toInt(process.env.CONF_apiCallTimeoutMilliseconds),
@@ -99,8 +99,7 @@ const appConfig = {
   CONF_devicesZigBeeBatteryAlertCooldownHours         : toInt(process.env.CONF_devicesZigBeeBatteryAlertCooldownHours),
   CONF_healthcheckMaxLogs                             : toInt(process.env.CONF_healthcheckMaxLogs),
   CONF_dashboardRefreshIntervalMs                     : toInt(process.env.CONF_dashboardRefreshIntervalMs),
-  CONF_dashboardRecentInsightsCount                   : toInt(process.env.CONF_dashboardRecentInsightsCount),
-  CONF_dashboardRecentNotificationsCount              : toInt(process.env.CONF_dashboardRecentNotificationsCount)
+  CONF_dashboardRecentAlertsCount                     : toInt(process.env.CONF_dashboardRecentAlertsCount)
 };
 
 module.exports = appConfig;

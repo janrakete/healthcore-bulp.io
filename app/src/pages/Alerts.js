@@ -1,12 +1,12 @@
 /**
- * Care Insights Page
+ * Alerts Page
  */
 
 import { apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { dateFormat, entriesNoDataMessage, spinnerShow } from "../services/helper.js";
 
-class CareInsights extends HTMLElement {
+class Alerts extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
@@ -14,7 +14,7 @@ class CareInsights extends HTMLElement {
           <ion-buttons slot="start">
             <ion-back-button default-href="/"></ion-back-button>
           </ion-buttons>
-          <ion-title>${window.Translation.get("PageCareInsightsHeadline")}</ion-title>
+          <ion-title>${window.Translation.get("PageAlertsHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
@@ -23,11 +23,11 @@ class CareInsights extends HTMLElement {
           </ion-refresher-content>
         </ion-refresher>
 
-        <div id="care-insights-stats"></div>
+        <div id="alerts-stats"></div>
 
-        <div id="care-insights-list"></div>
+        <div id="alerts-list"></div>
 
-        <div id="care-insights-list-no-data"></div>
+        <div id="alerts-list-no-data"></div>
       </ion-content>
     `;
 
@@ -40,43 +40,43 @@ class CareInsights extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = spinnerShow("#care-insights-list");
+    const spinner = spinnerShow("#alerts-list");
 
     try {
-      const stats = await apiGET("/care-insights/stats");
+      const stats = await apiGET("/alerts/stats");
       if (String(stats.status) === "ok") {
         this.renderStats(stats.data);
       }
 
-      const data = await apiGET("/care-insights");
+      const data = await apiGET("/alerts");
       console.log("API call - Output:", data);
 
       if (String(data.status) === "ok") {
-        const listElement = this.querySelector("#care-insights-list");
+        const listElement = this.querySelector("#alerts-list");
         const items = data.results;
 
         if (!items || Number(items.length) === 0) {
           listElement.innerHTML = "";
-          entriesNoDataMessage("#care-insights-list-no-data", false);
+          entriesNoDataMessage("#alerts-list-no-data", false);
         }
         else {
-          this.querySelector("#care-insights-list-no-data").innerHTML = "";
+          this.querySelector("#alerts-list-no-data").innerHTML = "";
           listElement.innerHTML = items.map((item) => `
-            <ion-card color="primary" data-id="${item.insightID}">
+            <ion-card color="primary" data-id="${item.alertID}">
               <ion-card-header>
-                <ion-card-title>${item.title}</ion-card-title>
+                <ion-card-title>${item.icon ? `<ion-icon name="${item.icon}"></ion-icon> ` : ""}${item.title}</ion-card-title>
                 <ion-card-subtitle>${this.getSubtitle(item)}</ion-card-subtitle>
               </ion-card-header>
               <ion-card-content>
                 <ion-text color="light">${item.summary}</ion-text>
               </ion-card-content>
-              <ion-button data-id="${item.insightID}" class="action-open-option"><ion-icon slot="start" name="analytics-sharp" color="light"></ion-icon><ion-text color="light">${window.Translation.get("OpenDetail")}</ion-text></ion-button>
+              <ion-button data-id="${item.alertID}" class="action-open-option"><ion-icon slot="start" name="analytics-sharp" color="light"></ion-icon><ion-text color="light">${window.Translation.get("OpenDetail")}</ion-text></ion-button>
             </ion-card>
           `).join("");
 
           this.querySelectorAll(".action-open-option").forEach((button) => {
             button.addEventListener("click", () => {
-              document.querySelector("ion-router").push("/care-insight/" + button.getAttribute("data-id"));
+              document.querySelector("ion-router").push("/alert/" + button.getAttribute("data-id"));
             });
           });
         }
@@ -94,7 +94,7 @@ class CareInsights extends HTMLElement {
   }
 
   renderStats(data) {
-    this.querySelector("#care-insights-stats").innerHTML = `
+    this.querySelector("#alerts-stats").innerHTML = `
       <ion-grid class="custom">
         <ion-row>
           <ion-col size="6" class="custom"><ion-card color="danger" class="small"><ion-card-header><ion-card-title class="ion-text-center">${data.critical}</ion-card-title><ion-card-subtitle class="ion-text-center">${window.Translation.get("Critical")}</ion-card-subtitle></ion-card-header></ion-card></ion-col>
@@ -125,6 +125,10 @@ class CareInsights extends HTMLElement {
       parts.push(window.Translation.get("Device") + ": " + (item.device.name || item.device.productName || item.device.uuid));
     }
 
+    if (item.scenario) {
+      parts.push(window.Translation.get("Scenario") + ": " + item.scenario.name);
+    }
+
     parts.push(dateFormat(item.dateTimeUpdated, window.appConfig.CONF_dateLocale));
 
     return parts.join(" | ");
@@ -144,4 +148,4 @@ class CareInsights extends HTMLElement {
   }
 }
 
-customElements.define("page-care-insights", CareInsights);
+customElements.define("page-alerts", Alerts);

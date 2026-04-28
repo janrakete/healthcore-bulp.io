@@ -32,12 +32,9 @@
       <li class="is-active" data-tab="overview">
         <a data-i18n="Overview">Overview</a>
       </li>
-      <li data-tab="care-insights">
-        <a data-i18n="CareInsightsTitle">Care Insights</a>
+      <li data-tab="alerts">
+        <a data-i18n="PageAlertsHeadline">Alerts</a>
       </li>
-      <li data-tab="notifications">
-        <a data-i18n="NotificationsTitle">Notifications</a>
-      </li>      
       <li data-tab="devices">
         <a data-i18n="DevicesTitle">Devices</a>
       </li>
@@ -58,16 +55,10 @@
     <div class="columns is-multiline is-centered" id="overview-stats-cards"></div>
 
     <div class="columns">
-      <div class="column is-half">
+      <div class="column">
         <div class="box">
-          <h3 class="title is-normal mb-3" data-i18n="RecentInsights">Recent Care Insights</h3>
-          <div id="overview-recent-insights"></div>
-        </div>
-      </div>
-      <div class="column is-half">
-        <div class="box">
-          <h3 class="title is-normal mb-3" data-i18n="RecentNotifications">Recent Notifications</h3>
-          <div id="overview-recent-notifications"></div>
+          <h3 class="title is-normal mb-3" data-i18n="RecentAlerts">Recent Alerts</h3>
+          <div id="overview-recent-alerts"></div>
         </div>
       </div>
     </div>
@@ -75,8 +66,8 @@
     <div class="columns" id="overview-charts">
       <div class="column is-half">
         <div class="box hc-chart-box">
-          <h3 class="title is-4 mb-3" data-i18n="CareInsightsTitle">Care Insights</h3>
-          <canvas id="chart-insights-status"></canvas>
+          <h3 class="title is-4 mb-3" data-i18n="PageAlertsHeadline">Alerts</h3>
+          <canvas id="chart-alerts-status"></canvas>
         </div>
       </div>
       <div class="column is-half">
@@ -90,12 +81,12 @@
   </section>
 
   <!-- =================================================================================== -->
-  <!-- Tab panel: Care Insights                                                                  -->
+  <!-- Tab panel: Alerts                                                                   -->
   <!-- =================================================================================== -->
-  <section id="tab-care-insights" class="hc-tab-panel is-hidden">
+  <section id="tab-alerts" class="hc-tab-panel is-hidden">
 
-    <!-- Care insight cards (built dynamically in dashboard.js) -->
-    <div id="insights-list"></div>
+    <!-- Alert cards (built dynamically in dashboard.js) -->
+    <div id="alerts-list"></div>
 
   </section>
 
@@ -140,15 +131,6 @@
   <!-- =================================================================================== -->
   <section id="tab-rooms" class="hc-tab-panel is-hidden">
     <div class="columns is-multiline" id="rooms-list">
-      <!-- Cards built dynamically in dashboard.js -->
-    </div>
-  </section>
-
-  <!-- =================================================================================== -->
-  <!-- Tab panel: Notifications                                                             -->
-  <!-- =================================================================================== -->
-  <section id="tab-notifications" class="hc-tab-panel is-hidden">
-    <div id="notifications-list">
       <!-- Cards built dynamically in dashboard.js -->
     </div>
   </section>

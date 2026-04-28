@@ -183,7 +183,7 @@ function startServer() {
             try {
                 statementInsertHistory.run(topic, message, callID);
 
-                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for Care Insights and related analytics
+                if (topic === "server/devices/values/get") { // if topic is for device values, then insert values also into mqtt_history_devices_values to use for alerts and related analytics
                     const timeFeatures = timeFeaturesExtract(Date.now()); // extract time features from the current date and time
 
                     if (!data.values || typeof data.values !== "object" || Array.isArray(data.values)) { // validate that data.values exists and is an object (not an array)

@@ -1,12 +1,12 @@
 /**
- * Care Insight Rules Page
+ * Alert Rules Page
  */
 
 import { apiDELETE, apiGET } from "../services/api.js";
 import { toastShow } from "../services/toast.js";
 import { spinnerShow, entriesNoDataMessage } from "../services/helper.js";
 
-class CareInsightRules extends HTMLElement {
+class AlertRules extends HTMLElement {
   connectedCallback() {
     this.innerHTML = `
       <ion-header>
@@ -14,7 +14,7 @@ class CareInsightRules extends HTMLElement {
           <ion-buttons slot="start">
             <ion-back-button default-href="/settings"></ion-back-button>
           </ion-buttons>
-          <ion-title>${window.Translation.get("PageCareInsightRulesHeadline")}</ion-title>
+          <ion-title>${window.Translation.get("PageAlertRulesHeadline")}</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">
@@ -23,20 +23,20 @@ class CareInsightRules extends HTMLElement {
           </ion-refresher-content>
         </ion-refresher>
 
-        <div id="care-insight-rules-list"></div>
-        <div id="care-insight-rules-list-no-data"></div>
+        <div id="alert-rules-list"></div>
+        <div id="alert-rules-list-no-data"></div>
 
         <ion-action-sheet id="action-sheet" class="action-sheet-style" header="${window.Translation.get("Actions")}"></ion-action-sheet>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-          <ion-fab-button color="success" id="care-insight-rule-edit-button">
+          <ion-fab-button color="success" id="alert-rule-edit-button">
             <ion-icon name="add"></ion-icon>
           </ion-fab-button>
         </ion-fab>
       </ion-content>
     `;
 
-    this.querySelector("#care-insight-rule-edit-button").addEventListener("click", () => {
-      document.querySelector("ion-router").push("/care-insight-rule-edit/0");
+    this.querySelector("#alert-rule-edit-button").addEventListener("click", () => {
+      document.querySelector("ion-router").push("/alert-rule-edit/0");
     });
 
     this.querySelector("#refresher").addEventListener("ionRefresh", async (event) => {
@@ -72,9 +72,9 @@ class CareInsightRules extends HTMLElement {
       const ID = actionSheet.dataset.ID;
 
       if (String(event.detail.data?.action) === "delete") {
-        const data = await apiDELETE("/data/care_insight_rules?ruleID=" + ID);
+        const data = await apiDELETE("/data/alert_rules?ruleID=" + ID);
         if (String(data.status) === "ok") {
-          const itemDelete = this.querySelector("#care-insight-rules-list").querySelector("ion-card[data-id='" + ID + "']");
+          const itemDelete = this.querySelector("#alert-rules-list").querySelector("ion-card[data-id='" + ID + "']");
           if (itemDelete) {
             itemDelete.remove();
             toastShow(window.Translation.get("EntryDeleted"), "success");
@@ -88,22 +88,22 @@ class CareInsightRules extends HTMLElement {
   }
 
   async dataLoad() {
-    const spinner = spinnerShow("#care-insight-rules-list");
+    const spinner = spinnerShow("#alert-rules-list");
 
     try {
-      const data = await apiGET("/data/care_insight_rules?orderBy=ruleID,DESC");
+      const data = await apiGET("/data/alert_rules?orderBy=ruleID,DESC");
       console.log("API call - Output:", data);
 
       if (String(data.status) === "ok") {
-        const listElement = this.querySelector("#care-insight-rules-list");
+        const listElement = this.querySelector("#alert-rules-list");
         const items = data.results;
 
         if (!items || Number(items.length) === 0) {
           listElement.innerHTML = "";
-          entriesNoDataMessage("#care-insight-rules-list-no-data");
+          entriesNoDataMessage("#alert-rules-list-no-data");
         }
         else {
-          this.querySelector("#care-insight-rules-list-no-data").innerHTML = "";
+          this.querySelector("#alert-rules-list-no-data").innerHTML = "";
           listElement.innerHTML = items.map(item => `
             <ion-card color="primary" data-id="${item.ruleID}">
               <ion-card-header>
@@ -124,7 +124,7 @@ class CareInsightRules extends HTMLElement {
 
           this.querySelectorAll(".action-edit-option").forEach(button => {
             button.addEventListener("click", () => {
-              document.querySelector("ion-router").push("/care-insight-rule-edit/" + button.getAttribute("data-id"));
+              document.querySelector("ion-router").push("/alert-rule-edit/" + button.getAttribute("data-id"));
             });
           });
 
@@ -149,4 +149,4 @@ class CareInsightRules extends HTMLElement {
   }
 }
 
-customElements.define("page-care-insight-rules", CareInsightRules);
+customElements.define("page-alert-rules", AlertRules);

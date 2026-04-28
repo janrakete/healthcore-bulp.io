@@ -11,8 +11,7 @@
  */
 
 let CONF_dashboardRefreshIntervalMs;
-let CONF_dashboardRecentInsightsCount;
-let CONF_dashboardRecentNotificationsCount;
+let CONF_dashboardRecentAlertsCount;
 let CONF_serverBaseUrl;
 let CONF_serverApiKey;
 
@@ -23,9 +22,8 @@ let CONF_serverApiKey;
  * @property {Array}  devices              - All devices from GET /devices/all
  * @property {Array}  individuals          - All people from GET /data/individuals
  * @property {Array}  rooms                - All rooms from GET /data/rooms
- * @property {Array}  insights             - Care Insights matching current filter
- * @property {Object} insightStats         - Counts from GET /care-insights/stats
- * @property {Array}  notifications        - Notifications from GET /data/notifications
+ * @property {Array}  alerts               - Alerts matching current filter
+ * @property {Object} alertStats           - Counts from GET /alerts/stats
  * @property {string} activeTab            - data-tab value of the currently visible tab
  * @property {Object|null} serverInfo      - Response from GET /info (server + bridge status)
  */
@@ -33,9 +31,8 @@ const dashboardState = {
     devices:             [],
     individuals:         [],
     rooms:               [],
-    insights:            [],
-    insightStats:        { open: 0, acknowledged: 0, resolved: 0, critical: 0 },
-    notifications:       [],
+    alerts:              [],
+    alertStats:          { open: 0, acknowledged: 0, resolved: 0, critical: 0 },
     serverInfo:          null,
     activeTab:           "overview"
 };
@@ -43,14 +40,14 @@ const dashboardState = {
 /**
  * @type {Object} chartInstances
  * Holds Chart.js instance references so they can be destroyed before being re-created with new data.
- * @property {Chart|null} insightStatus   - Doughnut: Care Insight status distribution
- * @property {Chart|null} deviceStatus    - Doughnut: device connection status
- * @property {Object}     signalCharts    - Map of insightID → Chart (line charts)
+ * @property {Chart|null} alertStatus    - Doughnut: Alert status distribution
+ * @property {Chart|null} deviceStatus   - Doughnut: device connection status
+ * @property {Object}     signalCharts   - Map of alertID → Chart (line charts)
  */
 const chartInstances = {
-    insightStatus: null,
-    deviceStatus:  null,
-    signalCharts:  {}
+    alertStatus:  null,
+    deviceStatus: null,
+    signalCharts: {}
 };
 
 /**
@@ -71,11 +68,10 @@ async function fetchConfig() {
         const response = await fetch("/api/config");
         const data     = await response.json();
 
-        CONF_serverBaseUrl                      = data.CONF_serverBaseUrl;
-        CONF_serverApiKey                       = data.CONF_apiKey || "";
-        CONF_dashboardRefreshIntervalMs         = data.CONF_dashboardRefreshIntervalMs;
-        CONF_dashboardRecentInsightsCount       = data.CONF_dashboardRecentInsightsCount;
-        CONF_dashboardRecentNotificationsCount  = data.CONF_dashboardRecentNotificationsCount;
+        CONF_serverBaseUrl                  = data.CONF_serverBaseUrl;
+        CONF_serverApiKey                   = data.CONF_apiKey || "";
+        CONF_dashboardRefreshIntervalMs     = data.CONF_dashboardRefreshIntervalMs;
+        CONF_dashboardRecentAlertsCount     = data.CONF_dashboardRecentAlertsCount;
     }
     catch (error) {
         console.error("API call for config failed:", error);
@@ -152,63 +148,63 @@ async function fetchRooms() {
 }
 
 /**
- * Fetches Care Insights from the Healthcore server. Results are always ordered newest-first (dateTimeUpdated DESC).
+ * Fetches Alerts from the Healthcore server. Results are always ordered newest-first (dateTimeUpdated DESC).
  * @async
- * @function fetchInsights
- * @returns {Promise<Array>} Array of enriched Care Insight objects, or empty array on error.
- * @description Calls GET {CONF_serverBaseUrl}/care-insights with optional ?status= query param.
+ * @function fetchAlerts
+ * @returns {Promise<Array>} Array of enriched Alert objects, or empty array on error.
+ * @description Calls GET {CONF_serverBaseUrl}/alerts?orderBy=dateTimeUpdated,DESC.
  */
-async function fetchInsights() {
+async function fetchAlerts() {
     try {
-        let url = CONF_serverBaseUrl + "/care-insights?orderBy=dateTimeUpdated,DESC";
+        const url      = CONF_serverBaseUrl + "/alerts?orderBy=dateTimeUpdated,DESC";
         const response = await fetch(url, { headers: buildApiHeaders() });
         const data     = await response.json();
         return Array.isArray(data.results) ? data.results : [];
     }
     catch (error) {
-        console.error("API call for care insights failed:", error);
+        console.error("API call for alerts failed:", error);
         return [];
     }
 }
 
 /**
- * Fetches Care Insight summary statistics from the Healthcore server. Returns counts for open, acknowledged, resolved, and critical insights.
+ * Fetches Alert summary statistics from the Healthcore server. Returns counts for open, acknowledged, resolved, and critical alerts.
  * @async
- * @function fetchInsightStats
+ * @function fetchAlertStats
  * @returns {Promise<Object>} Stats object with keys open/acknowledged/resolved/critical, or an object with all zeroes on error.
- * @description Calls GET {CONF_serverBaseUrl}/care-insights/stats.
+ * @description Calls GET {CONF_serverBaseUrl}/alerts/stats.
  */
-async function fetchInsightStats() {
+async function fetchAlertStats() {
     try {
-        const response = await fetch(CONF_serverBaseUrl + "/care-insights/stats", { headers: buildApiHeaders() });
+        const response = await fetch(CONF_serverBaseUrl + "/alerts/stats", { headers: buildApiHeaders() });
         const data     = await response.json();
         return data.data || { open: 0, acknowledged: 0, resolved: 0, critical: 0 };
     }
     catch (error) {
-        console.error("API call for care insight stats failed:", error);
+        console.error("API call for alert stats failed:", error);
         return { open: 0, acknowledged: 0, resolved: 0, critical: 0 };
     }
 }
 
 /**
- * Fetches the full detail of a single Care Insight including its signals array. Called lazily when the user expands an insight card for the first time.
+ * Fetches the full detail of a single Alert including its signals array. Called lazily when the user expands an alert card for the first time.
  * @async
- * @function fetchInsightDetail
- * @param {number} insightID - The numeric ID of the Care Insight to load.
- * @returns {Promise<Object|null>} Object with {insight, signals} on success, or null on error.
- * @description Calls GET {serverBaseUrl}/care-insights/{insightID}.
+ * @function fetchAlertDetail
+ * @param {number} alertID - The numeric ID of the Alert to load.
+ * @returns {Promise<Object|null>} Object with {alert, signals} on success, or null on error.
+ * @description Calls GET {serverBaseUrl}/alerts/{alertID}.
  */
-async function fetchInsightDetail(insightID) {
+async function fetchAlertDetail(alertID) {
     try {
-        const response = await fetch(CONF_serverBaseUrl + "/care-insights/" + insightID, { headers: buildApiHeaders() });
+        const response = await fetch(CONF_serverBaseUrl + "/alerts/" + alertID, { headers: buildApiHeaders() });
         const data     = await response.json();
-        if (data.status === "ok" && data.insight) {
-            return { insight: data.insight, signals: Array.isArray(data.signals) ? data.signals : [] };
+        if (data.status === "ok" && data.alert) {
+            return { alert: data.alert, signals: Array.isArray(data.signals) ? data.signals : [] };
         }
         return null;
     }
     catch (error) {
-        console.error("API call for care insight detail failed for ID " + insightID + ":", error);
+        console.error("API call for alert detail failed for ID " + alertID + ":", error);
         return null;
     }
 }
@@ -231,16 +227,6 @@ async function fetchInfo() {
     }
 }
 
-/**
- * Fetches notifications from the Healthcore server, newest first.
- * @async
- * @function fetchNotifications
- * @returns {Promise<Array>} Array of notification objects, or empty array on error.
- * @description Calls GET {CONF_serverBaseUrl}/data/notifications?orderBy=dateTime,DESC.
- */
-async function fetchNotifications() {
-    return fetchArray("/data/notifications?orderBy=dateTime,DESC");
-}
 
 /**
  * =============================================================================================
@@ -253,26 +239,24 @@ async function fetchNotifications() {
  * @async
  * @function refreshAllData
  * @returns {Promise<void>}
- * @description Uses Promise.all to fetch devices, individuals, rooms, insights, insight stats, and notifications simultaneously. 
+ * @description Uses Promise.all to fetch devices, individuals, rooms, alerts, alert stats, and server info simultaneously.
  */
 async function refreshAllData() {
-    const [devices, individuals, rooms, insights, insightStats, notifications, serverInfo] = await Promise.all([
+    const [devices, individuals, rooms, alerts, alertStats, serverInfo] = await Promise.all([
         fetchDevices(),
         fetchIndividuals(),
         fetchRooms(),
-        fetchInsights(),
-        fetchInsightStats(),
-        fetchNotifications(),
+        fetchAlerts(),
+        fetchAlertStats(),
         fetchInfo()
     ]);
 
-    dashboardState.devices       = devices;
-    dashboardState.individuals   = individuals;
-    dashboardState.rooms         = rooms;
-    dashboardState.insights      = insights;
-    dashboardState.insightStats  = insightStats;
-    dashboardState.notifications = notifications;
-    dashboardState.serverInfo    = serverInfo;
+    dashboardState.devices      = devices;
+    dashboardState.individuals  = individuals;
+    dashboardState.rooms        = rooms;
+    dashboardState.alerts       = alerts;
+    dashboardState.alertStats   = alertStats;
+    dashboardState.serverInfo   = serverInfo;
     
     renderActiveTab(); // Clear the loading message on successful refresh
 
@@ -325,20 +309,17 @@ function renderActiveTab() {
     if (tab === "overview") {
         renderOverview();
     }
-    else if (tab === "care-insights") {
-        renderInsights();
+    else if (tab === "alerts") {
+        renderAlerts();
     }
     else if (tab === "devices") {
         renderDevices();
     }
-    else if (tab === "people") {    
+    else if (tab === "people") {
         renderPeople();
     }
     else if (tab === "rooms") {
         renderRooms();
-    }
-    else if (tab === "notifications") {
-        renderNotifications();
     }
     else if (tab === "status") {
         renderStatus();
@@ -352,43 +333,42 @@ function renderActiveTab() {
  */
 
 /**
- * Renders the Overview tab: stat cards, two doughnut charts, and the recent-data row (latest Care Insights + latest three Notifications).
+ * Renders the Overview tab: stat cards, two doughnut charts, and the recent-data row.
  * @function renderOverview
  * @returns {void}
- * @description Reads dashboardState.insightStats, devices, individuals, rooms, insights, and notifications to build six stat cards, two charts, and two recent-data lists.
+ * @description Reads dashboardState.alertStats, devices, individuals, and rooms to build stat cards, two charts, and the recent alerts list.
  */
 function renderOverview() {
     const cardsContainer = document.getElementById("overview-stats-cards");
-    
-    if (!cardsContainer) {
-        return; 
-    }
-    
-    cardsContainer.innerHTML = "";
-    
-    cardsContainer.appendChild(buildStatCard("Critical", dashboardState.insightStats.critical, "hc-box-color-critical"));
-    cardsContainer.appendChild(buildStatCard("Open",     dashboardState.insightStats.open,     "hc-box-color-open"));
 
-    renderInsightStatusChart();
+    if (!cardsContainer) {
+        return;
+    }
+
+    cardsContainer.innerHTML = "";
+
+    cardsContainer.appendChild(buildStatCard("Critical", dashboardState.alertStats.critical, "hc-box-color-critical"));
+    cardsContainer.appendChild(buildStatCard("Open",     dashboardState.alertStats.open,     "hc-box-color-open"));
+
+    renderAlertStatusChart();
     renderDeviceStatusChart();
 
-    renderOverviewRecentInsights();
-    renderOverviewRecentNotifications();
+    renderOverviewRecentAlerts();
 }
 
 /**
- * Renders the most recent Care Insights into the Overview panel (#overview-recent-insights).
- * @function renderOverviewRecentInsights
+ * Renders the most recent Alerts into the Overview panel (#overview-recent-alerts).
+ * @function renderOverviewRecentAlerts
  * @returns {void}
  */
-function renderOverviewRecentInsights() {
-    const container = document.getElementById("overview-recent-insights");
-    if (!container) { 
-        return; 
+function renderOverviewRecentAlerts() {
+    const container = document.getElementById("overview-recent-alerts");
+    if (!container) {
+        return;
     }
     container.innerHTML = "";
 
-    const recent = dashboardState.insights.slice(0, CONF_dashboardRecentInsightsCount);
+    const recent = dashboardState.alerts.slice(0, CONF_dashboardRecentAlertsCount);
 
     if (recent.length === 0) {
         const empty       = document.createElement("p");
@@ -398,74 +378,25 @@ function renderOverviewRecentInsights() {
         return;
     }
 
-    for (const insight of recent) {
-        const row = document.createElement("div");
-        row.className = "hc-overview-recent-row";
+    for (const alert of recent) {
+        const row       = document.createElement("div");
+        row.className   = "hc-overview-recent-row";
 
-        const topLine = document.createElement("div");
-        topLine.className = "is-flex is-align-items-center mb-3 hc-flex-gap-xs";
-        topLine.appendChild(buildInsightStatusTag(insight.status));
+        const topLine       = document.createElement("div");
+        topLine.className   = "is-flex is-align-items-center mb-3 hc-flex-gap-xs";
+        topLine.appendChild(buildAlertStatusTag(alert.status));
 
         const summary       = document.createElement("span");
         summary.className   = "is-small has-text-weight-bold";
-        summary.textContent = insight.summary || i18n.t("Unknown");
+        summary.textContent = alert.summary || i18n.t("Unknown");
         topLine.appendChild(summary);
 
         const ts       = document.createElement("div");
         ts.className   = "is-size-7 has-text-white is-uppercase has-text-weight-bold";
-        ts.textContent = insight.dateTimeUpdated ? formatDateTime(insight.dateTimeUpdated) + ":" : "";
+        ts.textContent = alert.dateTimeUpdated ? formatDateTime(alert.dateTimeUpdated) + ":" : "";
 
         row.appendChild(ts);
         row.appendChild(topLine);
-        container.appendChild(row);
-    }
-}
-
-/**
- * Renders the most recent Notifications into the Overview panel (#overview-recent-notifications).
- * @function renderOverviewRecentNotifications
- * @returns {void}
- */
-function renderOverviewRecentNotifications() {
-    const container = document.getElementById("overview-recent-notifications");
-    if (!container) { 
-        return;
-    }
-    container.innerHTML = "";
-
-    const recent = dashboardState.notifications.slice(0, CONF_dashboardRecentNotificationsCount);
-
-    if (recent.length === 0) {
-        const empty       = document.createElement("p");
-        empty.className   = "has-text-white";
-        empty.textContent = i18n.t("NoData");
-        container.appendChild(empty);
-        return;
-    }
-
-    for (const notification of recent) {
-        const row       = document.createElement("div");
-        row.className   = "hc-overview-recent-row";
-
-        if (notification.dateTime) {
-            const ts = document.createElement("div");
-            ts.className   = "is-size-7 has-text-white is-uppercase has-text-weight-bold";
-            ts.textContent = formatDateTime(notification.dateTime) + ":";
-            row.appendChild(ts);
-        }
-
-        const title = document.createElement("div");
-        title.className   = "has-text-weight-bold";
-        title.textContent = notification.text || i18n.t("Unknown");
-        row.appendChild(title);
-
-        if (notification.description) {
-            const desc = document.createElement("div");
-            desc.className   = "has-text-white";
-            desc.textContent = notification.description
-            row.appendChild(desc);
-        }
-
         container.appendChild(row);
     }
 }
@@ -500,22 +431,22 @@ function buildStatCard(labelKey, value, colorClass = "") {
 }
 
 /**
- * Creates or re-creates the Care Insight status doughnut chart. Destroys the previous Chart.js instance if one exists to prevent canvas reuse errors.
- * @function renderInsightStatusChart
+ * Creates or re-creates the Alert status doughnut chart. Destroys the previous Chart.js instance if one exists to prevent canvas reuse errors.
+ * @function renderAlertStatusChart
  * @returns {void}
- * @description Data: open / acknowledged / resolved counts from dashboardState.insightStats.
+ * @description Data: open / acknowledged / resolved / critical counts from dashboardState.alertStats.
  */
-function renderInsightStatusChart() {
-    if (chartInstances.insightStatus) {
-        chartInstances.insightStatus.destroy();
+function renderAlertStatusChart() {
+    if (chartInstances.alertStatus) {
+        chartInstances.alertStatus.destroy();
     }
-    
-    const stats = dashboardState.insightStats;
-    chartInstances.insightStatus = buildDoughnutChart(
-        "chart-insights-status",
+
+    const stats = dashboardState.alertStats;
+    chartInstances.alertStatus = buildDoughnutChart(
+        "chart-alerts-status",
         [i18n.t("Open"), i18n.t("Acknowledged"), i18n.t("Resolved"), i18n.t("Critical")],
         [stats.open, stats.acknowledged, stats.resolved, stats.critical],
-        [cssVar("--hc-color-insight-open"), cssVar("--hc-color-insight-acknowledged"), cssVar("--hc-color-insight-resolved"), cssVar("--hc-color-insight-critical")]
+        [cssVar("--hc-color-alert-open"), cssVar("--hc-color-alert-acknowledged"), cssVar("--hc-color-alert-resolved"), cssVar("--hc-color-alert-critical")]
     );
 }
 
@@ -541,26 +472,26 @@ function renderDeviceStatusChart() {
 
 /**
  * =============================================================================================
- * Care Insights tab rendering
- * ===========================
+ * Alerts tab rendering
+ * ====================
  */
 
 /**
- * Renders all Care Insight cards into the #insights-list container.
- * @function renderInsights
+ * Renders all Alert cards into the #alerts-list container.
+ * @function renderAlerts
  * @returns {void}
  */
-function renderInsights() {
-    renderList("insights-list", dashboardState.insights, buildInsightCard);
+function renderAlerts() {
+    renderList("alerts-list", dashboardState.alerts, buildAlertCard);
 }
 
 /**
- * Builds a single Care Insight card DOM element. 
- * @function buildInsightCard
- * @param {Object} insight - An enriched Care Insight object from the API.
- * @returns {HTMLElement} A .card element ready to append to the insights list.
+ * Builds a single Alert card DOM element.
+ * @function buildAlertCard
+ * @param {Object} alert - An enriched Alert object from the API.
+ * @returns {HTMLElement} A .card element ready to append to the alerts list.
  */
-function buildInsightCard(insight) {
+function buildAlertCard(alert) {
     const card              = document.createElement("div");
     card.className          = "card";
 
@@ -572,51 +503,55 @@ function buildInsightCard(insight) {
 
     const summaryText       = document.createElement("span");
     summaryText.className   = "has-text-weight-bold";
-    summaryText.textContent = insight.summary || i18n.t("Unknown");
+    summaryText.textContent = alert.summary || i18n.t("Unknown");
 
-    const statusTag = buildInsightStatusTag(insight.status);
+    const statusTag = buildAlertStatusTag(alert.status);
     metaWrapper.appendChild(statusTag);
 
     const expandBtn       = document.createElement("button");
-    expandBtn.className   = "button is-small is-outlined hc-insight-expand-btn";
+    expandBtn.className   = "button is-small is-outlined hc-alert-expand-btn";
     expandBtn.textContent = i18n.t("ExpandDetails");
     metaWrapper.appendChild(expandBtn);
     metaWrapper.appendChild(summaryText);
 
     cardHeader.appendChild(metaWrapper);
 
-    const cardContent = document.createElement("div");
+    const cardContent     = document.createElement("div");
     cardContent.className = "card-content";
 
     const metaGrid = document.createElement("div");
 
-    if (insight.dateTimeUpdated) {
-        metaGrid.appendChild(buildMetaItem(i18n.t("UpdatedOn"), formatDateTime(insight.dateTimeUpdated)));
+    if (alert.dateTimeUpdated) {
+        metaGrid.appendChild(buildMetaItem(i18n.t("UpdatedOn"), formatDateTime(alert.dateTimeUpdated)));
     }
 
-    if (insight.individual) {
-        metaGrid.appendChild(buildMetaItem(i18n.t("AssignedPerson"), insight.individual.firstname + " " + insight.individual.lastname));
+    if (alert.individual) {
+        metaGrid.appendChild(buildMetaItem(i18n.t("AssignedPerson"), alert.individual.firstname + " " + alert.individual.lastname));
     }
 
-    if (insight.device) {
-        metaGrid.appendChild(buildMetaItem(i18n.t("Device"), insight.device.name || insight.device.uuid));
+    if (alert.device) {
+        metaGrid.appendChild(buildMetaItem(i18n.t("Device"), alert.device.name || alert.device.uuid));
     }
 
-    if (insight.room) {
-        metaGrid.appendChild(buildMetaItem(i18n.t("Room"), insight.room.name));
+    if (alert.room) {
+        metaGrid.appendChild(buildMetaItem(i18n.t("Room"), alert.room.name));
     }
 
-    if (insight.type) {
-        metaGrid.appendChild(buildMetaItem(i18n.t("Type"), insight.type));
+    if (alert.scenario) {
+        metaGrid.appendChild(buildMetaItem(i18n.t("Scenario"), alert.scenario.name));
+    }
+
+    if (alert.type) {
+        metaGrid.appendChild(buildMetaItem(i18n.t("Type"), alert.type));
     }
 
     cardContent.appendChild(metaGrid);
 
     const detailSection     = document.createElement("div");
-    detailSection.className = "hc-insight-detail";
+    detailSection.className = "hc-alert-detail";
 
     expandBtn.addEventListener("click", function () {
-        toggleInsightDetail(insight.insightID, detailSection, expandBtn);
+        toggleAlertDetail(alert.alertID, detailSection, expandBtn);
     });
 
     card.appendChild(cardHeader);
@@ -626,7 +561,7 @@ function buildInsightCard(insight) {
 }
 
 /**
- * Builds a small "key: value" metadata item element for the insight card content area.
+ * Builds a small "key: value" metadata item element for the alert card content area.
  * @function buildMetaItem
  * @param {string} label - The label text.
  * @param {string} value - The value text.
@@ -649,15 +584,15 @@ function buildMetaItem(label, value) {
 }
 
 /**
- * Toggles the expand/collapse state of a Care Insight card's detail section.
- * @function toggleInsightDetail
- * @param {number}      insightID     - The numeric ID of the Care Insight.
- * @param {HTMLElement} detailSection - The .hc-insight-detail element inside the card.
+ * Toggles the expand/collapse state of an Alert card's detail section.
+ * @function toggleAlertDetail
+ * @param {number}      alertID       - The numeric ID of the Alert.
+ * @param {HTMLElement} detailSection - The .hc-alert-detail element inside the card.
  * @param {HTMLElement} toggleButton  - The expand/collapse button whose label is updated.
  * @returns {void}
  * @description Uses the attribute data-loaded="true" on detailSection to track whether the detail content has already been fetched. This prevents duplicate network requests.
  */
-function toggleInsightDetail(insightID, detailSection, toggleButton) {
+function toggleAlertDetail(alertID, detailSection, toggleButton) {
     const isVisible = detailSection.classList.contains("is-visible");
 
     if (isVisible) { // Collapse: just hide the already-loaded section
@@ -671,92 +606,91 @@ function toggleInsightDetail(insightID, detailSection, toggleButton) {
         }
         else {
             toggleButton.textContent = i18n.t("Loading");
-            loadAndShowInsightDetail(insightID, detailSection, toggleButton);
+            loadAndShowAlertDetail(alertID, detailSection, toggleButton);
         }
     }
 }
 
 /**
- * Fetches the full Care Insight detail (explanation, recommendation, signals) and populates the given detail section element. Called lazily on first card expand.
+ * Fetches the full Alert detail (explanation, recommendation, signals) and populates the given detail section element. Called lazily on first card expand.
  * @async
- * @function loadAndShowInsightDetail
- * @param {number}      insightID     - The numeric ID of the Care Insight to load.
- * @param {HTMLElement} detailSection - The .hc-insight-detail div to populate.
+ * @function loadAndShowAlertDetail
+ * @param {number}      alertID       - The numeric ID of the Alert to load.
+ * @param {HTMLElement} detailSection - The .hc-alert-detail div to populate.
  * @param {HTMLElement} toggleButton  - The button to update with the collapse label.
  * @returns {Promise<void>}
  */
-async function loadAndShowInsightDetail(insightID, detailSection, toggleButton) {
-    const result = await fetchInsightDetail(insightID);
+async function loadAndShowAlertDetail(alertID, detailSection, toggleButton) {
+    const result = await fetchAlertDetail(alertID);
 
-    const insight = result.insight;
+    const alert   = result.alert;
     const signals = result.signals;
 
     detailSection.innerHTML = ""; // Clear any existing content
-    
-    if (insight.explanation) { // Explanation section
+
+    if (alert.explanation) { // Explanation section
         const explanationLabel       = document.createElement("div");
         explanationLabel.className   = "is-size-7 has-text-grey has-text-weight-bold is-uppercase mt-3";
         explanationLabel.textContent = i18n.t("Explanation");
         detailSection.appendChild(explanationLabel);
 
         const explanationText        = document.createElement("div");
-        explanationText.textContent  = insight.explanation;
+        explanationText.textContent  = alert.explanation;
         detailSection.appendChild(explanationText);
     }
-    
-    if (insight.recommendation) { // Recommendation section
+
+    if (alert.recommendation) { // Recommendation section
         const recommendationLabel       = document.createElement("div");
         recommendationLabel.className   = "is-size-7 has-text-grey has-text-weight-bold is-uppercase mt-3";
         recommendationLabel.textContent = i18n.t("Recommendation");
         detailSection.appendChild(recommendationLabel);
 
         const recommendationText        = document.createElement("div");
-        recommendationText.textContent  = insight.recommendation;
+        recommendationText.textContent  = alert.recommendation;
         detailSection.appendChild(recommendationText);
     }
 
-    
     if (signals.length > 0) { // Signal chart section (only shown when there are signals to plot)
         const signalsLabel          = document.createElement("div");
         signalsLabel.className      = "is-size-7 has-text-grey has-text-weight-bold is-uppercase mt-3";
         signalsLabel.textContent    = i18n.t("Signals") + " (" + signals.length + ")";
         detailSection.appendChild(signalsLabel);
 
-        const chartContainer = document.createElement("div");
+        const chartContainer     = document.createElement("div");
         chartContainer.className = "hc-signal-chart-container";
 
         const canvas = document.createElement("canvas");
-        canvas.id = "signal-chart-" + insightID;
+        canvas.id    = "signal-chart-" + alertID;
         chartContainer.appendChild(canvas);
         detailSection.appendChild(chartContainer);
-        
-        renderSignalChart("signal-chart-" + insightID, insightID, signals); // Render the chart after the canvas is in the DOM
+
+        renderSignalChart("signal-chart-" + alertID, alertID, signals); // Render the chart after the canvas is in the DOM
     }
     else {
-        const noSignals = document.createElement("p");
+        const noSignals       = document.createElement("p");
         noSignals.className   = "notification is-danger mt-3";
         noSignals.textContent = i18n.t("NoData");
         detailSection.appendChild(noSignals);
     }
-    
+
     detailSection.setAttribute("data-loaded", "true"); // Mark as loaded and make the section visible
     detailSection.classList.add("is-visible");
     toggleButton.textContent = i18n.t("CollapseDetails");
 }
 
 /**
- * Creates a signal line chart for the given Care Insight using Chart.js. Signals are sorted into ascending chronological order before plotting so the time axis reads correctly left-to-right (the server returns them newest-first).
+ * Creates a signal line chart for the given Alert using Chart.js. Signals are sorted into ascending chronological order before plotting so the time axis reads correctly left-to-right (the server returns them newest-first).
  * @function renderSignalChart
- * @param {string} canvasID  - The id of the <canvas> element to draw on.
- * @param {number} insightID - The ID of the Care Insight (used as the chart storage key).
- * @param {Array}  signals   - Array of signal objects: {signalID, insightID, value, dateTime}.
+ * @param {string} canvasID - The id of the <canvas> element to draw on.
+ * @param {number} alertID  - The ID of the Alert (used as the chart storage key).
+ * @param {Array}  signals  - Array of signal objects: {signalID, alertID, value, dateTime}.
  * @returns {void}
  * @description Uses Chart.js line chart with tension 0.3, fill, and the primary deep-purple colour. The container has a fixed height of 220px (set in CSS) and maintainAspectRatio is set to false so the chart respects that height.
  */
-function renderSignalChart(canvasID, insightID, signals) {
-    if (chartInstances.signalCharts[insightID]) { // Destroy any existing chart instance for this insight
-        chartInstances.signalCharts[insightID].destroy();
-        chartInstances.signalCharts[insightID] = null;
+function renderSignalChart(canvasID, alertID, signals) {
+    if (chartInstances.signalCharts[alertID]) { // Destroy any existing chart instance for this alert
+        chartInstances.signalCharts[alertID].destroy();
+        chartInstances.signalCharts[alertID] = null;
     }
 
     const sortedSignals = [...signals].sort(function (a, b) { // Sort signals ascending by dateTime so the chart reads left-to-right
@@ -771,7 +705,7 @@ function renderSignalChart(canvasID, insightID, signals) {
         return; 
     }
 
-    chartInstances.signalCharts[insightID] = new Chart(canvas, {
+    chartInstances.signalCharts[alertID] = new Chart(canvas, {
         type: "line",
         data: {
             labels: labels,
@@ -1026,66 +960,6 @@ function buildDataCardSection(label, value) {
 
 /**
  * =============================================================================================
- * Notifications tab rendering
- * ===========================
- */
-
-/**
- * Renders notification cards into #notifications-list. Notifications come from the Healthcore scenario engine and are shown newest-first.
- * @function renderNotifications
- * @returns {void}
- */
-function renderNotifications() {
-    renderList("notifications-list", dashboardState.notifications, buildNotificationCard);
-}
-
-/**
- * Builds a single notification card DOM element.
- * @function buildNotificationCard
- * @param {Object} notification - A notification object from the database.
- * @returns {HTMLElement} A .hc-notification-card div element.
- */
-function buildNotificationCard(notification) {
-    const card            = document.createElement("div");
-    card.className        = "card";
-
-    const cardHeader      = document.createElement("div");
-    cardHeader.className  = "card-header";
-
-    const metaWrapper     = document.createElement("div");
-    metaWrapper.className = "card-header-title hc-flex-gap-sm";
-
-    const titleSpan       = document.createElement("span");
-    titleSpan.className   = "has-text-weight-bold";
-    titleSpan.textContent = notification.text || i18n.t("Unknown");
-    metaWrapper.appendChild(titleSpan);
-
-    cardHeader.appendChild(metaWrapper);
-
-    const cardContent     = document.createElement("div");
-    cardContent.className = "card-content";
-
-    if (notification.dateTime) {
-        const timestamp         = document.createElement("p");
-        timestamp.className     = "is-size-7 has-text-grey is-uppercase has-text-weight-bold";
-        timestamp.textContent   = formatDateTime(notification.dateTime);
-        cardContent.appendChild(timestamp);
-    }
-
-    if (notification.description) {
-        const description       = document.createElement("p");
-        description.textContent = notification.description;
-        cardContent.appendChild(description);
-    }
-
-    card.appendChild(cardHeader);
-    card.appendChild(cardContent);
-
-    return card;
-}
-
-/**
- * =============================================================================================
  * Status tab rendering
  * ====================
  */
@@ -1307,12 +1181,12 @@ function buildDoughnutChart(canvasID, labels, data, colors) {
 }
 
 /**
- * Builds a Bulma tag <span> for a Care Insight status value. The CSS class determines the colour (see dashboard.css hc-tag-* rules).
- * @function buildInsightStatusTag
+ * Builds a Bulma tag <span> for an Alert status value. The CSS class determines the colour (see dashboard.css hc-tag-* rules).
+ * @function buildAlertStatusTag
  * @param {string} status - One of: "open", "acknowledged", "resolved", "critical".
  * @returns {HTMLElement} A <span class="tag hc-tag-{status}"> element.
  */
-function buildInsightStatusTag(status) {
+function buildAlertStatusTag(status) {
     const tag       = document.createElement("span");
     tag.className   = "tag hc-tag-" + (status || "open");
     

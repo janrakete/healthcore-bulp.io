@@ -8,15 +8,15 @@
  *   - device_disconnected:   A device loses its connection
  *   - device_connected:      A device reconnects
  *   - battery_low:           A device's battery drops below a threshold (value = threshold %)
- *   - care_insight_opened:   A Care Insight is newly created
- *   - care_insight_updated:  A Care Insight is updated
- *   - care_insight_resolved: A Care Insight is resolved or dismissed
- *   - time:                  A specific time of day is reached (value = "HH:mm")
+ *   - alert_opened:   An Alert is newly created
+ *   - alert_updated:  An Alert is updated
+ *   - alert_resolved: An Alert is resolved or dismissed
+ *   - time:           A specific time of day is reached (value = "HH:mm")
  *
  * Supported action types:
  *   - set_device_value:    Set a property on a device via MQTT
- *   - push_notification:   Send a push notification and also create a normal notification (value = title, property = body)
- *   - notification:        Log a notification without push (value = text)
+ *   - push_notification:   Send a push notification and also create an alert (value = title, property = body)
+ *   - notification:        Create an alert without push (value = title)
  */
 
 const appConfig = require("../../config");
@@ -37,7 +37,7 @@ class ScenarioEngine {
     try {
       let scenarios;
 
-      if (["care_insight_opened", "care_insight_updated", "care_insight_resolved"].includes(eventType)) {
+      if (["alert_opened", "alert_updated", "alert_resolved"].includes(eventType)) {
         scenarios = database.prepare(
           "SELECT DISTINCT s.* FROM scenarios s JOIN scenarios_triggers st ON s.scenarioID = st.scenarioID WHERE s.enabled = 1 AND st.type = ? ORDER BY s.priority DESC"
         ).all(eventType);
@@ -146,10 +146,10 @@ class ScenarioEngine {
       case "battery_low":
         return trigger.type === eventType && trigger.deviceID === eventData.deviceID && parseFloat(eventData.value) < parseFloat(trigger.value);
 
-      case "care_insight_opened":
-      case "care_insight_updated":
-      case "care_insight_resolved":
-        return this.evaluateCareInsightTrigger(trigger, eventType, eventData);
+      case "alert_opened":
+      case "alert_updated":
+      case "alert_resolved":
+        return this.evaluateAlertTrigger(trigger, eventType, eventData);
 
       case "time":
         return eventType === "time" && trigger.value === eventData.time;
@@ -178,13 +178,13 @@ class ScenarioEngine {
   }
 
   /**
-   * Evaluates a Care Insight trigger.
+   * Evaluates an alert trigger.
    * @param {Object} trigger
    * @param {string} eventType
    * @param {Object} eventData
    * @returns {boolean}
    */
-  evaluateCareInsightTrigger(trigger, eventType, eventData) {
+  evaluateAlertTrigger(trigger, eventType, eventData) {
     if (trigger.type !== eventType) {
       return false;
     }
@@ -422,16 +422,16 @@ class ScenarioEngine {
           if (this.pushEngine) {
             this.pushEngine.sendAll(action.value || scenario.name, action.property || scenario.description || "");
           }
-          database.prepare("INSERT INTO notifications (text, description, scenarioID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(
-            action.value || scenario.name, action.property || scenario.description || "", scenario.scenarioID, scenario.icon
-          );
+          if (global.alerts) {
+            global.alerts.createScenarioAlert(scenario, action);
+          }
           common.conLog("Scenario Engine: Action push_notification - " + (action.value || scenario.name), "yel");
           break;
 
         case "notification":
-          database.prepare("INSERT INTO notifications (text, description, scenarioID, icon, dateTime) VALUES (?, ?, ?, ?, datetime('now', 'localtime'))").run(
-            action.value || scenario.name, action.property || scenario.description || "", scenario.scenarioID, scenario.icon
-          );
+          if (global.alerts) {
+            global.alerts.createScenarioAlert(scenario, action);
+          }
           common.conLog("Scenario Engine: Action notification - " + (action.value || scenario.name), "yel");
           break;
 

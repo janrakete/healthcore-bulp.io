@@ -5,7 +5,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "care_insight_rules"],
+  CONF_tablesAllowedForAPI:        ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "alert_rules"],
   CONF_tablesMaxEntriesReturned:   500,
   CONF_apiKey:                     "",  // dev mode — no auth required
   CONF_apiCallTimeoutMilliseconds: 3000,
@@ -62,9 +62,9 @@ describe("POST /data/:table (Insert)", () => {
     expect(res.body.status).toBe("ok");
   });
 
-  test("Insert into care_insight_rules → 200 with ID", async () => {
+  test("Insert into alert_rules → 200 with ID", async () => {
     const res = await request(app)
-      .post("/data/care_insight_rules")
+      .post("/data/alert_rules")
       .send({
         title: "Hydration Risk",
         sourceProperty: "drink_ml",
@@ -78,9 +78,9 @@ describe("POST /data/:table (Insert)", () => {
     expect(typeof res.body.ID).toBe("number");
   });
 
-  test("Insert SumAboveThreshold care_insight_rule → 200 with ID", async () => {
+  test("Insert SumAboveThreshold alert_rule → 200 with ID", async () => {
     const res = await request(app)
-      .post("/data/care_insight_rules")
+      .post("/data/alert_rules")
       .send({
         title: "Activity too high",
         sourceProperty: "steps",
@@ -199,8 +199,8 @@ describe("GET /data/:table (Read)", () => {
     expect(res.body.results).toEqual([]);
   });
 
-  test("GET care_insight_rules → returns array", async () => {
-    const res = await request(app).get("/data/care_insight_rules");
+  test("GET alert_rules → returns array", async () => {
+    const res = await request(app).get("/data/alert_rules");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.results)).toBe(true);
     expect(res.body.results.length).toBeGreaterThanOrEqual(1);

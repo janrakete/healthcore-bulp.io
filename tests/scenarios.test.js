@@ -5,7 +5,7 @@
  */
 
 jest.mock("../config", () => ({
-  CONF_tablesAllowedForAPI:          ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "notifications", "care_insight_rules"],
+  CONF_tablesAllowedForAPI:          ["individuals", "rooms", "users", "sos", "settings", "push_tokens", "alert_rules"],
   CONF_tablesMaxEntriesReturned:     500,
   CONF_apiKey:                       "",  // dev mode
   CONF_apiCallTimeoutMilliseconds:   3000,
@@ -26,6 +26,10 @@ let light001ID;  // numeric PK for light_001 (zigbee)
 beforeAll(() => {
   db  = createTestDatabase();
   setupGlobals(db);
+
+  // Set up AlertsEngine (needed for notification/push_notification scenario actions)
+  const AlertsEngine = require("../server/libs/AlertsEngine");
+  global.alerts      = new AlertsEngine();
 
   // Set up ScenarioEngine
   const ScenarioEngine = require("../server/libs/ScenarioEngine");
@@ -238,6 +242,7 @@ describe("ScenarioEngine", () => {
   beforeEach(() => {
     global.mqttClient.publish.mockClear();
     global.scenarios.executionCooldowns.clear();
+    db.prepare("DELETE FROM alerts WHERE source = 'scenario'").run(); // clean up scenario alerts between tests
   });
 
   test("compareValues — equals (String)", () => {
@@ -445,7 +450,7 @@ describe("ScenarioEngine", () => {
     expect(executions[executions.length - 1].success).toBe(1);
   });
 
-  test("Scenario execution creates notification via notification action", async () => {
+  test("Scenario execution creates alert via notification action", async () => {
     // Add a notification action to the engine test scenario
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
@@ -459,8 +464,8 @@ describe("ScenarioEngine", () => {
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Engine Test Notification");
-    expect(notifications.length).toBeGreaterThanOrEqual(1);
+    const alerts = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Engine Test Notification");
+    expect(alerts.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -538,34 +543,34 @@ describe("Multi-Trigger Scenarios", () => {
   });
 });
 
-// ─── Care Insight Trigger Scenarios ────────────────────────────────────────
+// ─── Alert Trigger Scenarios ────────────────────────────────────────────────
 
-describe("Care Insight Trigger Scenarios", () => {
+describe("Alert Trigger Scenarios", () => {
 
   let careScenarioID;
   let careRuleID;
   let glass001ID; // numeric PK for glass_001 device
 
   beforeAll(() => {
-    const roomID = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Hydration Room").lastInsertRowid;
+    const roomID       = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Hydration Room").lastInsertRowid;
     const individualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Lea", "Example", roomID).lastInsertRowid;
 
     // Insert glass_001 device so it can be used as a numeric FK in triggers
     const glass001 = insertTestDevice(db, { uuid: "glass_001", bridge: "http", productName: "DrinkSensor" });
-    glass001ID = glass001.deviceID;
+    glass001ID     = glass001.deviceID;
 
     careRuleID = db.prepare(
-      "INSERT INTO care_insight_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
     ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3).lastInsertRowid;
 
     const scenarioResult = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
-    ).run("Hydration Alert", "React to hydration insights", "water", roomID, individualID);
+    ).run("Hydration Alert", "React to hydration alerts", "water", roomID, individualID);
     careScenarioID = scenarioResult.lastInsertRowid;
 
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, property) VALUES (?, ?, ?)"
-    ).run(careScenarioID, "care_insight_opened", String(careRuleID));
+    ).run(careScenarioID, "alert_opened", String(careRuleID));
 
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
@@ -577,43 +582,43 @@ describe("Care Insight Trigger Scenarios", () => {
     global.scenarios.executionCooldowns.clear();
   });
 
-  test("care_insight_opened trigger executes matching scenario", async () => {
-    await global.scenarios.handleEvent("care_insight_opened", {
-      insightID: 1,
-      ruleID: careRuleID,
-      insightType: "SumBelowThreshold",
-      score: 0.8,
-      deviceID: glass001ID, // numeric FK from CareInsightsEngine
+  test("alert_opened trigger executes matching scenario", async () => {
+    await global.scenarios.handleEvent("alert_opened", {
+      alertID:   1,
+      ruleID:    careRuleID,
+      alertType: "SumBelowThreshold",
+      score:     0.8,
+      deviceID:  glass001ID, // numeric FK from AlertsEngine
       individualID: 1,
-      roomID: 1
+      roomID:    1
     });
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Hydration scenario triggered");
-    expect(notifications.length).toBeGreaterThanOrEqual(1);
+    const alerts = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Hydration scenario triggered");
+    expect(alerts.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("care_insight_opened trigger respects scenario individual and room context", async () => {
+  test("alert_opened trigger respects scenario individual and room context", async () => {
     global.scenarios.executionCooldowns.clear();
 
-    await global.scenarios.handleEvent("care_insight_opened", {
-      insightID: 2,
-      ruleID: careRuleID,
-      insightType: "SumBelowThreshold",
-      score: 0.8,
-      deviceID: glass001ID,
+    await global.scenarios.handleEvent("alert_opened", {
+      alertID:      2,
+      ruleID:       careRuleID,
+      alertType:    "SumBelowThreshold",
+      score:        0.8,
+      deviceID:     glass001ID,
       individualID: 999,
-      roomID: 999
+      roomID:       999
     });
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Hydration scenario triggered");
-    expect(notifications.length).toBe(1);
+    const alerts = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Hydration scenario triggered");
+    expect(alerts.length).toBe(1);
   });
 
-  test("care insight trigger with device filter only fires for matching device", async () => {
+  test("alert trigger with device filter only fires for matching device", async () => {
     const deviceScenarioID = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
     ).run("Device-Specific Hydration Alert", "Only glass_001", "water", 0, 0).lastInsertRowid;
@@ -621,7 +626,7 @@ describe("Care Insight Trigger Scenarios", () => {
     // Use numeric glass001ID as FK; no bridge column in scenarios_triggers
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID) VALUES (?, ?, ?, ?)"
-    ).run(deviceScenarioID, "care_insight_opened", String(careRuleID), glass001ID);
+    ).run(deviceScenarioID, "alert_opened", String(careRuleID), glass001ID);
 
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
@@ -630,38 +635,38 @@ describe("Care Insight Trigger Scenarios", () => {
     global.scenarios.executionCooldowns.clear();
 
     // Matching device — should trigger
-    await global.scenarios.handleEvent("care_insight_opened", {
-      insightID: 10,
-      ruleID: careRuleID,
-      insightType: "SumBelowThreshold",
-      score: 0.8,
-      deviceID: glass001ID, // numeric — matches trigger.deviceID
+    await global.scenarios.handleEvent("alert_opened", {
+      alertID:      10,
+      ruleID:       careRuleID,
+      alertType:    "SumBelowThreshold",
+      score:        0.8,
+      deviceID:     glass001ID, // numeric — matches trigger.deviceID
       individualID: 0,
-      roomID: 0
+      roomID:       0
     });
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const notificationsMatch = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Device-specific hydration alert");
-    expect(notificationsMatch.length).toBe(1);
+    const alertsMatch = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Device-specific hydration alert");
+    expect(alertsMatch.length).toBe(1);
 
     global.scenarios.executionCooldowns.clear();
 
     // Non-matching device — should NOT trigger
-    await global.scenarios.handleEvent("care_insight_opened", {
-      insightID: 11,
-      ruleID: careRuleID,
-      insightType: "SumBelowThreshold",
-      score: 0.8,
-      deviceID: 99999, // numeric — does not match glass001ID
+    await global.scenarios.handleEvent("alert_opened", {
+      alertID:      11,
+      ruleID:       careRuleID,
+      alertType:    "SumBelowThreshold",
+      score:        0.8,
+      deviceID:     99999, // numeric — does not match glass001ID
       individualID: 0,
-      roomID: 0
+      roomID:       0
     });
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const notificationsNoMatch = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Device-specific hydration alert");
-    expect(notificationsNoMatch.length).toBe(1); // Still only 1 from before
+    const alertsNoMatch = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Device-specific hydration alert");
+    expect(alertsNoMatch.length).toBe(1); // Still only 1 from before
   });
 });
 
@@ -750,8 +755,8 @@ describe("Event-Based Triggers", () => {
     });
 
     await new Promise((r) => setTimeout(r, 100));
-    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Battery is low!");
-    expect(notifications.length).toBeGreaterThanOrEqual(1);
+    const alerts = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Battery is low!");
+    expect(alerts.length).toBeGreaterThanOrEqual(1);
 
     db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
@@ -777,8 +782,8 @@ describe("Event-Based Triggers", () => {
     });
 
     await new Promise((r) => setTimeout(r, 100));
-    const notifications = db.prepare("SELECT * FROM notifications WHERE text = ?").all("Should not appear");
-    expect(notifications.length).toBe(0);
+    const alerts = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Should not appear");
+    expect(alerts.length).toBe(0);
 
     db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
@@ -810,14 +815,14 @@ describe("Event-Based Triggers", () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(mockPushEngine.sendAll).toHaveBeenCalledWith("Alert!", "Heart rate too high");
 
-    // A push_notification should also create a normal notification in the database
-    const notification = db.prepare("SELECT * FROM notifications WHERE scenarioID = ?").get(sid);
-    expect(notification).toBeTruthy();
-    expect(notification.text).toBe("Alert!");
-    expect(notification.description).toBe("Heart rate too high");
+    // A push_notification should also create a scenario alert in the database
+    const alert = db.prepare("SELECT * FROM alerts WHERE scenarioID = ? AND source = 'scenario'").get(sid);
+    expect(alert).toBeTruthy();
+    expect(alert.title).toBe("Alert!");
+    expect(alert.summary).toBe("Heart rate too high");
 
     global.scenarios.pushEngine = null;
-    db.prepare("DELETE FROM notifications WHERE scenarioID = ?").run(sid);
+    db.prepare("DELETE FROM alerts WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(sid);
     db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(sid);

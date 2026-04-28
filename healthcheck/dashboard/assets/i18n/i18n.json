@@ -3,9 +3,9 @@
         "en": "Overview",
         "de": "Übersicht"
     },
-    "NotificationsTitle": {
-        "en": "Notifications",
-        "de": "Nachrichten"
+    "PageAlertsHeadline": {
+        "en": "Alerts",
+        "de": "Meldungen"
     },
     "LastUpdated": {
         "en": "Last updated",
@@ -43,13 +43,9 @@
         "en": "",
         "de": "Uhr"
     },
-    "RecentInsights": {
-        "en": "Recent Care Insights",
-        "de": "Aktuelle Care Insights"
-    },
-    "RecentNotifications": {
-        "en": "Recent Notifications",
-        "de": "Aktuelle Nachrichten"
+    "RecentAlerts": {
+        "en": "Recent Alerts",
+        "de": "Aktuelle Meldungen"
     },
     "NoData": {
         "en": "No data available",
@@ -87,9 +83,9 @@
         "en": "Devices",
         "de": "Geräte"
     },
-    "CareInsightsTitle": {
-        "en": "Care Insights",
-        "de": "Care Insights"
+    "Scenario": {
+        "en": "Scenario",
+        "de": "Szenario"
     },
     "Name": {
         "en": "Name",

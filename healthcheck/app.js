@@ -59,11 +59,10 @@ async function startHealthcheck() {
    */
   app.get("/api/config", (req, res) => {
     res.json({
-      CONF_serverBaseUrl:                     "http://" + req.hostname + ":" + appConfig.CONF_portServer,
-      CONF_apiKey:                            appConfig.CONF_apiKey || "",
-      CONF_dashboardRefreshIntervalMs:        appConfig.CONF_dashboardRefreshIntervalMs,
-      CONF_dashboardRecentInsightsCount:      appConfig.CONF_dashboardRecentInsightsCount,
-      CONF_dashboardRecentNotificationsCount: appConfig.CONF_dashboardRecentNotificationsCount
+      CONF_serverBaseUrl:               "http://" + req.hostname + ":" + appConfig.CONF_portServer,
+      CONF_apiKey:                      appConfig.CONF_apiKey || "",
+      CONF_dashboardRefreshIntervalMs:  appConfig.CONF_dashboardRefreshIntervalMs,
+      CONF_dashboardRecentAlertsCount:  appConfig.CONF_dashboardRecentAlertsCount
     });
   });
 
