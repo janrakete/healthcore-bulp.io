@@ -46,10 +46,8 @@ class Start extends HTMLElement {
 
         <ion-grid>
           <ion-row>
-            <ion-col size="12"><ion-button class="selection" expand="block" href="/alerts"><div><div><ion-icon slot="start" name="analytics-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("PageAlertsHeadline")}</ion-text></div></div></ion-button></ion-col>
-          </ion-row>
-          <ion-row>
-            <ion-col size="12"><ion-button href="/sos" class="selection" color="tertiary" expand="block"><ion-icon slot="start" name="call-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("SOSTitle")}</ion-text></div></div></ion-button></ion-col>
+            <ion-col size="6"><ion-button class="selection" expand="block" href="/alerts"><div><div><ion-icon slot="start" name="analytics-sharp" size="large" color="primary"></ion-icon></div><div><ion-text>${window.Translation.get("PageAlertsHeadline")}</ion-text></div></div></ion-button></ion-col>
+            <ion-col size="6"><ion-button href="/sos" class="selection" color="tertiary" expand="block"><div><div><ion-icon slot="start" name="call-sharp" size="large"></ion-icon></div><div><ion-text>${window.Translation.get("SOSTitle")}</ion-text></div></div></ion-button></ion-col>
           </ion-row>
           <ion-row>
             <ion-col size="12"><ion-button class="selection" expand="block" href="/settings"><ion-icon slot="start" name="build-sharp" size="large" color="primary"></ion-icon><ion-text>${window.Translation.get("SettingsTitle")}</ion-text></ion-button></ion-col>
