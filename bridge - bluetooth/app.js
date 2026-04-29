@@ -327,6 +327,7 @@ async function startBridgeAndServer() {
                     message.vendorName = device.deviceConverter.vendorName;
                   }
                   else {
+                    const manufacturerData = deviceRaw.advertisement?.manufacturerData;
                     message.vendorName = (manufacturerData && manufacturerData.length >= 2) ? (companiesIdentifiersList.get(manufacturerData.readUInt16LE(0)) || "?") : "?"; // try to get vendor name from manufacturer data, if available
                   }
 

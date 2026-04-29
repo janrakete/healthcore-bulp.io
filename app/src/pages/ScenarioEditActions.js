@@ -448,7 +448,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       const valueTranslation = item.deviceProperties.find(property => String(property.name) === String(item.property)); // Translate value
       if (valueTranslation && valueTranslation.anyValue) {
-        const anyValueItem = valueTranslation.anyValue.find(valueItem => Number(valueItem.value) === Number(item.value));
+        const anyValueItem = valueTranslation.anyValue.find(valueItem => String(valueItem.value) === String(item.value));
         if (anyValueItem && anyValueItem.translation && anyValueItem.translation[window.appConfig.CONF_language]) {
           item.valueTranslated = anyValueItem.translation[window.appConfig.CONF_language];
         }

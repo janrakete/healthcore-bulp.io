@@ -7,12 +7,12 @@ const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_BangleJS2BLE extends ConverterStandard {
     static productName  = "Bangle.js 5f2c";
-    static vendorName   = "Espruino";
 
     constructor() {
         super();
 
-        this.powerType = "BATTERY";
+        this.powerType      = "BATTERY";
+        this.vendorName     = "Espruino";
 
         this.properties["6e400003b5a3f393e0a9e50e24dcca9e"] = {
             name:        "several",
