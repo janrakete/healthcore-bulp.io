@@ -205,7 +205,7 @@ router.get("/all", async function (request, response) {
         const results = await database.prepare(statement).all();
 
         results.forEach(device => {  // Convert "properties" from JSON string to object
-            if (device.properties) {
+            if ((device.properties  !== undefined) && (device.properties !== "")) {
                 try {
                     device.properties = JSON.parse(device.properties);
                 }
@@ -840,6 +840,7 @@ router.post("/:bridge/:uuid", async function (request, response) {
                 message.name        = payload.body.name;
                 message.description = payload.body.description;
                 message.powerType   = payload.body.powerType;
+                message.vendorName  = payload.body.vendorName;
 
                 mqttClient.publish(bridge + "/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("POST request for device add via UUID " + message.uuid + " forwarded via MQTT", "gre");
@@ -972,9 +973,8 @@ router.patch("/:bridge/:uuid", async function (request, response) {
 
             if ((payload.uuid !== undefined) && (payload.uuid.trim() !== "")) { // check if UUID is provided
                 const uuid = payload.uuid.trim();
-
-                // Update individualID and roomID directly in the database (these are server-side fields, not bridge-side)
-                if (payload.body.individualID !== undefined || payload.body.roomID !== undefined) {
+               
+                if (payload.body.individualID !== undefined || payload.body.roomID !== undefined) { // Update individualID and roomID directly in the database (these are server-side fields, not bridge-side)
                     const device = getDevice(uuid, bridge);
 
                     if (device === undefined) {
@@ -1002,8 +1002,8 @@ router.patch("/:bridge/:uuid", async function (request, response) {
                     common.conLog("PATCH request for device assignment update via UUID " + uuid + " successful", "gre");
                 }
 
-                // Forward remaining fields (name, description, etc.) to the bridge via MQTT
-                const bridgeFields = { ...payload.body };
+                
+                const bridgeFields = { ...payload.body }; // Forward remaining fields (name, description, etc.) to the bridge via MQTT
                 delete bridgeFields.individualID;
                 delete bridgeFields.roomID;
 
@@ -1505,7 +1505,7 @@ router.get("/:bridge/:uuid", async function (request, response) {
             if (device !== undefined) {
                 data.status = "ok";
                 data.device = device;
-                if (data.device.properties !== undefined) {
+                if ((data.device.properties !== undefined) && (data.device.properties !== "")) {
                     try {
                         data.device.properties = JSON.parse(data.device.properties); // Convert "properties" from JSON string to object
                     }

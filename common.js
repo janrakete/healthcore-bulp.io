@@ -147,7 +147,10 @@ function devicePropertiesToArray(properties) {
         if (rootProperty.name) { // single property
             propertiesToProcess.push(rootProperty);
         }
-        else if (typeof rootProperty === "object" && rootProperty !== null) { // multiple properties
+        else if (rootProperty.name === "several" && rootProperty.subproperties) { // "several" means the subproperties are the actual properties
+            propertiesToProcess = Object.values(rootProperty.subproperties);
+        }
+        else if (typeof rootProperty === "object" && rootProperty !== null) { // multiple properties without a name key
             propertiesToProcess = Object.values(rootProperty);
         }
 
@@ -162,7 +165,9 @@ function devicePropertiesToArray(properties) {
             base.read           = base.read || false;
             base.write          = base.write || false;
 
-            result.push({ ...base });
+            if (base.name !== "several") {
+                result.push({ ...base });
+            }
 
             if (subproperties && typeof subproperties === "object") { // add subproperties if exist
                 for (const subKey of Object.keys(subproperties)) {
