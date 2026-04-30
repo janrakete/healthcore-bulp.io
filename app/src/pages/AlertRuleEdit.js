@@ -24,9 +24,6 @@ class AlertRuleEdit extends HTMLElement {
                 <ion-item color="light">
                   <ion-input type="text" label="${window.Translation.get("Title")}" label-placement="stacked" name="editTitle" required="true" shape="round" fill="outline" class="custom"></ion-input>
                 </ion-item>
-                <ion-item>
-                  <ion-toggle class="custom" color="primary" name="editEnabled" checked="true">${window.Translation.get("Enabled")}</ion-toggle>
-                </ion-item>
                 <ion-item color="light">
                   <ion-input type="text" label="${window.Translation.get("SourceProperty")}" label-placement="stacked" name="editSourceProperty" required="true" shape="round" fill="outline" class="custom"></ion-input>
                 </ion-item>
@@ -101,7 +98,6 @@ class AlertRuleEdit extends HTMLElement {
 
     const formData                    = {};
     formData.title                    = title;
-    formData.enabled                  = this.querySelector("ion-toggle[name='editEnabled']").checked ? 1 : 0;
     formData.sourceProperty           = sourceProperty;
     formData.aggregationType          = this.querySelector("ion-select[name='editAggregationType']").value;
     formData.aggregationWindowHours   = Number(this.querySelector("ion-input[name='editAggregationWindowHours']").value) || 24;
@@ -143,7 +139,6 @@ class AlertRuleEdit extends HTMLElement {
       if (String(data.status) === "ok") {
         const item = data.results[0];
         this.querySelector("ion-input[name='editTitle']").value                   = item.title;
-        this.querySelector("ion-toggle[name='editEnabled']").checked              = Number(item.enabled) === 1;
         this.querySelector("ion-input[name='editSourceProperty']").value          = item.sourceProperty || "";
         this.querySelector("ion-select[name='editAggregationType']").value        = item.aggregationType || "SumBelowThreshold";
         this.querySelector("ion-input[name='editAggregationWindowHours']").value  = item.aggregationWindowHours;

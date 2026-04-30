@@ -560,7 +560,7 @@ describe("Alert Trigger Scenarios", () => {
     glass001ID     = glass001.deviceID;
 
     careRuleID = db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3).lastInsertRowid;
 
     const scenarioResult = db.prepare(

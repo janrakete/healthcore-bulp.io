@@ -269,7 +269,7 @@ class AlertsEngine {
    * @returns {Array}
    */
   getMatchingRules(property) {
-    return database.prepare("SELECT * FROM alert_rules WHERE enabled = 1 AND sourceProperty = ? ORDER BY ruleID ASC").all(property);
+    return database.prepare("SELECT * FROM alert_rules WHERE sourceProperty = ? ORDER BY ruleID ASC").all(property);
   }
 
   /**

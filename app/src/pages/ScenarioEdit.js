@@ -98,8 +98,17 @@ class ScenarioEdit extends ScenarioEditBase {
     formData.enabled            = this.querySelector("ion-toggle[name='editEnabled']").checked;
     formData.icon               = this.scenarioData.icon;
 
-    formData.triggers           = this.scenarioData.triggers;
-    formData.actions            = this.scenarioData.actions;
+    formData.triggers = this.scenarioData.triggers.map((item) => ({
+      ...item,
+      uuid: item.uuid || item.deviceUUID || null,
+      bridge: item.bridge || item.deviceBridge || null
+    }));
+
+    formData.actions = this.scenarioData.actions.map((item) => ({
+      ...item,
+      uuid: item.uuid || item.deviceUUID || null,
+      bridge: item.bridge || item.deviceBridge || null
+    }));
 
     let data = {};
 

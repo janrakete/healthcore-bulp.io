@@ -110,13 +110,6 @@ class AlertRules extends HTMLElement {
                 <ion-card-title>${item.title}</ion-card-title>
                 <ion-card-subtitle>${window.Translation.get("SourceProperty")}: ${item.sourceProperty} (${window.Translation.get(item.aggregationType)})</ion-card-subtitle>
               </ion-card-header>
-              <ion-card-content>
-                <ion-row>
-                  <ion-col>
-                    ${Number(item.enabled) === 1 ? `<ion-text color="light"><ion-icon name="play-circle-sharp" color="success"></ion-icon> ${window.Translation.get("Enabled")}</ion-text>` : `<ion-text color="light"><ion-icon name="pause-circle-sharp" color="danger"></ion-icon> ${window.Translation.get("Disabled")}</ion-text>`}
-                  </ion-col>
-                </ion-row>
-              </ion-card-content>
               <ion-button data-id="${item.ruleID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
               <ion-button data-id="${item.ruleID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
             </ion-card>
