@@ -662,7 +662,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
     const listElementTriggers = this.querySelector("#triggers-list");
     listElementTriggers.innerHTML = this.scenarioData.triggers.map((item, index) => {
-      const bridgeInfo = item.bridge ? bridgeTranslate(item.bridge) : "";
+      let bridgeInfo  = item.bridge || item.deviceBridge; 
+      bridgeInfo      = bridgeInfo ? bridgeTranslate(bridgeInfo) : "";
+      
       const type = item.type || "device_value";
 
       let cardTitle, cardSubtitle, cardContent;

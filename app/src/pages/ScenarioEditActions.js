@@ -521,7 +521,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
     const listElementActions = this.querySelector("#actions-list");
     listElementActions.innerHTML = this.scenarioData.actions.map((item, index) => {
       const type = item.type || "set_device_value";
-      const bridgeInfo = item.bridge ? bridgeTranslate(item.bridge) : "";
+
+      let bridgeInfo  = item.bridge || item.deviceBridge; 
+      bridgeInfo      = bridgeInfo ? bridgeTranslate(bridgeInfo) : "";
 
       let cardTitle, cardSubtitle, cardContent;
 

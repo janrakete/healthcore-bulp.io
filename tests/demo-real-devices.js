@@ -16,6 +16,9 @@
  *
  * Start:
  *   node tests/demo-real-devices.js
+ * Reset:
+ *   node tests/demo-real-devices.js --reset
+ * 
  * =============================================================================================
  */
 
@@ -164,7 +167,7 @@ function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, b
   // 5. Delete SONOFF button presses
   if (sonoffDeviceID) {
     const deletedPresses = database.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'zigbee' AND property = 'button'"
+      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'button'"
     ).run(sonoffDeviceID);
     log("SONOFF Button-Presses gelöscht: " + deletedPresses.changes, "✓");
   }
@@ -172,7 +175,7 @@ function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, b
   // 6. Remove synthetic Bangle.js baseline (if left over from a previous demo run)
   if (bangleDeviceID) {
     const deletedBaseline = database.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate'"
+      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'heartrate'"
     ).run(bangleDeviceID);
     if (deletedBaseline.changes > 0) {
       log("Synthetische Bangle.js-Baseline entfernt: " + deletedBaseline.changes + " Einträge", "✓");
@@ -191,7 +194,7 @@ function ensureBangleBaseline(database, deviceID) {
   logSection("BANGLE.JS 2: Puls-Baseline prüfen");
 
   const existingCount = database.prepare(
-    "SELECT COUNT(*) AS cnt FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = 'bluetooth' AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+    "SELECT COUNT(*) AS cnt FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
   ).get(deviceID, HISTORY_SIZE).cnt;
 
   log("Vorhandene Puls-Einträge in History: " + existingCount, "📊");
@@ -211,8 +214,8 @@ function ensureBangleBaseline(database, deviceID) {
   baselineValues.slice(0, missing).forEach((bpm, index) => {
     const timestamp = now - (90 - index * (80 / missing)) * 60 * 1000;
     database.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, bridge, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(deviceID, "bluetooth", "heartrate", String(bpm), bpm, timestamp);
+      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(deviceID, "heartrate", String(bpm), bpm, timestamp);
   });
 
   log("Synthetische Baseline gesät: " + missing + " Einträge (68–74 bpm)", "✓");
@@ -243,8 +246,8 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
 
   const oneHourAgo  = Date.now() - 60 * 60 * 1000;
   const sonoffCurrent = database.prepare(
-    "SELECT COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND bridge = ? AND property = 'button' AND dateTimeAsNumeric >= ?"
-  ).get(sonoff.deviceID, sonoff.bridge, oneHourAgo);
+    "SELECT COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'button' AND dateTimeAsNumeric >= ?"
+  ).get(sonoff.deviceID, oneHourAgo);
 
   const currentSum      = Number(sonoffCurrent.total) || 0;
   const sonoffThreshold = currentSum + SONOFF_PRESS_THRESHOLD;  // dynamische Schwelle
@@ -258,7 +261,7 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
 
   // Rule 1: Heart rate anomaly (fires for any device that sends "heartrate")
   const bangleRule = database.prepare(
-    "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?)"
+    "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin, minReadings, recommendation) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(
     DEMO_PREFIX + "Ungewöhnlicher Puls",
     "heartrate",
@@ -272,7 +275,7 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
 
   // Rule 2: Frequent pressing (fires for any device that sends "button")
   const sonoffRule = database.prepare(
-    "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings, recommendation) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run(
     DEMO_PREFIX + "Häufiger Hilferuf",
     "button",
@@ -300,8 +303,8 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   const bangleScenarioID = bangleScenario.lastInsertRowid;
 
   database.prepare(
-    "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
-  ).run(bangleScenarioID, "alert_opened", String(bangleRuleID), bangle.deviceID, bangle.bridge);
+    "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID) VALUES (?, ?, ?, ?)"
+  ).run(bangleScenarioID, "alert_opened", String(bangleRuleID), bangle.deviceID);
 
   database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
@@ -314,14 +317,13 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   );
 
   database.prepare(
-    "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, bridge, deviceID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, deviceID) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(
     bangleScenarioID,
     "set_device_value",
     250,
     "hue",
     1,
-    paulmann.bridge,
     paulmann.deviceID
   );
 
@@ -338,8 +340,8 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   const sonoffScenarioID = sonoffScenario.lastInsertRowid;
 
   database.prepare(
-    "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID, bridge) VALUES (?, ?, ?, ?, ?)"
-  ).run(sonoffScenarioID, "alert_opened", String(sonoffRuleID), sonoff.deviceID, sonoff.bridge);
+    "INSERT INTO scenarios_triggers (scenarioID, type, property, deviceID) VALUES (?, ?, ?, ?)"
+  ).run(sonoffScenarioID, "alert_opened", String(sonoffRuleID), sonoff.deviceID);
 
   database.prepare(
     "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay) VALUES (?, ?, ?, ?, ?)"
@@ -352,14 +354,13 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   );
 
   database.prepare(
-    "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, bridge, deviceID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO scenarios_actions (scenarioID, type, value, property, delay, deviceID) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(
     sonoffScenarioID,
     "set_device_value",
     "on",
     "speaker",
     0,
-    bulp.bridge,
     bulp.deviceID
   );
 
