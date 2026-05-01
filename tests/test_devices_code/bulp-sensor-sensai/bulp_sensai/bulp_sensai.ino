@@ -19,7 +19,12 @@ static SensorValues currentValues = {};
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
 
-  while (!Serial) { // Wait for Serial to be ready
+  const unsigned long serialWaitStartMs   = millis();
+  const unsigned long serialWaitTimeoutMs = SERIAL_WAIT_TIMEOUT_MS;
+
+  Serial.println("Starting...");
+
+  while (!Serial && (millis() - serialWaitStartMs) < serialWaitTimeoutMs) {
     delay(10);
   }
 
