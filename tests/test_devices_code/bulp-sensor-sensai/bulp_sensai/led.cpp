@@ -1,7 +1,7 @@
 #include "led.h"
 #include "Adafruit_NeoPixel.h"
 
-static Adafruit_NeoPixel _led(1, PIN_LED, NEO_GRB + NEO_KHZ800);
+static Adafruit_NeoPixel _led(1, PIN_LED, NEO_RGB + NEO_KHZ800);
 
 static LedState  _ledStateCurrent = LED_OFF;
 static uint8_t   _ledBlinkR       = 0;
