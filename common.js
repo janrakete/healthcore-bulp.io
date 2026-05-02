@@ -9,13 +9,14 @@ const chalk     = new (require("chalk").Instance)({ level: 1 });
 const dayjs     = require("dayjs");
 const sleep     = require("sleep-promise");
 const crypto    = require("crypto");
+const appConfig = require("./config");
 
 /**
  * Console Log Function
  * @param {any} anyValue - The value to log, can be a string or an object.
  * @param {string} color - The color to use for the log output. Default is "std" (standard).
  * @param {boolean} showSeparators - Whether to show separators before and after the log output. Default is true.
- * @param {boolean} cutString - Whether to cut the string output to 512 characters. Default is true.
+ * @param {boolean} cutString - Whether to truncate the string output to CONF_logMaxLength characters. Default is true.
  * @returns {void} 
  * @description This function logs the provided value to the console with optional formatting and color.  
  */
@@ -49,7 +50,7 @@ function conLog(anyValue, color = "std", showSeparators = true, cutString = true
         let output = anyValue;
 
         if (cutString === true) {
-            output = output.slice(0, 512);
+            output = output.slice(0, appConfig.CONF_logMaxLength);
         }
     
         output = colorFunction(output);
