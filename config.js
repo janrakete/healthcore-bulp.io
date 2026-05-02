@@ -99,7 +99,8 @@ const appConfig = {
   CONF_devicesZigBeeBatteryAlertCooldownHours         : toInt(process.env.CONF_devicesZigBeeBatteryAlertCooldownHours),
   CONF_healthcheckMaxLogs                             : toInt(process.env.CONF_healthcheckMaxLogs),
   CONF_dashboardRefreshIntervalMs                     : toInt(process.env.CONF_dashboardRefreshIntervalMs),
-  CONF_dashboardRecentAlertsCount                     : toInt(process.env.CONF_dashboardRecentAlertsCount)
+  CONF_dashboardRecentAlertsCount                     : toInt(process.env.CONF_dashboardRecentAlertsCount),
+  CONF_logMaxLength                                   : toInt(process.env.CONF_logMaxLength)
 };
 
 module.exports = appConfig;
