@@ -320,8 +320,8 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
       valueSelect = document.querySelector("ion-select[name='editTriggerValue']");
     }
 
-    const submitButton   = document.querySelector("#trigger-submit-button");
-    const type = typeSelect?.value || "device_value";
+    const submitButton  = document.querySelector("#trigger-submit-button");
+    const type          = typeSelect?.value || "device_value";
 
     propertySelect.disabled = true;
     operatorSelect.disabled = true;
@@ -590,7 +590,7 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
       const valueTranslation = item.deviceProperties.find(property => String(property.name) === String(item.property)); // Translate value
       if (valueTranslation && valueTranslation.anyValue) {
-        const anyValueItem = valueTranslation.anyValue.find(valueItem => Number(valueItem.value) === Number(item.value));
+        const anyValueItem = valueTranslation.anyValue.find(valueItem => String(valueItem.value) === String(item.value));
         if (anyValueItem && anyValueItem.translation && anyValueItem.translation[window.appConfig.CONF_language]) {
           item.valueTranslated = anyValueItem.translation[window.appConfig.CONF_language];
         }
@@ -662,7 +662,9 @@ export const ScenarioEditTriggers = (Base) => class extends Base {
 
     const listElementTriggers = this.querySelector("#triggers-list");
     listElementTriggers.innerHTML = this.scenarioData.triggers.map((item, index) => {
-      const bridgeInfo = item.bridge ? bridgeTranslate(item.bridge) : "";
+      let bridgeInfo  = item.bridge || item.deviceBridge; 
+      bridgeInfo      = bridgeInfo ? bridgeTranslate(bridgeInfo) : "";
+      
       const type = item.type || "device_value";
 
       let cardTitle, cardSubtitle, cardContent;

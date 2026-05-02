@@ -7,12 +7,12 @@ const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_BulpSensorBLE extends ConverterStandard {
     static productName = "bulp - Sensor BLE";
-    static vendorName  = "bulp";
 
     constructor() {
         super();
 
-        this.powerType = "MAINS";
+        this.powerType      = "MAINS";
+        this.vendorName     = "bulp";
 
         this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
             name:        "rotary_switch",
