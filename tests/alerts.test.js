@@ -86,7 +86,7 @@ function seedValues(values) {
 describe("Alerts engine", () => {
   test("creates Anomaly Detection alert", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
@@ -115,7 +115,7 @@ describe("Alerts engine", () => {
 
   test("detects anomaly when baseline is constant but latest value differs", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
@@ -161,7 +161,7 @@ describe("Alerts engine", () => {
 
   test("auto-resolves Anomaly Detection alert when values normalize", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -189,7 +189,7 @@ describe("Alerts engine", () => {
 
   test("limits signals per alert to configured maximum", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -209,7 +209,7 @@ describe("Alerts engine", () => {
 
   test("creates SumBelowThreshold alert from alert_rules", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, recommendation) VALUES (?, 1, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings, recommendation) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3, "Encourage fluid intake and review the recent drinking pattern.");
 
     const now = Date.now();
@@ -238,7 +238,7 @@ describe("Alerts engine", () => {
 
   test("creates SumAboveThreshold alert when total exceeds maximum", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("Activity too high", "steps", "SumAboveThreshold", 24, 500, 3);
 
     const now = Date.now();
@@ -312,7 +312,7 @@ describe("Alerts engine", () => {
 
   test("rule alert triggers scenario via alert_opened event", async () => {
     const ruleResult = db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, 1, ?, ?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMin, minReadings) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("Hydration risk detected", "drink_ml", "SumBelowThreshold", 72, 1500, 3);
 
     const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ? LIMIT 1").get("Mia");
@@ -360,7 +360,7 @@ describe("Alerts engine", () => {
 describe("Alerts API", () => {
   test("GET /alerts returns created alerts", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -389,7 +389,7 @@ describe("Alerts API", () => {
 
   test("GET /alerts caps limit at CONF_tablesMaxEntriesReturned", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -407,7 +407,7 @@ describe("Alerts API", () => {
 
   test("GET /alerts applies default limit without query param", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -425,7 +425,7 @@ describe("Alerts API", () => {
 
   test("GET /alerts/:id returns alert with signals", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, enabled, sourceProperty, aggregationType, thresholdMin) VALUES (?, 1, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);

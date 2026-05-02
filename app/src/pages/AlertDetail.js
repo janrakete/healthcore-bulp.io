@@ -53,8 +53,6 @@ class AlertDetail extends HTMLElement {
               <ion-button expand="block" id="status-acknowledged" color="tertiary">${window.Translation.get("Acknowledge")}</ion-button>
               <ion-button expand="block" id="status-resolved" color="success">${window.Translation.get("Resolve")}</ion-button>
               <ion-button expand="block" id="status-critical" color="danger">${window.Translation.get("AsCritical")}</ion-button>
-
-              ${item.scenario ? `<ion-button expand="block" href="/scenario-edit/${item.scenario.scenarioID}" color="medium"><ion-icon slot="start" name="unlink-sharp"></ion-icon>${window.Translation.get("ScenarioGoTo")}</ion-button>` : ""}
             </ion-card-content>
           </ion-card>
 

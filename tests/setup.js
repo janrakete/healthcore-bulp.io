@@ -179,7 +179,6 @@ function createTestDatabase() {
     CREATE TABLE alert_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      enabled BOOLEAN DEFAULT 1,
       sourceProperty TEXT NOT NULL,
       aggregationType TEXT NOT NULL DEFAULT 'SumBelowThreshold',
       aggregationWindowHours INTEGER DEFAULT 24,

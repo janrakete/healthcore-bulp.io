@@ -448,7 +448,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       const valueTranslation = item.deviceProperties.find(property => String(property.name) === String(item.property)); // Translate value
       if (valueTranslation && valueTranslation.anyValue) {
-        const anyValueItem = valueTranslation.anyValue.find(valueItem => Number(valueItem.value) === Number(item.value));
+        const anyValueItem = valueTranslation.anyValue.find(valueItem => String(valueItem.value) === String(item.value));
         if (anyValueItem && anyValueItem.translation && anyValueItem.translation[window.appConfig.CONF_language]) {
           item.valueTranslated = anyValueItem.translation[window.appConfig.CONF_language];
         }
@@ -521,7 +521,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
     const listElementActions = this.querySelector("#actions-list");
     listElementActions.innerHTML = this.scenarioData.actions.map((item, index) => {
       const type = item.type || "set_device_value";
-      const bridgeInfo = item.bridge ? bridgeTranslate(item.bridge) : "";
+
+      let bridgeInfo  = item.bridge || item.deviceBridge; 
+      bridgeInfo      = bridgeInfo ? bridgeTranslate(bridgeInfo) : "";
 
       let cardTitle, cardSubtitle, cardContent;
 

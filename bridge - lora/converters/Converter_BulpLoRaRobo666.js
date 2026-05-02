@@ -7,12 +7,11 @@ const { ConverterStandard } = require("./ConverterStandard.js");
 
 class Converter_BulpLoRaRobo666 extends ConverterStandard {
     static productName = "Bulp LoRa-Robo 666";
-    static vendorName  = "bulp";
 
     constructor() {
         super();
 
-        this.powerType = "BATTERY";
+        this.powerType  = "BATTERY";
 
         this.properties[0] = {
             name:       "heartrate",

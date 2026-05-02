@@ -352,11 +352,11 @@ async function startServer() {
             data.uuid, data.bridge, data.powerType, data.vendorName || "", data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
 
           message.status    = "ok";
-          message.deviceID  = result.lastInsertRowid; // numeric surrogate key (for app/DB use)
+          message.deviceID  = result.lastInsertRowid;
           message.uuid      = data.uuid;
           message.bridge    = data.bridge;
 
-          if (!data.forceReconnect) { // set forceReconnect to true if not provided
+          if (data.forceReconnect === undefined || data.forceReconnect === null) { // set forceReconnect to true if not provided
             data.forceReconnect = true;
           }
 
