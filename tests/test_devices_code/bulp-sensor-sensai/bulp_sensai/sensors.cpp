@@ -20,6 +20,7 @@ bool sensorsInit() {
   delay(1000); // Wait for C1001 to power up
 
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.setClock(100000);
 
   if (_sensorTempHum.begin() == 0) {
     _sensorTempHumReady = true;
@@ -29,7 +30,11 @@ bool sensorsInit() {
     _sensorTempHumReady = false;
   }
 
-  if (_sensorLux.begin()) {
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  Wire.setClock(100000);
+  delay(50);
+
+  if (_sensorLux.begin(&Wire)) {
     _sensorLuxReady = true;
   }
   else {
