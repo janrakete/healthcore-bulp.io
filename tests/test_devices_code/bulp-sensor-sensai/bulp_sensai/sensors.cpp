@@ -13,7 +13,11 @@ static bool _sensorTempHumReady = false;
 static bool _sensorLuxReady     = false;
 static bool _sensorRadarReady   = false;
 
-Task taskSensors = TASK(SENSOR_READ_INTERVAL_MS);
+Task taskSensorLog = TASK(SENSOR_READ_INTERVAL_MS); // Scheduler task used by the main loop (Core 1) to log sensor values. The interval matches SENSOR_READ_INTERVAL_MS so the log stays in sync with the background task cycle, but the actual reads are decoupled.
+
+static SemaphoreHandle_t _valuesMutex = NULL; // Mutex that guards _latestValues between the sensor task (Core 0) and the main loop (Core 1).
+
+static SensorValues      _latestValues = {}; // Shared value buffer; written by sensorsTask, read by sensorsGetValues.
 
 bool sensorsInit() {
   _radarSerial.begin(RADAR_BAUD_RATE, SERIAL_8N1, PIN_RADAR_RX, PIN_RADAR_TX);
@@ -48,10 +52,34 @@ bool sensorsInit() {
     _sensorRadar.configWorkMode(_sensorRadar.eFallingMode);
     _sensorRadar.configLEDLight(_sensorRadar.eHPLed, 1);
 
-    // Keep initialization minimal to avoid triggering unstable config paths in
-    // the current radar library version.
-    Serial.println("C1001 Radar basic mode initialized.");
-    _sensorRadarReady = true;
+    Serial.println("Performing C1001 Radar self-test...");
+    if (_sensorRadar.sensorRet() == 0) {
+      Serial.println("C1001 Radar self-test passed.");
+
+      Serial.println("Configuring C1001 Radar fall detection parameters...");
+      uint16_t height = _sensorRadar.dmAutoMeasureHeight();
+      if (height == 0) {
+        _sensorRadar.dmInstallHeight(RADAR_ROOM_HEIGHT_CM);
+        Serial.print("C1001 height auto-measure failed, using ");
+        Serial.print(RADAR_ROOM_HEIGHT_CM);
+        Serial.println(" cm.");
+      }
+      else {
+        Serial.print("C1001 measured height: ");
+        Serial.print(height);
+        Serial.println(" cm");
+      }
+
+      _sensorRadar.dmFallConfig(_sensorRadar.eFallSensitivityC, RADAR_FALL_SENSITIVITY);
+      _sensorRadar.dmFallConfig(_sensorRadar.eResidenceSwitchC, 1);
+      _sensorRadar.dmFallConfig(_sensorRadar.eResidenceTime, RADAR_FALL_RESIDENCE_TIME_S);
+      _sensorRadar.dmFallTime(RADAR_FALL_TIME_MS);
+      _sensorRadarReady = true;
+    }
+    else {
+      Serial.println("C1001 Radar self-test failed!");
+      _sensorRadarReady = false;
+    }
   }
   else {
     Serial.println("Failed to initialize C1001 Radar!");
@@ -61,39 +89,53 @@ bool sensorsInit() {
   return _sensorTempHumReady || _sensorLuxReady || _sensorRadarReady;
 }
 
-void sensorsRead(SensorValues *values) {
-  if (_sensorTempHumReady) {
-    if (_sensorTempHum.startMeasurementReady(true)) {
-      values->temperature        = _sensorTempHum.getTemperature_C();
-      values->humidity           = _sensorTempHum.getHumidity_RH();
-      values->sensorTempHumValid = true;
+static void sensorsTask(void *param) { // Background task running on Core 0. Reads all sensors sequentially, staggered by SENSOR_STAGGER_MS to avoid back-to-back blocking I2C/Serial calls. After every full cycle it waits SENSOR_READ_INTERVAL_MS before starting the next one.
+  while (true) {
+    SensorValues temp = {};
+
+    if (_sensorTempHumReady) {
+      if (_sensorTempHum.startMeasurementReady(true)) {
+        temp.temperature        = _sensorTempHum.getTemperature_C();
+        temp.humidity           = _sensorTempHum.getHumidity_RH();
+        temp.sensorTempHumValid = true;
+      }
     }
-    else {
-      values->sensorTempHumValid = false;
+
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
+
+    if (_sensorLuxReady) {
+      temp.illuminance    = _sensorLux.readLux(VEML_LUX_AUTO);
+      temp.whiteLevel     = _sensorLux.readWhite();
+      temp.sensorLuxValid = true;
     }
-  }
-  else {
-    values->sensorTempHumValid = false;
-  }
 
-  if (_sensorLuxReady) {
-    values->illuminance    = _sensorLux.readLux(VEML_LUX_AUTO);
-    values->whiteLevel     = _sensorLux.readWhite();
-    values->sensorLuxValid = true;
-  }
-  else {
-    values->sensorLuxValid = false;
-  }
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
 
-  if (_sensorRadarReady) {
-    values->presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
-    values->movementDetected = _sensorRadar.dmHumanData(_sensorRadar.eBodyMove)  > 0;
-    values->fallDetected     = _sensorRadar.getFallData(_sensorRadar.eFallState) > 0;
-    values->sensorRadarValid = true;
-  }
-  else {
-    values->sensorRadarValid = false;
-  }
+    if (_sensorRadarReady) {
+      temp.presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
+      temp.movementDetected = _sensorRadar.dmHumanData(_sensorRadar.eBodyMove)  > 0;
+      temp.fallDetected     = _sensorRadar.getFallData(_sensorRadar.eFallState) > 0;
+      temp.sensorRadarValid = true;
+    }
 
-  values->lastUpdate = millis();
+    temp.lastUpdate = millis();
+
+    
+    xSemaphoreTake(_valuesMutex, portMAX_DELAY); // Publish the completed snapshot atomically.
+    _latestValues = temp;
+    xSemaphoreGive(_valuesMutex);
+    
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_INTERVAL_MS)); // Wait before the next read cycle. vTaskDelay yields Core 0 to other tasks.
+  }
+}
+
+void sensorsStartTask() {
+  _valuesMutex = xSemaphoreCreateMutex();
+  xTaskCreatePinnedToCore(sensorsTask, "sensors", SENSOR_TASK_STACK_SIZE, NULL, 1, NULL, 0); // Pin to Core 0 so blocking sensor reads never stall the main loop on Core 1.
+}
+
+void sensorsGetValues(SensorValues *values) {
+  xSemaphoreTake(_valuesMutex, portMAX_DELAY); // Atomic copy — holds the mutex for only a few microseconds.
+  *values = _latestValues;
+  xSemaphoreGive(_valuesMutex);
 }
