@@ -8,6 +8,7 @@
 #include "Wire.h"
 
 #include "scheduler.h"
+#include "controls.h"
 #include "led.h"
 #include "sensors.h"
 
@@ -28,6 +29,8 @@ void setup() {
     delay(10);
   }
 
+  controlsInit();
+
   ledInit();
   ledSetState(LED_BOOT);
 
@@ -39,16 +42,29 @@ void setup() {
     Serial.println("Failed to initialize sensors.");
     ledSetState(LED_ERROR);
   }
+
+  sensorsStartTask();
 }
 
 /**
  * Main loop
  */
 void loop() {
-  ledUpdate();
+  if (taskUpdate(&taskLedBlink)) { // Advance the LED blink state machine at LED_BLINK_INTERVAL_MS.
+    ledUpdate();
+  }
+  
+  if (taskUpdate(&taskControls)) { // Run the debounced button state machine at CONTROL_UPDATE_INTERVAL_MS.
+    const ControlEvent controlEvent = controlsUpdate();
 
-  if (taskUpdate(&taskSensors)) {
-    sensorsRead(&currentValues);
+    if (controlEvent == CONTROL_EVENT_BUTTON_LONG_PRESS) {
+      Serial.println("Button long-pressed, pairing...");
+      ledSetState(LED_PAIRING);
+    }
+  }
+ 
+  if (taskUpdate(&taskSensorLog)) { // Print the latest sensor snapshot at SENSOR_READ_INTERVAL_MS. sensorsGetValues() is non-blocking; the actual reads happen on Core 0.
+    sensorsGetValues(&currentValues);
 
     Serial.print("Temperature: ");
     if (currentValues.sensorTempHumValid) {
