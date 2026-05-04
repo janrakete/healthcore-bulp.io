@@ -20,6 +20,14 @@ static SemaphoreHandle_t _valuesMutex = NULL; // Mutex that guards _latestValues
 static SensorValues      _latestValues = {}; // Shared value buffer; written by sensorsTask, read by sensorsGetValues.
 
 bool sensorsInit() {
+  if (!SENSORS_ENABLED) {
+    _sensorTempHumReady = false;
+    _sensorLuxReady     = false;
+    _sensorRadarReady   = false;
+    Serial.println("All sensors disabled via SENSORS_ENABLED debug switch.");
+    return false;
+  }
+
   _radarSerial.begin(RADAR_BAUD_RATE, SERIAL_8N1, PIN_RADAR_RX, PIN_RADAR_TX);
   delay(1000); // Wait for C1001 to power up
 

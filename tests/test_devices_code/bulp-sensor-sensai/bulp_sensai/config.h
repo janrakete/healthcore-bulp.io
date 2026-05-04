@@ -7,6 +7,8 @@
 #define PIN_BUTTON                  5       // Control button (active LOW, INPUT_PULLUP)
 #define LED_BLINK_INTERVAL_MS       500     // LED blink toggle interval (ms)
 
+#define PIN_DPDT_SWITCH             7       // Boot mode switch to GND with INPUT_PULLUP (open = WiFi, closed = Zigbee)
+
 #define PIN_RADAR_RX                11      // C1001 mmWave radar UART RX
 #define PIN_RADAR_TX                10      // C1001 mmWave radar UART TX
 #define RADAR_BAUD_RATE             115200  // C1001 UART baud rate
@@ -14,6 +16,8 @@
 #define RADAR_FALL_SENSITIVITY      3       // Fall sensitivity (1 = low .. 3 = high)
 #define RADAR_FALL_RESIDENCE_TIME_S 30      // Time on floor before fall is confirmed (s)
 #define RADAR_FALL_TIME_MS          3000    // Time window for a fall event to complete (ms)
+
+#define SENSORS_ENABLED             0       // Global debug switch: 0 disables all three sensors, 1 enables normal sensor operation
 
 #define SENSOR_READ_INTERVAL_MS     5000    // Sensor FreeRTOS task publish interval (ms)
 #define SENSOR_STAGGER_MS           500     // Delay between individual sensor reads in the task (ms)

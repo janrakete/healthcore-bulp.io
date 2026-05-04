@@ -12,6 +12,11 @@
 #include "led.h"
 #include "sensors.h"
 
+enum ConnectionMode {
+  CONNECTION_MODE_ZIGBEE,
+  CONNECTION_MODE_WIFI,
+};
+
 static SensorValues currentValues = {};
 
 /**
@@ -29,6 +34,11 @@ void setup() {
     delay(10);
   }
 
+  pinMode(PIN_DPDT_SWITCH, INPUT_PULLUP);
+  const ConnectionMode connectionMode = (digitalRead(PIN_DPDT_SWITCH) == HIGH) ? CONNECTION_MODE_WIFI : CONNECTION_MODE_ZIGBEE;
+  Serial.print("Connection mode: ");
+  Serial.println(connectionMode == CONNECTION_MODE_WIFI ? "WiFi" : "ZigBee");
+
   controlsInit();
 
   ledInit();
@@ -36,6 +46,10 @@ void setup() {
 
   if (sensorsInit()) {
     Serial.println("Sensors initialized successfully.");
+    ledSetState(LED_OFF);
+  }
+  else if (!SENSORS_ENABLED) {
+    Serial.println("Sensors disabled for debugging.");
     ledSetState(LED_OFF);
   }
   else {
