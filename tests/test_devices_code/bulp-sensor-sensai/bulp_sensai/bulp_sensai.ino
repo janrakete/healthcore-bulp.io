@@ -11,6 +11,7 @@
 #include "controls.h"
 #include "led.h"
 #include "sensors.h"
+#include "zigbee.h"
 
 enum ConnectionMode {
   CONNECTION_MODE_ZIGBEE,
@@ -18,6 +19,7 @@ enum ConnectionMode {
 };
 
 static SensorValues currentValues = {};
+static ConnectionMode connectionMode = CONNECTION_MODE_WIFI;
 
 /**
  * Main setup 
@@ -35,7 +37,7 @@ void setup() {
   }
 
   pinMode(PIN_DPDT_SWITCH, INPUT_PULLUP);
-  const ConnectionMode connectionMode = (digitalRead(PIN_DPDT_SWITCH) == HIGH) ? CONNECTION_MODE_WIFI : CONNECTION_MODE_ZIGBEE;
+  connectionMode = (digitalRead(PIN_DPDT_SWITCH) == HIGH) ? CONNECTION_MODE_WIFI : CONNECTION_MODE_ZIGBEE;
   Serial.print("Connection mode: ");
   Serial.println(connectionMode == CONNECTION_MODE_WIFI ? "WiFi" : "ZigBee");
 
@@ -58,6 +60,12 @@ void setup() {
   }
 
   sensorsStartTask();
+
+  #ifdef ZIGBEE_MODE_ED
+    if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+      zigbeeInit();
+    }
+  #endif
 }
 
 /**
@@ -74,6 +82,11 @@ void loop() {
     if (controlEvent == CONTROL_EVENT_BUTTON_LONG_PRESS) {
       Serial.println("Button long-pressed, pairing...");
       ledSetState(LED_PAIRING);
+      #ifdef ZIGBEE_MODE_ED
+        if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+          zigbeeStartPairing();
+        }
+      #endif
     }
   }
  
@@ -112,5 +125,11 @@ void loop() {
     else {
       Serial.println("N/A");
     }
+
+    #ifdef ZIGBEE_MODE_ED
+      if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+        zigbeeSendData(&currentValues, false);
+      }
+    #endif
   }
 }
