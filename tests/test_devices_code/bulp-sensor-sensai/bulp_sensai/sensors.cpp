@@ -1,3 +1,9 @@
+/**
+ * =============================================================================================
+ * bulp.sensai - Sensors implementation
+ * ====================================
+ */
+
 #include "sensors.h"
 #include "Wire.h"
 #include "DFRobot_AHT20.h"
