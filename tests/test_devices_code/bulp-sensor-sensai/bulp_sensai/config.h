@@ -32,3 +32,8 @@
 #define BUTTON_DEBOUNCE_MS          30      // Minimum stable time before state change is accepted (ms)
 #define BUTTON_SHORT_PRESS_MS       50      // Minimum duration for a short press (ms)
 #define BUTTON_LONG_PRESS_MS        2000    // Minimum duration for a long press (ms)
+
+#define ZIGBEE_CHANNEL              15      // ZigBee channel (11..26)
+#define ZIGBEE_PAN_ID               0x1234  // ZigBee PAN ID (hex)
+#define ZIGBEE_MANUFACTURER         "bulp.io" // ZigBee device manufacturer name
+#define ZIGBEE_MODEL                "Sensai 1" // ZigBee device model name

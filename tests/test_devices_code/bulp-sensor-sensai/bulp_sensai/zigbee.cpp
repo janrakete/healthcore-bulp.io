@@ -6,33 +6,34 @@
  */
 #include "zigbee.h"
 
-// ── Endpoint objects ──────────────────────────────────────────────────────────
 static ZigbeeTempSensor        zbTempHum    (EP_TEMP_HUM);
 static ZigbeeOccupancySensor   zbOccupancy  (EP_OCCUPANCY);
 static ZigbeeIlluminanceSensor zbIlluminance(EP_ILLUMINANCE);
 static ZigbeeContactSwitch     zbFall       (EP_FALL);
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+/**
+ * Initialise ZigBee and add endpoints
+ */
 void zigbeeInit() {
     Serial.println("[ZigBee] Initialising endpoints...");
 
     // EP 1: Temperature + Humidity (AHT20)
-    zbTempHum.setManufacturerAndModel("bulp.io", "RoomSensor-v4");
-    zbTempHum.setMinMaxValue(-10, 60);
-    zbTempHum.setTolerance(0.5);
+    zbTempHum.setManufacturerAndModel(ZIGBEE_MANUFACTURER, ZIGBEE_MODEL);
+    zbTempHum.setMinMaxValue(-10, 60); //
+    zbTempHum.setTolerance(0.5); // 
     zbTempHum.setReporting(30, 120, 0.5);
-    zbTempHum.setHumidityReporting(30, 120, 2.0);
+    zbTempHum.setHumidityReporting(30, 120, 2.0); //
     Zigbee.addEndpoint(&zbTempHum);
     Serial.println("[ZigBee] EP1 Temp+Humidity OK");
 
     // EP 2: Presence (C1001 IO2)
-    zbOccupancy.setManufacturerAndModel("bulp.io", "RoomSensor-v4");
+    zbOccupancy.setManufacturerAndModel(ZIGBEE_MANUFACTURER, ZIGBEE_MODEL);
     zbOccupancy.setSensorType(ZIGBEE_OCCUPANCY_SENSOR_TYPE_PIR);
     Zigbee.addEndpoint(&zbOccupancy);
     Serial.println("[ZigBee] EP2 Presence OK");
 
     // EP 3: Illuminance (VEML7700)
-    zbIlluminance.setManufacturerAndModel("bulp.io", "RoomSensor-v4");
+    zbIlluminance.setManufacturerAndModel(ZIGBEE_MANUFACTURER, ZIGBEE_MODEL);
     zbIlluminance.setMinMaxValue(0, 100000);
     zbIlluminance.setReporting(30, 300, 50);
     Zigbee.addEndpoint(&zbIlluminance);
@@ -40,7 +41,7 @@ void zigbeeInit() {
 
     // EP 4: Fall alarm (C1001 IO1, as ContactSwitch)
     // open = no fall, closed = fall detected
-    zbFall.setManufacturerAndModel("bulp.io", "RoomSensor-v4");
+    zbFall.setManufacturerAndModel(ZIGBEE_MANUFACTURER, ZIGBEE_MODEL);
     Zigbee.addEndpoint(&zbFall);
     Serial.println("[ZigBee] EP4 Fall alarm OK");
 
@@ -67,37 +68,44 @@ void zigbeeInit() {
     }
 }
 
-// ── Send data ─────────────────────────────────────────────────────────────────
-bool zigbeeSendData(const SensorValues* v, bool isAlarm) {
-    if (!Zigbee.connected()) return false;
+/*
+ * Send sensor data over ZigBee
+ * param values: Sensor values to send
+ * param isAlarm: If true, forces the fall alarm state (for testing)
+ * Returns true if data was sent successfully, false if not connected
+*/
+bool zigbeeSendData(const SensorValues* values, bool isAlarm) {
+    if (!Zigbee.connected()) {
+        return false;
+    }
 
     bool ok = true;
 
     // Temperature + Humidity
-    if (v->sensorTempHumValid) {
-        ok &= zbTempHum.setTemperature(v->temperature);
-        ok &= zbTempHum.setHumidity(v->humidity);
+    if (values->sensorTempHumValid) {
+        ok &= zbTempHum.setTemperature(values->temperature);
+        ok &= zbTempHum.setHumidity(values->humidity);
         Serial.printf("[ZigBee] T=%.1f°C  H=%.0f%%\n",
-                      v->temperature, v->humidity);
+                      values->temperature, values->humidity);
     }
 
     // Presence
-    if (v->sensorRadarValid) {
-        zbOccupancy.setOccupancy(v->presenceDetected);
+    if (values->sensorRadarValid) {
+        zbOccupancy.setOccupancy(values->presenceDetected);
     }
 
     // Illuminance: ZigBee formula: 10000 * log10(lux) + 1
-    if (v->sensorLuxValid) {
-        uint16_t luxZb = (v->illuminance > 0)
-            ? (uint16_t)(10000.0 * log10(v->illuminance) + 1)
+    if (values->sensorLuxValid) {
+        uint16_t luxZb = (values->illuminance > 0)
+            ? (uint16_t)(10000.0 * log10(values->illuminance) + 1)
             : 0;
         zbIlluminance.setIlluminance(luxZb);
-        Serial.printf("[ZigBee] Lux=%.0f (ZB=%d)\n", v->illuminance, luxZb);
+        Serial.printf("[ZigBee] Lux=%.0f (ZB=%d)\n", values->illuminance, luxZb);
     }
 
     // Fall alarm: ContactSwitch closed = alarm
-    if (v->sensorRadarValid) {
-        bool alarm = v->fallDetected || isAlarm;
+    if (values->sensorRadarValid) {
+        bool alarm = values->fallDetected || isAlarm;
         zbFall.setClosed(alarm);
         if (alarm) Serial.println("[ZigBee] FALL ALARM!");
     }
@@ -105,25 +113,30 @@ bool zigbeeSendData(const SensorValues* v, bool isAlarm) {
     return ok;
 }
 
-// ── Pairing ───────────────────────────────────────────────────────────────────
+/*
+ * Start ZigBee pairing: Factory reset to clear credentials, then rejoin on next boot    
+ */
 void zigbeeStartPairing() {
     if (Zigbee.connected()) {
         Serial.println("[ZigBee] Already connected");
         return;
     }
-    Serial.println("[ZigBee] Searching for network...");
-    // Clear saved network credentials → rejoin on next boot
-    Zigbee.factoryReset();
+    Serial.println("[ZigBee] Searching for network ...");
+    
+    Zigbee.factoryReset(); // Clear saved network credentials → rejoin on next boot
 }
 
-// ── Factory Reset ─────────────────────────────────────────────────────────────
+/**
+ * Factory reset: Clear ZigBee credentials and restart
+ */
 void zigbeeFactoryReset() {
     Serial.println("[ZigBee] Factory Reset");
-    Zigbee.factoryReset();
-    // ESP32 will restart automatically
+    Zigbee.factoryReset(); // .. ESP32 will restart automatically
 }
 
-// ── Connection status ─────────────────────────────────────────────────────────
+/**
+ * Check if ZigBee is connected to a coordinator
+ */
 bool zigbeeIsJoined() {
     return Zigbee.connected();
 }
