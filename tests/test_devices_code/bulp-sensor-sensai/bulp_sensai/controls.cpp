@@ -41,8 +41,7 @@ ControlEvent controlsUpdate() {
     _buttonLastDebounceMs   = nowMs;
   }
   
-  if ((nowMs - _buttonLastDebounceMs) >= BUTTON_DEBOUNCE_MS && // Accept the raw state as stable only after it has been unchanged for BUTTON_DEBOUNCE_MS.
-      _buttonStablePressed != _buttonRawPressed) {
+  if ((nowMs - _buttonLastDebounceMs) >= BUTTON_DEBOUNCE_MS && _buttonStablePressed != _buttonRawPressed) { // Accept the raw state as stable only after it has been unchanged for BUTTON_DEBOUNCE_MS.
     _buttonStablePressed = _buttonRawPressed;
 
     if (_buttonStablePressed) {

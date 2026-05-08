@@ -11,7 +11,7 @@
 #include "controls.h"
 #include "led.h"
 #include "sensors.h"
-#include "zigbee.h"
+#include "zigbee_connection.h"
 
 enum ConnectionMode {
   CONNECTION_MODE_ZIGBEE,
@@ -41,6 +41,12 @@ void setup() {
   Serial.print("Connection mode: ");
   Serial.println(connectionMode == CONNECTION_MODE_WIFI ? "WiFi" : "ZigBee");
 
+  #if defined(ZIGBEE_MODE_ED) && SENSORS_ENABLED
+    if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+      zigbeeInit();
+    }
+  #endif
+
   controlsInit();
 
   ledInit();
@@ -60,12 +66,6 @@ void setup() {
   }
 
   sensorsStartTask();
-
-  #ifdef ZIGBEE_MODE_ED
-    if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      zigbeeInit();
-    }
-  #endif
 }
 
 /**
