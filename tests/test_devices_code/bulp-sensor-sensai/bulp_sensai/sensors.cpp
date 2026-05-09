@@ -26,11 +26,13 @@ static SemaphoreHandle_t _valuesMutex = NULL; // Mutex that guards _latestValues
 static SensorValues      _latestValues = {}; // Shared value buffer; written by sensorsTask, read by sensorsGetValues.
 
 bool sensorsInit() {
+  Serial.println("[Sensors] Initializing ...");
+
   if (!SENSORS_ENABLED) {
     _sensorTempHumReady = false;
     _sensorLuxReady     = false;
     _sensorRadarReady   = false;
-    Serial.println("All sensors disabled via SENSORS_ENABLED debug switch.");
+    Serial.println("[Sensors] All sensors disabled via SENSORS_ENABLED debug switch.");
     return false;
   }
 
@@ -44,7 +46,7 @@ bool sensorsInit() {
     _sensorTempHumReady = true;
   }
   else {
-    Serial.println("Failed to initialize AHT20 sensor!");
+    Serial.println("[Sensors] Failed to initialize AHT20 sensor!");
     _sensorTempHumReady = false;
   }
 
@@ -56,7 +58,7 @@ bool sensorsInit() {
     _sensorLuxReady = true;
   }
   else {
-    Serial.println("Failed to initialize VEML7700 sensor!");
+    Serial.println("[Sensors] Failed to initialize VEML7700 sensor!");
     _sensorLuxReady = false;
   }
 
@@ -66,20 +68,20 @@ bool sensorsInit() {
     _sensorRadar.configWorkMode(_sensorRadar.eFallingMode);
     _sensorRadar.configLEDLight(_sensorRadar.eHPLed, 1);
 
-    Serial.println("Performing C1001 Radar self-test...");
+    Serial.println("[Sensors] Performing C1001 Radar self-test ...");
     if (_sensorRadar.sensorRet() == 0) {
-      Serial.println("C1001 Radar self-test passed.");
+      Serial.println("[Sensors] C1001 Radar self-test passed.");
 
-      Serial.println("Configuring C1001 Radar fall detection parameters...");
+      Serial.println("[Sensors] Configuring C1001 Radar fall detection parameters ...");
       uint16_t height = _sensorRadar.dmAutoMeasureHeight();
       if (height == 0) {
         _sensorRadar.dmInstallHeight(RADAR_ROOM_HEIGHT_CM);
-        Serial.print("C1001 height auto-measure failed, using ");
+        Serial.print("[Sensors] C1001 height auto-measure failed, using ");
         Serial.print(RADAR_ROOM_HEIGHT_CM);
         Serial.println(" cm.");
       }
       else {
-        Serial.print("C1001 measured height: ");
+        Serial.print("[Sensors] C1001 measured height: ");
         Serial.print(height);
         Serial.println(" cm");
       }
@@ -91,12 +93,12 @@ bool sensorsInit() {
       _sensorRadarReady = true;
     }
     else {
-      Serial.println("C1001 Radar self-test failed!");
+      Serial.println("[Sensors] C1001 Radar self-test failed!");
       _sensorRadarReady = false;
     }
   }
   else {
-    Serial.println("Failed to initialize C1001 Radar!");
+    Serial.println("[Sensors] Failed to initialize C1001 Radar!");
     _sensorRadarReady = false;
   }
 

@@ -4,6 +4,7 @@
  * ===============================
  */
 #include "zigbee_connection.h"
+#include "led.h"
 
 static ZigbeeTempSensor        zbTempHum    (EP_TEMP_HUM);
 static ZigbeeOccupancySensor   zbOccupancy  (EP_OCCUPANCY);
@@ -55,11 +56,23 @@ void zigbeeInit() {
     zbTempHum.setHumidityReporting(ZIGBEE_REPORTING_MIN_INTERVAL, ZIGBEE_REPORTING_MAX_INTERVAL, ZIGBEE_REPORTING_HUMIDITY_TOLERANCE);
     zbIlluminance.setReporting(ZIGBEE_REPORTING_MIN_INTERVAL, ZIGBEE_REPORTING_MAX_INTERVAL, ZIGBEE_REPORTING_ILLUMINANCE_TOLERANCE);
 
-    unsigned long start = millis();
+    Serial.println("[ZigBee] Initialisation complete, waiting for coordinator connection");
+    ledSetState(LED_PAIRING);
+
+    unsigned long start        = millis();
+    unsigned long lastDotMs    = 0;
     while (!Zigbee.connected() && millis() - start < ZIGBEE_CONNECTION_TIMEOUT_MS) { // Wait for coordinator connection with timeout
-        delay(500);
-        Serial.print(".");
+        if (taskUpdate(&taskLedBlink)) { // Manually tick the LED blink state machine — loop() does not run during setup().
+            ledUpdate();
+        }
+
+        if (millis() - lastDotMs >= LED_BLINK_INTERVAL_MS) {
+            lastDotMs = millis();
+            Serial.print(".");
+        }
     }
+    
+    taskLedBlink.lastRun = millis(); // clear taskledblink to avoid interference with normal LED updates in loop()
     Serial.println();
 
     if (Zigbee.connected()) {
@@ -116,15 +129,8 @@ void zigbeeStartPairing() {
     }
     Serial.println("[ZigBee] Searching for network ...");
     
-    Zigbee.factoryReset();
-}
-
-/**
- * Factory reset: Clear ZigBee credentials and restart
- */
-void zigbeeFactoryReset() {
-    Serial.println("[ZigBee] Factory Reset");
-    Zigbee.factoryReset();
+    Zigbee.factoryReset(); // Clear credentials and reboot into pairing mode (esp_zb_factory_reset resets and restarts automatically)
+    Serial.println("[ZigBee] Factory reset triggered, rebooting ...");
 }
 
 /**

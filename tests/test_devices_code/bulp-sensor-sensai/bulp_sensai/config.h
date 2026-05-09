@@ -19,7 +19,7 @@
 
 #define SENSORS_ENABLED                         1       // Global debug switch: 0 disables all three sensors, 1 enables normal sensor operation
 
-#define SENSOR_READ_INTERVAL_MS                 5000    // Sensor FreeRTOS task publish interval (ms)
+#define SENSOR_READ_INTERVAL_MS                 15000    // Sensor FreeRTOS task publish interval (ms)
 #define SENSOR_STAGGER_MS                       500     // Delay between individual sensor reads in the task (ms)
 #define SENSOR_TASK_STACK_SIZE                  4096    // FreeRTOS stack size for the sensor task (bytes)
 
@@ -40,7 +40,9 @@
 #define ZIGBEE_REPORTING_MIN_INTERVAL           30      // ZigBee reporting minimum interval (s)
 #define ZIGBEE_REPORTING_MAX_INTERVAL           120     // ZigBee reporting maximum interval (s)
 #define ZIGBEE_REPORTING_TEMP_TOLERANCE         0.5     // ZigBee reporting temperature change tolerance (°C)
-#define ZIGBEE_REPORTING_HUMIDITY_TOLERANCE     2.0 // ZigBee reporting humidity change tolerance (%)
-#define ZIGBEE_REPORTING_ILLUMINANCE_TOLERANCE  50 // ZigBee reporting illuminance change tolerance (ZB units, not lux)
+#define ZIGBEE_REPORTING_HUMIDITY_TOLERANCE     2.0     // ZigBee reporting humidity change tolerance (%)
+#define ZIGBEE_REPORTING_ILLUMINANCE_TOLERANCE  50      // ZigBee reporting illuminance change tolerance (ZB units, not lux)
 #define ZIGBEE_OCCUPANCY_SENSOR_TYPE_ULTRASONIC 0x01    // ZigBee Occupancy Sensor Type: Ultrasonic
-#define ZIGBEE_CONNECTION_TIMEOUT_MS            30000   // Time to wait for ZigBee coordinator connection at startup (ms)
+#define ZIGBEE_CONNECTION_TIMEOUT_MS            60000   // Time to wait for ZigBee coordinator connection at startup (ms)
+
+#define CONNECTION_CHECK_INTERVAL_MS            5000    // How often the main loop checks network connection status and updates the LED (ms)
