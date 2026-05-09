@@ -8,10 +8,6 @@
  *   EP 2 – ZigbeeOccupancySensor   (Presence + Movement via occupancy)
  *   EP 3 – ZigbeeIlluminanceSensor (Illuminance)
  *   EP 4 – ZigbeeAnalog            (Fall alarm: 1.0 = fall, 0.0 = normal)
- *
- * One-time Arduino IDE setup:
- *   Tools → Zigbee Mode      → Zigbee ED (end device)
- *   Tools → Partition Scheme → Zigbee 4MB with spiffs
  */
 #pragma once
 
@@ -30,5 +26,4 @@
 void zigbeeInit();
 bool zigbeeSendData(const SensorValues* v, bool isAlarm);
 void zigbeeStartPairing();
-void zigbeeFactoryReset();
 bool zigbeeIsJoined();

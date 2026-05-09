@@ -42,12 +42,14 @@ void ledSetColor(uint8_t R, uint8_t G, uint8_t B, bool blink) {
 void ledSetState(LedState state) {
   _ledStateCurrent = state;
 
+  Serial.println("[LED] Set state: " + String(state));
+
   switch (state) {
     case LED_OFF:               ledSetColor(  0,   0,   0, false);  break;  // Off
-    case LED_BOOT:              ledSetColor(  0,   0, 255, false);  break;  // Blue
+    case LED_BOOT:              ledSetColor(255, 255,   0, false);  break;  // Yellow
     case LED_ZIGBEE_CONNECTED:  ledSetColor(  0, 255,   0, false);  break;  // Green
     case LED_WIFI_CONNECTED:    ledSetColor(  0, 255,   0, false);  break;  // Green
-    case LED_NO_CONNECTION:     ledSetColor(255, 180,   0, true);   break;  // Orange blinking
+    case LED_NO_CONNECTION:     ledSetColor(  0,   0, 255, true);   break;  // Blue blinking
     case LED_PAIRING:           ledSetColor(255, 255,   0, true);   break;  // Yellow blinking
     case LED_RESET:             ledSetColor(255,   0,   0, false);  break;  // Red
     case LED_ERROR:             ledSetColor(255,   0,   0, true);   break;  // Red blinking

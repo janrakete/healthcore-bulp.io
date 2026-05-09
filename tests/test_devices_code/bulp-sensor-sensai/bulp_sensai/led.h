@@ -11,14 +11,14 @@
 
 // High-level LED states. Each state maps to a fixed colour and optional blink pattern.
 enum LedState {
-  LED_OFF,               // Off
-  LED_BOOT,              // Blue solid      — booting / initialising
-  LED_ZIGBEE_CONNECTED,  // Green solid     — Zigbee link up
-  LED_WIFI_CONNECTED,    // Green solid     — Wi-Fi link up
-  LED_NO_CONNECTION,     // Orange blinking — no network connection
-  LED_PAIRING,           // Yellow blinking — pairing mode active
-  LED_RESET,             // Red solid       — factory reset triggered
-  LED_ERROR              // Red blinking    — hardware error
+  LED_OFF,
+  LED_BOOT,
+  LED_ZIGBEE_CONNECTED,
+  LED_WIFI_CONNECTED,
+  LED_NO_CONNECTION, 
+  LED_PAIRING, 
+  LED_RESET,
+  LED_ERROR 
 };
 
 extern Task taskLedBlink; // Scheduler task — drives the blink toggle at LED_BLINK_INTERVAL_MS. Must be ticked by the main loop via taskUpdate(&taskLedBlink).
