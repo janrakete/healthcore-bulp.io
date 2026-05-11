@@ -60,29 +60,36 @@ void setup() {
   Serial.print("[Main] Connection mode: ");
   Serial.println(connectionMode == CONNECTION_MODE_WIFI ? "WiFi" : "ZigBee");
 
+  controlsInit();
+
+  ledInit(); 
+  ledSetState(LED_BOOT);
+
   #if defined(ZIGBEE_MODE_ED) && SENSORS_ENABLED
     if (connectionMode == CONNECTION_MODE_ZIGBEE) {
       zigbeeInit();
     }
   #endif
 
-  controlsInit();
-
-  ledInit();
+  // zigbeeInit() drives LED_PAIRING (blinking) via a manual blink loop. When it returns, the
+  // blink toggle may be in the OFF phase, which makes the LED appear dark during the static
+  // sensor-init period (loop() is not yet running). Reset to a solid state here so the LED
+  // stays visibly on throughout sensor initialization.
   ledSetState(LED_BOOT);
 
   if (sensorsInit()) {
     Serial.println("[Sensors] Initialized successfully.");
-    ledSetState(LED_OFF);
   }
   else if (!SENSORS_ENABLED) {
     Serial.println("[Sensors] Disabled for debugging.");
-    ledSetState(LED_OFF);
   }
   else {
     Serial.println("[Sensors] Failed to initialize.");
-    ledSetState(LED_ERROR);
   }
+
+  // Force the connection-check task to fire on the very first loop() iteration so the LED
+  // transitions from LED_BOOT to the correct connection state without delay.
+  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS;
 
   sensorsStartTask();
 }
@@ -97,7 +104,7 @@ void loop() {
 
   if (taskUpdate(&taskConnectionCheck)) { // Check connection status and update LED at CONNECTION_CHECK_INTERVAL_MS.
     const LedState currentLedState = ledGetState();
-    if (currentLedState != LED_PAIRING && currentLedState != LED_ERROR && currentLedState != LED_RESET) {
+    if (currentLedState != LED_PAIRING && currentLedState != LED_RESET) {
       bool isConnected = false;
       if (connectionMode == CONNECTION_MODE_ZIGBEE) {
         isConnected = zigbeeIsJoined();
