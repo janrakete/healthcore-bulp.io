@@ -78,7 +78,7 @@ void zigbeeInit() {
     if (Zigbee.connected()) {
         Serial.println("[ZigBee] Connected to coordinator");
     } else {
-        Serial.println("[ZigBee] No coordinator found - press button to start pairing");
+        Serial.println("[ZigBee] No coordinator found - press pairing button again to start pairing");
     }
 }
 
