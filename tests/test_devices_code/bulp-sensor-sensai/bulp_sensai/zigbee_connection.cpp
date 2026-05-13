@@ -10,6 +10,7 @@ static ZigbeeTempSensor        zbTempHum    (EP_TEMP_HUM);
 static ZigbeeOccupancySensor   zbOccupancy  (EP_OCCUPANCY);
 static ZigbeeIlluminanceSensor zbIlluminance(EP_ILLUMINANCE);
 static ZigbeeAnalog            zbFall       (EP_FALL);
+static ZigbeeAnalog            zbSensorHealth(EP_SENSOR_HEALTH);
     
 /**
  * Initialise ZigBee and add endpoints
@@ -43,6 +44,13 @@ void zigbeeInit() {
     zbFall.setAnalogInputMinMax(0.0f, 1.0f);
     Zigbee.addEndpoint(&zbFall);
     Serial.println("[ZigBee] EP4 Fall alarm OK (analog)");
+
+    // EP 5: Sensor health via analog input value (1.0 = sensor error, 0.0 = ok)
+    zbSensorHealth.setManufacturerAndModel(ZIGBEE_MANUFACTURER, ZIGBEE_MODEL);
+    zbSensorHealth.addAnalogInput();
+    zbSensorHealth.setAnalogInputMinMax(0.0f, 1.0f);
+    Zigbee.addEndpoint(&zbSensorHealth);
+    Serial.println("[ZigBee] EP5 Sensor health OK (analog)");
 
     Serial.println("[ZigBee] Starting End Device ..."); // Start ZigBee as End Device
     if (!Zigbee.begin()) {
@@ -85,7 +93,7 @@ void zigbeeInit() {
 /*
  * Send sensor data over ZigBee, returns true if data was sent successfully, false if not connected
 */
-bool zigbeeSendData(const SensorValues* values, bool isAlarm) {
+bool zigbeeSendData(const SensorValues* values, bool isAlarm, bool hasSensorError) {
     if (!Zigbee.connected()) {
         return false;
     }
@@ -115,6 +123,9 @@ bool zigbeeSendData(const SensorValues* values, bool isAlarm) {
         ok &= zbFall.setAnalogInput(alarm ? 1.0f : 0.0f);
         Serial.printf("[ZigBee] Fall: %s\n", alarm ? "ALARM" : "no");
     }
+
+    ok &= zbSensorHealth.setAnalogInput(hasSensorError ? 1.0f : 0.0f);
+    Serial.printf("[ZigBee] Sensor health: %s\n", hasSensorError ? "ERROR" : "OK");
 
     return ok;
 }

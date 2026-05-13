@@ -21,6 +21,7 @@
 
 #define SENSOR_READ_INTERVAL_MS                 15000    // Sensor FreeRTOS task publish interval (ms)
 #define SENSOR_STAGGER_MS                       500     // Delay between individual sensor reads in the task (ms)
+#define SENSOR_VALUES_MAX_AGE_MS                22000   // Maximum accepted age of the published sensor snapshot before the main loop treats it as stale (ms)
 #define SENSOR_TASK_STACK_SIZE                  4096    // FreeRTOS stack size for the sensor task (bytes)
 
 #define SERIAL_BAUD_RATE                        115200  // Serial monitor baud rate

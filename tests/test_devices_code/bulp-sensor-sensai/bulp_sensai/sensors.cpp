@@ -9,6 +9,7 @@
 #include "DFRobot_AHT20.h"
 #include "Adafruit_VEML7700.h"
 #include "DFRobot_HumanDetection.h"
+#include <math.h>
 
 static DFRobot_AHT20          _sensorTempHum;
 static Adafruit_VEML7700      _sensorLux;
@@ -25,6 +26,23 @@ static SemaphoreHandle_t _valuesMutex = NULL; // Mutex that guards _latestValues
 
 static SensorValues      _latestValues = {}; // Shared value buffer; written by sensorsTask, read by sensorsGetValues.
 
+/**
+ * Validates the temperature and humidity values from the AHT20 sensor.
+ */
+static bool sensorTempHumValuesAreValid(float temperature, float humidity) {
+  return isfinite(temperature) && isfinite(humidity);
+}
+
+/**
+ * Validates the illuminance value from the VEML7700 sensor.
+ */
+static bool sensorLuxValueIsValid(float illuminance) {
+  return isfinite(illuminance) && illuminance >= 0.0f;
+}
+
+/**
+ * Initializes all sensors. Returns true if at least one sensor was successfully initialized, false otherwise.
+ */
 bool sensorsInit() {
   Serial.println("[Sensors] Initializing ...");
 
@@ -105,53 +123,110 @@ bool sensorsInit() {
   return _sensorTempHumReady || _sensorLuxReady || _sensorRadarReady;
 }
 
-static void sensorsTask(void *param) { // Background task running on Core 0. Reads all sensors sequentially, staggered by SENSOR_STAGGER_MS to avoid back-to-back blocking I2C/Serial calls. After every full cycle it waits SENSOR_READ_INTERVAL_MS before starting the next one.
+/**
+ * Reads the button state. Returns true if the button is currently pressed, false otherwise.
+ */
+static void sensorsTask(void *param) { // Background task running on Core 0. Reads all sensors sequentially, staggered by SENSOR_STAGGER_MS to avoid back-to-back blocking I2C/Serial calls. vTaskDelayUntil keeps the start of each cycle aligned to SENSOR_READ_INTERVAL_MS.
+  TickType_t lastWakeTime = xTaskGetTickCount();
+
   while (true) {
     SensorValues temp = {};
 
     if (_sensorTempHumReady) {
       if (_sensorTempHum.startMeasurementReady(true)) {
-        temp.temperature        = _sensorTempHum.getTemperature_C();
-        temp.humidity           = _sensorTempHum.getHumidity_RH();
-        temp.sensorTempHumValid = true;
+        const float temperature = _sensorTempHum.getTemperature_C();
+        const float humidity    = _sensorTempHum.getHumidity_RH();
+
+        if (sensorTempHumValuesAreValid(temperature, humidity)) {
+          temp.temperature        = temperature;
+          temp.humidity           = humidity;
+          temp.sensorTempHumValid = true;
+        }
       }
     }
 
     vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
 
     if (_sensorLuxReady) {
-      temp.illuminance    = _sensorLux.readLux(VEML_LUX_AUTO);
-      temp.whiteLevel     = _sensorLux.readWhite();
-      temp.sensorLuxValid = true;
+      const float illuminance = _sensorLux.readLux(VEML_LUX_AUTO);
+
+      if (sensorLuxValueIsValid(illuminance)) {
+        temp.illuminance    = illuminance;
+        temp.whiteLevel     = _sensorLux.readWhite();
+        temp.sensorLuxValid = true;
+      }
     }
 
     vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
 
     if (_sensorRadarReady) {
-      temp.presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
-      temp.movementDetected = _sensorRadar.dmHumanData(_sensorRadar.eBodyMove)  > 0;
-      temp.fallDetected     = _sensorRadar.getFallData(_sensorRadar.eFallState) > 0;
-      temp.sensorRadarValid = true;
+      if (_sensorRadar.sensorRet() == 0) {
+        temp.presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
+        temp.movementDetected = _sensorRadar.dmHumanData(_sensorRadar.eBodyMove)  > 0;
+        temp.fallDetected     = _sensorRadar.getFallData(_sensorRadar.eFallState) > 0;
+        temp.sensorRadarValid = true;
+      }
     }
 
     temp.lastUpdate = millis();
 
     
-    xSemaphoreTake(_valuesMutex, portMAX_DELAY); // Publish the completed snapshot atomically.
-    _latestValues = temp;
-    xSemaphoreGive(_valuesMutex);
+    if (xSemaphoreTake(_valuesMutex, portMAX_DELAY) == pdTRUE) { // Publish the completed snapshot atomically.
+      _latestValues = temp;
+      xSemaphoreGive(_valuesMutex);
+    }
     
-    vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_INTERVAL_MS)); // Wait before the next read cycle. vTaskDelay yields Core 0 to other tasks.
+    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(SENSOR_READ_INTERVAL_MS)); // Wait until the next cycle start to avoid timing drift.
   }
 }
 
-void sensorsStartTask() {
+/**
+ * Starts the sensor task. Returns true if the task was successfully created, false otherwise.
+ */
+bool sensorsStartTask() {
   _valuesMutex = xSemaphoreCreateMutex();
-  xTaskCreatePinnedToCore(sensorsTask, "sensors", SENSOR_TASK_STACK_SIZE, NULL, 1, NULL, 0); // Pin to Core 0 so blocking sensor reads never stall the main loop on Core 1.
+
+  if (_valuesMutex == NULL) {
+    return false;
+  }
+
+  if (xTaskCreatePinnedToCore(sensorsTask, "sensors", SENSOR_TASK_STACK_SIZE, NULL, 1, NULL, 0) != pdPASS) { // Pin to Core 0 so blocking sensor reads never stall the main loop on Core 1.
+    vSemaphoreDelete(_valuesMutex);
+    _valuesMutex = NULL;
+    return false;
+  }
+
+  return true;
 }
 
-void sensorsGetValues(SensorValues *values) {
-  xSemaphoreTake(_valuesMutex, portMAX_DELAY); // Atomic copy — holds the mutex for only a few microseconds.
+/**
+ * Retrieves the latest sensor values. Returns true if the values were successfully retrieved, false otherwise.
+ */ 
+bool sensorsGetValues(SensorValues *values) {
+  if (values == NULL || _valuesMutex == NULL) {
+    if (values != NULL) {
+      *values = {};
+    }
+    return false;
+  }
+
+  if (xSemaphoreTake(_valuesMutex, portMAX_DELAY) != pdTRUE) { // Atomic copy — holds the mutex for only a few microseconds.
+    *values = {};
+    return false;
+  }
+
   *values = _latestValues;
   xSemaphoreGive(_valuesMutex);
+  return true;
+}
+
+/**
+ * Checks if the sensor values are fresh. Returns true if the values are fresh, false otherwise.
+ */
+bool sensorsValuesAreFresh(const SensorValues *values) {
+  if (values == NULL || values->lastUpdate == 0) {
+    return false;
+  }
+
+  return (millis() - values->lastUpdate) <= SENSOR_VALUES_MAX_AGE_MS;
 }
