@@ -71,10 +71,6 @@ void setup() {
     }
   #endif
 
-  // zigbeeInit() drives LED_PAIRING (blinking) via a manual blink loop. When it returns, the
-  // blink toggle may be in the OFF phase, which makes the LED appear dark during the static
-  // sensor-init period (loop() is not yet running). Reset to a solid state here so the LED
-  // stays visibly on throughout sensor initialization.
   ledSetState(LED_BOOT);
 
   if (sensorsInit()) {
@@ -86,12 +82,12 @@ void setup() {
   else {
     Serial.println("[Sensors] Failed to initialize.");
   }
+  
+  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS; // Force the connection-check task to fire on the very first loop() iteration so the LED transitions from LED_BOOT to the correct connection state without delay.
 
-  // Force the connection-check task to fire on the very first loop() iteration so the LED
-  // transitions from LED_BOOT to the correct connection state without delay.
-  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS;
-
-  sensorsStartTask();
+  if (!sensorsStartTask()) {
+    Serial.println("[Sensors] Failed to start sensor task, continuing with network connectivity only.");
+  }
 }
 
 /**
@@ -112,7 +108,11 @@ void loop() {
       if (connectionMode == CONNECTION_MODE_WIFI) {
         isConnected = (WiFi.status() == WL_CONNECTED);
       }
-      ledSetState(isConnected ? (connectionMode == CONNECTION_MODE_ZIGBEE ? LED_ZIGBEE_CONNECTED : LED_WIFI_CONNECTED) : LED_NO_CONNECTION);
+
+      const LedState nextLedState = isConnected ? (connectionMode == CONNECTION_MODE_ZIGBEE ? LED_ZIGBEE_CONNECTED : LED_WIFI_CONNECTED) : LED_NO_CONNECTION;
+      if (currentLedState != nextLedState) {
+        ledSetState(nextLedState);
+      }
     }
   }
   
@@ -128,7 +128,19 @@ void loop() {
   }
  
   if (taskUpdate(&taskSensorLog)) { // Print the latest sensor snapshot at SENSOR_READ_INTERVAL_MS. sensorsGetValues() is non-blocking; the actual reads happen on Core 0.
-    sensorsGetValues(&currentValues);
+    const bool hasValues      = sensorsGetValues(&currentValues);
+    const bool valuesFresh    = hasValues && sensorsValuesAreFresh(&currentValues);
+    const bool hasSensorError = !hasValues || !valuesFresh || !currentValues.sensorTempHumValid || !currentValues.sensorLuxValid || !currentValues.sensorRadarValid;
+
+    if (!hasValues) {
+      Serial.println("[Sensors] Sensor values unavailable.");
+    }
+    else if (!valuesFresh) {
+      Serial.println("[Sensors] Sensor snapshot is stale.");
+      currentValues.sensorTempHumValid = false;
+      currentValues.sensorLuxValid     = false;
+      currentValues.sensorRadarValid   = false;
+    }
 
     Serial.print("[Sensors] Temperature: ");
     if (currentValues.sensorTempHumValid) {
@@ -164,7 +176,7 @@ void loop() {
     }
 
     if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      zigbeeSendData(&currentValues, false);
+      zigbeeSendData(&currentValues, false, hasSensorError);
     }
   }
 }

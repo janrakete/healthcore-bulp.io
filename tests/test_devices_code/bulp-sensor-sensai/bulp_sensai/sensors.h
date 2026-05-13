@@ -31,6 +31,8 @@ extern Task taskSensorLog; // Scheduler task used by the main loop to print sens
 
 bool sensorsInit(); // Initialises all sensor hardware. Returns true if at least one sensor is ready.
 
-void sensorsStartTask(); // Creates the FreeRTOS background task that reads all sensors on Core 0. Must be called after sensorsInit().
+bool sensorsStartTask(); // Creates the FreeRTOS background task that reads all sensors on Core 0. Returns false if the mutex or task could not be created.
 
-void sensorsGetValues(SensorValues *values); // Copies the latest sensor snapshot into *values under mutex protection. Non-blocking from the caller's perspective (<1 µs).
+bool sensorsGetValues(SensorValues *values); // Copies the latest sensor snapshot into *values under mutex protection. Returns false if the background task is not ready.
+
+bool sensorsValuesAreFresh(const SensorValues *values); // Returns true while the snapshot age is within SENSOR_VALUES_MAX_AGE_MS.

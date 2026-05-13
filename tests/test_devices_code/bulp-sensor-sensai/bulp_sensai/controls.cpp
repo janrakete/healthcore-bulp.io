@@ -14,10 +14,16 @@ static unsigned long _buttonLastDebounceMs  = 0; // millis() timestamp of the la
 
 Task taskControls = TASK(CONTROL_UPDATE_INTERVAL_MS);
 
+/**
+ * Reads the button state and implements debouncing and press-type classification (short vs long press). Call controlsUpdate() at a regular interval (e.g. in the main loop) to get button events.
+ */
 static bool controlsButtonIsPressed() {
   return digitalRead(PIN_BUTTON) == BUTTON_ACTIVE_LEVEL;
 }
 
+/**
+ * Initializes the controls module. Call this once during setup().
+ */
 void controlsInit() {
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   
@@ -31,6 +37,9 @@ void controlsInit() {
   _buttonLastDebounceMs = nowMs;
 }
 
+/**
+ * Call this at a regular interval (e.g. in the main loop) to get button events. Returns CONTROL_EVENT_NONE if no new event, CONTROL_EVENT_BUTTON_SHORT_PRESS on a completed short press, or CONTROL_EVENT_BUTTON_LONG_PRESS on a long press.
+ */
 ControlEvent controlsUpdate() {
   const unsigned long nowMs     = millis();
   const bool rawPressed         = controlsButtonIsPressed();

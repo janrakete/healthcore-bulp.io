@@ -20,6 +20,9 @@ static bool      _ledBlinkOn      = false; // Current on/off phase of the blink 
 
 Task taskLedBlink = TASK(LED_BLINK_INTERVAL_MS);
 
+/**
+ * Initializes the LED module. Call this once during setup().
+ */
 void ledInit() {
   _led.begin();
   _led.setBrightness(40);
@@ -27,6 +30,9 @@ void ledInit() {
   _led.show();
 }
 
+/**
+ * Sets the LED color and optionally enables blinking.
+ */
 void ledSetColor(uint8_t R, uint8_t G, uint8_t B, bool blink) {
   _ledBlinkR = R;
   _ledBlinkG = G;
@@ -39,6 +45,9 @@ void ledSetColor(uint8_t R, uint8_t G, uint8_t B, bool blink) {
   _led.show();
 }
 
+/**
+ * Sets the LED state.
+ */
 void ledSetState(LedState state) {
   _ledStateCurrent = state;
 
@@ -56,10 +65,16 @@ void ledSetState(LedState state) {
   }
 }
 
+/**
+ * Returns the current LED state.
+ */
 LedState ledGetState() {
   return _ledStateCurrent;
 }
 
+/**
+ * Updates the LED blink state. Call this at a regular interval (e.g. in the main loop) to handle blinking.
+ */
 void ledUpdate() {
   if (!_ledBlinkActive) {
     return;
