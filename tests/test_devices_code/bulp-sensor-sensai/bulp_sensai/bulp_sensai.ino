@@ -44,6 +44,9 @@ void setup() {
   Serial.println(" |_.__/ \\__,_|_| .__/ ");
   Serial.println("               | |    ");
   Serial.println("               |_|    ");
+  Serial.println("");
+  Serial.println("  Manufacturer: " ZIGBEE_MANUFACTURER);
+  Serial.println("  Model:        " ZIGBEE_MODEL);
   Serial.println("===========================================");
 
   const unsigned long serialWaitStartMs   = millis();
@@ -130,7 +133,6 @@ void loop() {
   if (taskUpdate(&taskSensorLog)) { // Print the latest sensor snapshot at SENSOR_READ_INTERVAL_MS. sensorsGetValues() is non-blocking; the actual reads happen on Core 0.
     const bool hasValues      = sensorsGetValues(&currentValues);
     const bool valuesFresh    = hasValues && sensorsValuesAreFresh(&currentValues);
-    const bool hasSensorError = !hasValues || !valuesFresh || !currentValues.sensorTempHumValid || !currentValues.sensorLuxValid || !currentValues.sensorRadarValid;
 
     if (!hasValues) {
       Serial.println("[Sensors] Sensor values unavailable.");
@@ -165,18 +167,18 @@ void loop() {
 
     Serial.print("[Sensors] Presence: ");
     if (currentValues.sensorRadarValid) {
-      Serial.print(currentValues.presenceDetected ? "Yes" : "No");
+      Serial.print(currentValues.presenceDetected ? "YES" : "NO");
       Serial.print(", Movement: ");
-      Serial.print(currentValues.movementDetected ? "Yes" : "No");
+      Serial.print(currentValues.movementDetected ? "YES" : "NO");
       Serial.print(", Fall: ");
-      Serial.println(currentValues.fallDetected ? "Yes" : "No");
+      Serial.println(currentValues.fallDetected ? "YES" : "NO");
     }
     else {
       Serial.println("N/A");
     }
 
     if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      zigbeeSendData(&currentValues, false, hasSensorError);
+      zigbeeSendData(&currentValues, false);
     }
   }
 }
