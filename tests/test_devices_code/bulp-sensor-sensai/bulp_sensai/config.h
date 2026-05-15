@@ -37,7 +37,7 @@
 #define ZIGBEE_CHANNEL                          15      // ZigBee channel (11..26)
 #define ZIGBEE_PAN_ID                           0x1234  // ZigBee PAN ID (hex)
 #define ZIGBEE_MANUFACTURER                     "bulp.io" // ZigBee device manufacturer name
-#define ZIGBEE_MODEL                            "Sensai 1" // ZigBee device model name
+#define ZIGBEE_MODEL                            "bulp.top 1" // ZigBee device model name
 #define ZIGBEE_REPORTING_MIN_INTERVAL           30      // ZigBee reporting minimum interval (s)
 #define ZIGBEE_REPORTING_MAX_INTERVAL           120     // ZigBee reporting maximum interval (s)
 #define ZIGBEE_REPORTING_TEMP_TOLERANCE         0.5     // ZigBee reporting temperature change tolerance (°C)

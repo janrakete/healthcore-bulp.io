@@ -68,10 +68,6 @@ bool sensorsInit() {
     _sensorTempHumReady = false;
   }
 
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  Wire.setClock(100000);
-  delay(50);
-
   if (_sensorLux.begin(&Wire)) {
     _sensorLuxReady = true;
   }
@@ -124,7 +120,8 @@ bool sensorsInit() {
 }
 
 /**
- * Reads the button state. Returns true if the button is currently pressed, false otherwise.
+ * Background FreeRTOS task running on Core 0. Reads all sensors sequentially and publishes
+ * the result into the shared _latestValues buffer under mutex protection.
  */
 static void sensorsTask(void *param) { // Background task running on Core 0. Reads all sensors sequentially, staggered by SENSOR_STAGGER_MS to avoid back-to-back blocking I2C/Serial calls. vTaskDelayUntil keeps the start of each cycle aligned to SENSOR_READ_INTERVAL_MS.
   TickType_t lastWakeTime = xTaskGetTickCount();
@@ -160,12 +157,10 @@ static void sensorsTask(void *param) { // Background task running on Core 0. Rea
     vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
 
     if (_sensorRadarReady) {
-      if (_sensorRadar.sensorRet() == 0) {
-        temp.presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
-        temp.movementDetected = _sensorRadar.dmHumanData(_sensorRadar.eBodyMove)  > 0;
-        temp.fallDetected     = _sensorRadar.getFallData(_sensorRadar.eFallState) > 0;
-        temp.sensorRadarValid = true;
-      }
+      temp.presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
+      temp.movementDetected = _sensorRadar.dmHumanData(_sensorRadar.eBodyMove)  > 0;
+      temp.fallDetected     = _sensorRadar.getFallData(_sensorRadar.eFallState) > 0;
+      temp.sensorRadarValid = true;
     }
 
     temp.lastUpdate = millis();
