@@ -6,6 +6,7 @@
 #define PIN_LED                                 4       // Onboard NeoPixel LED
 #define PIN_BUTTON                              5       // Control button (active LOW, INPUT_PULLUP)
 #define LED_BLINK_INTERVAL_MS                   500     // LED blink toggle interval (ms)
+#define LED_BRIGHTNESS                          30      // LED brightness (0..255)
 
 #define PIN_DPDT_SWITCH                         7       // Boot mode switch to GND with INPUT_PULLUP (open = WiFi, closed = Zigbee)
 
@@ -45,5 +46,6 @@
 #define ZIGBEE_REPORTING_ILLUMINANCE_TOLERANCE  50      // ZigBee reporting illuminance change tolerance (ZB units, not lux)
 #define ZIGBEE_OCCUPANCY_SENSOR_TYPE_ULTRASONIC 0x01    // ZigBee Occupancy Sensor Type: Ultrasonic
 #define ZIGBEE_CONNECTION_TIMEOUT_MS            60000   // Time to wait for ZigBee coordinator connection at startup (ms)
+#define ZIGBEE_REJOIN_RESTART_DELAY_MS          120000  // Restart delay after an established ZigBee connection is lost to trigger rejoin with stored credentials (ms)
 
 #define CONNECTION_CHECK_INTERVAL_MS            5000    // How often the main loop checks network connection status and updates the LED (ms)

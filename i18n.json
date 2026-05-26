@@ -115,6 +115,22 @@
         "de": "Sättigung",
         "en": "Saturation"
     },
+    "humidity": {
+        "de": "Luftfeuchtigkeit",
+        "en": "Humidity"
+    },
+    "temperature": {
+        "de": "Temperatur",
+        "en": "Temperature"
+    },
+    "presence": {
+        "de": "Anwesenheit",
+        "en": "Presence"
+    },
+    "fall": {
+        "de": "Sturz",
+        "en": "Fall"
+    },
     "alertTitleDeviceOffline": {
         "de": "Gerät offline",
         "en": "Device offline"

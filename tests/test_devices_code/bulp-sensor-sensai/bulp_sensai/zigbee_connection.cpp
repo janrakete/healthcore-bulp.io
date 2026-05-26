@@ -1,6 +1,6 @@
 ﻿/**
  * =============================================================================================
- * bulp.sensai - ZigBee connection
+ * bulp.top 1 - ZigBee connection
  * ===============================
  */
 #include "zigbee_connection.h"

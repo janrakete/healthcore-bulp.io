@@ -1,6 +1,6 @@
 /**
  * =============================================================================================
- * bulp.sensai - Smart sensor
+ * bulp.top 1 - Smart sensor
  * ==========================
  * One-time Arduino IDE setup:
  *   Tools → Zigbee Mode      → Zigbee ED (end device)
@@ -28,12 +28,21 @@ enum ConnectionMode {
 static SensorValues currentValues     = {};
 static ConnectionMode connectionMode  = CONNECTION_MODE_WIFI;
 static Task taskConnectionCheck       = TASK(CONNECTION_CHECK_INTERVAL_MS);
+static bool zigbeeHadConnection       = false;
+static unsigned long zigbeeDisconnectStartMs = 0;
 
 /**
  * Main setup 
  */
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
+  const unsigned long serialWaitStartMs   = millis();
+  const unsigned long serialWaitTimeoutMs = SERIAL_WAIT_TIMEOUT_MS;
+
+  while (!Serial && (millis() - serialWaitStartMs) < serialWaitTimeoutMs) {
+    delay(10);
+  }
+
   Serial.println("\n\n");
   Serial.println("===========================================");
   Serial.println("  _           _       ");
@@ -45,18 +54,10 @@ void setup() {
   Serial.println("               | |    ");
   Serial.println("               |_|    ");
   Serial.println("");
-  Serial.println("  Manufacturer: " ZIGBEE_MANUFACTURER);
-  Serial.println("  Model:        " ZIGBEE_MODEL);
+  Serial.println(" Manufacturer: " ZIGBEE_MANUFACTURER);
+  Serial.println(" Model:        " ZIGBEE_MODEL);
   Serial.println("===========================================");
-
-  const unsigned long serialWaitStartMs   = millis();
-  const unsigned long serialWaitTimeoutMs = SERIAL_WAIT_TIMEOUT_MS;
-
   Serial.println("[Main] Starting ...");
-
-  while (!Serial && (millis() - serialWaitStartMs) < serialWaitTimeoutMs) {
-    delay(10);
-  }
 
   pinMode(PIN_DPDT_SWITCH, INPUT_PULLUP);
   connectionMode = (digitalRead(PIN_DPDT_SWITCH) == HIGH) ? CONNECTION_MODE_WIFI : CONNECTION_MODE_ZIGBEE;
@@ -68,14 +69,6 @@ void setup() {
   ledInit(); 
   ledSetState(LED_BOOT);
 
-  #if defined(ZIGBEE_MODE_ED) && SENSORS_ENABLED
-    if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      zigbeeInit();
-    }
-  #endif
-
-  ledSetState(LED_BOOT);
-
   if (sensorsInit()) {
     Serial.println("[Sensors] Initialized successfully.");
   }
@@ -85,12 +78,19 @@ void setup() {
   else {
     Serial.println("[Sensors] Failed to initialize.");
   }
-  
-  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS; // Force the connection-check task to fire on the very first loop() iteration so the LED transitions from LED_BOOT to the correct connection state without delay.
 
   if (!sensorsStartTask()) {
     Serial.println("[Sensors] Failed to start sensor task, continuing with network connectivity only.");
   }
+
+  #if defined(ZIGBEE_MODE_ED) && SENSORS_ENABLED
+    if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+      zigbeeInit();
+      ledSetState(LED_BOOT);
+    }
+  #endif
+  
+  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS; // Force the connection-check task to fire on the very first loop() iteration so the LED transitions from LED_BOOT to the correct connection state without delay.
 }
 
 /**
@@ -107,6 +107,24 @@ void loop() {
       bool isConnected = false;
       if (connectionMode == CONNECTION_MODE_ZIGBEE) {
         isConnected = zigbeeIsJoined();
+
+        if (isConnected) {
+          if (zigbeeDisconnectStartMs != 0) {
+            Serial.println(zigbeeHadConnection ? "[ZigBee] Connection to coordinator restored" : "[ZigBee] Connection to coordinator established");
+            zigbeeDisconnectStartMs = 0;
+          }
+          zigbeeHadConnection = true;
+        }
+        else {
+          if (zigbeeDisconnectStartMs == 0) {
+            zigbeeDisconnectStartMs = millis();
+            Serial.println(zigbeeHadConnection ? "[ZigBee] Connection to coordinator lost, waiting before restart ..." : "[ZigBee] Coordinator still unreachable since boot, waiting before restart ...");
+          }
+          else if (millis() - zigbeeDisconnectStartMs >= ZIGBEE_REJOIN_RESTART_DELAY_MS) {
+            Serial.println("[ZigBee] Coordinator still unreachable, rebooting to trigger rejoin ...");
+            ESP.restart();
+          }
+        }
       }
       if (connectionMode == CONNECTION_MODE_WIFI) {
         isConnected = (WiFi.status() == WL_CONNECTED);
@@ -178,7 +196,9 @@ void loop() {
     }
 
     if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      zigbeeSendData(&currentValues, false);
+      if (!zigbeeSendData(&currentValues, false) && zigbeeIsJoined()) {
+        Serial.println("[ZigBee] Failed to publish one or more attribute updates.");
+      }
     }
   }
 }

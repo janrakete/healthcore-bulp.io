@@ -1,6 +1,6 @@
 /**
  * =============================================================================================
- * bulp.sensai - LED control implementation
+ * bulp.top 1 - LED control implementation
  * ========================================
  */
 
@@ -25,7 +25,7 @@ Task taskLedBlink = TASK(LED_BLINK_INTERVAL_MS);
  */
 void ledInit() {
   _led.begin();
-  _led.setBrightness(40);
+  _led.setBrightness(LED_BRIGHTNESS);
   _led.clear();
   _led.show();
 }
