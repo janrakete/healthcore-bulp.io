@@ -23,8 +23,8 @@ class Devices extends HTMLElement {
           </ion-refresher-content>
         </ion-refresher>
 
-        <ion-segment value="zigbee,bluetooth,lora,http" scrollable="true" swipeGesture="true">
-          <ion-segment-button value="zigbee,bluetooth,lora,http">
+        <ion-segment value="zigbee,bluetooth,lora,http,integrations" scrollable="true" swipeGesture="true">
+          <ion-segment-button value="zigbee,bluetooth,lora,http,integrations">
             <ion-label>${window.Translation.get("All")}</ion-label>
           </ion-segment-button>
           <ion-segment-button value="zigbee">
@@ -38,6 +38,9 @@ class Devices extends HTMLElement {
           </ion-segment-button>
           <ion-segment-button value="http">
             <ion-label>${window.Translation.get("Wifi")}</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="integrations">
+            <ion-label>${window.Translation.get("External")}</ion-label>
           </ion-segment-button>
         </ion-segment>
 

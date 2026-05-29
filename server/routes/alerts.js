@@ -66,7 +66,6 @@ function enrichAlert(alert) {
  * Validates that a name (table or column) contains only safe characters.
  * @param {string} name - The name to validate.
  * @returns {boolean} - Returns true if the name is safe, false otherwise.
- * @description Only allows alphanumeric characters and underscores. Prevents SQL injection through table or column names.
  */
 function validateSqlIdentifier(name) {
     return typeof name === "string" && /^[a-zA-Z0-9_]+$/.test(name);

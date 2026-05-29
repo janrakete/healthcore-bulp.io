@@ -17,7 +17,6 @@ const router        = require("express").Router();
  * @param {string} callID
  * @param {Object} response
  * @returns {void}
- * @description This function handles pending MQTT responses by setting a timeout for the response and storing the callback in a map.
  */
 function handlePendingMqttResponse(callID, response) { 
     const data = {};

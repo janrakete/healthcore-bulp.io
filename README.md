@@ -46,6 +46,7 @@ In the middle — that’s the Healthcore. The Healthcore consists of several No
 - ZigBee
 - LoRa P2P
 - HTTP
+- External APIs (Google Health, Garmin Health, …)
 - Thread (planned)
 
 And now the best part: you can **add your own devices to the Healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
@@ -67,6 +68,8 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 │   └── converters/       # Common and own converters
 ├── bridge - http/        # HTTP ↔ MQTT bridge
 │   └── converters/       # Common and own converters
+├── bridge - external/    # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
+│   └── converters/       # Provider adapters
 ├── tests/                # Jest tests, manual tests and example device firmware
 ├── healthcheck/          # Healthcheck (see below)
 └── app/                  # App
@@ -99,6 +102,7 @@ node "bridge - bluetooth/app.js"
 node "bridge - zigbee/app.js"
 node "bridge - lora/app.js"
 node "bridge - http/app.js"
+node "bridge - external/app.js"
 ```
 
 If you want to use it for production (only macOS / Linux), just run

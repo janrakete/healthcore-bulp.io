@@ -61,7 +61,6 @@ const chartInstances = {
  * @async
  * @function fetchConfig
  * @returns {Promise<void>}
- * @description On success: populates serverBaseUrl, serverApiKey, and the dashboard tuning variables.
  */
 async function fetchConfig() {
     try {
@@ -115,11 +114,11 @@ async function fetchArray(path) {
 }
 
 /**
- * Fetches all registered devices from the Healthcore server. Each device object is enriched by the server with individual and room data.
+ * Fetches all registered devices from the Healthcore server.
+ * Each device object is enriched by the server with individual and room data.
  * @async
  * @function fetchDevices
  * @returns {Promise<Array>} Array of enriched device objects, or an empty array on error.
- * @description Calls GET {CONF_serverBaseUrl}/devices/all. Returns data.results on success.
  */
 async function fetchDevices() {
     return fetchArray("/devices/all");
@@ -130,7 +129,6 @@ async function fetchDevices() {
  * @async
  * @function fetchIndividuals
  * @returns {Promise<Array>} Array of individual objects, or an empty array on error.
- * @description Calls GET {CONF_serverBaseUrl}/data/individuals.
  */
 async function fetchIndividuals() {
     return fetchArray("/data/individuals");
@@ -141,7 +139,6 @@ async function fetchIndividuals() {
  * @async
  * @function fetchRooms
  * @returns {Promise<Array>} Array of room objects, or an empty array on error.
- * @description Calls GET {CONF_serverBaseUrl}/data/rooms.
  */
 async function fetchRooms() {
     return fetchArray("/data/rooms");
@@ -152,7 +149,6 @@ async function fetchRooms() {
  * @async
  * @function fetchAlerts
  * @returns {Promise<Array>} Array of enriched Alert objects, or empty array on error.
- * @description Calls GET {CONF_serverBaseUrl}/alerts?orderBy=dateTimeUpdated,DESC.
  */
 async function fetchAlerts() {
     try {
@@ -168,11 +164,11 @@ async function fetchAlerts() {
 }
 
 /**
- * Fetches Alert summary statistics from the Healthcore server. Returns counts for open, acknowledged, resolved, and critical alerts.
+ * Fetches Alert summary statistics from the Healthcore server.
+ * Returns counts for open, acknowledged, resolved, and critical alerts.
  * @async
  * @function fetchAlertStats
  * @returns {Promise<Object>} Stats object with keys open/acknowledged/resolved/critical, or an object with all zeroes on error.
- * @description Calls GET {CONF_serverBaseUrl}/alerts/stats.
  */
 async function fetchAlertStats() {
     try {
@@ -187,12 +183,12 @@ async function fetchAlertStats() {
 }
 
 /**
- * Fetches the full detail of a single Alert including its signals array. Called lazily when the user expands an alert card for the first time.
+ * Fetches the full detail of a single Alert including its signals array.
+ * Called lazily when the user expands an alert card for the first time.
  * @async
  * @function fetchAlertDetail
  * @param {number} alertID - The numeric ID of the Alert to load.
  * @returns {Promise<Object|null>} Object with {alert, signals} on success, or null on error.
- * @description Calls GET {serverBaseUrl}/alerts/{alertID}.
  */
 async function fetchAlertDetail(alertID) {
     try {
@@ -214,7 +210,6 @@ async function fetchAlertDetail(alertID) {
  * @async
  * @function fetchInfo
  * @returns {Promise<Object|null>} Info object on success, or null on error.
- * @description Calls GET {CONF_serverBaseUrl}/info.
  */
 async function fetchInfo() {
     try {
@@ -235,11 +230,11 @@ async function fetchInfo() {
  */
 
 /**
- * Fetches all Healthcore data sources in parallel and updates dashboardState. Called once during initialisation and then every CONF_refreshInterval milliseconds.
+ * Fetches all Healthcore data sources in parallel and updates dashboardState.
+ * Called once during initialisation and then every CONF_refreshInterval milliseconds.
  * @async
  * @function refreshAllData
  * @returns {Promise<void>}
- * @description Uses Promise.all to fetch devices, individuals, rooms, alerts, alert stats, and server info simultaneously.
  */
 async function refreshAllData() {
     const [devices, individuals, rooms, alerts, alertStats, serverInfo] = await Promise.all([
@@ -336,7 +331,6 @@ function renderActiveTab() {
  * Renders the Overview tab: stat cards, two doughnut charts, and the recent-data row.
  * @function renderOverview
  * @returns {void}
- * @description Reads dashboardState.alertStats, devices, individuals, and rooms to build stat cards, two charts, and the recent alerts list.
  */
 function renderOverview() {
     const cardsContainer = document.getElementById("overview-stats-cards");
@@ -431,10 +425,10 @@ function buildStatCard(labelKey, value, colorClass = "") {
 }
 
 /**
- * Creates or re-creates the Alert status doughnut chart. Destroys the previous Chart.js instance if one exists to prevent canvas reuse errors.
+ * Creates or re-creates the Alert status doughnut chart.
+ * Destroys the previous Chart.js instance if one exists to prevent canvas reuse errors.
  * @function renderAlertStatusChart
  * @returns {void}
- * @description Data: open / acknowledged / resolved / critical counts from dashboardState.alertStats.
  */
 function renderAlertStatusChart() {
     if (chartInstances.alertStatus) {
@@ -451,10 +445,10 @@ function renderAlertStatusChart() {
 }
 
 /**
- * Creates or re-creates the Device connection status doughnut chart. Destroys the previous Chart.js instance if one exists to prevent canvas reuse errors.
+ * Creates or re-creates the Device connection status doughnut chart.
+ * Destroys the previous Chart.js instance if one exists to prevent canvas reuse errors.
  * @function renderDeviceStatusChart
  * @returns {void}
- * @description Data: connected vs. disconnected device counts derived from dashboardState.devices.
  */
 function renderDeviceStatusChart() {
     if (chartInstances.deviceStatus) {
@@ -590,7 +584,6 @@ function buildMetaItem(label, value) {
  * @param {HTMLElement} detailSection - The .hc-alert-detail element inside the card.
  * @param {HTMLElement} toggleButton  - The expand/collapse button whose label is updated.
  * @returns {void}
- * @description Uses the attribute data-loaded="true" on detailSection to track whether the detail content has already been fetched. This prevents duplicate network requests.
  */
 function toggleAlertDetail(alertID, detailSection, toggleButton) {
     const isVisible = detailSection.classList.contains("is-visible");
@@ -679,13 +672,13 @@ async function loadAndShowAlertDetail(alertID, detailSection, toggleButton) {
 }
 
 /**
- * Creates a signal line chart for the given Alert using Chart.js. Signals are sorted into ascending chronological order before plotting so the time axis reads correctly left-to-right (the server returns them newest-first).
+ * Creates a signal line chart for the given Alert using Chart.js.
+ * Signals are sorted into ascending chronological order before plotting so the time axis reads correctly left-to-right (the server returns them newest-first).
  * @function renderSignalChart
  * @param {string} canvasID - The id of the <canvas> element to draw on.
  * @param {number} alertID  - The ID of the Alert (used as the chart storage key).
  * @param {Array}  signals  - Array of signal objects: {signalID, alertID, value, dateTime}.
  * @returns {void}
- * @description Uses Chart.js line chart with tension 0.3, fill, and the primary deep-purple colour. The container has a fixed height of 220px (set in CSS) and maintainAspectRatio is set to false so the chart respects that height.
  */
 function renderSignalChart(canvasID, alertID, signals) {
     if (chartInstances.signalCharts[alertID]) { // Destroy any existing chart instance for this alert
@@ -1230,7 +1223,6 @@ function capitalise(str) {
  * Updates the "last updated" timestamp in the status bar to the current local time.
  * @function updateLastUpdatedTimestamp
  * @returns {void}
- * @description Formats the current Date as HH:MM:SS and writes it into #hc-last-updated, prefixed with the translated "LastUpdated" label.
  */
 function updateLastUpdatedTimestamp() {
     const element = document.getElementById("hc-last-updated");

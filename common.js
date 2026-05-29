@@ -18,7 +18,6 @@ const appConfig = require("./config");
  * @param {boolean} showSeparators - Whether to show separators before and after the log output. Default is true.
  * @param {boolean} cutString - Whether to truncate the string output to CONF_logMaxLength characters. Default is true.
  * @returns {void} 
- * @description This function logs the provided value to the console with optional formatting and color.  
  */
 function conLog(anyValue, color = "std", showSeparators = true, cutString = true) {
     const colorMap = {
@@ -79,7 +78,6 @@ function conLog(anyValue, color = "std", showSeparators = true, cutString = true
  * Pause function
  * @param {number} milliseconds - The number of milliseconds to pause execution.
  * @returns {Promise<void>} - A promise that resolves after the specified time.
- * @description This function pauses execution for a specified number of milliseconds using sleep-promise.
  */
 async function pause(milliseconds) {
     await sleep(milliseconds);    
@@ -89,8 +87,6 @@ async function pause(milliseconds) {
  * Show Logo Function
  * @param {string} bridge - The type of connection (e.g., "Bridge" or "Server").
  * @param {number} port - The port number for the connection.
- * @description This function displays the application logo along with the connection type and port number in the console.
- * 
  */
 function logoShow(bridge, port) {
     conLog("================================================================     ", "mag", false);
@@ -111,7 +107,6 @@ function logoShow(bridge, port) {
  * Generates a random hash string.
  * @param {number} length - The length of the hash string to generate.
  * @returns {string} - The generated hash string.
- * @description This function creates a random alphanumeric string of the specified length, which can be used for unique identifiers or tokens.
  */
 function randomHash(length = 16) {
     return crypto.randomBytes(length).toString("hex").slice(0, length);
@@ -123,7 +118,6 @@ function randomHash(length = 16) {
  * @param {string} algo - The hashing algorithm to use (default: "sha256").
  * @param {number} length - The length of the hash to return (default: 64).
  * @returns {string} The generated hash string.
- * @description This function uses the Node.js crypto module to create a hash from the input string using the specified algorithm and returns a substring of the specified length. If the length is not specified, the full hash is returned.
  */
 function createHashFromString(input, algo = "sha256", length = 64) {
     const hash = crypto.createHash(algo).update(input).digest("hex");
@@ -134,7 +128,6 @@ function createHashFromString(input, algo = "sha256", length = 64) {
  * Converts device properties object to an array including subproperties.
  * @param {Array} properties 
  * @returns {Array} A clean array of device properties including subproperties.
- * @description This function takes a device properties object and converts it into a clean array format. It includes both the base properties and any subproperties defined within them.
  */
 function devicePropertiesToArray(properties) {
     const result = [];

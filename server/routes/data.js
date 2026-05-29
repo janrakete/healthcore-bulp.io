@@ -12,7 +12,6 @@ const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which ta
  * Validates that a name (table or column) contains only safe characters.
  * @param {string} name - The name to validate.
  * @returns {boolean} - Returns true if the name is safe, false otherwise.
- * @description Only allows alphanumeric characters and underscores. Prevents SQL injection through table or column names.
  */
 function validateSqlIdentifier(name) {
    return typeof name === "string" && /^[a-zA-Z0-9_]+$/.test(name);
@@ -25,7 +24,6 @@ function validateSqlIdentifier(name) {
  * @param {object} payload - The JSON payload containing the data to be inserted or updated.
  * @param {string} [type="INSERT"] - The type of SQL statement to build, either "INSERT" or "UPDATE".
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed SQL statement.
- * @description This function checks if the keys in the payload match the columns of the specified table. If the keys are valid, it constructs an SQL statement for either inserting or updating data in the table.
  */
 function buildSqlMutationFragment(table, payload, type="INSERT") {
    let response = {};
@@ -89,7 +87,6 @@ function buildSqlMutationFragment(table, payload, type="INSERT") {
  * @param {string} table - The name of the table to build the condition for.
  * @param {object} payload - The JSON payload containing the conditions to be applied.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed WHERE condition.
- * @description This function checks if the keys in the payload match the columns of the specified table. If they do, it constructs a WHERE condition string for use in SQL queries. If any key does not match, it returns an error.
  */
 function buildWhereClause(table, payload) {
    let response = {};
@@ -183,7 +180,6 @@ function buildWhereClause(table, payload) {
  * @function buildLimitClause
  * @param {string|number} limitValue - The limit value for the SQL query.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed LIMIT clause.
- * @description This function checks if the provided limit value is a valid positive integer. If it is, it constructs a LIMIT clause for SQL queries. If not, it returns an error.
  */
 function buildLimitClause(limitValue) {
    let response = {};
@@ -207,7 +203,6 @@ function buildLimitClause(limitValue) {
  * @param {string} orderByString - The orderBy string in the format "column,direction" (e.g., "dateTime,DESC").
  * @param {string} table - The name of the table to validate the column against.
  * @returns {object} - An object containing the status of the operation, any error messages, and the constructed ORDER BY clause.
- * @description This function checks if the specified column exists in the table. If it does, it constructs an ORDER BY clause with the specified direction (ASC or DESC). If the column does not exist, it returns an error.
  */
 function buildOrderByClause(orderByString, table) {
    const column   = orderByString.split(",")[0]; // first part column name

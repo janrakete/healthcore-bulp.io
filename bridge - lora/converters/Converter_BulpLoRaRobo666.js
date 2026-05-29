@@ -32,7 +32,6 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
      * Converts a value for a specific property.
      * @param {string} values - The string containing property values to convert.  
      * @return {Array} - An array of objects containing the converted property values.
-     * @description This method processes a string of property values, splits it into individual property-value pairs, and converts them based on the defined properties. It returns an array of objects where each object contains a property name and its converted value.
      */   
     get(values) {
         let propertiesAndValues             = [];

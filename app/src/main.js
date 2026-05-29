@@ -29,12 +29,14 @@ import zigbee from "/assets/icons/bridges/zigbee_1.svg";
 import bluetooth from "/assets/icons/bridges/bluetooth.svg";
 import lora from "/assets/icons/bridges/lora.svg";
 import http from "/assets/icons/bridges/http.svg";
+import integrations from "/assets/icons/bridges/integrations.svg";
 
 addIcons({
   "icon-zigbee":    zigbee,
   "icon-bluetooth": bluetooth,
   "icon-lora":      lora,
-  "icon-http":      http
+  "icon-http":      http,
+  "icon-integrations":  integrations
 });
 
 /**

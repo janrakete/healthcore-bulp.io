@@ -60,24 +60,28 @@ router.get("/", async function (request, response) {
     const bridges = appConfig.CONF_bridges;
     for (const bridge of bridges) { // Check each bridge
         common.conLog("Checking bridge: " + bridge, "yel");
-        const port = appConfig["CONF_portBridge" + bridge]; // Get port for the bridge
+        const port = appConfig["CONF_portBridge" + bridge]; // Get port for the bridge (undefined for MQTT-only bridges like "integrations")
 
         const bridgeStatus  = {};
         bridgeStatus.bridge = bridge;
-        bridgeStatus.port   = port;
+        bridgeStatus.port   = port || null;
 
-        try {
+        if (port) { // HTTP-based bridge — check status via /info endpoint
+            try { 
+                const controller    = new AbortController(); // Create an AbortController to handle timeouts
+                const timeoutID     = setTimeout(() => controller.abort(), appConfig.CONF_apiCallTimeoutMilliseconds);
+                const answer        = await fetch(appConfig.CONF_baseURL + ":" + port + "/info", { signal: controller.signal });
+                clearTimeout(timeoutID);
 
-            const controller    = new AbortController(); // Create an AbortController to handle timeouts
-            const timeoutID     = setTimeout(() => controller.abort(), appConfig.CONF_apiCallTimeoutMilliseconds);
-            const answer        = await fetch(appConfig.CONF_baseURL + ":" + port + "/info", { signal: controller.signal });
-            clearTimeout(timeoutID);
-
-            const answerData    = await answer.json();
-            bridgeStatus.status = answerData.status;
+                const answerData    = await answer.json();
+                bridgeStatus.status = answerData.status;
+            }
+            catch (error) {
+                bridgeStatus.status = "offline";
+            }
         }
-        catch (error) {
-          bridgeStatus.status = "offline";
+        else { // MQTT-only bridge — use status tracked via LWT / online message
+            bridgeStatus.status = (global.mqttBridgeStatus && global.mqttBridgeStatus[bridge]) || "offline";
         }
 
         data.bridges.push(bridgeStatus);

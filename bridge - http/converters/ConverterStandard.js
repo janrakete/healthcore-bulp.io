@@ -7,7 +7,6 @@
 /**
  * ConverterStandard class provides basic functionality for converting properties of HTTP devices.
  * @class ConverterStandard
- * @description This class is designed to handle standard HTTP properties, such as device name, and provides a framework for extending functionality for specific devices by subclassing.
  */
 class ConverterStandard {
     constructor() { 
@@ -18,7 +17,6 @@ class ConverterStandard {
      * Retrieves a property by its name.
      * @param {string} name - The name of the property to retrieve.
      * @return {Object|undefined} - The property object if found, otherwise undefined.
-     * @description This method iterates through the `properties` object and checks if any property's name matches the provided name. If found, it returns the property object; otherwise, it returns undefined.
      */
     getPropertyByName(name) {
         for (const property of Object.values(this.properties)) {
@@ -34,7 +32,6 @@ class ConverterStandard {
      * @param {string} propertyName - The name of the property to validate.
      * @param {any} value - The value to validate.
      * @return {Object} - An object with `valid` (boolean) and `error` (string|null) fields.
-     * @description Checks that the property exists, is readable, that the value is not null/undefined and that the value type matches the property's valueType (Numeric or Options).
      */
     validate(propertyName, value) {
         const property = this.getPropertyByName(propertyName);

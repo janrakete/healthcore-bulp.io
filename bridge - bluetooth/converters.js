@@ -10,9 +10,9 @@ const common                = require("../common.js");
 const { ConverterStandard } = require("./converters/ConverterStandard.js");
 
 /**
- * Converters class manages a collection of device converters. It allows finding a specific converter by product name and instantiating it.
+ * Converters class manages a collection of device converters.
+ * It allows finding a specific converter by product name and instantiating it.
  * @class Converters
- * @description This class is designed to manage different converters for various devices. Each converter is responsible for handling the specific properties and behaviors of a device.
  */
 class Converters {
     constructor() {

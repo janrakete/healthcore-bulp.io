@@ -20,7 +20,6 @@ const convertersList = new Converters(); // create new object for converters
  * It also connects to an MQTT broker and subscribes to specific topics for device management.
  * @async
  * @function startBridgeAndServer
- * @description This function sets up the HTTP bridge.
  */
 
 async function startBridgeAndServer() {
@@ -64,7 +63,6 @@ async function startBridgeAndServer() {
 
   /**
    * Server info
-   * @description Endpoint to retrieve basic information about the bridge.
    */
   app.get("/info", async function (request, response) {
     const data  = {};
@@ -100,7 +98,6 @@ async function startBridgeAndServer() {
   /**
    * Connects the MQTT client and subscribes to HTTP-related topics.
    * @function
-   * @description This function is called when the MQTT client successfully connects to the broker.
    */
   function mqttConnect() {
     mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to HTTP topics
@@ -121,7 +118,6 @@ async function startBridgeAndServer() {
   /**
    * Handles MQTT reconnection events.
    * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
-   * @description The MQTT library auto-reconnects, but subscriptions may be lost. This handler ensures topics are re-subscribed and the server knows the current bridge state.
    */
   mqttClient.on("reconnect", function () {
     common.conLog("MQTT: Reconnecting to broker ...", "yel");
@@ -143,12 +139,12 @@ async function startBridgeAndServer() {
    */
 
   /**
-   * Class representing the status of the HTTP bridge. Contains arrays for connected devices and registered devices at the server.
+   * Class representing the status of the HTTP bridge.
+   * Contains arrays for connected devices and registered devices at the server.
    * @class
    * @property {Map<string, Object>} devicesConnected - Map of currently connected HTTP devices (keyed by UUID).
    * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by UUID)
    * @property {string} status - The current status of the bridge (e.g., "online", "offline").
-   * @description This class is used to manage the status of the HTTP bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
@@ -169,7 +165,6 @@ async function startBridgeAndServer() {
    * If call is for deleting a device
    * @param {Object} request - The HTTP request object containing the UUID and product name in the body.
    * @param {Object} response - The HTTP response object used to send the response back to the client.  
-   * @description This function handles the deletion of a device by checking if it exists in the array of connected devices. If the device is found, it constructs a message and publishes it to the MQTT broker to remove the device. If the device is not found, it sends an error response.
    * @returns {Object} - Returns a JSON response indicating the status of the operation, either "ok" or "error" with an appropriate message.
    */
   router.delete("/message", async function (request, response) {
@@ -219,7 +214,6 @@ async function startBridgeAndServer() {
    * If call is for creating a device
    * @param {Object} request - The HTTP request object containing the device information in the body.
    * @param {Object} response - The HTTP response object used to send the response back
-   * @description This function handles the creation of a device by checking if the payload is provided. If it is, it constructs a message with the device information and publishes it to the MQTT broker to create the device. If no payload is provided, it sends an error response.
    * @returns {Object} - Returns a JSON response indicating the status of the operation.
   */
   router.put("/message", async function (request, response) {
@@ -276,7 +270,6 @@ async function startBridgeAndServer() {
    * If call is for sending values of a device to the server
    * @param {Object} request - The HTTP request object containing the device information and values in the body.
    * @param {Object} response - The HTTP response object used to send the response back
-   * @description This function handles the request to send values of a device. It checks if the payload is provided and if the device is connected. If both conditions are met, it constructs a message with the device information and values, then publishes it to the MQTT broker. If the device is not found or no payload is provided, it sends an error response.
    * @returns {Object} - Returns a JSON response indicating the status of the operation, either "ok" or "error" with an appropriate message.
    */
   router.post("/message", async function (request, response) {
@@ -383,7 +376,6 @@ async function startBridgeAndServer() {
   /**
    * Create a new device
    * @param {Object} data 
-   * @description This function creates the information of a registered device.
    */
   function mqttDevicesCreate(data) {
     common.conLog("HTTP: Request to create device " + data.uuid + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
@@ -407,7 +399,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for removing devices (this message is sent AFTER server removed device)
    * @param {Object} data
-   * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
     bridgeStatus.devicesConnected.delete(data.uuid); // remove device from map of connected devices
@@ -418,7 +409,6 @@ async function startBridgeAndServer() {
   /**
    * Updates the information of a registered device.
    * @param {Object} data 
-   * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
     common.conLog("HTTP: Request to update device " + data.uuid, "yel");
@@ -446,7 +436,6 @@ async function startBridgeAndServer() {
   /**
    * Refreshes the list of devices registered at the server based on the provided data.
    * @param {Object} data
-   * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer.clear();
@@ -476,7 +465,6 @@ async function startBridgeAndServer() {
   /**
    * Gets the list of devices registered and connected at the bridge based on the provided data.
    * @param {Object} data 
-   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
    */
   function mqttDevicesList(data) {
     let message                   = {};
@@ -498,7 +486,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for getting properties and values of a connected device
    * @param {Object} data - The data object containing the UUID and values to be converted.
-   * @description This function retrieves the properties and values of a connected device, converts them using the device's converter, and publishes the results to the MQTT broker.
    */
   function mqttDevicesValuesGet(data) {
     let message        = {};

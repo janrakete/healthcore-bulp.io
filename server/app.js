@@ -18,7 +18,6 @@ database.pragma("foreign_keys = ON");
  * Start server
  * @async
  * @function startServer
- * @description This function establishes a SQLite connection, sets up the server with middleware, routes, and MQTT client, and starts the server.
  */
 async function startServer() {
   /**
@@ -180,6 +179,12 @@ async function startServer() {
   const AlertsEngine = require("./libs/AlertsEngine");
   global.alerts      = new AlertsEngine();
 
+  /*
+   * Credential Engine
+   */
+  const CredentialEngine  = require("./libs/CredentialEngine");
+  global.credentialEngine = CredentialEngine;
+
   /**
    * Push notifications
    */
@@ -209,7 +214,6 @@ async function startServer() {
   /**
   * Connects the MQTT client and subscribes to all topics.
   * @function
-  * @description This function is called when the MQTT client successfully started.
   */
   function mqttConnect() {
     mqttClient.subscribe("server/#", function (error, granted) { // ... and subscribe to all topics
@@ -228,6 +232,7 @@ async function startServer() {
   mqttClient.on("connect", mqttConnect);
   global.mqttClient           = mqttClient; // make MQTT client global
   global.mqttPendingResponses = {}; // store pending MQTT responses (used for API calls, that wait for an MQTT response)
+  global.mqttBridgeStatus     = {}; // in-memory bridge status map (keyed by bridge name); populated via MQTT LWT / online messages
 
   /**
    * =============================================================================================
@@ -239,7 +244,6 @@ async function startServer() {
    *  Check if a device is registered in the database
    * @param {string} uuid - The device UUID to check.
    * @returns {boolean} - Returns true if the device is registered, false otherwise.
-   * @description This function checks if a device with the given ID is registered in the database
    */
   async function deviceCheckRegistered(uuid, bridge) {
       uuid = uuid.trim();
@@ -259,7 +263,6 @@ async function startServer() {
    * @function
    * @param {string} topic - The topic of the incoming MQTT message
    * @param {string} message - The message payload of the incoming MQTT message
-   * @description This function is called when a message is received from the MQTT broker.
    */
   mqttClient.on("message", async function (topic, message) { // getting a message from MQTT broker
     common.conLog("MQTT: Getting incoming message from broker", "yel");
@@ -296,6 +299,33 @@ async function startServer() {
         case "server/devices/status":
           await mqttDevicesStatus(data);
           break;
+        case "server/integrations/accounts/list":
+          await mqttIntegrationsAccountsList(data);
+          break;
+        case "server/integrations/accounts/tokens/set":
+          await mqttIntegrationsAccountsTokensSet(data);
+          break;
+        case "server/integrations/cursor/get":
+          await mqttIntegrationsCursorGet(data);
+          break;
+        case "server/integrations/cursor/set":
+          await mqttIntegrationsCursorSet(data);
+          break;
+        case "server/integrations/dedupe/check":
+          await mqttIntegrationsDedupeCheck(data);
+          break;
+        case "server/integrations/dedupe/add":
+          await mqttIntegrationsDedupeAdd(data);
+          break;
+        case "server/integrations/syncrun/start":
+          await mqttIntegrationsSyncRunStart(data);
+          break;
+        case "server/integrations/syncrun/finish":
+          await mqttIntegrationsSyncRunFinish(data);
+          break;
+        case "server/bridge/status":
+          mqttBridgeStatusUpdate(data);
+          break;
         default:
           common.conLog("Server: NOT found matching message handler for " + topic, "red");
       }
@@ -307,9 +337,20 @@ async function startServer() {
   });
 
   /**
+   * Updates the in-memory bridge status map when a bridge publishes its online/offline status.
+   * Called when a bridge connects (status: "online") or when the MQTT LWT fires (status: "offline").
+   * @param {Object} data - Message payload; data.bridge and data.status are required.
+   */
+  function mqttBridgeStatusUpdate(data) {
+    if (data.bridge && data.status) {
+      global.mqttBridgeStatus[data.bridge] = data.status; // update status; used by GET /info for MQTT-only bridges
+      common.conLog("Server: Bridge status updated: " + data.bridge + " = " + data.status, "yel");
+    }
+  }
+
+  /**
    * Refreshed devices IN the bridge
    * @param {Object} data - The data object containing the bridge information.
-   * @description This function retrieves a list of devices associated with a specific bridge from the database and publishes the list to the MQTT topic for that bridge.
    */
   async function mqttDevicesRefresh(data) {
     let message = {};
@@ -333,7 +374,6 @@ async function startServer() {
   /**
    * Create a new device
    * @param {Object} data - The data object containing the device information.
-   * @description This function creates a new device in the database and publishes a message to the MQTT topic for that device.
    */
   async function mqttDevicesCreate(data) {
     let message = {};
@@ -383,7 +423,6 @@ async function startServer() {
   /**
    * Remove a device
    * @param {Object} data - The data object containing the device information.
-   * @description This function removes a device from the database and publishes a message to the MQTT topic for that device.
    */
   async function mqttDevicesRemove(data) {
     let message = {};
@@ -424,7 +463,6 @@ async function startServer() {
   /**
    * Fetch device values
    * @param {Object} data - The data object containing the device information.
-   * @description This function fetches the current values of a device.
    */
   async function mqttDevicesValuesGet(data) {
     let message = {};
@@ -493,7 +531,6 @@ async function startServer() {
   /**
    * Update device information
    * @param {Object} data - The data object containing the device information.
-   * @description This function updates the information of a device in the database and publishes a message to the MQTT topic for that device.
    */
   async function mqttDevicesUpdate(data) {
     let message = {};
@@ -556,7 +593,6 @@ async function startServer() {
   /**
    * Update device signal strength
    * @param {*} data - The data object containing the device information. 
-   * @description This function updates the signal strength of a device in the database and publishes a message to the MQTT topic for that device.
    */
   async function mqttDevicesStrength(data) {
     let message = {};
@@ -597,7 +633,6 @@ async function startServer() {
   /**
    * Handle device status events (online/offline)
    * @param {Object} data - { device UUID, bridge, status: "online"|"offline" }
-   * @description Triggers device_connected or device_disconnected scenarios
    */
   async function mqttDevicesStatus(data) {
     let message = {};
@@ -647,6 +682,209 @@ async function startServer() {
       message.error   = "Bridge missing";
     }
     mqttClient.publish(data.bridge + "/devices/status/response", JSON.stringify(message));
+  }
+
+  /**
+   * =============================================================================================
+   * Integration handlers — persistent state for external provider sync
+   * ==================================================================
+   */
+
+  /**
+   * Emits a standardised integration response back to the originating bridge.
+   * @param {Object} data      - Original request data (must contain bridge and callID).
+   * @param {string} action    - The action suffix for the response topic (e.g. "accounts/list").
+   * @param {Object} payload   - Fields to merge into the response.
+   */
+  function integrationRespond(data, action, payload) {
+    const message          = Object.assign({}, payload);
+    message.callID         = data.callID;
+    message.bridge         = data.bridge;
+    const responseTopic    = (data.bridge || "http") + "/integrations/" + action + "/response";
+    mqttClient.publish(responseTopic, JSON.stringify(message));
+  }
+
+  /**
+   * List all enabled integration accounts.
+   * Required: bridge, callID
+   */
+  async function mqttIntegrationsAccountsList(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/accounts/list: missing bridge or callID", "red");
+      return;
+    }
+    try {
+      const accounts = credentialEngine.listAccounts();
+      integrationRespond(data, "accounts/list", { status: "ok", accounts });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/accounts/list error: " + error.message, "red");
+      integrationRespond(data, "accounts/list", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Persist a refreshed access token for an account.
+   * Required: bridge, callID, accountID, accessToken
+   * Optional: expiresAt
+   */
+  async function mqttIntegrationsAccountsTokensSet(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/accounts/tokens/set: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.accountID || !data.accessToken) {
+      integrationRespond(data, "accounts/tokens/set", { status: "error", error: "accountID and accessToken are required" });
+      return;
+    }
+    try {
+      credentialEngine.setToken(data.accountID, data.accessToken, data.expiresAt || null);
+      integrationRespond(data, "accounts/tokens/set", { status: "ok", accountID: data.accountID });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/accounts/tokens/set error: " + error.message, "red");
+      integrationRespond(data, "accounts/tokens/set", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Read the sync cursor for an account.
+   * Required: bridge, callID, accountID
+   */
+  async function mqttIntegrationsCursorGet(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/cursor/get: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.accountID) {
+      integrationRespond(data, "cursor/get", { status: "error", error: "accountID is required" });
+      return;
+    }
+    try {
+      const cursor = credentialEngine.getCursor(data.accountID);
+      integrationRespond(data, "cursor/get", { status: "ok", accountID: data.accountID, cursor });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/cursor/get error: " + error.message, "red");
+      integrationRespond(data, "cursor/get", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Persist the sync cursor for an account (UPSERT).
+   * Required: bridge, callID, accountID, cursor
+   */
+  async function mqttIntegrationsCursorSet(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/cursor/set: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.accountID || data.cursor === undefined || data.cursor === null) {
+      integrationRespond(data, "cursor/set", { status: "error", error: "accountID and cursor are required" });
+      return;
+    }
+    try {
+      credentialEngine.setCursor(data.accountID, data.cursor);
+      integrationRespond(data, "cursor/set", { status: "ok", accountID: data.accountID });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/cursor/set error: " + error.message, "red");
+      integrationRespond(data, "cursor/set", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Check whether a dedupe key has already been emitted.
+   * Required: bridge, callID, accountID, key
+   */
+  async function mqttIntegrationsDedupeCheck(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/dedupe/check: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.accountID || !data.key) {
+      integrationRespond(data, "dedupe/check", { status: "error", error: "accountID and key are required" });
+      return;
+    }
+    try {
+      const exists = credentialEngine.dedupeCheck(data.accountID, data.key);
+      integrationRespond(data, "dedupe/check", { status: "ok", accountID: data.accountID, key: data.key, exists });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/dedupe/check error: " + error.message, "red");
+      integrationRespond(data, "dedupe/check", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Add a dedupe key so subsequent emits are skipped.
+   * Required: bridge, callID, accountID, key
+   */
+  async function mqttIntegrationsDedupeAdd(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/dedupe/add: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.accountID || !data.key) {
+      integrationRespond(data, "dedupe/add", { status: "error", error: "accountID and key are required" });
+      return;
+    }
+    try {
+      credentialEngine.dedupeAdd(data.accountID, data.key);
+      integrationRespond(data, "dedupe/add", { status: "ok", accountID: data.accountID });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/dedupe/add error: " + error.message, "red");
+      integrationRespond(data, "dedupe/add", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Start a sync run record for an account.
+   * Required: bridge, callID, accountID
+   * Returns: syncRunID
+   */
+  async function mqttIntegrationsSyncRunStart(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/syncrun/start: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.accountID) {
+      integrationRespond(data, "syncrun/start", { status: "error", error: "accountID is required" });
+      return;
+    }
+    try {
+      const syncRunID = credentialEngine.syncRunStart(data.accountID);
+      integrationRespond(data, "syncrun/start", { status: "ok", accountID: data.accountID, syncRunID });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/syncrun/start error: " + error.message, "red");
+      integrationRespond(data, "syncrun/start", { status: "error", error: error.message });
+    }
+  }
+
+  /**
+   * Mark a sync run as finished (success or error).
+   * Required: bridge, callID, syncRunID
+   * Optional: error (string, null means success)
+   */
+  async function mqttIntegrationsSyncRunFinish(data) {
+    if (!data.bridge || !data.callID) {
+      common.conLog("Server: integrations/syncrun/finish: missing bridge or callID", "red");
+      return;
+    }
+    if (!data.syncRunID) {
+      integrationRespond(data, "syncrun/finish", { status: "error", error: "syncRunID is required" });
+      return;
+    }
+    try {
+      credentialEngine.syncRunFinish(data.syncRunID, data.error || null);
+      integrationRespond(data, "syncrun/finish", { status: "ok", syncRunID: data.syncRunID });
+    }
+    catch (error) {
+      common.conLog("Server: integrations/syncrun/finish error: " + error.message, "red");
+      integrationRespond(data, "syncrun/finish", { status: "error", error: error.message });
+    }
   }
 
   /**

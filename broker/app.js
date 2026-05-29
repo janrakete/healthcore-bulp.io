@@ -26,7 +26,6 @@ const statementInsertValue = database.prepare(
 /**
  * Starts and initializes the MQTT broker server.
  * @function startServer
- * @description This function initializes the MQTT broker server.
  */
 function startServer() {
     /**
@@ -90,14 +89,14 @@ function startServer() {
 
     /**
      * Extracts time-based features from a date for use in machine learning algorithms.
-     * @param {Date|number} date - A Date object or a numeric timestamp (milliseconds since epoch).
-     * @returns {Object} An object containing the extracted time features.
-     * @description Returns both raw and sine/cosine-encoded versions of time values.
+     * Returns both raw and sine/cosine-encoded versions of time values.
      * Raw values (weekday, hour) are included for human readability.
      * Sine/cosine encoding is used for cyclical features so that ML algorithms understand
      * that the values "wrap around" — e.g. Sunday (6) and Monday (0) are adjacent,
      * and 23:00 and 00:00 are adjacent. Without this encoding, a model would treat them
      * as far apart on a linear scale.
+     * @param {Date|number} date - A Date object or a numeric timestamp (milliseconds since epoch).
+     * @returns {Object} An object containing the extracted time features.
      */
     function timeFeaturesExtract(date) {
         if (!(date instanceof Date)) {
@@ -140,7 +139,6 @@ function startServer() {
      * @event clientDisconnect - Triggered when a client disconnects from the broker.
      * @event subscribe - Triggered when a client subscribes to a topic.
      * @event publish - Triggered when a client publishes a message to a topic.
-     * @description These events are used to log the activity of clients interacting with the MQTT broker
      */
     aedes.on("client", function (client) {
         common.conLog("Broker: Client '" + client.id + "' connected", "gre"); 
