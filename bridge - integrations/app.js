@@ -30,6 +30,8 @@ const rpcPending = {};
  * @function startBridge
  */
 async function startBridge() {
+   common.logoShow(BRIDGE_PREFIX, "-"); // show logo
+
   /**
    * =============================================================================================
    * MQTT client - subscribe to specific topics
