@@ -55,24 +55,24 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 
 ## 📁 Folder structure
 ```plaintext
-├── broker/               # MQTT broker
-├── server/               # Server
-│   ├── routes/           # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
-│   ├── middleware/       # Middleware features 
-│   └── libs/             # Additionally libraries
-├── bridge - bluetooth/   # Bluetooth ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - zigbee/      # ZigBee ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - lora/        # LoRa ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - http/        # HTTP ↔ MQTT bridge
-│   └── converters/       # Common and own converters
-├── bridge - external/    # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
-│   └── converters/       # Provider adapters
-├── tests/                # Jest tests, manual tests and example device firmware
-├── healthcheck/          # Healthcheck (see below)
-└── app/                  # App
+├── broker/                # MQTT broker
+├── server/                # Server
+│   ├── routes/            # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
+│   ├── middleware/        # Middleware features 
+│   └── libs/              # Additionally libraries
+├── bridge - bluetooth/    # Bluetooth ↔ MQTT bridge
+│   └── converters/        # Common and own converters
+├── bridge - zigbee/       # ZigBee ↔ MQTT bridge
+│   └── converters/        # Common and own converters
+├── bridge - lora/         # LoRa ↔ MQTT bridge
+│   └── converters/        # Common and own converters
+├── bridge - http/         # HTTP ↔ MQTT bridge
+│   └── converters/        # Common and own converters
+├── bridge - integrations/ # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
+│   └── converters/        # Provider adapters
+├── tests/                 # Jest tests, manual tests and example device firmware
+├── healthcheck/           # Healthcheck (see below)
+└── app/                   # App
 ```
 
 ## 💻 Installation (software)
@@ -102,7 +102,7 @@ node "bridge - bluetooth/app.js"
 node "bridge - zigbee/app.js"
 node "bridge - lora/app.js"
 node "bridge - http/app.js"
-node "bridge - external/app.js"
+node "bridge - integrations/app.js"
 ```
 
 If you want to use it for production (only macOS / Linux), just run
