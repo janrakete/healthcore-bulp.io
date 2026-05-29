@@ -63,7 +63,6 @@ class Converter_BulpSensorBLE extends ConverterStandard {
      * @param {Object} property - The property object containing metadata about the property.
      * @param {any} value - The value to convert.
      * @return {any|undefined} - The converted value if the property is readable, otherwise undefined.
-     * @description This method checks if the property is readable. If it is, it converts the value based on the property's name.
      */
     get(property, value) {
         if (property.read === false) {
@@ -96,7 +95,6 @@ class Converter_BulpSensorBLE extends ConverterStandard {
      * @param {Object} property - The property object containing metadata about the property.
      * @param {any} value - The value to convert.
      * @return {Buffer|undefined} - The converted value as a Buffer if the property is writable, otherwise undefined.
-     * @description This method checks if the property is writable. If it is, it converts the value based on the property's name. 
      */
     set(property, value) {
         if (property.write === false) {

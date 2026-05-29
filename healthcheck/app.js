@@ -10,7 +10,6 @@ const common      = require("../common");
  * Start the healthcheck server
  * @async
  * @function startHealthcheck
- * @description This function initializes an Express server, sets up routes for service status and logs.
  */
 async function startHealthcheck() {
   /**
@@ -51,11 +50,10 @@ async function startHealthcheck() {
    */
 
   /**
-   * This route returns the runtime configuration needed by the browser-based dashboard. The Healthcore server base URL and optional API key are injected here so the frontend never has to hard-code connection details.
+   * This route returns the runtime configuration needed by the browser-based dashboard.
+   * The Healthcore server base URL and optional API key are injected here so the frontend never has to hard-code connection details.
    * @route GET /api/config
    * @returns {Object} config - An object with serverBaseUrl and apiKey fields
-   * @description Reads CONF_baseURL, CONF_portServer and CONF_apiKey from the app
-   *   configuration and returns them as JSON. The dashboard fetches this once on startup.
    */
   app.get("/api/config", (req, res) => {
     res.json({

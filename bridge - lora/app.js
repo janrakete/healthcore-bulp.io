@@ -22,7 +22,6 @@ const convertersList = new Converters(); // create new object for converters
  * Automatically invoked on script startup.
  * @async
  * @function startBridgeAndServer
- * @description This function sets up the LoRa bridge to listen for device discovery, connection, and disconnection events.
  */
 async function startBridgeAndServer() {
   /**
@@ -40,7 +39,6 @@ async function startBridgeAndServer() {
 
   /**
    * Server info
-   * @description Endpoint to retrieve basic information about the bridge.
    */
   app.get("/info", async function (request, response) {
     const data  = {};
@@ -76,7 +74,6 @@ async function startBridgeAndServer() {
   /**
    * Connects the MQTT client and subscribes to LoRa-related topics.
    * @function
-   * @description This function is called when the MQTT client successfully connects to the broker.
    */
   function mqttConnect() {
     mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to LoRa topics
@@ -101,7 +98,6 @@ async function startBridgeAndServer() {
   /**
    * Handles MQTT reconnection events.
    * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
-   * @description The MQTT library auto-reconnects, but subscriptions may be lost. This handler ensures topics are re-subscribed and the server knows the current bridge state.
    */
   mqttClient.on("reconnect", function () {
     common.conLog("MQTT: Reconnecting to broker ...", "yel");
@@ -123,13 +119,13 @@ async function startBridgeAndServer() {
    */
 
   /**
-   * Class representing the status of the LoRa bridge. Contains arrays for connected devices and registered devices at the server.
+   * Class representing the status of the LoRa bridge.
+   * Contains arrays for connected devices and registered devices at the server.
    * @class
    * @property {Map<string, Object>} devicesConnected - Map of currently connected LoRa devices (keyed by UUID).
    * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by UUID)
    * @property {boolean} portOpened - Indicates whether the serial port for the LoRa adapter is opened.
    * @property {string} status - Status of the bridge ("online" or "offline").
-   * @description This class is used to manage the status of the LoRa bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
@@ -155,7 +151,6 @@ async function startBridgeAndServer() {
   /**
    * If the serial port is opened, send configuration commands to LoRa adapter and set portOpened to true.
    * @event open
-   * @description This event is triggered when the serial port for the LoRa adapter is successfully opened.
   */
   loRa.on("open", async function () {
     common.conLog("LoRa: serial port for LoRa Adapter opened", "gre");
@@ -185,7 +180,6 @@ async function startBridgeAndServer() {
   /**
    * If the serial port is closed, log message and set portOpened to false.
    * @event close
-   * @description This event is triggered when the serial port for the LoRa adapter is closed.
    */
   loRa.on("error", (error) => {
     common.conLog("LoRa: serial port for LoRa Adapter closed with error", "red");
@@ -197,7 +191,6 @@ async function startBridgeAndServer() {
   /**
    * If the serial port is closed, log message and set portOpened to false.
    * @event close
-   * @description This event is triggered when the serial port for the LoRa adapter is closed (e.g. USB adapter disconnected).
    */
   loRa.on("close", () => {
     common.conLog("LoRa: serial port for LoRa Adapter closed", "red");
@@ -207,7 +200,6 @@ async function startBridgeAndServer() {
 
   /**
    * Auto-reconnect: periodically try to reopen the serial port if it is closed.
-   * @description This interval checks every X seconds whether the serial port is closed and attempts to reopen it. On success, the "open" event fires and reconfigures the adapter.
    */
   setInterval(() => {
     if (bridgeStatus.portOpened === false) {
@@ -223,7 +215,6 @@ async function startBridgeAndServer() {
   /**
    * If the serial port is receiving data
    * @event data
-   * @description This event is triggered when the serial port for the LoRa adapter receives data.
    */  
   loRaDataParser.on("data", (data) => {
     if (bridgeStatus.portOpened === false) {
@@ -328,7 +319,6 @@ async function startBridgeAndServer() {
   /**
    * Create a new device
    * @param {Object} data 
-   * @description This function creates the information of a registered device.
    */
   function mqttDevicesCreate(data) {
     common.conLog("LoRa: Request to create device " + data.uuid + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");
@@ -352,7 +342,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for removing devices (this message is sent AFTER server removed device)
    * @param {Object} data
-   * @description This function removes a device from the bridge status.
    */
   function mqttDevicesRemove(data) {
     bridgeStatus.devicesConnected.delete(data.uuid); // remove device from map of connected devices
@@ -363,7 +352,6 @@ async function startBridgeAndServer() {
   /**
    * Updates the information of a registered device.
    * @param {Object} data 
-   * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
      common.conLog("LoRa: Request to update device " + data.uuid, "yel");
@@ -390,7 +378,6 @@ async function startBridgeAndServer() {
   /**
    * Refreshes the list of devices registered at the server based on the provided data.
    * @param {Object} data
-   * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer.clear();
@@ -419,7 +406,6 @@ async function startBridgeAndServer() {
   /**
    * Gets the list of devices registered and connected at the bridge based on the provided data.
    * @param {Object} data 
-   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
    */
   function mqttDevicesList(data) {
     let message                   = {};
@@ -441,7 +427,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for getting properties and values of a connected device
    * @param {Object} data - The data object containing the UUID and values to be converted.
-   * @description This function retrieves the properties and values of a connected device, converts them using the device's converter, and publishes the results to the MQTT broker.
    */
   function mqttDevicesValuesGet(data) {
     let message        = {};

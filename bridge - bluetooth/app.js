@@ -11,7 +11,6 @@ const BRIDGE_PREFIX   = "bluetooth";
 
 /**
  * Loads the Bluetooth SIG company identifiers from devices_companies.yaml
- * @description This function reads the devices_companies.yaml file, extracts the company IDs and names, and returns them as a Map for quick lookup. The company ID is read from the manufacturer data of Bluetooth advertisements to identify the vendor of a device.
  * @returns {Map<number, string>}
  */
 function companiesLoadIdentifiers() {
@@ -51,7 +50,6 @@ const convertersList = new Converters(); // create new object for converters
  * Automatically invoked on script startup.
  * @async
  * @function startBridgeAndServer
- * @description This function sets up the Bluetooth bridge to listen for device discovery, connection, and disconnection events.
  */
 async function startBridgeAndServer() {
   /**
@@ -69,7 +67,6 @@ async function startBridgeAndServer() {
 
   /**
    * Server info
-   * @description Endpoint to retrieve basic information about the bridge.
    */
   app.get("/info", async function (request, response) {
     const data  = {};
@@ -105,7 +102,6 @@ async function startBridgeAndServer() {
   /**
    * Connects the MQTT client and subscribes to Bluetooth-related topics.
    * @function
-   * @description This function is called when the MQTT client successfully connects to the broker.
    */
   function mqttConnect() {
     mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to Bluetooth topics
@@ -121,7 +117,6 @@ async function startBridgeAndServer() {
   /**
    * Handles MQTT reconnection events.
    * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
-   * @description The MQTT library auto-reconnects, but subscriptions may be lost. This handler ensures topics are re-subscribed and the server knows the current bridge state.
    */
   mqttClient.on("reconnect", function () {
     common.conLog("MQTT: Reconnecting to broker ...", "yel");
@@ -147,7 +142,6 @@ async function startBridgeAndServer() {
    * @param {string} productName - The device product name to search for.
    * @param {Map<string, Object>} devices - The Map of known device objects (keyed byUUID).
    * @returns {Object|undefined} The matching device object, or `undefined` if not found.
-   * @description This function iterates through the Map of devices and returns the first device that matches the provided product name. If no matching device is found, it returns `undefined`.
    */
   function deviceFindByProductName(productName, devices) {
     for (const device of devices.values()) {
@@ -164,7 +158,6 @@ async function startBridgeAndServer() {
    * @param {Object} deviceRaw - The raw Bluetooth device object.
    * @param {string} callID - Optional call ID to associate with the device (used for scan results).
    * @param {boolean} addDeviceToServer - Whether to add the device to the server after connecting (used for MQTT-triggered connections).
-   * @description This function attempts to connect to a Bluetooth device, discovers its services and characteristics, and subscribes to notifications for properties defined in the device converter. It also handles disconnection events and publishes connection status to the MQTT broker.
    */
   function deviceConnectAndDiscover(device, deviceRaw, callID = "", addDeviceToServer = false) {
     delete device.deviceRaw; // remove deviceRaw from device, because it cannot be stringified
@@ -372,7 +365,6 @@ async function startBridgeAndServer() {
    * Creates a fingerprint object from the Bluetooth device advertisement.
    * @param {Object} deviceRaw - The Bluetooth device object.
    * @returns {Object} - The fingerprint object containing relevant advertisement data.
-   * @description This function extracts the local name, service UUIDs, manufacturer data, and TX power level from the Bluetooth peripheral advertisement and returns them in a structured object.
    */
   function fingerprintCreate(deviceRaw) {
     const advertisement = deviceRaw.advertisement;
@@ -390,14 +382,14 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * Class representing the status of the Bluetooth bridge. Contains arrays for connected devices and registered devices at the server.
+   * Class representing the status of the Bluetooth bridge.
+   * Contains arrays for connected devices and registered devices at the server.
    * @class
    * @property {Map<string, Object>} devicesConnected - Map of currently connected Bluetooth devices (keyed by UUID).
    * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by UUID)
    * @property {Map<string, Object>} devicesFoundViaScan - Map of devices found via scanning (keyed by UUID).
    * @property {number|null} deviceScanCallID - ID of call if scanning is initiated.
    * @property {string} status - Status of the bridge ("online" or "offline").
-   * @description This class is used to manage the status of the Bluetooth bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
@@ -631,7 +623,6 @@ async function startBridgeAndServer() {
    * Publishes device discovery, connection, and disconnection events to the MQTT broker.
    * @event discover
    * @param {Object} deviceRaw - The raw device object containing information about the discovered Bluetooth device.
-   * @description This function sets up the Bluetooth adapter to listen for device discovery events and state changes. When a device is discovered, it checks if the device is registered at the server and attempts to connect to it. If connected, it subscribes to the device's characteristics and publishes relevant information to the MQTT broker.
    */
   bluetooth.on("discover", function (deviceRaw) {
     let data             = {};
@@ -684,7 +675,6 @@ async function startBridgeAndServer() {
    * If the state changes to any other value, it stops scanning for devices and sets the bridge status to offline.
    * Publishes the new status to the MQTT broker. 
    * @param {string} state - The new state of the Bluetooth adapter. Possible values include "poweredOn", "poweredOff", "unauthorized", etc.
-   * @description This function listens for state changes in the Bluetooth adapter and updates the bridge status accordingly.
    */
   bluetooth.on("stateChange", function (state) {
     common.conLog("Bluetooth: State has been changed", "yel");
@@ -782,9 +772,9 @@ async function startBridgeAndServer() {
 
 
   /**
-   * Scans for Bluetooth devices for a specified duration. If Bluetooth is powered on, it starts scanning and publishes the scanning status to the MQTT broker.
+   * Scans for Bluetooth devices for a specified duration.
+   * If Bluetooth is powered on, it starts scanning and publishes the scanning status to the MQTT broker.
    * @param {Object} data - The data object containing the scanning duration and whether to connect to registered devices.
-   * @description This function initiates a Bluetooth scan for the specified duration and publishes the scanning
    */
   function mqttDevicesScan(data) {
     if (bluetooth.state === "poweredOn") { // if Bluetooth is powered on ...
@@ -819,7 +809,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for bridge status, get all registered devices from server
    * @param {Object} data - The data object containing the bridge status.
-   * @description This function checks the bridge status and, if online, requests all registered Bluetooth devices from server
    */
   function mqttBridgeStatus(data) {
     if (data.status === "online") { // if Bluetooth is online ... 
@@ -837,9 +826,6 @@ async function startBridgeAndServer() {
    * Refreshes the list of devices registered at the server based on the provided data.
    * Also triggers reconnect attempts for any newly registered devices that are not yet connected.
    * @param {Object} data 
-   * @description This function updates IN the bridge the list of devices registered at the server.
-   * After updating, it checks for registered devices that are not currently connected and
-   * initiates reconnect attempts for them (e.g. devices added while the bridge was already running).
    */
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer.clear();
@@ -853,7 +839,6 @@ async function startBridgeAndServer() {
   /**
    * Gets the list of devices registered and connected at the bridge based on the provided data.
    * @param {Object} data 
-   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
    */
   function mqttDevicesList(data) {
     let message                   = {};
@@ -875,7 +860,6 @@ async function startBridgeAndServer() {
   /**
    * Updates the information of a registered device.
    * @param {Object} data 
-   * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
     common.conLog("Bluetooth: Request to update device " + data.uuid, "yel");
@@ -902,7 +886,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for reconnecting to registered devices, start scanning for devices
    * @param {Object} data - The data object containing the devices to connect to.
-   * @description This function handles the request to connect to registered devices by scanning for them and publishing
    */
   function mqttDevicesReconnect(data) {
     bridgeStatus.devicesRegisteredAtServer.clear(); // reset map of registered devices
@@ -923,7 +906,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for connecting to a single device, search for it in the list of devices found via scan
    * @param {Object} data - The data object containing the UUID or product name to connect to.
-   * @description This function handles the request to connect to a single Bluetooth device by searching for it in the list of devices found via scan.
    */
   function mqttDevicesConnect(data) {
     common.conLog("Bluetooth: Request for connecting to single device " + data.uuid + " (" + data.productName + ")", "yel");
@@ -953,8 +935,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for removing a connected device (this message is sent AFTER server removed device)
    * @param {Object} data - The data object containing the UUID to remove.
-   * @description This function handles the request to remove a connected device by disconnecting it and removing it from the list of connected devices.
-   * If the device is successfully disconnected, it publishes a message to the MQTT broker indicating that the device has been removed.
    */  
   function mqttDevicesRemove(data) {
     common.conLog("Bluetooth: Request for removing " + data.uuid, "yel");
@@ -984,8 +964,7 @@ async function startBridgeAndServer() {
   /**
    * If message is for disconnecting a connected device
    * @param {Object} data - The data object containing the UUID to disconnect.
-   * @description This function handles the request to disconnect a connected device by searching for it in the list of connected devices.
-   */
+   */  
   function mqttDevicesDisconnect(data) {
     common.conLog("Bluetooth: Request for disconnecting " + data.uuid, "yel");
 
@@ -1009,8 +988,7 @@ async function startBridgeAndServer() {
   /**
    * If message is for setting values of a connected device
    * @param {Object} data - The data object containing the UUID and properties to set.
-   * @description This function handles the request to set values for properties of a connected Bluetooth device.
-   */
+   */  
   async function mqttDevicesValuesSet(data) {
     common.conLog("Bluetooth: Request for setting values of " + data.uuid, "yel");
 
@@ -1075,7 +1053,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for getting properties and values of a connected device
    * @param {Object} data - The data object containing the UUID and properties to get.
-   * @description This function handles the request to get properties and values of a connected Bluetooth device.
    */
   async function mqttDevicesValuesGet(data) {
     common.conLog("Bluetooth: Request for getting properties and values of " + data.uuid, "yel");
@@ -1139,7 +1116,6 @@ async function startBridgeAndServer() {
    /**
     * Create a new device
     * @param {Object} data 
-    * @description This function creates the information of a registered device.
     */
    function mqttDevicesCreate(data) {
       common.conLog("Bluetooth: Request to create device " + data.uuid + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");

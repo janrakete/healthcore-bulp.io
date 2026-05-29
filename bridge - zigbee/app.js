@@ -22,7 +22,6 @@ const convertersList = new Converters(); // create new object for converters
  * Automatically invoked on script startup.
  * @async
  * @function startBridgeAndServer
- * @description This function sets up the ZigBee bridge to listen for device discovery, connection, and disconnection events.
  */
 async function startBridgeAndServer() {
   /**
@@ -40,7 +39,6 @@ async function startBridgeAndServer() {
 
   /**
    * Server info
-   * @description Endpoint to retrieve basic information about the bridge.
    */
   app.get("/info", async function (request, response) {
     const data  = {};
@@ -76,7 +74,6 @@ async function startBridgeAndServer() {
   /**
    * Connects the MQTT client and subscribes to ZigBee-related topics.
    * @function
-   * @description This function is called when the MQTT client successfully connects to the broker.
    */
   function mqttConnect() {
     mqttClient.subscribe(BRIDGE_PREFIX + "/#", function (error, granted) { // ... and subscribe to ZigBee topics
@@ -92,7 +89,6 @@ async function startBridgeAndServer() {
   /**
    * Handles MQTT reconnection events.
    * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
-   * @description The MQTT library auto-reconnects, but subscriptions may be lost. This handler ensures topics are re-subscribed and the server knows the current bridge state.
    */
   mqttClient.on("reconnect", function () {
     common.conLog("MQTT: Reconnecting to broker ...", "yel");
@@ -128,8 +124,7 @@ async function startBridgeAndServer() {
    * @param {string} uuid - The UUID of the device to get information for.
    * @param {Map<string, Object>} devices - The Map of known device objects (keyed by UUID).
    * @returns {Object|undefined} The device object with additional properties, or `undefined` if the device is not found or has no converter.
-   * @description This function searches for a device by its ID in the provided Map of devices. If the device is found, it retrieves its converter from the converters list and checks if the device has a raw object and endpoints. If all checks pass, it returns the device object with additional properties; otherwise, it returns `undefined`.
-  */
+   */
   function deviceGetInfo(uuid, devices) {
     let device = deviceFindByID(uuid, devices);
     if (device === undefined) {
@@ -180,7 +175,6 @@ async function startBridgeAndServer() {
    * Ping a device.
    * @param {Object} device - The device object to ping.
    * @returns {Promise<boolean>} A promise that resolves to `true` if the device is pingable, or `false` if it is not.
-   * @description This function attempts to read the "zclVersion" attribute from the device
   */
   async function deviceIsPingable(device) {
     try {
@@ -193,13 +187,13 @@ async function startBridgeAndServer() {
   }
 
   /**
-   * Class representing the status of the ZigBee bridge. Contains arrays for connected devices and registered devices at the server.
+   * Class representing the status of the ZigBee bridge.
+   * Contains arrays for connected devices and registered devices at the server.
    * @class
    * @property {Map<string, Object>} devicesConnected - Map of currently connected ZigBee devices (keyed by UUID).
    * @property {Map<string, Object>} devicesRegisteredAtServer - Map of devices registered at the server (keyed by UUID)
    * @property {string|null} deviceScanCallID - ID of the current device scan call, if any.
    * @property {string} status - Status of the bridge ("online" or "offline").
-   * @description This class is used to manage the status of the ZigBee bridge, including connected devices and those registered at the server.
    */
   class BridgeStatus {
     constructor() {
@@ -456,7 +450,6 @@ async function startBridgeAndServer() {
    * It logs the device information and publishes a message to the MQTT broker.
    * @param {Object} data - The data object containing information about the device that has joined.
    * @event deviceJoin
-   * @description This event is triggered when a new device joins the ZigBee network. It logs the device information and publishes a message to the MQTT broker.
   */
   zigBee.on("deviceInterview", async function (data) {
     try {
@@ -504,10 +497,10 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * This event is triggered when a device leaves the ZigBee network. It logs the device information and publishes a message to the MQTT broker.
+   * This event is triggered when a device leaves the ZigBee network.
+   * It logs the device information and publishes a message to the MQTT broker.
    * @param {Object} data - The data object containing information about the device that has left.
    * @event deviceLeave
-   * @description This event is triggered when a device leaves the ZigBee network. It logs the device information and publishes a message to the MQTT broker.
   */
   zigBee.on("deviceLeave", function (data) {
     try {
@@ -535,10 +528,10 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * This event is triggered when a device announces itself on the ZigBee network. It checks if the device is registered at the server and attempts to add it to the list of connected devices.
+   * This event is triggered when a device announces itself on the ZigBee network.
+   * It checks if the device is registered at the server and attempts to add it to the list of connected devices.
    * @param {Object} data - The data object containing information about the device that has announced itself.
    * @event deviceAnnounce 
-   * @description This event is triggered when a device announces itself on the ZigBee network.
    */
   zigBee.on("deviceAnnounce", function (data) {
     try {
@@ -585,10 +578,10 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * This event is triggered when a device sends a message on the ZigBee network. It processes the message, retrieves the appropriate converter for the device, and publishes the message to the MQTT broker.
+   * This event is triggered when a device sends a message on the ZigBee network.
+   * It processes the message, retrieves the appropriate converter for the device, and publishes the message to the MQTT broker.
    * @param {Object} data - The data object containing information about the device and the message that has been sent.
    * @event message 
-   * @description This event is triggered when a device sends a message on the ZigBee network. It processes the message, retrieves the appropriate converter for the device, and publishes the message to the MQTT broker.
   */
   zigBee.on("message", async function (data) {
     try {
@@ -643,10 +636,10 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * This event is triggered when the permit join status of the ZigBee network changes. It logs the new status and publishes a message to the MQTT broker indicating whether joining is permitted or not.
+   * This event is triggered when the permit join status of the ZigBee network changes.
+   * It logs the new status and publishes a message to the MQTT broker indicating whether joining is permitted or not.
    * @param {Object} data - The data object containing the new permit join status.
    * @event permitJoinChanged
-   * @description This event is triggered when the permit join status of the ZigBee network changes. It logs the new status and publishes a message to the MQTT broker indicating whether joining is permitted or not.
   */
   zigBee.on("permitJoinChanged", function (data) {
     common.conLog("ZigBee: joining status has been changed to", "yel");
@@ -664,9 +657,9 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * This event is triggered when the ZigBee adapter is disconnected. It logs the disconnection and publishes a message to the MQTT broker indicating that the bridge is offline.
+   * This event is triggered when the ZigBee adapter is disconnected.
+   * It logs the disconnection and publishes a message to the MQTT broker indicating that the bridge is offline.
    * @event adapterDisconnected
-   * @description This event is triggered when the ZigBee adapter is disconnected. It logs the disconnection and publishes a message to the MQTT broker indicating that the bridge is offline.
   */
   zigBee.on("adapterDisconnected", function () {
     common.conLog("ZigBee: adapter has been disconnected", "red");
@@ -748,7 +741,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for scanning devices, then start ZigBee bridge to allow joining of devices
    * @param {Object} data - The data object containing the duration for which joining is permitted.
-   * @description This function is called when a message is received on the "zigbee/devices/scan" topic. It allows the ZigBee bridge to permit joining of devices for a specified duration.
    */
   function mqttDevicesScan(data) {
     bridgeStatus.deviceScanCallID = data.callID;
@@ -770,7 +762,6 @@ async function startBridgeAndServer() {
   /**
    * Gets the list of devices registered and connected at the bridge based on the provided data.
    * @param {Object} data 
-   * @description This function sends OUT from the bridge the list of devices registered and connected at the bridge.
    */
   function mqttDevicesList(data) {
     let message                   = {};
@@ -794,7 +785,6 @@ async function startBridgeAndServer() {
   /**
    * Refreshes the list of devices registered at the server based on the provided data
    * @param {Object} data 
-   * @description This function updates IN the bridge the list of devices registered at the server.
    */
   function mqttDevicesRefresh(data) {
     bridgeStatus.devicesRegisteredAtServer.clear();
@@ -806,7 +796,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for reconnecting to registered devices, start scanning for devices
    * @param {Object} data - The data object containing the devices to connect to.
-   * @description This function handles the request to connect to registered devices by scanning for them and publishing
    */
   function mqttDevicesReconnect(data) {
     bridgeStatus.devicesRegisteredAtServer.clear(); // reset map of registered devices
@@ -824,7 +813,6 @@ async function startBridgeAndServer() {
   /**
    * Updates the information of a registered device.
    * @param {Object} data 
-   * @description This function updates the information of a registered device.
    */
   function mqttDevicesUpdate(data) {
     common.conLog("ZigBee: Request to update device " + data.uuid, "yel");
@@ -851,7 +839,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for connecting to registered devices, then try to connect to each device
    * @param {Object} data - The data object containing an array of devices to connect to.
-   * @description This function is called when a message is received on the "zigbee/devices/connect" topic. It iterates through the array of devices provided in the message and attempts to connect to each device. If the device is mains-powered, it checks if the device is pingable before adding it to the list of connected devices.
    */
   async function mqttDevicesConnect(data) {
     const device = deviceGetInfo(data.uuid, bridgeStatus.devicesRegisteredAtServer); // get device information
@@ -909,7 +896,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for removing a connected device (this message is sent AFTER server removed device)
    * @param {Object} data - The data object containing the device UUID to remove.
-   * @description This function is called when a message is received on the "zigbee/device/remove" topic. It searches for the device in the array of connected devices and attempts to remove it from the network and database. 
    */
   async function mqttDevicesRemove(data) {
     common.conLog("ZigBee: Request for removing " + data.uuid, "yel");
@@ -944,7 +930,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for getting properties and values of a connected device
    * @param {Object} data - The data object containing the device UUID and properties to get.
-   * @description This function is called when a message is received on the "zigbee/device/get" topic. It attempts to read the specified properties of a connected ZigBee device and publishes the values to the MQTT broker.
    */
   async function mqttDevicesValuesGet(data) {
     common.conLog("ZigBee: Request for getting properties and values of " + data.uuid, "yel");
@@ -1024,7 +1009,6 @@ async function startBridgeAndServer() {
   /**
    * If message is for setting values of a connected device
    * @param {Object} data - The data object containing the device UUID and properties to set.
-   * @description This function is called when a message is received on the "zigbee/device/set" topic. It attempts to set the specified properties of a connected ZigBee device.
    */
   async function mqttDevicesValuesSet(data) {
     common.conLog("ZigBee: Request for setting values of " + data.uuid, "yel");
@@ -1081,7 +1065,6 @@ async function startBridgeAndServer() {
   /**
   * Create a new device
   * @param {Object} data 
-  * @description This function creates the information of a registered device.
   */
   function mqttDevicesCreate(data) {
     common.conLog("ZigBee: Request to create device " + data.uuid + ", but creating here will have no effect, because bridgeStatus is refreshed automatically by server", "red");

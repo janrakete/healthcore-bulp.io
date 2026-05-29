@@ -12,7 +12,6 @@ const appConfig = require("../../config");
  * @param {Object} response - Express response object
  * @param {Function} next - Express next function
  * @returns {void}
- * @description Checks the 'x-api-key' header against the configured API key. If no API key is configured, requests pass through (development mode).
  */
 function apiKeyAuth(request, response, next) {
   if (!appConfig.CONF_apiKey) { // if no key configured, allow (development mode)
