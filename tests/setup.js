@@ -189,6 +189,43 @@ function createTestDatabase() {
       dateTimeAdded TEXT DEFAULT (datetime('now')),
       dateTimeUpdated TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS integrations_accounts (
+      accountID   TEXT PRIMARY KEY,
+      provider    TEXT NOT NULL,
+      enabled     INTEGER NOT NULL DEFAULT 1,
+      accessToken TEXT,
+      refreshToken TEXT,
+      expiresAt   TEXT,
+      metadata    TEXT,
+      dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS integrations_cursors (
+      accountID TEXT PRIMARY KEY,
+      cursor    TEXT NOT NULL,
+      dateTimeUpdated TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS integrations_dedupe (
+      dedupeID  INTEGER PRIMARY KEY AUTOINCREMENT,
+      accountID TEXT NOT NULL,
+      key       TEXT NOT NULL,
+      dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(accountID, key)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_integrations_dedupe_account_key
+      ON integrations_dedupe(accountID, key);
+
+    CREATE TABLE IF NOT EXISTS integrations_sync_runs (
+      syncRunID     INTEGER PRIMARY KEY AUTOINCREMENT,
+      accountID     TEXT NOT NULL,
+      startedAt     TEXT NOT NULL DEFAULT (datetime('now')),
+      finishedAt    TEXT,
+      success       INTEGER,
+      error         TEXT
+    );
   `);
 
   return db;

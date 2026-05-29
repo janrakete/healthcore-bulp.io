@@ -117,6 +117,9 @@ export function bridgeTranslate(bridge) {
         case "lora":
             bridgeInfo = window.Translation.get("LoRa");
             break;
+        case "integrations":
+            bridgeInfo = window.Translation.get("External");
+            break;
         default:
             bridgeInfo = window.Translation.get("Unknown");
     }

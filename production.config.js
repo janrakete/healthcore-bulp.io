@@ -74,6 +74,20 @@ module.exports = {
       error_file: "../logs/bridge - zigbee - errors.log",
       out_file: "../logs/bridge - zigbee - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
+    },
+    {
+      name: "bridge - integrations",
+      script: "app.js",
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: "production"
+      },
+      cwd: "./bridge - integrations",
+      error_file: "../logs/bridge - integrations - errors.log",
+      out_file: "../logs/bridge - integrations - output.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss"
     },    
     {
       name: "server",

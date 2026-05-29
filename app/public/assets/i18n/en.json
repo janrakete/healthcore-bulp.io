@@ -142,5 +142,7 @@
     "Scenario": "Scenario",
     "DeviceAddedAndConnected": "Device added and connected.",
     "DevicesAddManually": "Add device manually",
-    "DevicesWithNoScanHelp": "This connection type cannot be found via a scan."
+    "DevicesWithNoScanHelp": "This connection type cannot be found via a scan.",
+    "External": "External devices",
+    "DevicesExternalAddHelp": "External devices (e.g. via Google Health) are added manually. The device UUID must match the account ID configured on the server."
 }       

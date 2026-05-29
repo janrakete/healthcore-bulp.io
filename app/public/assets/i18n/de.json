@@ -142,5 +142,7 @@
     "Scenario": "Szenario",
     "DeviceAddedAndConnected": "Gerät hinzugefügt und verbunden.",
     "DevicesAddManually": "Gerät manuell hinzufügen",
-    "DevicesWithNoScanHelp": "Diese Verbindungsart kann nicht per Scan gefunden werden."
+    "DevicesWithNoScanHelp": "Diese Verbindungsart kann nicht per Scan gefunden werden.",
+    "External": "Externe Geräte",
+    "DevicesExternalAddHelp": "Externe Geräte (z.B. über Google Health) werden manuell hinzugefügt. Die Geräte-UUID muss mit der auf dem Server konfigurierten Konto-ID übereinstimmen."
 }
