@@ -81,7 +81,10 @@ router.get("/", async function (request, response) {
             }
         }
         else { // MQTT-only bridge — use status tracked via LWT / online message
-            bridgeStatus.status = (global.mqttBridgeStatus && global.mqttBridgeStatus[bridge]) || "offline";
+            const bridgeKeyLower    = String(bridge || "").trim().toLowerCase();
+            const mqttBridgeStatus  = global.mqttBridgeStatus || {};
+
+            bridgeStatus.status = mqttBridgeStatus[bridgeKeyLower] || "offline";
         }
 
         data.bridges.push(bridgeStatus);

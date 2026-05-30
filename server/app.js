@@ -144,17 +144,25 @@ async function startServer() {
   /**
    * Bonjour service
    */
-  const BonjourService = require("bonjour-service");
-  const bonjour = new BonjourService.default();
-  bonjour.publish({
-    name: appConfig.CONF_serverIDBonjour,
-    type: "http",
-    port: appConfig.CONF_portServer,
-    txt: {
-      server: appConfig.CONF_serverID,
-      version: appConfig.CONF_serverVersion
-    },
-  });
+  try {
+    const BonjourService = require("bonjour-service");
+    const BonjourCtor = BonjourService.Bonjour || BonjourService.default || BonjourService; // support different import styles of bonjour-service (depending on version)
+    const bonjour = new BonjourCtor();
+
+    bonjour.publish({
+      name: appConfig.CONF_serverIDBonjour,
+      type: "http",
+      port: appConfig.CONF_portServer,
+      txt: {
+        server: appConfig.CONF_serverID,
+        version: appConfig.CONF_serverVersion
+      },
+    });
+  }
+  catch (error) {
+    common.conLog("Server: Bonjour init failed, continuing without Bonjour advertisement", "yel");
+    common.conLog(error, "std", false);
+  }
 
   /**
    * Scenario Engine
@@ -343,8 +351,10 @@ async function startServer() {
    */
   function mqttBridgeStatusUpdate(data) {
     if (data.bridge && data.status) {
-      global.mqttBridgeStatus[data.bridge] = data.status; // update status; used by GET /info for MQTT-only bridges
-      common.conLog("Server: Bridge status updated: " + data.bridge + " = " + data.status, "yel");
+      const bridgeKey = String(data.bridge).trim().toLowerCase();
+
+      global.mqttBridgeStatus[bridgeKey] = data.status; // normalized key; used by GET /info for MQTT-only bridges
+      common.conLog("Server: Bridge status updated: " + bridgeKey + " = " + data.status, "yel");
     }
   }
 
