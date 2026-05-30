@@ -430,7 +430,6 @@ router.get("/:bridge/scan/info", async function (request, response) {
         data.error  = "No call ID provided";
     }
 
-
     return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device scan info");
 });
 
@@ -540,7 +539,6 @@ router.post("/:bridge/:uuid/connect", async function (request, response) {
         data.status = "error";
         data.error  = "No bridge provided";
     }
-
 
     if (data.status === "error") { // send HTTP response immediately only if there is an error, otherwise see above
         return common.sendResponse(response, data, "Server route 'Devices'", "POST request for device connect");

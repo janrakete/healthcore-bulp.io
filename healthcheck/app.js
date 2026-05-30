@@ -55,9 +55,9 @@ async function startHealthcheck() {
    * @route GET /api/config
    * @returns {Object} config - An object with serverBaseUrl and apiKey fields
    */
-  app.get("/api/config", (req, res) => {
-    res.json({
-      CONF_serverBaseUrl:               "http://" + req.hostname + ":" + appConfig.CONF_portServer,
+  app.get("/api/config", (request, response) => {
+    response.json({
+      CONF_serverBaseUrl:               "http://" + request.hostname + ":" + appConfig.CONF_portServer,
       CONF_apiKey:                      appConfig.CONF_apiKey || "",
       CONF_dashboardRefreshIntervalMs:  appConfig.CONF_dashboardRefreshIntervalMs,
       CONF_dashboardRecentAlertsCount:  appConfig.CONF_dashboardRecentAlertsCount

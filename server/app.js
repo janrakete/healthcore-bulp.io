@@ -430,7 +430,6 @@ async function startServer() {
     if (data.bridge) {
       if (data.uuid) {
         if (await deviceCheckRegistered(data.uuid, data.bridge)) { // check if device is registered
-
           database.prepare("DELETE FROM devices WHERE uuid = ? AND bridge = ?").run(data.uuid, data.bridge); // remove device from database
           message.status  = "ok";
           message.uuid    = data.uuid;
@@ -700,7 +699,7 @@ async function startServer() {
     const message          = Object.assign({}, payload);
     message.callID         = data.callID;
     message.bridge         = data.bridge;
-    const responseTopic    = (data.bridge || "http") + "/integrations/" + action + "/response";
+    const responseTopic    = data.bridge + "/integrations/" + action + "/response";
     mqttClient.publish(responseTopic, JSON.stringify(message));
   }
 

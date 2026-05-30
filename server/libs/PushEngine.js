@@ -5,9 +5,11 @@
  */
 
 const appConfig = require("../../config");
-const path = require("path");
+const path      = require("path");
 
 const firebaseAdmin = require("firebase-admin");
+
+const BATCH_SIZE = 500; // Firebase allows sending to max 500 tokens at once
 
 class PushEngine {
   constructor() {
@@ -49,7 +51,7 @@ class PushEngine {
                 message.notification.body   = pushBody;
 
                 try { 
-                    const batchSize = 500; // send in batches of 500 tokens each
+                    const batchSize = BATCH_SIZE; // send in batches to respect Firebase limits
                     
                     for (let batchIndex = 0; batchIndex < tokens.length; batchIndex += batchSize) {
                         const batchTokens = tokens.slice(batchIndex, batchIndex + batchSize);

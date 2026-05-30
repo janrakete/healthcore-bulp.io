@@ -77,7 +77,7 @@ function httpsRequest(method, url, opts = {}) {
           resolve(JSON.parse(responseBody));
         }
         catch (error) {
-          reject(new Error("Google Health: invalid JSON in response: " + responseBody.slice(0, appConfig.CONF_logMaxLength)));
+          reject(new Error("Google Health: invalid JSON in response: " + responseBody.slice(0, 128)));
         }
       });
     });
