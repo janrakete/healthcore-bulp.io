@@ -100,7 +100,9 @@ async function startBridgeAndServer() {
 
   /**
    * Handles MQTT reconnection events.
-   * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
+   * Fired at the start of each reconnection attempt. Re-subscription and bridge status
+   * publishing happen automatically via the "connect" event handler (mqttConnect) once
+   * the connection is re-established.
    */
   mqttClient.on("reconnect", function () {
     common.conLog("MQTT: Reconnecting to broker ...", "yel");

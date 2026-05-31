@@ -141,7 +141,7 @@ function devicePropertiesToArray(properties) {
         if (rootProperty.name) { // single property
             propertiesToProcess.push(rootProperty);
         }
-        else if (rootProperty.name === "several" && rootProperty.subproperties) { // "several" means the subproperties are the actual properties
+        else if (rootProperty.name === "several" && rootProperty.subproperties) { // NOTE: this branch is currently unreachable — rootProperty.name === "several" is truthy and will have been caught by the first `if (rootProperty.name)` branch above
             propertiesToProcess = Object.values(rootProperty.subproperties);
         }
         else if (typeof rootProperty === "object" && rootProperty !== null) { // multiple properties without a name key

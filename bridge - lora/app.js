@@ -108,7 +108,9 @@ async function startBridgeAndServer() {
 
   /**
    * Handles MQTT reconnection events.
-   * Re-subscribes to topics and re-publishes bridge status after broker reconnect.
+   * Fired at the start of each reconnection attempt. Re-subscription and bridge status
+   * publishing happen automatically via the "connect" event handler (mqttConnect) once
+   * the connection is re-established.
    */
   mqttClient.on("reconnect", function () {
     common.conLog("MQTT: Reconnecting to broker ...", "yel");
@@ -189,8 +191,8 @@ async function startBridgeAndServer() {
   });
 
   /**
-   * If the serial port is closed, log message and set portOpened to false.
-   * @event close
+   * If the serial port encounters an error, log message and set portOpened to false.
+   * @event error
    */
   loRa.on("error", (error) => {
     common.conLog("LoRa: serial port for LoRa Adapter closed with error", "red");
