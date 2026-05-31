@@ -56,7 +56,13 @@ async function startBridgeAndServer() {
    * ==========================================
    */
   const mqtt       = require("mqtt");
-  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
+  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword,
+    will: {  // LWT: broker publishes this automatically if the bridge disconnects unexpectedly (e.g. crash)
+      topic:   "server/bridge/status",
+      payload: JSON.stringify({ bridge: BRIDGE_PREFIX, status: "offline" }),
+      retain:  true,
+    },
+  };
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
       const fs                       = require("fs");
@@ -83,6 +89,12 @@ async function startBridgeAndServer() {
         common.conLog(error, "std", false);
       }
     });
+
+    common.conLog("ZigBee: Bridge is online - announcing bridge status", "yel");
+    let statusMessage    = {};
+    statusMessage.bridge = BRIDGE_PREFIX;
+    statusMessage.status = "online";
+    mqttClient.publish("server/bridge/status", JSON.stringify(statusMessage), { retain: true }); // announce online status so server can track it
   }
   mqttClient.on("connect", mqttConnect);
 
@@ -127,6 +139,7 @@ async function startBridgeAndServer() {
    */
   function deviceGetInfo(uuid, devices) {
     let device = deviceFindByID(uuid, devices);
+
     if (device === undefined) {
       common.conLog("ZigBee: Device " + uuid + " not found in list", "red");
       return undefined; // if device is not in array, return undefined
@@ -409,7 +422,7 @@ async function startBridgeAndServer() {
 
     }
     bridgeStatus.status = data.status;
-    mqttClient.publish("server/bridge/status", JSON.stringify(data)); // publish to MQTT broker
+    mqttClient.publish("server/bridge/status", JSON.stringify(data), { retain: true }); // publish to MQTT broker
   }
 
   /**
@@ -674,7 +687,7 @@ async function startBridgeAndServer() {
 
     deviceMaintenanceStop(); // stop the maintenance loop since adapter is gone
     
-    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/bridge/status", JSON.stringify(message), { retain: true }); // ... publish to MQTT broker
 
     // Automatically attempt to reconnect the ZigBee adapter
     common.conLog("ZigBee: Will attempt automatic reconnect ...", "yel");

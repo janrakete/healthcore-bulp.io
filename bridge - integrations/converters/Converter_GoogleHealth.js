@@ -1,8 +1,8 @@
 /**
  * =============================================================================================
- * Google Health adapter
- * =====================
- * Adapter contract:
+ * Google Health converter
+ * =======================
+ * Converter contract:
  *   ensureAccessToken(context)  → { accessToken, expiresAt }
  *   pullChanges(context, opts)  → { events[], nextCursor, hasMore }
  *   getProperties()             → [{ name, valueType }]
@@ -225,7 +225,7 @@ async function pullChanges(context, opts) {
 }
 
 /**
- * Returns the list of properties this adapter can emit, derived from DATA_STREAM_MAP.
+ * Returns the list of properties this converter can emit, derived from DATA_STREAM_MAP.
  * Used by the server to populate the device's property list.
  * @returns {{ name: string, valueType: string }[]}
  */

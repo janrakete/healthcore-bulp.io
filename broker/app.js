@@ -103,8 +103,7 @@ function startServer() {
             date = new Date(date);
         }
 
-        // Raw timestamp in milliseconds — used as a unique time identifier
-        const dateTimeAsNumeric = date.getTime();
+        const dateTimeAsNumeric = date.getTime(); // Raw timestamp in milliseconds — used as a unique time identifier
 
         // Weekday: 0 (Sunday) to 6 (Saturday)
         // Sine/cosine encoding maps this onto a circle of 7 steps

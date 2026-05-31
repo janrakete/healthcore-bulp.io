@@ -1,9 +1,9 @@
 /**
  * =============================================================================================
- * Integrations bridge provider adapter registry
+ * Integrations bridge provider converter registry
  * ====================================
- * Maps productName strings (as stored in the devices table) to their adapter modules.
- * Each adapter must export:
+ * Maps productName strings (as stored in the devices table) to their converter modules.
+ * Each converter must export:
  *   ensureAccessToken(context)   → { accessToken, expiresAt }
  *   pullChanges(context, opts)   → { events[], nextCursor, hasMore }
  *   getProperties()              → [{ name, valueType }]
@@ -23,12 +23,12 @@ const registry = {
 };
 
 /**
- * Resolves a provider adapter by productName.
+ * Resolves a provider converter by productName.
  * @param {string} productName - Device productName as stored in devices table (e.g. "GoogleHealth").
- * @returns {Object|undefined} The adapter module or undefined if not registered.
+ * @returns {Object|undefined} The converter module or undefined if not registered.
  */
-function getAdapter(productName) {
+function getConverter(productName) {
   return registry[productName];
 }
 
-module.exports = { getAdapter };
+module.exports = { getConverter };

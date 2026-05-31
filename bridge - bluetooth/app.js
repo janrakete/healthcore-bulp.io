@@ -84,7 +84,13 @@ async function startBridgeAndServer() {
    * ==========================================
    */
   const mqtt       = require("mqtt");
-  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
+  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword,
+    will: {  // LWT: broker publishes this automatically if the bridge disconnects unexpectedly (e.g. crash)
+      topic:   "server/bridge/status",
+      payload: JSON.stringify({ bridge: BRIDGE_PREFIX, status: "offline" }),
+      retain:  true,
+    },
+  };
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
       const fs                       = require("fs");
@@ -111,6 +117,12 @@ async function startBridgeAndServer() {
         common.conLog(error, "std", false);
       }
     });
+
+    common.conLog("Bluetooth: Bridge is online - announcing bridge status", "yel");
+    let statusMessage    = {};
+    statusMessage.bridge = BRIDGE_PREFIX;
+    statusMessage.status = "online";
+    mqttClient.publish("server/bridge/status", JSON.stringify(statusMessage), { retain: true }); // announce online status so server can track it
   }
   mqttClient.on("connect", mqttConnect);
 
@@ -700,7 +712,7 @@ async function startBridgeAndServer() {
     }
 
     bridgeStatus.status = message.status; // save status in bridge status object
-    mqttClient.publish("server/bridge/status", JSON.stringify(message)); // ... publish to MQTT broker
+    mqttClient.publish("server/bridge/status", JSON.stringify(message), { retain: true }); // ... publish to MQTT broker
   });
 
   /**

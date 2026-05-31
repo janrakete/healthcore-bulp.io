@@ -80,7 +80,13 @@ async function startBridgeAndServer() {
    * ==========================================
    */
   const mqtt       = require("mqtt");
-  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
+  let mqttOptions  = { clientId: BRIDGE_PREFIX, username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword,
+    will: {  // LWT: broker publishes this automatically if the bridge disconnects unexpectedly (e.g. crash)
+      topic:   "server/bridge/status",
+      payload: JSON.stringify({ bridge: BRIDGE_PREFIX, status: "offline" }),
+      retain:  true,
+    },
+  };
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
       const fs                       = require("fs");
@@ -112,6 +118,11 @@ async function startBridgeAndServer() {
       message.bridge  = BRIDGE_PREFIX;
       mqttClient.publish("server/devices/refresh", JSON.stringify(message)); // request all registered HTTP devices from server via MQTT broker 
     });
+
+    let statusMessage    = {};
+    statusMessage.bridge = BRIDGE_PREFIX;
+    statusMessage.status = "online";
+    mqttClient.publish("server/bridge/status", JSON.stringify(statusMessage), { retain: true }); // announce online status so server can track it
   }
   mqttClient.on("connect", mqttConnect);
 

@@ -9,17 +9,9 @@ const common    = require("../common");
 
 const BRIDGE_PREFIX = "integrations";
 
-/**
- * Adapter registry — maps productName values to provider adapter modules.
- * See bridge - integrations/converters/index.js for details.
- */
-const { getAdapter } = require("./converters/index");
+const { getConverter } = require("./converters/index");
 
-/**
- * Pending MQTT-RPC calls: callID -> { resolve, reject, timer }
- * Populated by rpcCall(); resolved/rejected when the matching /response message arrives.
- */
-const rpcPending = {};
+const rpcPending = {}; // Pending MQTT-RPC calls: callID -> { resolve, reject, timer }. Populated by rpcCall(); resolved/rejected when the matching /response message arrives.
 
 /**
  * Starts the integrations bridge.
@@ -156,7 +148,7 @@ async function startBridge() {
    * Runs on a configurable interval and iterates over all devices registered under this bridge.
    * For each device it:
    *   1. Looks up credentials in integrations_accounts (accountID = device UUID).
-   *   2. Refreshes the access token via the provider adapter.
+   *   2. Refreshes the access token via the provider converter.
    *   3. Persists the new token to the server (via MQTT-RPC).
    *   4. Reads the last cursor.
    *   5. Pulls changed events page by page (up to CONF_integrationsServiceMaxPages).
@@ -202,9 +194,9 @@ async function startBridge() {
         continue;
       }
 
-      const adapter = getAdapter(device.productName); // find API adapter by productName (e.g. "GoogleHealth")
-      if (!adapter) {
-        common.conLog("Integrations: No adapter for productName \"" + device.productName + "\" (device: " + deviceUuid + ")", "red");
+      const converter = getConverter(device.productName); // find API converter by productName (e.g. "GoogleHealth")
+      if (!converter) {
+        common.conLog("Integrations: No converter for productName \"" + device.productName + "\" (device: " + deviceUuid + ")", "red");
         continue;
       }
 
@@ -221,9 +213,9 @@ async function startBridge() {
       let syncError = null;
 
       try {
-        const tokenResult = await adapter.ensureAccessToken(account); // 1. Ensure access token is fresh (adapter handles OAuth refresh if needed)
+        const tokenResult = await converter.ensureAccessToken(account); // 1. Ensure access token is fresh (converter handles OAuth refresh if needed)
         
-        if (tokenResult.accessToken !== account.accessToken || tokenResult.expiresAt !== account.expiresAt) { // 2. Persist updated token if the adapter refreshed it
+        if (tokenResult.accessToken !== account.accessToken || tokenResult.expiresAt !== account.expiresAt) { // 2. Persist updated token if the converter refreshed it
           await rpcCall("server/integrations/accounts/tokens/set", {
             accountID:   deviceUuid,
             accessToken: tokenResult.accessToken,
@@ -236,13 +228,13 @@ async function startBridge() {
         const cursorResp = await rpcCall("server/integrations/cursor/get", { accountID: deviceUuid }); // 3. Read cursor (marks the end of the last successful sync window)
         let   cursor     = cursorResp.cursor || null;
 
-        const maxPages  = appConfig.CONF_integrationsServiceMaxPages  || 10;
-        const pageLimit = appConfig.CONF_integrationsServicePageLimit  || 100;
+        const maxPages  = appConfig.CONF_integrationsServiceMaxPages;
+        const pageLimit = appConfig.CONF_integrationsServicePageLimit;
         let   pageCount = 0;
         let   hasMore   = true;
         
-        while (hasMore && pageCount < maxPages) { // 4. Pull pages until the adapter signals no more data or we hit the page cap
-          const pullResult = await adapter.pullChanges(account, { cursor, pageLimit });
+        while (hasMore && pageCount < maxPages) { // 4. Pull pages until the converter signals no more data or we hit the page cap
+          const pullResult = await converter.pullChanges(account, { cursor, pageLimit });
           pageCount++;
           
           for (const event of pullResult.events) { // 5 + 6. Deduplicate and emit each event
