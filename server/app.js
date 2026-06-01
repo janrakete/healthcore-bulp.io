@@ -399,7 +399,7 @@ async function startServer() {
         }
         else {
           const result = database.prepare("INSERT INTO devices (uuid, bridge, powerType, vendorName, productName, name, description, properties, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))").run(
-            data.uuid, data.bridge, data.powerType, data.vendorName || "", data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
+            data.uuid, data.bridge, data.powerType || "?", data.vendorName || "", data.productName, data.name || "", data.description || "", JSON.stringify(data.properties) || "");
 
           message.status    = "ok";
           message.deviceID  = result.lastInsertRowid;

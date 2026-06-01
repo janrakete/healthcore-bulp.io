@@ -98,7 +98,7 @@ function logoShow(bridge, port) {
     conLog("                                                                     ", "mag", false);
     conLog("  by bulp.io					                                     ", "mag", false);
     conLog("                                                                     ", "mag", false);
-    conLog("  Bridge or Server or Integration: " + bridge                         , "mag", false);
+    conLog("  Type: " + bridge                                                    , "mag", false);
     conLog("  Port: " + port                                                      , "mag", false);
     conLog("================================================================     ", "mag", false);
 }

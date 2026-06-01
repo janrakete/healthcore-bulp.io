@@ -350,6 +350,9 @@ async function startBridge() {
         case "integrations/devices/refresh":
           mqttDevicesRefresh(data);
           break;
+        case "integrations/devices/create":
+          mqttDevicesCreate(data);
+          break;
         case "integrations/devices/remove":
           mqttDevicesRemove(data);
           break;
@@ -384,12 +387,26 @@ async function startBridge() {
   }
 
   /**
-   * Removes a single device from the in-memory map (called after server confirms removal).
+   * Handles a device creation request from the server route.
+   * Forwards the full payload (including callID) to server/devices/create so the server
+   * creates the device in the DB and resolves the pending HTTP response via callID.
+   * No bridge-specific setup is needed for pull-based integrations devices.
+   * @param {Object} data - Message payload forwarded from the server route.
+   */
+  function mqttDevicesCreate(data) {
+    common.conLog("Integrations: Request to create device " + data.uuid + ", forwarding to server", "yel");
+    mqttClient.publish("server/devices/create", JSON.stringify(data)); // callID is preserved so the server resolves the pending HTTP response
+  }
+
+  /**
+   * Removes a single device from the in-memory map and forwards the removal to the server.
+   * The callID is preserved so the server resolves the pending HTTP response.
    * @param {Object} data - Message payload; data.uuid is the device UUID to remove.
    */
   function mqttDevicesRemove(data) {
     bridgeStatus.devicesRegisteredAtServer.delete(data.uuid); // remove device from map of registered devices
     common.conLog("Integrations: Device removed from bridge status: " + data.uuid, "yel");
+    mqttClient.publish("server/devices/remove", JSON.stringify(data)); // callID is preserved so the server resolves the pending HTTP response
   }
 
   /**
