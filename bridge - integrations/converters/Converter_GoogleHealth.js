@@ -17,7 +17,8 @@
  * All persistence is done by the caller (integrations bridge) via MQTT-RPC to the server.
  */
 
-const https = require("https");
+const https   = require("https");
+const common  = require("../../common");
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"; // Google OAuth token endpoint
 
@@ -112,6 +113,7 @@ async function ensureAccessToken(context) {
   }
 
   const meta = context.metadata || {};
+
   if (!meta.clientID || !meta.clientSecret) {
     throw new Error("Google Health: clientID/clientSecret missing in account metadata for " + context.accountID);
   }
@@ -163,7 +165,7 @@ function mapDataPoint(streamName, point, accountID) {
     uuid:      accountID,  // one device per account — UUID matches the devices table row
     property:  property,
     value:     numericValue,
-    valueType: "number",
+    valueType: "Numeric",
     timestamp: new Date(timestampMs).toISOString(),
   };
 }
@@ -227,11 +229,19 @@ async function pullChanges(context, opts) {
 /**
  * Returns the list of properties this converter can emit, derived from DATA_STREAM_MAP.
  * Used by the server to populate the device's property list.
- * @returns {{ name: string, valueType: string }[]}
+ * @returns {{ name: string, standard: boolean, notify: boolean, read: boolean, write: boolean, anyValue: any, valueType: string }[]}
  */
 function getProperties() {
   return Object.values(DATA_STREAM_MAP).map(function (name) {
-    return { name: name, valueType: "number" };
+    return {
+      name:      name,
+      standard:  false,
+      notify:    true,
+      read:      true,
+      write:     false,
+      anyValue:  0,
+      valueType: "Numeric"
+    };
   });
 }
 

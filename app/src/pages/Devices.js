@@ -112,7 +112,7 @@ class Devices extends HTMLElement {
     });
   }
 
-  async dataLoad(filters = ["zigbee","bluetooth","lora","http"]) {
+  async dataLoad(filters = ["zigbee","bluetooth","lora","http","integrations"]) {
     const spinner = spinnerShow("#devices-list");
 
     let resultsRegistered                   = [];
@@ -204,6 +204,9 @@ class Devices extends HTMLElement {
           case "http":
             deviceConnected = 2;
             break;
+          case "integrations":
+            deviceConnected = 2;
+            break;            
         }
       
         return `

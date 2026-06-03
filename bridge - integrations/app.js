@@ -142,6 +142,75 @@ async function startBridge() {
   const bridgeStatus = new BridgeStatus(); // create new object for bridge status
 
   /**
+   * Normalizes a property value type to the format used by scenario UI logic.
+   * @param {string|undefined|null} valueType
+   * @returns {string}
+   */
+  function normalizePropertyValueType(valueType) {
+    const normalizedValueType = String(valueType || "").toLowerCase();
+
+    if (["numeric", "number", "float", "double", "int", "integer"].includes(normalizedValueType)) {
+      return "Numeric";
+    }
+
+    if (["options", "option", "enum"].includes(normalizedValueType)) {
+      return "Options";
+    }
+
+    return "String";
+  }
+
+  /**
+   * Builds device properties for integrations devices.
+   * Prefers converter.getProperties(), falls back to payload properties if present.
+   * @param {string} productName
+   * @param {Array|undefined} fallbackProperties
+   * @returns {Array}
+   */
+  function buildDeviceProperties(productName, fallbackProperties) {
+    const converter = getConverter(productName);
+
+    let sourceProperties = [];
+    if (converter && typeof converter.getProperties === "function") {
+      try {
+        sourceProperties = converter.getProperties();
+      }
+      catch (error) {
+        common.conLog("Integrations: Could not load properties from converter \"" + productName + "\": " + error.message, "red");
+      }
+    }
+
+    if (!Array.isArray(sourceProperties) || sourceProperties.length === 0) {
+      sourceProperties = Array.isArray(fallbackProperties) ? fallbackProperties : [];
+    }
+
+    return sourceProperties
+      .filter(function (property) {
+        return property && typeof property === "object" && String(property.name || "").trim() !== "";
+      })
+      .map(function (property) {
+        const normalizedProperty = {
+          name:      String(property.name).trim(),
+          valueType: normalizePropertyValueType(property.valueType),
+          standard:  property.standard === true,
+          notify:    property.notify === true,
+          read:      property.read !== false,
+          write:     property.write === true,
+        };
+
+        if (property.unit !== undefined) {
+          normalizedProperty.unit = property.unit;
+        }
+
+        if (property.anyValue !== undefined) {
+          normalizedProperty.anyValue = property.anyValue;
+        }
+
+        return normalizedProperty;
+      });
+  }
+
+  /**
    * =============================================================================================
    * External sync scheduler
    * =======================
@@ -394,7 +463,12 @@ async function startBridge() {
    * @param {Object} data - Message payload forwarded from the server route.
    */
   function mqttDevicesCreate(data) {
+    data.properties = buildDeviceProperties(data.productName, data.properties);
+
     common.conLog("Integrations: Request to create device " + data.uuid + ", forwarding to server", "yel");
+
+    data.forceReconnect = false; // because this is HTTP, just refresh devices after creation and do not reconnect
+
     mqttClient.publish("server/devices/create", JSON.stringify(data)); // callID is preserved so the server resolves the pending HTTP response
   }
 
