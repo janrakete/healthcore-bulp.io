@@ -79,7 +79,7 @@ function createTestDatabase() {
       dateTime TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE "mqtt_history_devices_values" (
+    CREATE TABLE "mqtt_devices_values" (
       valueID INTEGER PRIMARY KEY AUTOINCREMENT,
       deviceID INTEGER NOT NULL REFERENCES devices(deviceID) ON DELETE CASCADE,
       dateTime TEXT NOT NULL DEFAULT (datetime('now')),
@@ -96,7 +96,7 @@ function createTestDatabase() {
       month NUMERIC
     );
 
-    CREATE INDEX idx_mqtt_history_device_property ON mqtt_history_devices_values(deviceID, property);
+    CREATE INDEX idx_mqtt_history_device_property ON mqtt_devices_values(deviceID, property);
 
     CREATE TABLE "scenarios" (
       scenarioID INTEGER PRIMARY KEY AUTOINCREMENT,

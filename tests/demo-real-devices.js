@@ -167,7 +167,7 @@ function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, b
   // 5. Delete SONOFF button presses
   if (sonoffDeviceID) {
     const deletedPresses = database.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'button'"
+      "DELETE FROM mqtt_devices_values WHERE deviceID = ? AND property = 'button'"
     ).run(sonoffDeviceID);
     log("SONOFF Button-Presses gelöscht: " + deletedPresses.changes, "✓");
   }
@@ -175,7 +175,7 @@ function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, b
   // 6. Remove synthetic Bangle.js baseline (if left over from a previous demo run)
   if (bangleDeviceID) {
     const deletedBaseline = database.prepare(
-      "DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'heartrate'"
+      "DELETE FROM mqtt_devices_values WHERE deviceID = ? AND property = 'heartrate'"
     ).run(bangleDeviceID);
     if (deletedBaseline.changes > 0) {
       log("Synthetische Bangle.js-Baseline entfernt: " + deletedBaseline.changes + " Einträge", "✓");
@@ -194,7 +194,7 @@ function ensureBangleBaseline(database, deviceID) {
   logSection("BANGLE.JS 2: Puls-Baseline prüfen");
 
   const existingCount = database.prepare(
-    "SELECT COUNT(*) AS cnt FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+    "SELECT COUNT(*) AS cnt FROM mqtt_devices_values WHERE deviceID = ? AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
   ).get(deviceID, HISTORY_SIZE).cnt;
 
   log("Vorhandene Puls-Einträge in History: " + existingCount, "📊");
@@ -214,7 +214,7 @@ function ensureBangleBaseline(database, deviceID) {
   baselineValues.slice(0, missing).forEach((bpm, index) => {
     const timestamp = now - (90 - index * (80 / missing)) * 60 * 1000;
     database.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(deviceID, "heartrate", String(bpm), bpm, timestamp);
   });
 
@@ -246,7 +246,7 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
 
   const oneHourAgo  = Date.now() - 60 * 60 * 1000;
   const sonoffCurrent = database.prepare(
-    "SELECT COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND property = 'button' AND dateTimeAsNumeric >= ?"
+    "SELECT COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_devices_values WHERE deviceID = ? AND property = 'button' AND dateTimeAsNumeric >= ?"
   ).get(sonoff.deviceID, oneHourAgo);
 
   const currentSum      = Number(sonoffCurrent.total) || 0;

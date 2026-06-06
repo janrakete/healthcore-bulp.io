@@ -303,7 +303,7 @@ class ScenarioEngine {
    */
   async getCurrentDeviceValue(deviceID, property) {
     try {
-      const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, property);
+      const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, property);
 
       if (!result) { // no row found for this device/bridge/property
         return null;

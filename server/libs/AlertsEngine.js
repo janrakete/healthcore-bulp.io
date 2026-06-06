@@ -109,7 +109,7 @@ class AlertsEngine {
    */
   getDeviationScore(deviceID, property) {
     const history = database.prepare( // Load recent history in descending order; newest reading is at index 0
-      "SELECT valueAsNumeric FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+      "SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
     ).all(deviceID, property, appConfig.CONF_alertsHistorySize);
 
     if (!history || history.length < appConfig.CONF_alertsMinHistoryEntries) {
@@ -332,7 +332,7 @@ class AlertsEngine {
     const thresholdTimestamp = Date.now() - (aggregationWindowHours * 60 * 60 * 1000);
 
     const result = database.prepare(
-      "SELECT COUNT(*) AS readings, COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ? AND dateTimeAsNumeric >= ?"
+      "SELECT COUNT(*) AS readings, COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_devices_values WHERE deviceID = ? AND property = ? AND dateTimeAsNumeric >= ?"
     ).get(context.deviceID, property, thresholdTimestamp);
 
     if (!result) {

@@ -61,7 +61,7 @@ beforeEach(() => {
   db.prepare("DELETE FROM alert_signals").run();
   db.prepare("DELETE FROM alert_rules").run();
   db.prepare("DELETE FROM alerts").run();
-  db.prepare("DELETE FROM mqtt_history_devices_values").run();
+  db.prepare("DELETE FROM mqtt_devices_values").run();
   db.prepare("DELETE FROM scenarios").run();
   db.prepare("DELETE FROM scenarios_triggers").run();
   db.prepare("DELETE FROM scenarios_actions").run();
@@ -76,7 +76,7 @@ function seedValues(values) {
   const now = Date.now();
   values.forEach((value, index) => {
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(careDevice001ID, "heartrate", String(value), value, now - index);
   });
 }
@@ -175,7 +175,7 @@ describe("Alerts engine", () => {
     expect(alert).toBeDefined();
     expect(alert.status).toBe("open");
 
-    db.prepare("DELETE FROM mqtt_history_devices_values").run();
+    db.prepare("DELETE FROM mqtt_devices_values").run();
     seedValues([71, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     alerts.handleDeviceValues({
       uuid:   "care_device_001",
@@ -215,7 +215,7 @@ describe("Alerts engine", () => {
     const now = Date.now();
     [300, 200, 250].forEach((value, index) => {
       db.prepare(
-        "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
       ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
@@ -244,7 +244,7 @@ describe("Alerts engine", () => {
     const now = Date.now();
     [200, 200, 200].forEach((value, index) => {
       db.prepare(
-        "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
       ).run(careDevice001ID, "steps", String(value), value, now - index);
     });
 
@@ -332,7 +332,7 @@ describe("Alerts engine", () => {
     const now = Date.now();
     [300, 200, 250].forEach((value, index) => {
       db.prepare(
-        "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
       ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 

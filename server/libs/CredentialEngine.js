@@ -190,13 +190,4 @@ function syncRunFinish(syncRunID, error) {
   db.prepare("UPDATE integrations_sync_runs SET finishedAt = datetime('now', 'localtime'), success = ?, error= ? WHERE syncRunID = ?").run(error ? 0 : 1, error || null, syncRunID);  // success = 0 if error, 1 if success
 }
 
-module.exports = {
-  listAccounts,
-  setToken,
-  getCursor,
-  setCursor,
-  dedupeCheck,
-  dedupeAdd,
-  syncRunStart,
-  syncRunFinish,
-};
+module.exports = { listAccounts, setToken, getCursor, setCursor, dedupeCheck, dedupeAdd, syncRunStart, syncRunFinish};

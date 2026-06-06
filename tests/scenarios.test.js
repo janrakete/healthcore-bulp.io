@@ -427,10 +427,10 @@ describe("ScenarioEngine", () => {
 
   test("getCurrentDeviceValue — returns latest value from DB", async () => {
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(sensor001ID, "heartrate", "75", 75, Date.now() - 1000);
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(sensor001ID, "heartrate", "80", 80, Date.now());
 
     const val = await global.scenarios.getCurrentDeviceValue(sensor001ID, "heartrate");
@@ -503,7 +503,7 @@ describe("Multi-Trigger Scenarios", () => {
   test("Multi-trigger: all conditions met → triggers", async () => {
     // Seed existing motion value = "yes" in DB
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(sensor001ID, "motion", "yes", 0, Date.now());
 
     await global.scenarios.handleEvent("device_value", {
@@ -523,9 +523,9 @@ describe("Multi-Trigger Scenarios", () => {
     }
 
     // Set motion = "no" in DB
-    db.prepare("DELETE FROM mqtt_history_devices_values WHERE deviceID = ? AND property = ?").run(sensor001ID, "motion");
+    db.prepare("DELETE FROM mqtt_devices_values WHERE deviceID = ? AND property = ?").run(sensor001ID, "motion");
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(sensor001ID, "motion", "no", 0, Date.now());
 
     await global.scenarios.handleEvent("device_value", {

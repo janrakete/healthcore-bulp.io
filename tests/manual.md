@@ -17,7 +17,7 @@ These tests require real hardware, running services, or the mobile app and canno
 | 7 | **LoRa receives P2P packets from sensor** | Power on a LoRa sensor that transmits P2P packets. Verify the bridge parses the incoming data, runs it through the converter (heartrate ×1000, color mapping), and publishes the converted values to `server/devices/values/get`. |
 | 8 | **LoRa serial adapter opens and receives AT responses** | Plug in the LoRa module at the configured serial port (`CONF_loRaAdapterPath`). On bridge startup, it should send AT configuration commands (FRE, SF, BW, POWER, CRC, RXMOD) and log successful responses from the module. |
 | 9 | **HTTP bridge receives PUT to create device** | Send a `PUT /message` request to the HTTP bridge (port 9996) with `{ deviceID, productName, powerType }`. Verify the device gets registered in the server's `devices` table and appears in `GET /devices/all`. You can also test `POST /message` to send values and `DELETE /message` to remove the device. |
-| 10 | **MQTT persistence: device values saved** | Have a device send values through any bridge. Query `SELECT * FROM mqtt_history_devices_values ORDER BY valueID DESC LIMIT 5` and verify each property is stored with its numeric value, time features (weekdaySin, weekdayCos, hourSin, hourCos, month), and correct deviceID/bridge. |
+| 10 | **MQTT persistence: device values saved** | Have a device send values through any bridge. Query `SELECT * FROM mqtt_devices_values ORDER BY valueID DESC LIMIT 5` and verify each property is stored with its numeric value, time features (weekdaySin, weekdayCos, hourSin, hourCos, month), and correct deviceID/bridge. |
 
 ---
 
@@ -66,7 +66,7 @@ These tests require real hardware, running services, or the mobile app and canno
 | 28 | **Bluetooth signal strength updates** | With a connected BLE device, check that `GET /devices/all` shows a `strength` value that changes when you move the device closer or further away. The bridge should periodically publish strength updates via MQTT to `server/devices/strength`. |
 | 29 | **Bluetooth battery monitoring & low-battery alert** | Connect a battery-powered BLE device (e.g. BangleJS2) and read its battery level. Verify that when the battery drops below `CONF_devicesBluetoothBatteryThresholdPercent`, an alert is triggered with a cooldown of `CONF_devicesBluetoothBatteryAlertCooldownHours`. |
 | 30 | **ZigBee battery monitoring & alert** | Connect a battery-powered ZigBee device (e.g. SONOFF SNZB-01P). When the reported battery level drops below `CONF_devicesZigBeeBatteryThresholdPercent`, verify an alert is generated with the configured cooldown (`CONF_devicesZigBeeBatteryAlertCooldownHours`). |
-| 31 | **ZigBee reporting interval works** | Connect a ZigBee sensor (e.g. VALLHORN motion sensor) and verify it sends periodic reports. The reporting interval is configured via `CONF_zigBeeReportingTimeout` and values should appear in `mqtt_history_devices_values` at regular intervals. |
+| 31 | **ZigBee reporting interval works** | Connect a ZigBee sensor (e.g. VALLHORN motion sensor) and verify it sends periodic reports. The reporting interval is configured via `CONF_zigBeeReportingTimeout` and values should appear in `mqtt_devices_values` at regular intervals. |
 
 ---
 

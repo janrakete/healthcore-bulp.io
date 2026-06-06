@@ -20,13 +20,16 @@
 const https   = require("https");
 const common  = require("../../common");
 
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"; // Google OAuth token endpoint
+const GOOGLE_TOKEN_URL       = "https://oauth2.googleapis.com/token"; // Google OAuth token endpoint
+const GOOGLE_HEALTH_BASE_URL = "https://health.googleapis.com/v4";   // Google Health API v4 base URL
 
-const DATA_STREAM_MAP = { // Supported data streams mapped to canonical property names
-  "derived:com.google.heart_rate.bpm:com.google.android.gms:merge_heart_rate_bpm":       "heartRate",
-  "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps":           "steps",
-  "derived:com.google.calories.expended:com.google.android.gms:merge_calories_expended":  "caloriesExpended",
-  "derived:com.google.sleep.segment:com.google.android.gms:merged":                       "sleepSegment",
+// Maps exercise metricsSummary fields to canonical property names.
+// Note: Google's API uses "distanceMillimiters" (their spelling) in the response.
+const METRICS_SUMMARY_MAP = {
+  steps:                          "steps",
+  caloriesKcal:                   "caloriesExpended",
+  distanceMillimiters:            "distance",
+  averageHeartRateBeatsPerMinute: "heartRate",
 };
 
 /**
@@ -62,6 +65,10 @@ function httpsRequest(method, url, opts = {}) {
       });
 
       response.on("end", function () {
+        common.conLog("Google Health: " + method + " " + url, "yel");
+        common.conLog("Status: " + response.statusCode, "std", false);
+        common.conLog("Response: " + responseBody, "std", false);
+
         if (response.statusCode === 401) {
           return reject(new Error("Google Health: 401 Unauthorized — access token may be expired"));
         }
@@ -136,90 +143,108 @@ async function ensureAccessToken(context) {
 }
 
 /**
- * Maps a raw Google Fitness data point to a canonical metric event.
+ * Maps a Google Health API v4 exercise data point to an array of canonical metric events.
+ * Each metricsSummary field that is present in METRICS_SUMMARY_MAP yields one event.
  * The event uuid equals accountID so it maps directly to the registered device.
- * @param {string} streamName - Data stream identifier.
- * @param {Object} point      - Raw data point from the Fitness API.
- * @param {string} accountID  - Account identifier (used as device UUID).
- * @returns {Object|null} Canonical event or null if the point cannot be mapped.
+ * @param {Object} point     - Raw data point from the Health API v4 (exercise type).
+ * @param {string} accountID - Account identifier (used as device UUID).
+ * @returns {Object[]} Array of canonical events (may be empty if no metrics found).
  */
-function mapDataPoint(streamName, point, accountID) {
-  const property = DATA_STREAM_MAP[streamName];
-  if (!property) {
-    return null;
+function mapExerciseDataPoint(point, accountID) {
+  const events   = [];
+  const exercise = point.exercise;
+
+  if (!exercise || !exercise.metricsSummary) {
+    return events;
   }
 
-  const value = point.value && point.value[0];
-  if (value === undefined || value === null) {
-    return null;
-  }
- 
-  let numericValue = value.fpVal !== undefined ? value.fpVal : (value.intVal !== undefined ? value.intVal : null); // fpVal = floating-point container, intVal = integer container (Google Fitness value schema)
-  if (numericValue === null) {
-    return null;
+  // Use the exercise start time as the event timestamp
+  const timestamp = exercise.interval && exercise.interval.startTime
+    ? exercise.interval.startTime
+    : new Date().toISOString();
+
+  for (const [summaryKey, property] of Object.entries(METRICS_SUMMARY_MAP)) {
+    const rawValue = exercise.metricsSummary[summaryKey];
+    if (rawValue === undefined || rawValue === null) {
+      continue;
+    }
+
+    const numericValue = Number(rawValue); // metricsSummary values may be strings (e.g. steps)
+    if (isNaN(numericValue)) {
+      continue;
+    }
+
+    events.push({
+      uuid:      accountID, // one device per account — UUID matches the devices table row
+      property:  property,
+      value:     numericValue,
+      valueType: "Numeric",
+      timestamp: timestamp,
+    });
   }
 
-  const timestampMs = Math.floor(parseInt(point.startTimeNanos, 10) / 1_000_000);
-
-  return {
-    uuid:      accountID,  // one device per account — UUID matches the devices table row
-    property:  property,
-    value:     numericValue,
-    valueType: "Numeric",
-    timestamp: new Date(timestampMs).toISOString(),
-  };
+  return events;
 }
 
 /**
- * Pulls changed data points from Google Fitness for all supported data streams.
- * Uses the cursor as a millisecond Unix timestamp marking the end of the last successful window.
- * Returns up to opts.pageLimit events per stream.
+ * Pulls changed exercise data points from Google Health API v4.
+ * Uses the cursor as the start of the time window for the civil_start_time filter.
+ * Paginates through all pages up to opts.pageLimit total events.
  *
  * @param {Object} context - Account context including a valid accessToken.
  * @param {Object} opts
  * @param {string|null} opts.cursor    - ISO timestamp of last sync end (or null for 24 h lookback).
- * @param {number} opts.pageLimit      - Max events to return across all streams.
+ * @param {number} opts.pageLimit      - Max events to return in total.
  * @returns {Promise<{events: Object[], nextCursor: string, hasMore: boolean}>}
  */
 async function pullChanges(context, opts) {
   const pageLimit = opts.pageLimit || 100;
- 
+
   const endMs   = Date.now(); // Define the time window: cursor → now
   const startMs = opts.cursor ? new Date(opts.cursor).getTime() : endMs - 24 * 60 * 60 * 1000; // 24 h default lookback
 
+  // Build the civil_start_time filter (format: "YYYY-MM-DDTHH:MM:SS", no trailing Z)
+  const startCivil = new Date(startMs).toISOString().slice(0, 19);
+  const filter     = "exercise.interval.civil_start_time >= \"" + startCivil + "\"";
+  const baseUrl    = GOOGLE_HEALTH_BASE_URL + "/users/me/dataTypes/exercise/dataPoints?filter=" + encodeURIComponent(filter);
+
   const events  = [];
   let   hasMore = false;
+  let   nextPageToken = null;
 
-  for (const streamName of Object.keys(DATA_STREAM_MAP)) {
-    if (events.length >= pageLimit) {
-      hasMore = true;
-      break;
-    }
-    
-    const url = "https://www.googleapis.com/fitness/v1/users/me/dataSources/" + encodeURIComponent(streamName) + "/datasets/" + startMs + "000000-" + endMs + "000000"; // Google Fitness dataset ranges use nanosecond timestamps; append 6 zeros to convert ms → ns
+  do {
+    const url = nextPageToken ? baseUrl + "&pageToken=" + encodeURIComponent(nextPageToken) : baseUrl;
 
     let result;
-
     try {
       result = await httpsRequest("GET", url, { token: context.accessToken });
     }
     catch (error) {
-      common.conLog("Google Health: stream fetch error [" + streamName + "]: " + error.message, "red"); // Log and skip this stream; do not abort the full sync
-      continue;
+      common.conLog("Google Health: exercise fetch error: " + error.message, "red"); // Log and abort pagination; return what we have so far
+      break;
     }
 
-    if (result.point && Array.isArray(result.point)) { // Map each data point to a canonical event, filter out unmapped points, and respect the page limit across all streams
-      for (const point of result.point) {
-        const event = mapDataPoint(streamName, point, context.accountID);
-        if (event) {
+    if (result.dataPoints && Array.isArray(result.dataPoints)) { // Map each exercise data point to one event per available metric
+      for (const point of result.dataPoints) {
+        const pointEvents = mapExerciseDataPoint(point, context.accountID);
+        for (const event of pointEvents) {
           events.push(event);
           if (events.length >= pageLimit) {
             hasMore = true;
             break;
           }
         }
+        if (events.length >= pageLimit) {
+          break;
+        }
       }
     }
+
+    nextPageToken = result.nextPageToken || null;
+  } while (nextPageToken && events.length < pageLimit);
+
+  if (nextPageToken && events.length >= pageLimit) {
+    hasMore = true; // more pages exist that we did not fetch
   }
 
   const nextCursor = new Date(endMs).toISOString();
@@ -227,12 +252,12 @@ async function pullChanges(context, opts) {
 }
 
 /**
- * Returns the list of properties this converter can emit, derived from DATA_STREAM_MAP.
+ * Returns the list of properties this converter can emit, derived from METRICS_SUMMARY_MAP.
  * Used by the server to populate the device's property list.
  * @returns {{ name: string, standard: boolean, notify: boolean, read: boolean, write: boolean, anyValue: any, valueType: string }[]}
  */
 function getProperties() {
-  return Object.values(DATA_STREAM_MAP).map(function (name) {
+  return Object.values(METRICS_SUMMARY_MAP).map(function (name) {
     return {
       name:      name,
       standard:  false,

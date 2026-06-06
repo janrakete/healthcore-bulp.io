@@ -277,10 +277,10 @@ describe("GET /devices/:bridge/:deviceID/values", () => {
     const httpDevice = insertTestDevice(db, { uuid: "dev_http_001", bridge: "http", productName: "BulpWebRobo321" });
 
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(httpDevice.deviceID, "voltage", "3.3", 3.3, Date.now());
     db.prepare(
-      "INSERT INTO mqtt_history_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
     ).run(httpDevice.deviceID, "switch", "tapped", 0, Date.now());
 
     const res = await request(app).get("/devices/http/dev_http_001/values");

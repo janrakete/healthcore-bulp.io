@@ -1140,7 +1140,7 @@ router.get("/:bridge/:uuid/values", async function (request, response) {
 
                 handlePendingMqttResponse(message.callID, response);
 
-                const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_history_devices_values WHERE deviceID = ? GROUP BY property ORDER BY property ASC");
+                const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_devices_values WHERE deviceID = ? GROUP BY property ORDER BY property ASC");
                 const results   = statement.all(deviceID);
 
                 for (const result of results) {
