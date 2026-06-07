@@ -36,6 +36,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 🔐 [Security](#-security)
 - 📱 [App](#-app)
 - 🔎 [Testing](#-testing)
+- 💓 [External data via APIs](#-testing)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
@@ -69,7 +70,7 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 ├── bridge - http/         # HTTP ↔ MQTT bridge
 │   └── converters/        # Common and own converters
 ├── bridge - integrations/ # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
-│   └── converters/        # Provider adapters
+│   └── converters/        # Provider converters
 ├── tests/                 # Jest tests, manual tests and example device firmware
 ├── healthcheck/           # Healthcheck (see below)
 └── app/                   # App
@@ -338,3 +339,70 @@ Some things simply can't be automated — real Bluetooth adapters, physical ZigB
 The full manual test plan is documented in [`tests/MANUAL.md`](tests/MANUAL.md).
 
 The rule is simple: **first run `npm test`** to make sure all automated tests pass, **then** work through the manual tests when you have the hardware connected.
+
+## 💓 External data via APIs
+
+The Healthcore can receive data directly from devices, but it can also retrieve and store data through APIs provided by services such as Google Health or Garmin.
+
+These integrations are implemented through `bridge - integrations`. Each provider must have its own implementation in the `converters` subfolder. A "Google Health" integration already exists and will be used as the example below.
+
+### 1. Create a Google Cloud project
+
+1. Sign in to Google Cloud Console with your Google account
+2. Create a new project
+3. Enable the "Health API" for the project
+4. Configure the OAuth consent screen and customize the branding
+5. Create an OAuth2 client of type **Desktop Application**
+6. Download and save the generated client credentials file
+7. Under **Audience**, add test users (only these users can authorize access)
+8. Under **Data Access**, grant the following scopes:
+	* `googlehealth.activity_and_fitness.readonly`
+	* `googlehealth.health_metrics_and_measurements.readonly`
+	* `googlehealth.nutrition.readonly`
+	* `googlehealth.sleep.readonly`
+	* `googlehealth.irn.readonly`
+	* `googlehealth.ecg.readonly`
+
+### 2. Obtain OAuth tokens
+
+Open the following URL in your browser (but replace {{CLIENT_ID}} with client ID from the saved file first):
+```text
+https://accounts.google.com/o/oauth2/v2/auth?client_id={{CLIENT_ID FROM FILE}}&redirect_uri=http://localhost&response_type=code&access_type=offline&scope=https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly https://www.googleapis.com/auth/googlehealth.nutrition.readonly https://www.googleapis.com/auth/googlehealth.sleep.readonly https://www.googleapis.com/auth/googlehealth.irn.readonly https://www.googleapis.com/auth/googlehealth.ecg.readonly
+```
+
+Sign in with one of the configured test users and complete the consent flow.
+
+After approval, copy the value of the `code` parameter from the final URL displayed in your browser.
+
+### 3. Exchange the code for tokens
+
+Send a POST request to (replace the {{}} with the known values):
+```text
+https://oauth2.googleapis.com/token?code={{CODE FROM ABOVE}}&client_id={{CLIENT_ID FROM FILE}}&client_secret={{CLIENT_SECRET FROM FILE}}&redirect_uri=http://localhost&grant_type=authorization_code
+```
+
+### 4. Store the tokens
+
+The response contains:
+
+* `access_token`
+* `expires_in`
+* `refresh_token`
+
+Insert these values into the `integrations_accounts` table together with an arbitrary "Account ID".
+
+### 5. Create the device
+
+Add a new device through the app under **External Devices**.
+
+The device's **Device ID** must match the **Account ID** stored in the `integrations_accounts` table.
+
+### Wait, one more step:  encrypting tokens!
+
+To encrypt the tokens stored in the database:
+
+1. Define a secret key in `.env.local` using the variable `CONF_credentialEngineSecret`
+
+2. Encrypt the tokens using **AES-256-GCM** and the configured secret key.
+
+3. Replace the plain-text values in the `integrations_accounts` table with the encrypted versions.
