@@ -36,7 +36,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 🔐 [Security](#-security)
 - 📱 [App](#-app)
 - 🔎 [Testing](#-testing)
-- 💓 [External data via APIs](#-testing)
+- 💓 [External data via APIs](#-external-data-via-apis)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture** of bulp.io:
@@ -344,7 +344,7 @@ The rule is simple: **first run `npm test`** to make sure all automated tests pa
 
 The Healthcore can receive data directly from devices, but it can also retrieve and store data through APIs provided by services such as Google Health or Garmin.
 
-These integrations are implemented through `bridge - integrations`. Each provider must have its own implementation in the `converters` subfolder. A "Google Health" integration already exists and will be used as the example below.
+These integrations are implemented through `bridge - integrations`. Each data provider must have its own implementation in the `converters` subfolder. A "Google Health" integration already exists and will be used as the example below.
 
 ### 1. Create a Google Cloud project
 
@@ -352,10 +352,10 @@ These integrations are implemented through `bridge - integrations`. Each provide
 2. Create a new project
 3. Enable the "Health API" for the project
 4. Configure the OAuth consent screen and customize the branding
-5. Create an OAuth2 client of type **Desktop Application**
+5. Create an OAuth2 client of type "Desktop Application"
 6. Download and save the generated client credentials file
-7. Under **Audience**, add test users (only these users can authorize access)
-8. Under **Data Access**, grant the following scopes:
+7. Under "Audience", add test users (only these users can authorize access)
+8. Under "Data Access", grant the following scopes:
 	* `googlehealth.activity_and_fitness.readonly`
 	* `googlehealth.health_metrics_and_measurements.readonly`
 	* `googlehealth.nutrition.readonly`
@@ -365,7 +365,7 @@ These integrations are implemented through `bridge - integrations`. Each provide
 
 ### 2. Obtain OAuth tokens
 
-Open the following URL in your browser (but replace {{CLIENT_ID}} with client ID from the saved file first):
+Open the following URL in your browser (but replace **{{CLIENT_ID}}** with client ID from the saved file first):
 ```text
 https://accounts.google.com/o/oauth2/v2/auth?client_id={{CLIENT_ID FROM FILE}}&redirect_uri=http://localhost&response_type=code&access_type=offline&scope=https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly https://www.googleapis.com/auth/googlehealth.nutrition.readonly https://www.googleapis.com/auth/googlehealth.sleep.readonly https://www.googleapis.com/auth/googlehealth.irn.readonly https://www.googleapis.com/auth/googlehealth.ecg.readonly
 ```
@@ -376,7 +376,7 @@ After approval, copy the value of the `code` parameter from the final URL displa
 
 ### 3. Exchange the code for tokens
 
-Send a POST request to (replace the {{}} with the known values):
+Send a **POST request** to (replace the **{{}}** with the known values):
 ```text
 https://oauth2.googleapis.com/token?code={{CODE FROM ABOVE}}&client_id={{CLIENT_ID FROM FILE}}&client_secret={{CLIENT_SECRET FROM FILE}}&redirect_uri=http://localhost&grant_type=authorization_code
 ```
@@ -393,9 +393,9 @@ Insert these values into the `integrations_accounts` table together with an arbi
 
 ### 5. Create the device
 
-Add a new device through the app under **External Devices**.
+Add a new device through the app under "External Devices".
 
-The device's **Device ID** must match the **Account ID** stored in the `integrations_accounts` table.
+The device's "Device ID" must match the "Account ID" stored in the `integrations_accounts` table.
 
 ### Wait, one more step:  encrypting tokens!
 
