@@ -65,27 +65,27 @@ function httpsRequest(method, url, opts = {}) {
       });
 
       response.on("end", function () {
-        common.conLog("Google Health: " + method + " " + url, "yel");
+        common.conLog("Integrations (Google Health): " + method + " " + url, "yel");
         common.conLog("Status: " + response.statusCode, "std", false);
         common.conLog("Response: " + responseBody, "std", false);
 
         if (response.statusCode === 401) {
-          return reject(new Error("Google Health: 401 Unauthorized — access token may be expired"));
+          return reject(new Error("Integrations (Google Health): 401 Unauthorized — access token may be expired"));
         }
 
         if (response.statusCode === 429) {
-          return reject(new Error("Google Health: 429 Too Many Requests — provider rate limit hit"));
+          return reject(new Error("Integrations (Google Health): 429 Too Many Requests — provider rate limit hit"));
         }
 
         if (response.statusCode >= 500) {
-          return reject(new Error("Google Health: server error " + response.statusCode + " from API"));
+          return reject(new Error("Integrations (Google Health): server error " + response.statusCode + " from API"));
         }
 
         try {
           resolve(JSON.parse(responseBody));
         }
         catch (error) {
-          reject(new Error("Google Health: invalid JSON in response: " + responseBody.slice(0, 128)));
+          reject(new Error("Integrations (Google Health): invalid JSON in response: " + responseBody.slice(0, 128)));
         }
       });
     });
@@ -116,13 +116,13 @@ async function ensureAccessToken(context) {
   }
 
   if (!context.refreshToken) {
-    throw new Error("Google Health: no refresh token available for account " + context.accountID);
+    throw new Error("Integrations (Google Health): no refresh token available for account " + context.accountID);
   }
 
   const meta = context.metadata || {};
 
   if (!meta.clientID || !meta.clientSecret) {
-    throw new Error("Google Health: clientID/clientSecret missing in account metadata for " + context.accountID);
+    throw new Error("Integrations (Google Health): clientID/clientSecret missing in account metadata for " + context.accountID);
   }
 
   const body = {
@@ -135,7 +135,7 @@ async function ensureAccessToken(context) {
   const result = await httpsRequest("POST", GOOGLE_TOKEN_URL, { body });
 
   if (result.error) {
-    throw new Error("Google Health: token refresh failed for account " + context.accountID + ": " + result.error);
+    throw new Error("Integrations (Google Health): token refresh failed for account " + context.accountID + ": " + result.error);
   }
 
   const newExpiresAt = new Date(nowMs + result.expires_in * 1000).toISOString();
@@ -220,7 +220,7 @@ async function pullChanges(context, opts) {
       result = await httpsRequest("GET", url, { token: context.accessToken });
     }
     catch (error) {
-      common.conLog("Google Health: exercise fetch error: " + error.message, "red"); // Log and abort pagination; return what we have so far
+      common.conLog("Integrations (Google Health): exercise fetch error: " + error.message, "red"); // Log and abort pagination; return what we have so far
       break;
     }
 
