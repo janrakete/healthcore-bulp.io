@@ -7,8 +7,6 @@
  *
  * Tables used:
  *   integrations_accounts  — one row per provider account with encrypted-at-rest tokens
- *   integrations_cursors   — one row per account (UPSERT), tracks the sync bookmark
- *   integrations_dedupe    — one row per (accountID, key), prevents duplicate event emission
  *   integrations_sync_runs — audit log of every sync cycle attempt
  *
  * Encryption note:
@@ -29,8 +27,7 @@ const IV_LENGTH = 12; // bytes for GCM
  */
 function getEncryptionKey() {
   const secret = process.env.CONF_credentialEngineSecret;
-  if (!secret)
-  {
+  if (!secret) {
     return null;
   }
   return crypto.createHash("sha256").update(secret).digest(); // 32 bytes
@@ -46,8 +43,7 @@ function getEncryptionKey() {
 function encrypt(plaintext) {
   const key = getEncryptionKey();
 
-  if (!key)
-  {
+  if (!key) {
     return plaintext; // plain-text fallback (dev mode)
   }
 
@@ -68,14 +64,12 @@ function encrypt(plaintext) {
  */
 function decrypt(value) {
   const key = getEncryptionKey();
-  if (!key)
-  {
+  if (!key) {
     return value; // plain-text fallback (dev mode)
   }
 
   const parts = value.split(":");
-  if (parts.length !== 3) // Treat as plain text if not in expected encrypted format (e.g. legacy rows)
-  {
+  if (parts.length !== 3) { // Treat as plain text if not in expected encrypted format (e.g. legacy rows)
     return value;
   }
 
@@ -126,50 +120,6 @@ function setToken(accountID, accessToken, expiresAt) {
 }
 
 /**
- * Returns the current cursor for an account, or null if none exists.
- * @param {string} accountID
- * @returns {string|null}
- */
-function getCursor(accountID) {
-  const db  = global.database;
-  const row = db.prepare("SELECT cursor FROM integrations_cursors WHERE accountID = ?").get(accountID);
-  return row ? row.cursor : null;
-}
-
-/**
- * Upserts the cursor for an account.
- * @param {string} accountID
- * @param {string} cursor
- */
-function setCursor(accountID, cursor) {
-  const db = global.database;
-  db.prepare("INSERT INTO integrations_cursors (accountID, cursor, dateTimeUpdated) VALUES (?, ?, datetime('now', 'localtime')) ON CONFLICT(accountID) DO UPDATE SET cursor = excluded.cursor, dateTimeUpdated = excluded.dateTimeUpdated").run(accountID, cursor);
-}
-
-/**
- * Checks whether a dedupe key already exists for an account.
- * @param {string} accountID
- * @param {string} key
- * @returns {boolean}
- */
-function dedupeCheck(accountID, key) {
-  const db  = global.database;
-  const row = db.prepare("SELECT 1 FROM integrations_dedupe WHERE accountID = ? AND key = ? LIMIT 1").get(accountID, key);
-  return !!row;
-}
-
-/**
- * Inserts a dedupe key for an account.
- * Silently ignores duplicate inserts (UNIQUE constraint).
- * @param {string} accountID
- * @param {string} key
- */
-function dedupeAdd(accountID, key) {
-  const db = global.database;
-  db.prepare("INSERT OR IGNORE INTO integrations_dedupe (accountID, key) VALUES (?, ?)").run(accountID, key);
-}
-
-/**
  * Records the start of a sync run and returns the new syncRunID.
  * @param {string} accountID
  * @returns {number} syncRunID (SQLite AUTOINCREMENT rowid)
@@ -190,4 +140,4 @@ function syncRunFinish(syncRunID, error) {
   db.prepare("UPDATE integrations_sync_runs SET finishedAt = datetime('now', 'localtime'), success = ?, error= ? WHERE syncRunID = ?").run(error ? 0 : 1, error || null, syncRunID);  // success = 0 if error, 1 if success
 }
 
-module.exports = { listAccounts, setToken, getCursor, setCursor, dedupeCheck, dedupeAdd, syncRunStart, syncRunFinish};
+module.exports = { listAccounts, setToken, syncRunStart, syncRunFinish};

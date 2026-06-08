@@ -5,11 +5,10 @@
  * Maps productName strings (as stored in the devices table) to their converter modules.
  * Each converter must export:
  *   ensureAccessToken(context)   → { accessToken, expiresAt }
- *   pullChanges(context, opts)   → { events[], nextCursor, hasMore }
+ *   pullChanges(context)         → { events[], nextCursor, hasMore }
  *   getProperties()              → [{ name, valueType }]
  *
  * context = { accountID, provider, accessToken, refreshToken, expiresAt, metadata }
- * opts    = { cursor, pageLimit }
  * events  = [{ uuid, property, value, valueType, timestamp }]
  *
  * "uuid" in an event equals the device UUID (= accountID) so it matches

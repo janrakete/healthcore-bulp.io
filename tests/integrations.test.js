@@ -2,7 +2,7 @@
  * Integration Tests: CredentialEngine + server integration MQTT handlers
  * =======================================================================
  * Tests cover:
- *   - CredentialEngine: token update, cursor upsert/get, dedupe add/check, sync-run start/finish
+ *   - CredentialEngine: token update, sync-run start/finish
  *   - Server MQTT handler behaviour for each integrations topic (valid + invalid payloads)
  */
 
@@ -52,8 +52,6 @@ describe("CredentialEngine", () => {
 
   afterEach(() => {
     db.prepare("DELETE FROM integrations_accounts").run();
-    db.prepare("DELETE FROM integrations_cursors").run();
-    db.prepare("DELETE FROM integrations_dedupe").run();
     db.prepare("DELETE FROM integrations_sync_runs").run();
   });
 
@@ -87,46 +85,6 @@ describe("CredentialEngine", () => {
     const accounts = CredentialEngine.listAccounts();
     expect(accounts[0].accessToken).toBe("tok-null-expiry");
     expect(accounts[0].expiresAt).toBeNull();
-  });
-
-  // getCursor / setCursor
-  it("getCursor returns null when no cursor exists", () => {
-    const cursor = CredentialEngine.getCursor("acc-1");
-    expect(cursor).toBeNull();
-  });
-
-  it("setCursor and getCursor round-trip", () => {
-    CredentialEngine.setCursor("acc-1", "2024-01-01T00:00:00.000Z");
-    const cursor = CredentialEngine.getCursor("acc-1");
-    expect(cursor).toBe("2024-01-01T00:00:00.000Z");
-  });
-
-  it("setCursor upserts on second call", () => {
-    CredentialEngine.setCursor("acc-1", "2024-01-01T00:00:00.000Z");
-    CredentialEngine.setCursor("acc-1", "2024-06-01T00:00:00.000Z");
-    const cursor = CredentialEngine.getCursor("acc-1");
-    expect(cursor).toBe("2024-06-01T00:00:00.000Z");
-  });
-
-  // dedupeCheck / dedupeAdd
-  it("dedupeCheck returns false for unknown key", () => {
-    expect(CredentialEngine.dedupeCheck("acc-1", "key-xyz")).toBe(false);
-  });
-
-  it("dedupeAdd then dedupeCheck returns true", () => {
-    CredentialEngine.dedupeAdd("acc-1", "key-abc");
-    expect(CredentialEngine.dedupeCheck("acc-1", "key-abc")).toBe(true);
-  });
-
-  it("dedupeAdd is idempotent (no error on duplicate)", () => {
-    CredentialEngine.dedupeAdd("acc-1", "key-dup");
-    expect(() => CredentialEngine.dedupeAdd("acc-1", "key-dup")).not.toThrow();
-  });
-
-  it("dedupeCheck scopes by accountID", () => {
-    CredentialEngine.dedupeAdd("acc-1", "shared-key");
-    // Same key for a different account should NOT match
-    expect(CredentialEngine.dedupeCheck("acc-2", "shared-key")).toBe(false);
   });
 
   // syncRunStart / syncRunFinish
@@ -202,8 +160,6 @@ describe("Server integration MQTT handlers", () => {
 
   afterEach(() => {
     db.prepare("DELETE FROM integrations_accounts").run();
-    db.prepare("DELETE FROM integrations_cursors").run();
-    db.prepare("DELETE FROM integrations_dedupe").run();
     db.prepare("DELETE FROM integrations_sync_runs").run();
   });
 
@@ -246,78 +202,6 @@ describe("Server integration MQTT handlers", () => {
       integrationRespond(data, "accounts/tokens/set", { status: "ok", accountID: data.accountID });
     } catch (err) {
       integrationRespond(data, "accounts/tokens/set", { status: "error", error: err.message });
-    }
-  }
-
-  async function handleCursorGet(data) {
-    if (!data.bridge || !data.callID)
-    {
-      return;
-    }
-    if (!data.accountID)
-    {
-      integrationRespond(data, "cursor/get", { status: "error", error: "accountID is required" });
-      return;
-    }
-    try {
-      const cursor = CredentialEngine.getCursor(data.accountID);
-      integrationRespond(data, "cursor/get", { status: "ok", accountID: data.accountID, cursor });
-    } catch (err) {
-      integrationRespond(data, "cursor/get", { status: "error", error: err.message });
-    }
-  }
-
-  async function handleCursorSet(data) {
-    if (!data.bridge || !data.callID)
-    {
-      return;
-    }
-    if (!data.accountID || data.cursor === undefined || data.cursor === null)
-    {
-      integrationRespond(data, "cursor/set", { status: "error", error: "accountID and cursor are required" });
-      return;
-    }
-    try {
-      CredentialEngine.setCursor(data.accountID, data.cursor);
-      integrationRespond(data, "cursor/set", { status: "ok", accountID: data.accountID });
-    } catch (err) {
-      integrationRespond(data, "cursor/set", { status: "error", error: err.message });
-    }
-  }
-
-  async function handleDedupeCheck(data) {
-    if (!data.bridge || !data.callID)
-    {
-      return;
-    }
-    if (!data.accountID || !data.key)
-    {
-      integrationRespond(data, "dedupe/check", { status: "error", error: "accountID and key are required" });
-      return;
-    }
-    try {
-      const exists = CredentialEngine.dedupeCheck(data.accountID, data.key);
-      integrationRespond(data, "dedupe/check", { status: "ok", accountID: data.accountID, key: data.key, exists });
-    } catch (err) {
-      integrationRespond(data, "dedupe/check", { status: "error", error: err.message });
-    }
-  }
-
-  async function handleDedupeAdd(data) {
-    if (!data.bridge || !data.callID)
-    {
-      return;
-    }
-    if (!data.accountID || !data.key)
-    {
-      integrationRespond(data, "dedupe/add", { status: "error", error: "accountID and key are required" });
-      return;
-    }
-    try {
-      CredentialEngine.dedupeAdd(data.accountID, data.key);
-      integrationRespond(data, "dedupe/add", { status: "ok", accountID: data.accountID });
-    } catch (err) {
-      integrationRespond(data, "dedupe/add", { status: "error", error: err.message });
     }
   }
 
@@ -392,54 +276,6 @@ describe("Server integration MQTT handlers", () => {
 
   it("accounts/tokens/set: returns error when accessToken missing", async () => {
     await handleTokensSet({ bridge: BRIDGE, callID: "c3", accountID: "h-acc" });
-    const [, raw] = global.mqttClient.publish.mock.calls[0];
-    expect(JSON.parse(raw).status).toBe("error");
-  });
-
-  // ── cursor/get + cursor/set ────────────────────────────────────────────────
-
-  it("cursor/get: returns null cursor initially", async () => {
-    await handleCursorGet({ bridge: BRIDGE, callID: "c4", accountID: "h-acc" });
-    const [, raw] = global.mqttClient.publish.mock.calls[0];
-    const body    = JSON.parse(raw);
-    expect(body.status).toBe("ok");
-    expect(body.cursor).toBeNull();
-  });
-
-  it("cursor/set then cursor/get reflects updated value", async () => {
-    await handleCursorSet({ bridge: BRIDGE, callID: "c5", accountID: "h-acc", cursor: "2024-03-01T00:00:00.000Z" });
-    global.mqttClient.publish.mockClear();
-    await handleCursorGet({ bridge: BRIDGE, callID: "c6", accountID: "h-acc" });
-    const [, raw] = global.mqttClient.publish.mock.calls[0];
-    expect(JSON.parse(raw).cursor).toBe("2024-03-01T00:00:00.000Z");
-  });
-
-  it("cursor/set: returns error when cursor missing", async () => {
-    await handleCursorSet({ bridge: BRIDGE, callID: "c7", accountID: "h-acc" }); // no cursor
-    const [, raw] = global.mqttClient.publish.mock.calls[0];
-    expect(JSON.parse(raw).status).toBe("error");
-  });
-
-  // ── dedupe/check + dedupe/add ──────────────────────────────────────────────
-
-  it("dedupe/check: returns exists=false for new key", async () => {
-    await handleDedupeCheck({ bridge: BRIDGE, callID: "c8", accountID: "h-acc", key: "unique-key" });
-    const [, raw] = global.mqttClient.publish.mock.calls[0];
-    const body    = JSON.parse(raw);
-    expect(body.status).toBe("ok");
-    expect(body.exists).toBe(false);
-  });
-
-  it("dedupe/add then dedupe/check: returns exists=true", async () => {
-    await handleDedupeAdd({ bridge: BRIDGE, callID: "c9", accountID: "h-acc", key: "dup-key" });
-    global.mqttClient.publish.mockClear();
-    await handleDedupeCheck({ bridge: BRIDGE, callID: "c10", accountID: "h-acc", key: "dup-key" });
-    const [, raw] = global.mqttClient.publish.mock.calls[0];
-    expect(JSON.parse(raw).exists).toBe(true);
-  });
-
-  it("dedupe/check: returns error when key missing", async () => {
-    await handleDedupeCheck({ bridge: BRIDGE, callID: "c11", accountID: "h-acc" }); // no key
     const [, raw] = global.mqttClient.publish.mock.calls[0];
     expect(JSON.parse(raw).status).toBe("error");
   });

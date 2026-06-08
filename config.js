@@ -76,8 +76,6 @@ const appConfig = {
   CONF_alertsLanguage                                 : process.env.CONF_alertsLanguage,
   CONF_integrationsServiceSyncIntervalMs              : toInt(process.env.CONF_integrationsServiceSyncIntervalMs),
   CONF_integrationsServiceRpcTimeoutMs                : toInt(process.env.CONF_integrationsServiceRpcTimeoutMs),
-  CONF_integrationsServicePageLimit                   : toInt(process.env.CONF_integrationsServicePageLimit),
-  CONF_integrationsServiceMaxPages                    : toInt(process.env.CONF_integrationsServiceMaxPages),
   CONF_tablesAllowedForAPI                            : (process.env.CONF_tablesAllowedForAPI || "").split(",").map(table => table.trim()).filter(Boolean),
   CONF_tablesMaxEntriesReturned                       : toInt(process.env.CONF_tablesMaxEntriesReturned),
   CONF_apiCallTimeoutMilliseconds                     : toInt(process.env.CONF_apiCallTimeoutMilliseconds),

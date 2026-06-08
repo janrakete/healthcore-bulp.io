@@ -4,17 +4,14 @@
  * =======================
  * Converter contract:
  *   ensureAccessToken(context)  → { accessToken, expiresAt }
- *   pullChanges(context, opts)  → { events[], nextCursor, hasMore }
+ *   pullChanges(context)        → { events[], nextCursor, hasMore }
  *   getProperties()             → [{ name, valueType }]
  *
  * context = { accountID, provider, accessToken, refreshToken, expiresAt, metadata }
- * opts    = { cursor, pageLimit }
  *
  * Events use uuid = context.accountID so each Google Health account maps to exactly
  * one device in the devices table. Multiple data streams become multiple properties
  * on that single device.
- *
- * All persistence is done by the caller (integrations bridge) via MQTT-RPC to the server.
  */
 
 const https   = require("https");
@@ -23,14 +20,205 @@ const common  = require("../../common");
 const GOOGLE_TOKEN_URL       = "https://oauth2.googleapis.com/token"; // Google OAuth token endpoint
 const GOOGLE_HEALTH_BASE_URL = "https://health.googleapis.com/v4";   // Google Health API v4 base URL
 
-// Maps exercise metricsSummary fields to canonical property names.
-// Note: Google's API uses "distanceMillimiters" (their spelling) in the response.
-const METRICS_SUMMARY_MAP = {
-  steps:                          "steps",
-  caloriesKcal:                   "caloriesExpended",
-  distanceMillimiters:            "distance",
-  averageHeartRateBeatsPerMinute: "heartRate",
+// Selected Google Health data types to poll each sync cycle.
+const GOOGLE_DATA_TYPES = [
+  { id: "heart-rate",             field: "heartRate" },
+  { id: "oxygen-saturation",      field: "oxygenSaturation" },
+  { id: "core-body-temperature",  field: "coreBodyTemperature" },
+  { id: "active-energy-burned",   field: "activeEnergyBurned" },
+  { id: "blood-glucose",          field: "bloodGlucose" }
+];
+
+// One canonical numeric metric per selected data type to avoid event spam.
+const PRIMARY_METRIC_PATHS = {
+  heartRate:            "beatsPerMinute",
+  oxygenSaturation:     "percentage",
+  coreBodyTemperature:  "temperatureCelsius",
+  activeEnergyBurned:   "kcal",
+  bloodGlucose:         "bloodGlucoseMilligramsPerDeciliter",
 };
+
+/**
+ * Extracts a numeric value from Google metric payloads.
+ * Supports plain numbers/strings and common wrapped shapes.
+ * @param {*} rawValue
+ * @returns {number|null}
+ */
+function extractNumericValue(rawValue) {
+  if (rawValue === undefined || rawValue === null) {
+    return null;
+  }
+
+  if (typeof rawValue === "number") {
+    return Number.isFinite(rawValue) ? rawValue : null;
+  }
+
+  if (typeof rawValue === "string") {
+    const parsedValue = Number(rawValue);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  if (typeof rawValue === "object") {
+    const candidateKeys = ["value", "numericValue", "intValue", "floatValue", "doubleValue"];
+    for (const key of candidateKeys) {
+      if (rawValue[key] === undefined || rawValue[key] === null) {
+        continue;
+      }
+
+      const parsedValue = Number(rawValue[key]);
+      if (Number.isFinite(parsedValue)) {
+        return parsedValue;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Converts a Date object payload ({year, month, day}) to a UTC ISO timestamp.
+ * @param {{year?: number, month?: number, day?: number}} dateObject
+ * @returns {string|null}
+ */
+function dateObjectToIso(dateObject) {
+  if (!dateObject || typeof dateObject !== "object") {
+    return null;
+  }
+
+  const year  = Number(dateObject.year);
+  const month = Number(dateObject.month);
+  const day   = Number(dateObject.day);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || year <= 0 || month <= 0 || day <= 0) {
+    return null;
+  }
+
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString();
+}
+
+/**
+ * Picks the best timestamp from a data point payload.
+ * @param {Object} point
+ * @param {Object} payload
+ * @returns {string}
+ */
+function resolveDataPointTimestamp(point, payload) {
+  const candidateTimestamps = [
+    payload?.interval?.startTime,
+    payload?.sampleTime?.physicalTime,
+    payload?.eventTime,
+    payload?.createTime,
+    payload?.updateTime,
+    point?.createTime,
+    point?.updateTime,
+  ];
+
+  for (const timestamp of candidateTimestamps) {
+    if (timestamp) {
+      return timestamp;
+    }
+  }
+
+  const dateTimestamp = dateObjectToIso(payload?.date);
+  if (dateTimestamp) {
+    return dateTimestamp;
+  }
+
+  return new Date().toISOString();
+}
+
+/**
+ * Reads a nested object path like "a.b.c" safely.
+ * @param {Object} objectValue
+ * @param {string} path
+ * @returns {*}
+ */
+function getValueAtPath(objectValue, path) {
+  if (!objectValue || typeof objectValue !== "object" || !path) {
+    return undefined;
+  }
+
+  const pathParts = path.split(".");
+  let currentValue = objectValue;
+
+  for (const part of pathParts) {
+    if (currentValue === null || currentValue === undefined || typeof currentValue !== "object") {
+      return undefined;
+    }
+
+    currentValue = currentValue[part];
+  }
+
+  return currentValue;
+}
+
+/**
+ * Maps a raw Google Health data point into canonical numeric events.
+ * @param {Object} point
+ * @param {string} accountID
+ * @param {string} dataField
+ * @returns {Object[]}
+ */
+function mapDataPoint(point, accountID, dataField) {
+  const payload = point[dataField];
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const metricPath = PRIMARY_METRIC_PATHS[dataField];
+  if (!metricPath) {
+    return [];
+  }
+
+  const rawMetricValue = getValueAtPath(payload, metricPath);
+  const numericValue   = extractNumericValue(rawMetricValue);
+  if (numericValue === null) {
+    return [];
+  }
+
+  const timestamp = resolveDataPointTimestamp(point, payload);
+
+  return [{
+    uuid:      accountID,
+    property:  dataField,
+    value:     numericValue,
+    valueType: "Numeric",
+    timestamp: timestamp,
+  }];
+}
+
+/**
+ * Picks the latest data point by resolved timestamp.
+ * @param {Object[]} points
+ * @param {string} dataField
+ * @returns {Object|null}
+ */
+function pickLatestDataPoint(points, dataField) {
+  if (!Array.isArray(points) || points.length === 0) {
+    return null;
+  }
+
+  let latestPoint = null;
+  let latestMs    = -Infinity; // Initialize to -Infinity to ensure any valid timestamp is greater
+
+  for (const point of points) {
+    const payload = point && point[dataField];
+    if (!payload || typeof payload !== "object") {
+      continue;
+    }
+
+    const timestamp = resolveDataPointTimestamp(point, payload);
+    const parsedMs  = new Date(timestamp).getTime();
+    const pointMs   = Number.isFinite(parsedMs) ? parsedMs : 0;
+
+    if (latestPoint === null || pointMs > latestMs) {
+      latestPoint = point;
+      latestMs    = pointMs;
+    }
+  }
+
+  return latestPoint;
+}
 
 /**
  * Performs an HTTPS request and returns the parsed JSON body.
@@ -67,7 +255,7 @@ function httpsRequest(method, url, opts = {}) {
       response.on("end", function () {
         common.conLog("Integrations (Google Health): " + method + " " + url, "yel");
         common.conLog("Status: " + response.statusCode, "std", false);
-        common.conLog("Response: " + responseBody, "std", false);
+        common.conLog("Response: " + responseBody, "std", false, false);
 
         if (response.statusCode === 401) {
           return reject(new Error("Integrations (Google Health): 401 Unauthorized — access token may be expired"));
@@ -143,123 +331,57 @@ async function ensureAccessToken(context) {
 }
 
 /**
- * Maps a Google Health API v4 exercise data point to an array of canonical metric events.
- * Each metricsSummary field that is present in METRICS_SUMMARY_MAP yields one event.
- * The event uuid equals accountID so it maps directly to the registered device.
- * @param {Object} point     - Raw data point from the Health API v4 (exercise type).
- * @param {string} accountID - Account identifier (used as device UUID).
- * @returns {Object[]} Array of canonical events (may be empty if no metrics found).
- */
-function mapExerciseDataPoint(point, accountID) {
-  const events   = [];
-  const exercise = point.exercise;
-
-  if (!exercise || !exercise.metricsSummary) {
-    return events;
-  }
-
-  // Use the exercise start time as the event timestamp
-  const timestamp = exercise.interval && exercise.interval.startTime
-    ? exercise.interval.startTime
-    : new Date().toISOString();
-
-  for (const [summaryKey, property] of Object.entries(METRICS_SUMMARY_MAP)) {
-    const rawValue = exercise.metricsSummary[summaryKey];
-    if (rawValue === undefined || rawValue === null) {
-      continue;
-    }
-
-    const numericValue = Number(rawValue); // metricsSummary values may be strings (e.g. steps)
-    if (isNaN(numericValue)) {
-      continue;
-    }
-
-    events.push({
-      uuid:      accountID, // one device per account — UUID matches the devices table row
-      property:  property,
-      value:     numericValue,
-      valueType: "Numeric",
-      timestamp: timestamp,
-    });
-  }
-
-  return events;
-}
-
-/**
- * Pulls changed exercise data points from Google Health API v4.
- * Uses the cursor as the start of the time window for the civil_start_time filter.
- * Paginates through all pages up to opts.pageLimit total events.
+ * Pulls latest Google Health data points for the selected data types.
+ * One request per data type per sync cycle; one latest numeric value per type.
  *
  * @param {Object} context - Account context including a valid accessToken.
- * @param {Object} opts
- * @param {string|null} opts.cursor    - ISO timestamp of last sync end (or null for 24 h lookback).
- * @param {number} opts.pageLimit      - Max events to return in total.
  * @returns {Promise<{events: Object[], nextCursor: string, hasMore: boolean}>}
  */
-async function pullChanges(context, opts) {
-  const pageLimit = opts.pageLimit || 100;
+async function pullChanges(context) {
 
-  const endMs   = Date.now(); // Define the time window: cursor → now
-  const startMs = opts.cursor ? new Date(opts.cursor).getTime() : endMs - 24 * 60 * 60 * 1000; // 24 h default lookback
-
-  // Build the civil_start_time filter (format: "YYYY-MM-DDTHH:MM:SS", no trailing Z)
-  const startCivil = new Date(startMs).toISOString().slice(0, 19);
-  const filter     = "exercise.interval.civil_start_time >= \"" + startCivil + "\"";
-  const baseUrl    = GOOGLE_HEALTH_BASE_URL + "/users/me/dataTypes/exercise/dataPoints?filter=" + encodeURIComponent(filter);
-
+  const endMs   = Date.now();
   const events  = [];
-  let   hasMore = false;
-  let   nextPageToken = null;
 
-  do {
-    const url = nextPageToken ? baseUrl + "&pageToken=" + encodeURIComponent(nextPageToken) : baseUrl;
+  for (const dataType of GOOGLE_DATA_TYPES) {
+    const url = GOOGLE_HEALTH_BASE_URL + "/users/me/dataTypes/" + dataType.id + "/dataPoints?pageSize=1";
 
     let result;
     try {
       result = await httpsRequest("GET", url, { token: context.accessToken });
     }
     catch (error) {
-      common.conLog("Integrations (Google Health): exercise fetch error: " + error.message, "red"); // Log and abort pagination; return what we have so far
-      break;
+      common.conLog("Integrations (Google Health): fetch error for " + dataType.id + ": " + error.message, "red");
+      continue;
     }
 
-    if (result.dataPoints && Array.isArray(result.dataPoints)) { // Map each exercise data point to one event per available metric
-      for (const point of result.dataPoints) {
-        const pointEvents = mapExerciseDataPoint(point, context.accountID);
-        for (const event of pointEvents) {
-          events.push(event);
-          if (events.length >= pageLimit) {
-            hasMore = true;
-            break;
-          }
-        }
-        if (events.length >= pageLimit) {
-          break;
-        }
-      }
+    if (!Array.isArray(result.dataPoints) || result.dataPoints.length === 0) {
+      continue;
     }
 
-    nextPageToken = result.nextPageToken || null;
-  } while (nextPageToken && events.length < pageLimit);
+    const latestPoint = pickLatestDataPoint(result.dataPoints, dataType.field);
+    if (!latestPoint) {
+      continue;
+    }
 
-  if (nextPageToken && events.length >= pageLimit) {
-    hasMore = true; // more pages exist that we did not fetch
+    const pointEvents = mapDataPoint(latestPoint, context.accountID, dataType.field);
+    for (const event of pointEvents) {
+      events.push(event);
+    }
   }
 
   const nextCursor = new Date(endMs).toISOString();
-  return { events, nextCursor, hasMore };
+  return { events, nextCursor, hasMore: false };
 }
 
 /**
- * Returns the list of properties this converter can emit, derived from METRICS_SUMMARY_MAP.
+ * Returns the list of properties this converter can emit for selected data types.
  * Used by the server to populate the device's property list.
  * @returns {{ name: string, standard: boolean, notify: boolean, read: boolean, write: boolean, anyValue: any, valueType: string }[]}
  */
 function getProperties() {
-  return Object.values(METRICS_SUMMARY_MAP).map(function (name) {
+  return GOOGLE_DATA_TYPES.map(function (dataType) {
     return {
-      name:      name,
+      name:      dataType.field,
       standard:  false,
       notify:    true,
       read:      true,

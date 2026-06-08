@@ -99,7 +99,7 @@ async function startBridge() {
    * ===============
    * Publishes a request to a server/integrations/* topic and returns a Promise that resolves
    * when the matching /response message arrives (correlated by callID).
-   * @param {string} topic   - Server topic to publish to (e.g. "server/integrations/cursor/get").
+  * @param {string} topic   - Server topic to publish to (e.g. "server/integrations/accounts/list").
    * @param {Object} payload - Request payload; callID and bridge are added automatically.
    * @returns {Promise<Object>} Resolved with the parsed response payload.
    */
@@ -219,12 +219,9 @@ async function startBridge() {
    *   1. Looks up credentials in integrations_accounts (accountID = device UUID).
    *   2. Refreshes the access token via the provider converter.
    *   3. Persists the new token to the server (via MQTT-RPC).
-   *   4. Reads the last cursor.
-   *   5. Pulls changed events page by page (up to CONF_integrationsServiceMaxPages).
-   *   6. Deduplicates each event before emitting.
-   *   7. Emits device values via server/devices/values/get (device already exists — no create needed).
-   *   8. Persists the new cursor.
-   *   9. Records the sync run outcome.
+   *   4. Pulls the latest events from the provider converter.
+   *   5. Emits device values via server/devices/values/get (device already exists — no create needed).
+   *   6. Records the sync run outcome.
    */
   let syncRunning = false; // guard to prevent overlapping sync cycles
 
@@ -290,62 +287,28 @@ async function startBridge() {
             accessToken: tokenResult.accessToken,
             expiresAt:   tokenResult.expiresAt,
           });
+          
+          common.conLog("Integrations: Access token refreshed for device " + deviceUuid, "gre");
           account.accessToken = tokenResult.accessToken; // update local copy so subsequent checks see the new value
           account.expiresAt   = tokenResult.expiresAt;
         }
         
-        const cursorResp = await rpcCall("server/integrations/cursor/get", { accountID: deviceUuid }); // 3. Read cursor (marks the end of the last successful sync window)
-        let   cursor     = cursorResp.cursor || null;
+        const pullResult = await converter.pullChanges(account); // 4. Pull latest provider values once per sync cycle
 
-        const maxPages  = appConfig.CONF_integrationsServiceMaxPages;
-        const pageLimit = appConfig.CONF_integrationsServicePageLimit;
-        let   pageCount = 0;
-        let   hasMore   = true;
-        
-        while (hasMore && pageCount < maxPages) { // 4. Pull pages until the converter signals no more data or we hit the page cap
-          const pullResult = await converter.pullChanges(account, { cursor, pageLimit });
-          pageCount++;
-          
-          for (const event of pullResult.events) { // 5 + 6. Deduplicate and emit each event
-            const dedupeKey = event.uuid + "::" + event.property + "::" + event.timestamp; // unique per device + property + timestamp
-
-            const dedupeResp = await rpcCall("server/integrations/dedupe/check", {
-              accountID: deviceUuid,
-              key:       dedupeKey,
-            });
-
-            if (dedupeResp.exists) {
-              continue; // already emitted in a previous sync cycle
-            }
-
-            // 7. Emit via standard device values path (device already exists — no create needed)
-            let message    = {};
-            message.uuid   = event.uuid; // equals deviceUuid (one device per account)
-            message.bridge = BRIDGE_PREFIX;
-            message.values = { [event.property]: { value: event.value, valueType: event.valueType } };
-            mqttClient.publish("server/devices/values/get", JSON.stringify(message));
-
-            await rpcCall("server/integrations/dedupe/add", { // record dedupe key so it is not re-emitted in future cycles
-              accountID: deviceUuid,
-              key:       dedupeKey,
-            });
-          }
-
-          cursor  = pullResult.nextCursor;
-          hasMore = pullResult.hasMore;
+        for (const event of pullResult.events) { // 5. Emit each event via standard device values path
+          let message    = {};
+          message.uuid   = event.uuid; // equals deviceUuid (one device per account)
+          message.bridge = BRIDGE_PREFIX;
+          message.values = { [event.property]: { value: event.value, valueAsNumeric: Number(event.value), valueType: event.valueType } };
+          mqttClient.publish("server/devices/values/get", JSON.stringify(message));
         }
-        
-        await rpcCall("server/integrations/cursor/set", { // 8. Persist the new cursor so the next cycle starts from where we left off
-          accountID: deviceUuid,
-          cursor:    cursor,
-        });
       }
       catch (error) {
         syncError = error.message;
         common.conLog("Integrations: Sync error for device " + deviceUuid + ": " + error.message, "red");
       }
       
-      try { // 9. Finish the sync run record regardless of success or failure
+      try { // 6. Finish the sync run record regardless of success or failure
         await rpcCall("server/integrations/syncrun/finish", {
           syncRunID: syncRunID,
           error:     syncError,
@@ -453,6 +416,10 @@ async function startBridge() {
       bridgeStatus.devicesRegisteredAtServer.set(device.uuid, device);
     }
     common.conLog("Integrations: Listed all registered integrations devices from server and set bridge status", "gre");
+
+    // Refreshing the device list can arrive after the scheduler already started.
+    // Kick off a sync immediately so newly available accounts do not wait for the next interval.
+    runIntegrationsSync();
   }
 
   /**

@@ -313,18 +313,6 @@ async function startServer() {
         case "server/integrations/accounts/tokens/set":
           await mqttIntegrationsAccountsTokensSet(data);
           break;
-        case "server/integrations/cursor/get":
-          await mqttIntegrationsCursorGet(data);
-          break;
-        case "server/integrations/cursor/set":
-          await mqttIntegrationsCursorSet(data);
-          break;
-        case "server/integrations/dedupe/check":
-          await mqttIntegrationsDedupeCheck(data);
-          break;
-        case "server/integrations/dedupe/add":
-          await mqttIntegrationsDedupeAdd(data);
-          break;
         case "server/integrations/syncrun/start":
           await mqttIntegrationsSyncRunStart(data);
           break;
@@ -742,10 +730,12 @@ async function startServer() {
       common.conLog("Server: integrations/accounts/tokens/set: missing bridge or callID", "red");
       return;
     }
+
     if (!data.accountID || !data.accessToken) {
       integrationRespond(data, "accounts/tokens/set", { status: "error", error: "accountID and accessToken are required" });
       return;
     }
+
     try {
       credentialEngine.setToken(data.accountID, data.accessToken, data.expiresAt || null);
       integrationRespond(data, "accounts/tokens/set", { status: "ok", accountID: data.accountID });
@@ -753,98 +743,6 @@ async function startServer() {
     catch (error) {
       common.conLog("Server: integrations/accounts/tokens/set error: " + error.message, "red");
       integrationRespond(data, "accounts/tokens/set", { status: "error", error: error.message });
-    }
-  }
-
-  /**
-   * Read the sync cursor for an account.
-   * Required: bridge, callID, accountID
-   */
-  async function mqttIntegrationsCursorGet(data) {
-    if (!data.bridge || !data.callID) {
-      common.conLog("Server: integrations/cursor/get: missing bridge or callID", "red");
-      return;
-    }
-    if (!data.accountID) {
-      integrationRespond(data, "cursor/get", { status: "error", error: "accountID is required" });
-      return;
-    }
-    try {
-      const cursor = credentialEngine.getCursor(data.accountID);
-      integrationRespond(data, "cursor/get", { status: "ok", accountID: data.accountID, cursor });
-    }
-    catch (error) {
-      common.conLog("Server: integrations/cursor/get error: " + error.message, "red");
-      integrationRespond(data, "cursor/get", { status: "error", error: error.message });
-    }
-  }
-
-  /**
-   * Persist the sync cursor for an account (UPSERT).
-   * Required: bridge, callID, accountID, cursor
-   */
-  async function mqttIntegrationsCursorSet(data) {
-    if (!data.bridge || !data.callID) {
-      common.conLog("Server: integrations/cursor/set: missing bridge or callID", "red");
-      return;
-    }
-    if (!data.accountID || data.cursor === undefined || data.cursor === null) {
-      integrationRespond(data, "cursor/set", { status: "error", error: "accountID and cursor are required" });
-      return;
-    }
-    try {
-      credentialEngine.setCursor(data.accountID, data.cursor);
-      integrationRespond(data, "cursor/set", { status: "ok", accountID: data.accountID });
-    }
-    catch (error) {
-      common.conLog("Server: integrations/cursor/set error: " + error.message, "red");
-      integrationRespond(data, "cursor/set", { status: "error", error: error.message });
-    }
-  }
-
-  /**
-   * Check whether a dedupe key has already been emitted.
-   * Required: bridge, callID, accountID, key
-   */
-  async function mqttIntegrationsDedupeCheck(data) {
-    if (!data.bridge || !data.callID) {
-      common.conLog("Server: integrations/dedupe/check: missing bridge or callID", "red");
-      return;
-    }
-    if (!data.accountID || !data.key) {
-      integrationRespond(data, "dedupe/check", { status: "error", error: "accountID and key are required" });
-      return;
-    }
-    try {
-      const exists = credentialEngine.dedupeCheck(data.accountID, data.key);
-      integrationRespond(data, "dedupe/check", { status: "ok", accountID: data.accountID, key: data.key, exists });
-    }
-    catch (error) {
-      common.conLog("Server: integrations/dedupe/check error: " + error.message, "red");
-      integrationRespond(data, "dedupe/check", { status: "error", error: error.message });
-    }
-  }
-
-  /**
-   * Add a dedupe key so subsequent emits are skipped.
-   * Required: bridge, callID, accountID, key
-   */
-  async function mqttIntegrationsDedupeAdd(data) {
-    if (!data.bridge || !data.callID) {
-      common.conLog("Server: integrations/dedupe/add: missing bridge or callID", "red");
-      return;
-    }
-    if (!data.accountID || !data.key) {
-      integrationRespond(data, "dedupe/add", { status: "error", error: "accountID and key are required" });
-      return;
-    }
-    try {
-      credentialEngine.dedupeAdd(data.accountID, data.key);
-      integrationRespond(data, "dedupe/add", { status: "ok", accountID: data.accountID });
-    }
-    catch (error) {
-      common.conLog("Server: integrations/dedupe/add error: " + error.message, "red");
-      integrationRespond(data, "dedupe/add", { status: "error", error: error.message });
     }
   }
 
@@ -858,10 +756,12 @@ async function startServer() {
       common.conLog("Server: integrations/syncrun/start: missing bridge or callID", "red");
       return;
     }
+
     if (!data.accountID) {
       integrationRespond(data, "syncrun/start", { status: "error", error: "accountID is required" });
       return;
     }
+
     try {
       const syncRunID = credentialEngine.syncRunStart(data.accountID);
       integrationRespond(data, "syncrun/start", { status: "ok", accountID: data.accountID, syncRunID });
@@ -882,10 +782,12 @@ async function startServer() {
       common.conLog("Server: integrations/syncrun/finish: missing bridge or callID", "red");
       return;
     }
+
     if (!data.syncRunID) {
       integrationRespond(data, "syncrun/finish", { status: "error", error: "syncRunID is required" });
       return;
     }
+    
     try {
       credentialEngine.syncRunFinish(data.syncRunID, data.error || null);
       integrationRespond(data, "syncrun/finish", { status: "ok", syncRunID: data.syncRunID });
