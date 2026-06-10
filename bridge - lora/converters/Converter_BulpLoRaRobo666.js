@@ -14,7 +14,7 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
         this.powerType  = "BATTERY";
 
         this.properties[0] = {
-            name:       "heartrate",
+            name:       "heartRate",
             read:       true,
             anyValue:   0,
             valueType:  "Numeric"
@@ -38,7 +38,7 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
         let propertiesAndValuesConverted    = {};
 
         // split the input string into an array of property-value pairs
-        propertiesAndValues.push({ "heartrate": values.substring(0, 1) });
+        propertiesAndValues.push({ "heartRate": values.substring(0, 1) });
         propertiesAndValues.push({ "color": values.substring(1, 2) });
 
         for (const propertyAndValue of propertiesAndValues) { // for each property-value object in array
@@ -54,7 +54,7 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
                 let propertyAndValueConverted = {};
 
                 switch (property.name) {
-                    case "heartrate":
+                    case "heartRate":
                         propertyAndValueConverted[property.name] = {"value": value * 1000, "valueAsNumeric": value * 1000};
                         break;
                     case "color":

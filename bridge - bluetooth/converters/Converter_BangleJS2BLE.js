@@ -42,12 +42,12 @@ class Converter_BangleJS2BLE extends ConverterStandard {
                     valueType: "Options"
                 },
                 h: {
-                    name: "heartrate",
+                    name: "heartRate",
                     standard:    false,
                     notify:      true,
                     read:        true,
                     write:       false,
-                    anyValue: 0,
+                    anyValue:    0,
                     valueType: "Numeric"
                 }
             }
@@ -93,7 +93,7 @@ class Converter_BangleJS2BLE extends ConverterStandard {
                     case "a":
                         return {"name": "alarm", "value": valueParsed.v === "1" ? "on" : "off", "valueAsNumeric": Number(valueParsed.v)};
                     case "h":
-                        return {"name": "heartrate", "value": Number(valueParsed.v), "valueAsNumeric": Number(valueParsed.v)};
+                        return {"name": "heartRate", "value": Number(valueParsed.v), "valueAsNumeric": Number(valueParsed.v)};
                     default:
                         return undefined;                        
                 }

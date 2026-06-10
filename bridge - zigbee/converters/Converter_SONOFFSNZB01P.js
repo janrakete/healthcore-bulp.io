@@ -20,7 +20,7 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
             notify:      true,
             read:        true,
             write:       false,
-            anyValue:    ["pressed", "not_pressed", "long_pressed", "double_pressed"],
+            anyValue:    ["pressed", "notPressed", "longPressed", "doublePressed"],
             valueType:   "Options"
         };
     }
@@ -39,11 +39,11 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
                         case "commandToggle":
                             return {"value": "pressed", "valueAsNumeric": 1};
                         case "commandOff":
-                            return {"value": "long_pressed", "valueAsNumeric": 2};
+                            return {"value": "longPressed", "valueAsNumeric": 2};
                         case "commandOn":
-                            return {"value": "double_pressed", "valueAsNumeric": 3};
+                            return {"value": "doublePressed", "valueAsNumeric": 3};
                         default:
-                            return {"value": "not_pressed", "valueAsNumeric": 0};
+                            return {"value": "notPressed", "valueAsNumeric": 0};
                     }
                 }
                 else {

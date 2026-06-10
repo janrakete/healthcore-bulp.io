@@ -164,7 +164,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
 
           // Define the properties supported by this device, using their Bluetooth UUIDs as keys. Each property object contains metadata used for conversion and access control.
           this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
-              name:        "rotary_switch", // property name (easy to understand)
+              name:        "rotarySwitch", // property name (easy to understand)
               notify:      true, // notify healthcore if this value changes
               read:        true, // read access
               write:       false, // write access
@@ -196,7 +196,7 @@ The **Own converters** subsystem lets you transform raw device data (e.g., binar
               }
               else { // device-specific conversion logic
                 switch (property.name) {
-                    case "rotary_switch":
+                    case "rotarySwitch":
                         const buf = Buffer.from(value);
                         return {"value": buf[0], "valueAsNumeric": buf[0]};
                     case "speaker":

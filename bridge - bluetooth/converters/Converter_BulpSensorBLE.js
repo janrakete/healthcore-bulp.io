@@ -15,7 +15,7 @@ class Converter_BulpSensorBLE extends ConverterStandard {
         this.vendorName     = "bulp";
 
         this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
-            name:        "rotary_switch",
+            name:        "rotarySwitch",
             notify:      true,
             read:        true,
             write:       false,
@@ -28,7 +28,7 @@ class Converter_BulpSensorBLE extends ConverterStandard {
             notify:      true,
             read:        true,
             write:       false,
-            anyValue:    ["pressed", "not_pressed"],
+            anyValue:    ["pressed", "notPressed"],
             valueType:   "Options"
         };
 
@@ -74,11 +74,11 @@ class Converter_BulpSensorBLE extends ConverterStandard {
             }
             else {
                 switch (property.name) {
-                    case "rotary_switch":
+                    case "rotarySwitch":
                         const buf = Buffer.from(value);
                         return {"value": buf[0], "valueAsNumeric": buf[0]};
                     case "button":
-                        return value[0] === 1 ? {"value": "pressed", "valueAsNumeric": 1} : {"value": "not_pressed", "valueAsNumeric": 0};
+                        return value[0] === 1 ? {"value": "pressed", "valueAsNumeric": 1} : {"value": "notPressed", "valueAsNumeric": 0};
                     case "speaker":
                         return value[0] === 1 ? {"value": "on", "valueAsNumeric": 1} : {"value": "off", "valueAsNumeric": 0};
                     case "led":

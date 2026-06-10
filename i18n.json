@@ -47,15 +47,15 @@
         "de": "Licht",
         "en": "Light"
     },
-    "Alarm": {
+    "alarm": {
         "de": "Alarm",
         "en": "Alarm"
     },
-    "heartrate": {
+    "heartRate": {
         "de": "Herzfrequenz",
         "en": "Heart rate"
     },
-    "rotary_switch": {
+    "rotarySwitch": {
         "de": "Drehschalter",
         "en": "Rotary switch"
     },
@@ -63,7 +63,7 @@
         "de": "Gedrückt",
         "en": "Pressed"
     },
-    "not_pressed": {
+    "notPressed": {
         "de": "Nicht gedrückt",
         "en": "Not pressed"
     },
@@ -75,11 +75,11 @@
         "de": "LED",
         "en": "LED"
     },
-    "long_pressed": {
+    "longPressed": {
         "de": "Lange gedrückt",
         "en": "Long pressed"
     },
-    "double_pressed": {
+    "doublePressed": {
         "de": "Doppelt gedrückt",
         "en": "Double pressed"
     },
@@ -130,6 +130,22 @@
     "fall": {
         "de": "Sturz",
         "en": "Fall"
+    },
+    "oxygenSaturation": {
+        "de": "Sauerstoffsättigung",
+        "en": "Oxygen saturation"
+    },
+    "coreBodyTemperature": {
+        "de": "Körperkerntemperatur",
+        "en": "Core body temperature"
+    },
+    "activeEnergyBurned": {
+        "de": "Aktiv verbrannte Energie",
+        "en": "Active energy burned"
+    },
+    "bloodGlucose": {
+        "de": "Blutzucker",
+        "en": "Blood glucose"
     },
     "alertTitleDeviceOffline": {
         "de": "Gerät offline",
