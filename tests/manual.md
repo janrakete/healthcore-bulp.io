@@ -81,6 +81,7 @@ These tests require real hardware, running services, or the mobile app and canno
 | 36 | **push_notification action sends push and creates alert** | Create a scenario with a `push_notification` action (type: `push_notification`, value: title, property: body). Trigger the scenario and verify (a) the push notification arrives on registered devices via Firebase and (b) a corresponding `source = 'scenario'` row appears in the `alerts` table. |
 | 37 | **Mixed action types in one scenario** | Create a scenario with all three action types: `set_device_value`, `notification`, and `push_notification`. Trigger it and verify all three execute correctly with their respective delays. |
 | 38 | **time trigger fires at configured time** | Create a scenario with a `time` trigger (value = "HH:mm", e.g. "08:00"). Wait until the system clock reaches that minute (or temporarily adjust it). Verify the scenario executes exactly once at the matching minute and does not fire again until the next day. |
+| 39 | **Pause action delays following actions** | Create a scenario: trigger by button press, actions: `set_device_value` (lamp on, delay 0), `pause` (value: 10), `set_device_value` (lamp off, delay 0). Trigger the scenario and verify lamp switches off about 10 seconds after switching on. |
 
 ---
 
@@ -88,14 +89,14 @@ These tests require real hardware, running services, or the mobile app and canno
 
 | # | Test | Explanation |
 |---|------|-------------|
-| 39 | **Full system startup** | Run `./production-start.sh` (or `pm2 start production.config.js`) and verify that all processes launch: broker on port 9999, server on 9998, and all configured bridges on their respective ports. Check logs for "online" status messages. |
-| 40 | **MQTT broker accepts authenticated connections** | Set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`, restart the broker, and try connecting with `mosquitto_sub -u <user> -P <pass> -t "#"`. Valid credentials should connect successfully and show published messages. |
-| 41 | **MQTT broker rejects wrong credentials** | With broker authentication enabled, attempt to connect using incorrect credentials. The broker should reject the connection with return code 4 (bad credentials) and log the failed attempt. |
-| 42 | **MQTT TLS encryption works** | Set `CONF_tlsPath` to a directory containing `cert.pem` and `key.pem`, restart the broker. Connect using `mqtts://` protocol and verify the encrypted connection succeeds. Plain `mqtt://` connections should be refused. |
-| 43 | **HTTPS server with TLS certificates** | With `CONF_tlsPath` configured, restart the server. Open `https://localhost:9998/info` in a browser or curl. Verify the TLS certificate is served correctly and HTTP responses work over HTTPS. |
-| 44 | **MQTT persistence: messages saved to mqtt_history** | Send any MQTT message while the broker is running, then query the SQLite database: `SELECT * FROM mqtt_history ORDER BY historyID DESC LIMIT 5`. Every published message should have a corresponding row with topic, message, and timestamp. |
-| 45 | **Bonjour/mDNS service published** | Start the server and use a Bonjour browser (e.g. `dns-sd -B _http._tcp` on macOS, or Bonjour Browser app). Verify the server advertises itself with the name from `CONF_serverIDBonjour` and the correct port. |
-| 46 | **CORS rejects unauthorized origins** | Set `CONF_corsURL` to a specific URL (e.g. `http://localhost:5173`) in `.env.local`. Then make a request from a different origin (e.g. `curl -H "Origin: http://evil.com" http://localhost:9998/info`). The response should include a CORS error for the unauthorized origin. |
+| 40 | **Full system startup** | Run `./production-start.sh` (or `pm2 start production.config.js`) and verify that all processes launch: broker on port 9999, server on 9998, and all configured bridges on their respective ports. Check logs for "online" status messages. |
+| 41 | **MQTT broker accepts authenticated connections** | Set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`, restart the broker, and try connecting with `mosquitto_sub -u <user> -P <pass> -t "#"`. Valid credentials should connect successfully and show published messages. |
+| 42 | **MQTT broker rejects wrong credentials** | With broker authentication enabled, attempt to connect using incorrect credentials. The broker should reject the connection with return code 4 (bad credentials) and log the failed attempt. |
+| 43 | **MQTT TLS encryption works** | Set `CONF_tlsPath` to a directory containing `cert.pem` and `key.pem`, restart the broker. Connect using `mqtts://` protocol and verify the encrypted connection succeeds. Plain `mqtt://` connections should be refused. |
+| 44 | **HTTPS server with TLS certificates** | With `CONF_tlsPath` configured, restart the server. Open `https://localhost:9998/info` in a browser or curl. Verify the TLS certificate is served correctly and HTTP responses work over HTTPS. |
+| 45 | **MQTT persistence: messages saved to mqtt_history** | Send any MQTT message while the broker is running, then query the SQLite database: `SELECT * FROM mqtt_history ORDER BY historyID DESC LIMIT 5`. Every published message should have a corresponding row with topic, message, and timestamp. |
+| 46 | **Bonjour/mDNS service published** | Start the server and use a Bonjour browser (e.g. `dns-sd -B _http._tcp` on macOS, or Bonjour Browser app). Verify the server advertises itself with the name from `CONF_serverIDBonjour` and the correct port. |
+| 47 | **CORS rejects unauthorized origins** | Set `CONF_corsURL` to a specific URL (e.g. `http://localhost:5173`) in `.env.local`. Then make a request from a different origin (e.g. `curl -H "Origin: http://evil.com" http://localhost:9998/info`). The response should include a CORS error for the unauthorized origin. |
 
 ---
 
@@ -103,6 +104,6 @@ These tests require real hardware, running services, or the mobile app and canno
 
 | # | Test | Explanation |
 |---|------|-------------|
-| 47 | **Healthcheck returns status of all processes** | Open `http://localhost:{CONF_portHealthcheck}/` in a browser. Start and stop several bridges, server and broker. See output in terminal. |
-| 48 | **Swagger UI loads** | Open `http://localhost:9998/api-docs` in a browser. The Swagger UI should render with all documented endpoints grouped by tag (Data, Devices, Scenarios, Alerts). Verify you can expand each endpoint and see its parameters, request body, and response schema. |
-| 49 | **Swagger JSON spec is valid** | Open `http://localhost:9998/swagger.json` and paste the output into [editor.swagger.io](https://editor.swagger.io). It should parse without errors and match the actually implemented routes. |
+| 48 | **Healthcheck returns status of all processes** | Open `http://localhost:{CONF_portHealthcheck}/` in a browser. Start and stop several bridges, server and broker. See output in terminal. |
+| 49 | **Swagger UI loads** | Open `http://localhost:9998/api-docs` in a browser. The Swagger UI should render with all documented endpoints grouped by tag (Data, Devices, Scenarios, Alerts). Verify you can expand each endpoint and see its parameters, request body, and response schema. |
+| 50 | **Swagger JSON spec is valid** | Open `http://localhost:9998/swagger.json` and paste the output into [editor.swagger.io](https://editor.swagger.io). It should parse without errors and match the actually implemented routes. |

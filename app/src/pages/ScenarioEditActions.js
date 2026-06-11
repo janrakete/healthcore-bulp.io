@@ -32,6 +32,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
                       <ion-select-option value="set_device_value">${window.Translation.get("ActionTypeSetDeviceValue")}</ion-select-option>
                       <ion-select-option value="push_notification">${window.Translation.get("ActionTypePushNotification")}</ion-select-option>
                       <ion-select-option value="notification">${window.Translation.get("ActionTypeNotification")}</ion-select-option>
+                      <ion-select-option value="pause">${window.Translation.get("ActionTypePause")}</ion-select-option>
                     </ion-select>
                   </ion-item>  
                   <ion-item color="light" id="action-field-device">
@@ -59,6 +60,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
                   </ion-item>
                   <ion-item color="light" id="action-field-notification-text">
                     <ion-input type="text" label="${window.Translation.get("Text")}" label-placement="stacked" name="editActionNotificationText" shape="round" fill="outline" class="custom"></ion-input>
+                  </ion-item>
+                  <ion-item color="light" id="action-field-pause-duration">
+                    <ion-input type="number" label="${window.Translation.get("PauseDuration")}" label-placement="stacked" name="editActionPauseDuration" placeholder="${window.Translation.get("Seconds")}" shape="round" fill="outline" class="custom"></ion-input>
                   </ion-item>
                 </ion-list>
               </ion-col>
@@ -141,6 +145,17 @@ export const ScenarioEditActions = (Base) => class extends Base {
           deviceProperties: []
         };
       }
+      else if (String(type) === "pause") {
+        const pauseDurationInput = document.querySelector("ion-input[name='editActionPauseDuration']");
+
+        newAction = {
+          actionID:         Date.now(),
+          type:             type,
+          value:            String(parseInt(pauseDurationInput.value, 10)),
+          delay:            0,
+          deviceProperties: []
+        };
+      }
 
       this.scenarioData.actions.push(newAction);
 
@@ -189,6 +204,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
       document.querySelector("ion-input[name='editActionPushTitle']").value         = "";
       document.querySelector("ion-input[name='editActionPushMessage']").value       = "";
       document.querySelector("ion-input[name='editActionNotificationText']").value  = "";
+      document.querySelector("ion-input[name='editActionPauseDuration']").value     = "";
       
       const valueContainer = document.querySelector("#edit-action-value-container");
       valueContainer.innerHTML = `<ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>`;
@@ -204,6 +220,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     this.querySelector("ion-input[name='editActionPushTitle']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
     this.querySelector("ion-input[name='editActionPushMessage']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
     this.querySelector("ion-input[name='editActionNotificationText']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
+    this.querySelector("ion-input[name='editActionPauseDuration']")?.addEventListener("ionInput", () => this.actionEnabledDisable());
 
     /**
      * Event listener for action device select change
@@ -237,6 +254,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     const pushTitle        = document.querySelector("ion-input[name='editActionPushTitle']");
     const pushMessage      = document.querySelector("ion-input[name='editActionPushMessage']");
     const notificationText = document.querySelector("ion-input[name='editActionNotificationText']");
+    const pauseDuration    = document.querySelector("ion-input[name='editActionPauseDuration']");
 
     typeSelect.value      = "set_device_value";
     deviceSelect.value    = "";
@@ -255,6 +273,10 @@ export const ScenarioEditActions = (Base) => class extends Base {
       notificationText.value = "";
     }
 
+    if (pauseDuration) {
+      pauseDuration.value = "";
+    }
+
     valueContainer.innerHTML = `
       <ion-input type="text" label="${window.Translation.get("Value")}" label-placement="stacked" name="editActionValue" shape="round" fill="outline" class="custom" disabled="true"></ion-input>
     `;
@@ -268,6 +290,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     const deviceSelect   = document.querySelector("ion-select[name='editActionDevice']");
     const propertySelect = document.querySelector("ion-select[name='editActionProperty']");
     const delayInput     = document.querySelector("ion-input[name='editActionDelay']");
+    const pauseDuration  = document.querySelector("ion-input[name='editActionPauseDuration']");
 
     let valueSelect;
     if ((document.querySelector("ion-input[name='editActionValue']")) && (document.querySelector("ion-input[name='editActionValue']") !== undefined)) {
@@ -322,6 +345,12 @@ export const ScenarioEditActions = (Base) => class extends Base {
           submitButton.disabled = false;
         }
         break;
+
+      case "pause":
+        if (Number(parseInt(pauseDuration?.value, 10)) > 0) {
+          submitButton.disabled = false;
+        }
+        break;
     }
   }
 
@@ -336,6 +365,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     const pushTitle        = document.querySelector("#action-field-push-title");
     const pushMessage      = document.querySelector("#action-field-push-message");
     const notificationText = document.querySelector("#action-field-notification-text");
+    const pauseDuration    = document.querySelector("#action-field-pause-duration");
 
     deviceField.style.display      = "none";
     propertyField.style.display    = "none";
@@ -344,6 +374,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
     pushTitle.style.display        = "none";
     pushMessage.style.display      = "none";
     notificationText.style.display = "none";
+    pauseDuration.style.display    = "none";
 
     switch (type) {
       case "set_device_value":
@@ -360,6 +391,10 @@ export const ScenarioEditActions = (Base) => class extends Base {
 
       case "notification":
         notificationText.style.display = "";
+        break;
+
+      case "pause":
+        pauseDuration.style.display = "";
         break;
     }
   }
@@ -550,6 +585,13 @@ export const ScenarioEditActions = (Base) => class extends Base {
         cardSubtitle = "";
         cardContent  = `<ion-text color="light">${item.value}</ion-text>`;
       }
+      else if (String(type) === "pause") {
+        cardTitle    = `${window.Translation.get("ActionTypePause")}`;
+        cardSubtitle = "";
+        cardContent  = `
+            <ion-text color="light">${window.Translation.get("PauseDuration")}: ${item.value} ${window.Translation.get("Seconds")}</ion-text>
+        `;
+      }
 
       return `
         <ion-card color="primary" data-id="${item.actionID}">
@@ -567,7 +609,7 @@ export const ScenarioEditActions = (Base) => class extends Base {
           <ion-button data-id="${item.actionID}" id="action-edit-${item.actionID}" class="action-edit-option"><ion-icon slot="start" name="create-sharp" color="warning"></ion-icon><ion-text color="light">${window.Translation.get("Edit")}</ion-text></ion-button>
           <ion-button data-id="${item.actionID}" class="action-delete-option"><ion-icon slot="start" name="trash-sharp" color="danger"></ion-icon><ion-text color="light">${window.Translation.get("Delete")}</ion-text></ion-button>
         </ion-card>
-        <ion-text>${Number(index) < this.scenarioData.actions.length - 1 ? `<center>${window.Translation.get("And")}</center>` : ""}</ion-text>
+        <ion-text>${Number(index) < this.scenarioData.actions.length - 1 ? `<center>${window.Translation.get("After")}</center>` : ""}</ion-text>
     `;
     }).join("");
 
@@ -593,7 +635,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
         document.querySelector("ion-select[name='editActionType']").value = type;
         this.actionUpdateFieldVisibility(type);
 
-        document.querySelector("ion-input[name='editActionDelay']").value = Number(actionData.delay) > 0 ? actionData.delay : "";
+        const delayInput = document.querySelector("ion-input[name='editActionDelay']");
+        const hasDelay   = Number(actionData.delay) > 0;
+        delayInput.value = (String(type) === "set_device_value" && hasDelay) ? actionData.delay : "";
 
         if (String(type) === "set_device_value") {
           await this.dataLoadActionDevices(actionData.deviceUUID || actionData.uuid);
@@ -606,6 +650,9 @@ export const ScenarioEditActions = (Base) => class extends Base {
         }
         else if (String(type) === "notification") {
           document.querySelector("ion-input[name='editActionNotificationText']").value = actionData.value || "";
+        }
+        else if (String(type) === "pause") {
+          document.querySelector("ion-input[name='editActionPauseDuration']").value = Number(actionData.value) > 0 ? actionData.value : "";
         }
 
         this.actionEnabledDisable();

@@ -94,6 +94,7 @@ const router        = require("express").Router();
  *                 example: 42
  *               type:
  *                 type: string
+ *                 enum: ["set_device_value", "push_notification", "notification", "pause"]
  *                 example: "set_device_value"
  *               deviceUUID:
  *                 type: string
@@ -112,7 +113,6 @@ const router        = require("express").Router();
  *                 enum: ["String", "Numeric", "Boolean"]
  *               delay:
  *                 type: integer
- *                 description: Delay in seconds before executing this action
  *                 example: 3
  *               deviceName:
  *                 type: string
@@ -389,6 +389,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                   properties:
  *                     type:
  *                       type: string
+ *                       enum: ["set_device_value", "push_notification", "notification", "pause"]
  *                       example: "set_device_value"
  *                     uuid:
  *                       type: string
@@ -599,6 +600,7 @@ router.post("/", async function (request, response) {
  *                   properties:
  *                     type:
  *                       type: string
+ *                       enum: ["set_device_value", "push_notification", "notification", "pause"]
  *                       example: "set_device_value"
  *                     uuid:
  *                       type: string

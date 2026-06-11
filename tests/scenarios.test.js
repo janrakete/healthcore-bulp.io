@@ -166,6 +166,72 @@ describe("Scenario CRUD", () => {
     expect(res.body.error).toContain("must be arrays");
   });
 
+  test("POST /scenarios — invalid pause action → 400", async () => {
+    const res = await request(app)
+      .post("/scenarios")
+      .send({
+        name: "Invalid Pause",
+        triggers: [{ type: "time", value: "08:00" }],
+        actions: [{ type: "pause", value: "0", delay: 0 }],
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Invalid pause action");
+  });
+
+  test("POST /scenarios — pause delay is normalized to 0", async () => {
+    const res = await request(app)
+      .post("/scenarios")
+      .send({
+        name: "Pause Delay Normalize",
+        triggers: [{ type: "time", value: "08:00" }],
+        actions: [{ type: "pause", value: "5", delay: 99 }],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+
+    const scenarioIDLocal = Number(res.body.ID);
+    const pauseAction     = db.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? LIMIT 1").get(scenarioIDLocal);
+
+    expect(pauseAction).toBeDefined();
+    expect(pauseAction.type).toBe("pause");
+    expect(Number(pauseAction.delay)).toBe(0);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(scenarioIDLocal);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioIDLocal);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioIDLocal);
+  });
+
+  test("POST /scenarios — notification delays are normalized to 0", async () => {
+    const res = await request(app)
+      .post("/scenarios")
+      .send({
+        name: "Notification Delay Normalize",
+        triggers: [{ type: "time", value: "08:00" }],
+        actions: [
+          { type: "push_notification", value: "Title", property: "Body", delay: 42 },
+          { type: "notification", value: "Local Alert", delay: 77 }
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("ok");
+
+    const scenarioIDLocal = Number(res.body.ID);
+    const actions         = db.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY actionID ASC").all(scenarioIDLocal);
+
+    expect(actions.length).toBe(2);
+    expect(actions[0].type).toBe("push_notification");
+    expect(Number(actions[0].delay)).toBe(0);
+    expect(actions[1].type).toBe("notification");
+    expect(Number(actions[1].delay)).toBe(0);
+
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(scenarioIDLocal);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioIDLocal);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioIDLocal);
+  });
+
   test("POST /scenarios/:id/execute — manual execution", async () => {
     const res = await request(app).post(`/scenarios/${scenarioID}/execute`);
     expect(res.status).toBe(200);
@@ -466,6 +532,32 @@ describe("ScenarioEngine", () => {
 
     const alerts = db.prepare("SELECT * FROM alerts WHERE title = ? AND source = 'scenario'").all("Engine Test Notification");
     expect(alerts.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("pause action type does not publish MQTT", async () => {
+    global.mqttClient.publish.mockClear();
+
+    await global.scenarios.executeAction({ type: "pause", value: "2" }, { name: "Pause Scenario" });
+
+    const setCalls = global.mqttClient.publish.mock.calls.filter((c) => c[0] === "zigbee/devices/values/set");
+    expect(setCalls.length).toBe(0);
+  });
+
+  test("pause adds cumulative delay for following actions", async () => {
+    const actions = [
+      { type: "set_device_value", delay: 0 },
+      { type: "pause", value: "1", delay: 0 },
+      { type: "set_device_value", delay: 1 }
+    ];
+
+    const timeoutSpy = jest.spyOn(global, "setTimeout").mockImplementation(() => 0);
+
+    global.scenarios.scheduleScenarioActions(actions, { scenarioID: 999, name: "Pause Timeline" });
+
+    const timeoutDelays = timeoutSpy.mock.calls.map((c) => c[1]);
+    expect(timeoutDelays).toEqual([0, 0, 2000]);
+
+    timeoutSpy.mockRestore();
   });
 });
 

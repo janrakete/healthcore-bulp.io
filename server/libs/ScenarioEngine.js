@@ -17,6 +17,7 @@
  *   - set_device_value:    Set a property on a device via MQTT
  *   - push_notification:   Send a push notification and also create an alert (value = title, property = body)
  *   - notification:        Create an alert without push (value = title)
+ *   - pause:               Adds a relative delay for the following actions (value = duration in seconds)
  */
 
 const appConfig = require("../../config");
@@ -328,22 +329,13 @@ class ScenarioEngine {
    */
   async executeScenario(scenario, triggerData) {
     try {
-      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenario.scenarioID);  // get all actions for this scenario
+      const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC, actionID ASC").all(scenario.scenarioID);  // get all actions for this scenario
 
       database.prepare("INSERT INTO scenarios_executions (scenarioID, triggerDeviceID, triggerProperty, triggerValue, dateTimeExecutedAt, success) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?)").run(
         scenario.scenarioID, triggerData.deviceID || null, triggerData.property || "", String(triggerData.value || ""), 1
       );
 
-      for (const action of actions) {
-        setTimeout(() => {
-          try {
-            this.executeAction(action, scenario);
-          }
-          catch (timerError) {
-            common.conLog("Scenario Engine: Error executing delayed action for scenario " + scenario.scenarioID + ": " + timerError.message, "red");
-          }
-        }, action.delay * 1000);
-      }
+      this.scheduleScenarioActions(actions, scenario);
     }
     catch (error) {
       common.conLog("Scenario Engine: Error executing scenario " + scenario.scenarioID + ": " + error.message, "red");
@@ -366,18 +358,8 @@ class ScenarioEngine {
           scenario.scenarioID, null, "manually", "manually", 1
         );
 
-        const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC").all(scenarioID);  // get all actions for this scenario
-
-        for (const action of actions) { // execute actions with delays
-          setTimeout(() => {
-            try {
-              this.executeAction(action, scenario);
-            }
-            catch (timerError) {
-              common.conLog("Scenario Engine: Error executing delayed action for scenario " + scenario.scenarioID + ": " + timerError.message, "red");
-            }
-          }, action.delay * 1000); // delay is in seconds, so convert to milliseconds
-        }
+        const actions = database.prepare("SELECT * FROM scenarios_actions WHERE scenarioID = ? ORDER BY delay ASC, actionID ASC").all(scenarioID);  // get all actions for this scenario
+        this.scheduleScenarioActions(actions, scenario);
 
         common.conLog("Scenario Engine: Manually executed actions for scenario " + scenario.name, "gre");
       }
@@ -388,6 +370,58 @@ class ScenarioEngine {
     catch (error) {
       common.conLog("Scenario Engine: Error manually executing scenario " + scenarioID + ": " + error.message, "red");
     }
+  }
+
+  /**
+   * Schedule actions using a cumulative pause timeline. Actions are executed sequentially with their specified delays, and "pause" actions add to the cumulative delay for subsequent actions.
+   * @param {Object[]} actions
+   * @param {Object} scenario
+   */
+  scheduleScenarioActions(actions, scenario) {
+    let accumulatedPauseSeconds = 0;
+
+    for (const action of actions) {
+      const usesExplicitDelay  = this.actionUsesExplicitDelay(action); // only set_device_value actions use the explicit "delay" field; for all other actions, "delay" is treated as 0 and they are only delayed by any accumulated pause time from preceding "pause" actions
+      const hasValidDelay      = Number.isFinite(Number(action.delay)); // ensure the delay value is a valid number
+      const actionDelaySeconds = (usesExplicitDelay && hasValidDelay) ? Number(action.delay) : 0; // if the action uses explicit delay and has a valid delay value, use it; otherwise, treat delay as 0
+      const scheduledDelayMs   = Math.max(0, actionDelaySeconds + accumulatedPauseSeconds) * 1000; // total delay for this action is the sum of its own explicit delay (if applicable) and any accumulated pause time from preceding "pause" actions
+
+      setTimeout(() => {
+        try {
+          this.executeAction(action, scenario);
+        }
+        catch (error) {
+          common.conLog("Scenario Engine: Error executing delayed action for scenario " + scenario.scenarioID + ": " + error.message, "red");
+        }
+      }, scheduledDelayMs);
+
+      if (String(action.type) === "pause") {
+        accumulatedPauseSeconds += this.parsePauseDurationSeconds(action.value);
+      }
+    }
+  }
+
+  /**
+   * Parse pause duration from action value.
+   * @param {any} value
+   * @returns {number}
+   */
+  parsePauseDurationSeconds(value) {
+    const parsed = parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Only set_device_value uses explicit per-action delay.
+   * @param {Object} action
+   * @returns {boolean}
+   */
+  actionUsesExplicitDelay(action) {
+    return String(action?.type) === "set_device_value";
   }
 
   /**
@@ -433,6 +467,10 @@ class ScenarioEngine {
             global.alerts.createScenarioAlert(scenario, action);
           }
           common.conLog("Scenario Engine: Action notification - " + (action.value || scenario.name), "yel");
+          break;
+
+        case "pause":
+          common.conLog("Scenario Engine: Action pause - " + this.parsePauseDurationSeconds(action.value) + " seconds", "yel");
           break;
 
         default:
