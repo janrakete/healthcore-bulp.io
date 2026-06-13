@@ -1,5 +1,5 @@
 {
-  "appId": "io.bulp.app",
+  "appId": "com.bulp.bulp",
   "appName": "bulp.io",
   "webDir": "dist",
   "plugins": {

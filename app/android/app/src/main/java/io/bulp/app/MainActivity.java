@@ -1,4 +1,4 @@
-package io.bulp.app;
+package com.bulp.bulp;
 
 import com.getcapacitor.BridgeActivity;
 
