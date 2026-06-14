@@ -11,37 +11,37 @@
 #include "DFRobot_HumanDetection.h"
 #include <math.h>
 
-static DFRobot_AHT20          _sensorTempHum;
-static Adafruit_VEML7700      _sensorLux;
-static HardwareSerial         _radarSerial(1);
-static DFRobot_HumanDetection _sensorRadar(&_radarSerial);
+static DFRobot_AHT20          _sensorTempHum;               // AHT20 temp/humidity sensor.
+static Adafruit_VEML7700      _sensorLux;                   // VEML7700 light sensor.
+static HardwareSerial         _radarSerial(1);              // C1001 radar UART on Core 0.
+static DFRobot_HumanDetection _sensorRadar(&_radarSerial);  // C1001 radar wrapper.
 
 static bool _sensorTempHumReady = false;
 static bool _sensorLuxReady     = false;
 static bool _sensorRadarReady   = false;
 
-Task taskSensorLog = TASK(SENSOR_READ_INTERVAL_MS); // Scheduler task used by the main loop (Core 1) to log sensor values. The interval matches SENSOR_READ_INTERVAL_MS so the log stays in sync with the background task cycle, but the actual reads are decoupled.
+Task taskSensorLog = TASK(SENSOR_READ_INTERVAL_MS); // Main-loop sensor log task.
 
-static SemaphoreHandle_t _valuesMutex = NULL; // Mutex that guards _latestValues between the sensor task (Core 0) and the main loop (Core 1).
+static SemaphoreHandle_t _valuesMutex = NULL; // Guards _latestValues between cores.
 
-static SensorValues      _latestValues = {}; // Shared value buffer; written by sensorsTask, read by sensorsGetValues.
+static SensorValues      _latestValues = {}; // Shared sensor snapshot.
 
 /**
- * Validates the temperature and humidity values from the AHT20 sensor.
+ * Validates AHT20 temperature and humidity values.
  */
 static bool sensorTempHumValuesAreValid(float temperature, float humidity) {
   return isfinite(temperature) && isfinite(humidity);
 }
 
 /**
- * Validates the illuminance value from the VEML7700 sensor.
+ * Validates the VEML7700 illuminance value.
  */
 static bool sensorLuxValueIsValid(float illuminance) {
   return isfinite(illuminance) && illuminance >= 0.0f;
 }
 
 /**
- * Initializes all sensors. Returns true if at least one sensor was successfully initialized, false otherwise.
+ * Initializes all sensors. Returns true if at least one is ready.
  */
 bool sensorsInit() {
   Serial.println("[Sensors] Initializing ...");
@@ -54,11 +54,11 @@ bool sensorsInit() {
     return false;
   }
 
-  _radarSerial.begin(RADAR_BAUD_RATE, SERIAL_8N1, PIN_RADAR_RX, PIN_RADAR_TX);
-  delay(1000); // Wait for C1001 to power up
+  _radarSerial.begin(RADAR_BAUD_RATE, SERIAL_8N1, PIN_RADAR_RX, PIN_RADAR_TX);  // Init the C1001 UART.
+  delay(1000); // Wait for the radar to boot.
 
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  Wire.setClock(100000);
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL); // Init I2C for AHT20 and VEML7700.
+  Wire.setClock(100000); // Use a conservative I2C clock.
 
   if (_sensorTempHum.begin() == 0) {
     _sensorTempHumReady = true;
@@ -79,31 +79,31 @@ bool sensorsInit() {
   if (_sensorRadar.begin() == 0) {
     _sensorRadar.configWorkMode(_sensorRadar.eSleepMode);
     delay(100);
-    _sensorRadar.configWorkMode(_sensorRadar.eFallingMode);
-    _sensorRadar.configLEDLight(_sensorRadar.eHPLed, 1);
+    _sensorRadar.configWorkMode(_sensorRadar.eFallingMode); // Use falling mode for presence.
+    _sensorRadar.configLEDLight(_sensorRadar.eHPLed, 1);    // Enable the high-power LED.
 
     Serial.println("[Sensors] Performing C1001 Radar self-test ...");
-    if (_sensorRadar.sensorRet() == 0) {
+    if (_sensorRadar.sensorRet() == 0) { // Run the radar self-test.
       Serial.println("[Sensors] C1001 Radar self-test passed.");
 
       Serial.println("[Sensors] Configuring C1001 Radar fall detection parameters ...");
-      uint16_t height = _sensorRadar.dmAutoMeasureHeight();
+      uint16_t height = _sensorRadar.dmAutoMeasureHeight(); // Measure the room height.
       if (height == 0) {
         _sensorRadar.dmInstallHeight(RADAR_ROOM_HEIGHT_CM);
-        Serial.print("[Sensors] C1001 height auto-measure failed, using ");
+        Serial.print("[Sensors] Radar height measure failed, using ");
         Serial.print(RADAR_ROOM_HEIGHT_CM);
         Serial.println(" cm.");
       }
       else {
-        Serial.print("[Sensors] C1001 measured height: ");
+        Serial.print("[Sensors] Radar measured height: ");
         Serial.print(height);
         Serial.println(" cm");
       }
 
-      _sensorRadar.dmFallConfig(_sensorRadar.eFallSensitivityC, RADAR_FALL_SENSITIVITY);
-      _sensorRadar.dmFallConfig(_sensorRadar.eResidenceSwitchC, 1);
-      _sensorRadar.dmFallConfig(_sensorRadar.eResidenceTime, RADAR_FALL_RESIDENCE_TIME_S);
-      _sensorRadar.dmFallTime(RADAR_FALL_TIME_MS);
+      _sensorRadar.dmFallConfig(_sensorRadar.eFallSensitivityC, RADAR_FALL_SENSITIVITY); // Set fall sensitivity.
+      _sensorRadar.dmFallConfig(_sensorRadar.eResidenceSwitchC, 1); // Enable residence checking.
+      _sensorRadar.dmFallConfig(_sensorRadar.eResidenceTime, RADAR_FALL_RESIDENCE_TIME_S); // Set residence time.
+      _sensorRadar.dmFallTime(RADAR_FALL_TIME_MS); // Set the fall time window.
       _sensorRadarReady = true;
     }
     else {
@@ -120,11 +120,10 @@ bool sensorsInit() {
 }
 
 /**
- * Background FreeRTOS task running on Core 0. Reads all sensors sequentially and publishes
- * the result into the shared _latestValues buffer under mutex protection.
+ * Background FreeRTOS task on Core 0.
  */
-static void sensorsTask(void *param) { // Background task running on Core 0. Reads all sensors sequentially, staggered by SENSOR_STAGGER_MS to avoid back-to-back blocking I2C/Serial calls. vTaskDelayUntil keeps the start of each cycle aligned to SENSOR_READ_INTERVAL_MS.
-  TickType_t lastWakeTime = xTaskGetTickCount();
+static void sensorsTask(void *param) { // Reads sensors in sequence and publishes a shared snapshot.
+  TickType_t lastWakeTime = xTaskGetTickCount(); // Keep the task cycle aligned.
 
   while (true) {
     SensorValues temp = {};
@@ -142,7 +141,7 @@ static void sensorsTask(void *param) { // Background task running on Core 0. Rea
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS)); // Stagger sensor reads.
 
     if (_sensorLuxReady) {
       const float illuminance = _sensorLux.readLux(VEML_LUX_AUTO);
@@ -154,7 +153,7 @@ static void sensorsTask(void *param) { // Background task running on Core 0. Rea
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS));
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STAGGER_MS)); // Stagger sensor reads.
 
     if (_sensorRadarReady) {
       temp.presenceDetected = _sensorRadar.dmHumanData(_sensorRadar.eExistence) > 0;
@@ -166,12 +165,12 @@ static void sensorsTask(void *param) { // Background task running on Core 0. Rea
     temp.lastUpdate = millis();
 
     
-    if (xSemaphoreTake(_valuesMutex, portMAX_DELAY) == pdTRUE) { // Publish the completed snapshot atomically.
+    if (xSemaphoreTake(_valuesMutex, portMAX_DELAY) == pdTRUE) { // Publish the snapshot atomically.
       _latestValues = temp;
-      xSemaphoreGive(_valuesMutex);
+      xSemaphoreGive(_valuesMutex); // Release the mutex quickly.
     }
     
-    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(SENSOR_READ_INTERVAL_MS)); // Wait until the next cycle start to avoid timing drift.
+    vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(SENSOR_READ_INTERVAL_MS)); // Wait for the next cycle.
   }
 }
 
@@ -185,8 +184,8 @@ bool sensorsStartTask() {
     return false;
   }
 
-  if (xTaskCreatePinnedToCore(sensorsTask, "sensors", SENSOR_TASK_STACK_SIZE, NULL, 1, NULL, 0) != pdPASS) { // Pin to Core 0 so blocking sensor reads never stall the main loop on Core 1.
-    vSemaphoreDelete(_valuesMutex);
+  if (xTaskCreatePinnedToCore(sensorsTask, "sensors", SENSOR_TASK_STACK_SIZE, NULL, 1, NULL, 0) != pdPASS) { // Pin to Core 0.
+    vSemaphoreDelete(_valuesMutex); // Clean up if task creation fails.
     _valuesMutex = NULL;
     return false;
   }
@@ -205,13 +204,13 @@ bool sensorsGetValues(SensorValues *values) {
     return false;
   }
 
-  if (xSemaphoreTake(_valuesMutex, portMAX_DELAY) != pdTRUE) { // Atomic copy — holds the mutex for only a few microseconds.
+  if (xSemaphoreTake(_valuesMutex, portMAX_DELAY) != pdTRUE) { // Atomic copy.
     *values = {};
     return false;
   }
 
   *values = _latestValues;
-  xSemaphoreGive(_valuesMutex);
+  xSemaphoreGive(_valuesMutex); // Release the mutex quickly.
   return true;
 }
 

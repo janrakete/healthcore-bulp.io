@@ -25,11 +25,11 @@ enum ConnectionMode {
   CONNECTION_MODE_WIFI,
 };
 
-static SensorValues currentValues     = {};
-static ConnectionMode connectionMode  = CONNECTION_MODE_WIFI;
-static Task taskConnectionCheck       = TASK(CONNECTION_CHECK_INTERVAL_MS);
-static bool zigbeeHadConnection       = false;
-static unsigned long zigbeeDisconnectStartMs = 0;
+static SensorValues currentValues     = {};                                   // Latest sensor snapshot for logging in the main loop, updated at SENSOR_READ_INTERVAL_MS when taskSensorLog fires. The actual sensor reads happen on Core 0 and are independent of this.
+static ConnectionMode connectionMode  = CONNECTION_MODE_ZIGBEE;               // Selected connection mode, determined at boot by the state of the DPDT switch. WiFi is the default if the switch is not present or fails to read.
+static Task taskConnectionCheck       = TASK(CONNECTION_CHECK_INTERVAL_MS);   // Scheduler task that periodically checks the network connection status and updates the LED accordingly. Also handles ZigBee rejoin logic if the connection is lost after being established.
+static bool zigbeeHadConnection       = false;                                // Tracks whether a ZigBee connection was ever established since boot to differentiate between "never connected" and "connection lost after being established" states for more informative logging.
+static unsigned long zigbeeDisconnectStartMs = 0;                             // Timestamp of when the ZigBee connection was first detected as lost, used to trigger a restart if the connection is not restored within ZIGBEE_REJOIN_RESTART_DELAY_MS. Set to 0 when connected.
 
 /**
  * Main setup 
@@ -39,7 +39,7 @@ void setup() {
   const unsigned long serialWaitStartMs   = millis();
   const unsigned long serialWaitTimeoutMs = SERIAL_WAIT_TIMEOUT_MS;
 
-  while (!Serial && (millis() - serialWaitStartMs) < serialWaitTimeoutMs) {
+  while (!Serial && (millis() - serialWaitStartMs) < serialWaitTimeoutMs) { // Wait for Serial with timeout.
     delay(10);
   }
 
@@ -64,12 +64,13 @@ void setup() {
   Serial.print("[Main] Connection mode: ");
   Serial.println(connectionMode == CONNECTION_MODE_WIFI ? "WiFi" : "ZigBee");
 
-  controlsInit();
+  controlsInit(); // Init controls early for pairing.
 
-  ledInit(); 
-  ledSetState(LED_BOOT);
+  ledInit();  // Init the LED early for boot feedback.
+  ledSetState(LED_BOOT); 
 
-  if (sensorsInit()) {
+  const bool sensorsReady = sensorsInit();
+  if (sensorsReady) {
     Serial.println("[Sensors] Initialized successfully.");
   }
   else if (!SENSORS_ENABLED) {
@@ -79,7 +80,7 @@ void setup() {
     Serial.println("[Sensors] Failed to initialize.");
   }
 
-  if (!sensorsStartTask()) {
+  if (sensorsReady && !sensorsStartTask()) {
     Serial.println("[Sensors] Failed to start sensor task, continuing with network connectivity only.");
   }
 
@@ -90,18 +91,18 @@ void setup() {
     }
   #endif
   
-  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS; // Force the connection-check task to fire on the very first loop() iteration so the LED transitions from LED_BOOT to the correct connection state without delay.
+  taskConnectionCheck.lastRun = millis() - CONNECTION_CHECK_INTERVAL_MS; // Fire once on the first loop.
 }
 
 /**
  * Main loop
  */
 void loop() {
-  if (taskUpdate(&taskLedBlink)) { // Advance the LED blink state machine at LED_BLINK_INTERVAL_MS.
+  if (taskUpdate(&taskLedBlink)) { // Advance LED blink state.
     ledUpdate();
   }
 
-  if (taskUpdate(&taskConnectionCheck)) { // Check connection status and update LED at CONNECTION_CHECK_INTERVAL_MS.
+  if (taskUpdate(&taskConnectionCheck)) { // Check connection status and update the LED.
     const LedState currentLedState = ledGetState();
     if (currentLedState != LED_PAIRING && currentLedState != LED_RESET) {
       bool isConnected = false;
@@ -126,6 +127,7 @@ void loop() {
           }
         }
       }
+
       if (connectionMode == CONNECTION_MODE_WIFI) {
         isConnected = (WiFi.status() == WL_CONNECTED);
       }
@@ -137,7 +139,7 @@ void loop() {
     }
   }
   
-  if (taskUpdate(&taskControls)) { // Run the debounced button state machine at CONTROL_UPDATE_INTERVAL_MS.
+  if (taskUpdate(&taskControls)) { // Run the button state machine.
     const ControlEvent controlEvent = controlsUpdate();
 
     if (controlEvent == CONTROL_EVENT_BUTTON_LONG_PRESS) {
@@ -148,7 +150,7 @@ void loop() {
     }
   }
  
-  if (taskUpdate(&taskSensorLog)) { // Print the latest sensor snapshot at SENSOR_READ_INTERVAL_MS. sensorsGetValues() is non-blocking; the actual reads happen on Core 0.
+  if (taskUpdate(&taskSensorLog)) { // Log the latest sensor snapshot.
     const bool hasValues      = sensorsGetValues(&currentValues);
     const bool valuesFresh    = hasValues && sensorsValuesAreFresh(&currentValues);
 

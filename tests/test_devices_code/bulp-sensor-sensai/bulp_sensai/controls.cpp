@@ -25,7 +25,7 @@ static bool controlsButtonIsPressed() {
  * Initializes the controls module. Call this once during setup().
  */
 void controlsInit() {
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_BUTTON, INPUT_PULLUP); // Configure the button pin with pull-up since the button connects to GND when pressed.
   
   const bool initialPressed = controlsButtonIsPressed(); // Seed the debounce state from the actual pin level at boot so we don't misinterpret the initial state as a press event.
   const unsigned long nowMs = millis();
