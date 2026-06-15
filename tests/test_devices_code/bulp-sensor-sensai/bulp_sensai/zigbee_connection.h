@@ -24,6 +24,7 @@
 #define EP_FALL         4  // ZigbeeAnalog: 1.0 = fall detected, 0.0 = normal
 
 void zigbeeInit();
+bool zigbeeAttemptRejoin(unsigned long timeoutMs);
 bool zigbeeSendData(const SensorValues* v, bool isAlarm);
 void zigbeeStartPairing();
 bool zigbeeIsJoined();

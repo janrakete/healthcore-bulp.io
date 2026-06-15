@@ -47,5 +47,10 @@
 #define ZIGBEE_OCCUPANCY_SENSOR_TYPE_ULTRASONIC 0x01    // ZigBee Occupancy Sensor Type: Ultrasonic
 #define ZIGBEE_CONNECTION_TIMEOUT_MS            60000   // Time to wait for ZigBee coordinator connection at startup (ms)
 #define ZIGBEE_REJOIN_RESTART_DELAY_MS          120000  // Restart delay after an established ZigBee connection is lost to trigger rejoin with stored credentials (ms)
+#define ZIGBEE_DISCONNECT_CONFIRMATION_COUNT    3       // Consecutive failed connection checks required before a disconnect is confirmed
+#define ZIGBEE_PUBLISH_FAILURE_THRESHOLD        3       // Consecutive failed ZigBee publishes before recovery is triggered
+#define ZIGBEE_RECOVERY_RETRY_INTERVAL_MS       15000   // Delay between staged recovery attempts (ms)
+#define ZIGBEE_RECOVERY_MAX_RETRIES             3       // Number of staged recovery attempts before reboot
+#define ZIGBEE_RECOVERY_JOIN_TIMEOUT_MS         10000   // Join wait time per staged recovery attempt (ms)
 
 #define CONNECTION_CHECK_INTERVAL_MS            5000    // How often the main loop checks network connection status and updates the LED (ms)

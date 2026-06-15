@@ -25,11 +25,73 @@ enum ConnectionMode {
   CONNECTION_MODE_WIFI,
 };
 
-static SensorValues currentValues     = {};                                   // Latest sensor snapshot for logging in the main loop, updated at SENSOR_READ_INTERVAL_MS when taskSensorLog fires. The actual sensor reads happen on Core 0 and are independent of this.
-static ConnectionMode connectionMode  = CONNECTION_MODE_ZIGBEE;               // Selected connection mode, determined at boot by the state of the DPDT switch. WiFi is the default if the switch is not present or fails to read.
-static Task taskConnectionCheck       = TASK(CONNECTION_CHECK_INTERVAL_MS);   // Scheduler task that periodically checks the network connection status and updates the LED accordingly. Also handles ZigBee rejoin logic if the connection is lost after being established.
-static bool zigbeeHadConnection       = false;                                // Tracks whether a ZigBee connection was ever established since boot to differentiate between "never connected" and "connection lost after being established" states for more informative logging.
-static unsigned long zigbeeDisconnectStartMs = 0;                             // Timestamp of when the ZigBee connection was first detected as lost, used to trigger a restart if the connection is not restored within ZIGBEE_REJOIN_RESTART_DELAY_MS. Set to 0 when connected.
+static SensorValues currentValues                 = {};                                   // Latest sensor snapshot for logging in the main loop, updated at SENSOR_READ_INTERVAL_MS when taskSensorLog fires. The actual sensor reads happen on Core 0 and are independent of this.
+static ConnectionMode connectionMode              = CONNECTION_MODE_ZIGBEE;               // Selected connection mode, determined at boot by the state of the DPDT switch. WiFi is the default if the switch is not present or fails to read.
+static Task taskConnectionCheck                   = TASK(CONNECTION_CHECK_INTERVAL_MS);   // Scheduler task that periodically checks the network connection status and updates the LED accordingly. Also handles ZigBee rejoin logic if the connection is lost after being established.
+static bool zigbeeHadConnection                   = false;                                // Tracks whether a ZigBee connection was ever established since boot to differentiate between "never connected" and "connection lost after being established" states for more informative logging.
+static unsigned long zigbeeDisconnectStartMs      = 0;                             // Timestamp of confirmed ZigBee disconnect.
+static unsigned long zigbeeNextRecoveryAttemptMs  = 0;                         // Next allowed recovery attempt time.
+static uint8_t zigbeeDisconnectCheckFailures      = 0;                             // Consecutive failed connection checks.
+static uint8_t zigbeeRecoveryAttempts             = 0;                                    // Number of staged recovery attempts since disconnect.
+static uint8_t zigbeeConsecutivePublishFailures   = 0;                          // Consecutive failed ZigBee publishes while joined.
+static bool zigbeePublishRecoveryRequested        = false;                           // Triggers staged recovery when publishes fail repeatedly.
+
+/**
+ * Reset ZigBee recovery state
+ */
+static void zigbeeResetRecoveryState() {
+  zigbeeDisconnectStartMs           = 0;
+  zigbeeNextRecoveryAttemptMs       = 0;
+  zigbeeDisconnectCheckFailures     = 0;
+  zigbeeRecoveryAttempts            = 0;
+  zigbeeConsecutivePublishFailures  = 0;
+  zigbeePublishRecoveryRequested    = false;
+}
+
+/**
+ * Request ZigBee recovery
+ */
+static void zigbeeRequestRecovery(const char* reason, unsigned long nowMs, bool immediate) {
+  if (zigbeeDisconnectStartMs == 0) {
+    zigbeeDisconnectStartMs = nowMs;
+    Serial.print("[ZigBee] Recovery requested: ");
+    Serial.println(reason);
+  }
+
+  zigbeeNextRecoveryAttemptMs = immediate ? nowMs : (nowMs + ZIGBEE_RECOVERY_RETRY_INTERVAL_MS);
+}
+
+/**
+ * Run ZigBee recovery if due
+  */
+static void zigbeeRunRecoveryIfDue(unsigned long nowMs) {
+  if (zigbeeDisconnectStartMs == 0) {
+    return;
+  }
+
+  if (zigbeeRecoveryAttempts >= ZIGBEE_RECOVERY_MAX_RETRIES) {
+    Serial.println("[ZigBee] Recovery exhausted, rebooting ...");
+    ESP.restart();
+    return;
+  }
+
+  if (nowMs < zigbeeNextRecoveryAttemptMs) {
+    return;
+  }
+
+  zigbeeRecoveryAttempts++;
+  Serial.printf("[ZigBee] Recovery attempt %u/%u ...\n", zigbeeRecoveryAttempts, ZIGBEE_RECOVERY_MAX_RETRIES);
+
+  if (zigbeeAttemptRejoin(ZIGBEE_RECOVERY_JOIN_TIMEOUT_MS)) {
+    Serial.println("[ZigBee] Recovery successful.");
+    zigbeeHadConnection = true;
+    zigbeeResetRecoveryState();
+    return;
+  }
+
+  zigbeeNextRecoveryAttemptMs = nowMs + ZIGBEE_RECOVERY_RETRY_INTERVAL_MS;
+  Serial.println("[ZigBee] Recovery attempt failed.");
+}
 
 /**
  * Main setup 
@@ -63,6 +125,11 @@ void setup() {
   connectionMode = (digitalRead(PIN_DPDT_SWITCH) == HIGH) ? CONNECTION_MODE_WIFI : CONNECTION_MODE_ZIGBEE;
   Serial.print("[Main] Connection mode: ");
   Serial.println(connectionMode == CONNECTION_MODE_WIFI ? "WiFi" : "ZigBee");
+
+  if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+    WiFi.mode(WIFI_OFF);
+    Serial.println("[Main] WiFi disabled for ZigBee mode.");
+  }
 
   controlsInit(); // Init controls early for pairing.
 
@@ -107,23 +174,42 @@ void loop() {
     if (currentLedState != LED_PAIRING && currentLedState != LED_RESET) {
       bool isConnected = false;
       if (connectionMode == CONNECTION_MODE_ZIGBEE) {
+        const unsigned long nowMs = millis();
         isConnected = zigbeeIsJoined();
 
         if (isConnected) {
+          zigbeeDisconnectCheckFailures = 0;
+
           if (zigbeeDisconnectStartMs != 0) {
             Serial.println(zigbeeHadConnection ? "[ZigBee] Connection to coordinator restored" : "[ZigBee] Connection to coordinator established");
-            zigbeeDisconnectStartMs = 0;
+            zigbeeResetRecoveryState();
           }
+
+          if (zigbeePublishRecoveryRequested) {
+            zigbeeRequestRecovery("publish failures", nowMs, true);
+            zigbeeRunRecoveryIfDue(nowMs);
+          }
+
           zigbeeHadConnection = true;
         }
         else {
-          if (zigbeeDisconnectStartMs == 0) {
-            zigbeeDisconnectStartMs = millis();
-            Serial.println(zigbeeHadConnection ? "[ZigBee] Connection to coordinator lost, waiting before restart ..." : "[ZigBee] Coordinator still unreachable since boot, waiting before restart ...");
+          if (zigbeeDisconnectCheckFailures < 255) {
+            zigbeeDisconnectCheckFailures++;
           }
-          else if (millis() - zigbeeDisconnectStartMs >= ZIGBEE_REJOIN_RESTART_DELAY_MS) {
-            Serial.println("[ZigBee] Coordinator still unreachable, rebooting to trigger rejoin ...");
-            ESP.restart();
+
+          if (zigbeeDisconnectCheckFailures >= ZIGBEE_DISCONNECT_CONFIRMATION_COUNT) { // Only confirm disconnect after a number of consecutive failures to avoid false positives from transient issues.
+            if (zigbeeDisconnectStartMs == 0) {
+              zigbeeDisconnectStartMs = nowMs;
+              const char* message = zigbeeHadConnection ? "[ZigBee] Connection lost, waiting before staged recovery ..." : "[ZigBee] Coordinator unreachable since boot, waiting before staged recovery ...";
+              Serial.println(message);
+            }
+
+            if (nowMs - zigbeeDisconnectStartMs >= ZIGBEE_REJOIN_RESTART_DELAY_MS) { // If the connection has been lost for a while, trigger recovery.
+              if (zigbeeNextRecoveryAttemptMs == 0) {
+                zigbeeNextRecoveryAttemptMs = nowMs;
+              }
+              zigbeeRunRecoveryIfDue(nowMs);
+            }
           }
         }
       }
@@ -198,8 +284,20 @@ void loop() {
     }
 
     if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      if (!zigbeeSendData(&currentValues, false) && zigbeeIsJoined()) {
-        Serial.println("[ZigBee] Failed to publish one or more attribute updates.");
+      const bool publishOk = zigbeeSendData(&currentValues, false); // We can consider it an alarm if the fall sensor is triggered, even if the values are stale, to prioritize safety.
+      if (!publishOk && zigbeeIsJoined()) {
+        if (zigbeeConsecutivePublishFailures < 255) {
+          zigbeeConsecutivePublishFailures++;
+        }
+
+        Serial.printf("[ZigBee] Publish failed (%u/%u).\n", zigbeeConsecutivePublishFailures, ZIGBEE_PUBLISH_FAILURE_THRESHOLD);
+
+        if (zigbeeConsecutivePublishFailures >= ZIGBEE_PUBLISH_FAILURE_THRESHOLD) {
+          zigbeePublishRecoveryRequested = true;
+        }
+      }
+      else if (publishOk) {
+        zigbeeConsecutivePublishFailures = 0;
       }
     }
   }

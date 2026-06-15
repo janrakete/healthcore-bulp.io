@@ -10,11 +10,16 @@ static ZigbeeTempSensor        zbTempHum    (EP_TEMP_HUM);
 static ZigbeeOccupancySensor   zbOccupancy  (EP_OCCUPANCY);
 static ZigbeeIlluminanceSensor zbIlluminance(EP_ILLUMINANCE);
 static ZigbeeAnalog            zbFall       (EP_FALL);
-    
+static bool                    zigbeeEndpointsConfigured = false;
+
 /**
- * Initialise ZigBee and add endpoints
+ * Configure ZigBee endpoints
  */
-void zigbeeInit() {
+static void zigbeeConfigureEndpoints() {
+  if (zigbeeEndpointsConfigured) {
+    return;
+  }
+
   Serial.println("[ZigBee] Initialising endpoints ...");
 
   // EP 1: Temperature + Humidity
@@ -44,25 +49,27 @@ void zigbeeInit() {
   Zigbee.addEndpoint(&zbFall);
   Serial.println("[ZigBee] EP4 Fall alarm OK (analog)");
 
-  Serial.println("[ZigBee] Starting End Device ..."); // Start ZigBee as End Device
-  if (!Zigbee.begin()) {
-    Serial.println("[ZigBee] ERROR: begin() failed");
-    Serial.println("[ZigBee] Rebooting ...");
-    ESP.restart();
-    return;
-  }
+  zigbeeEndpointsConfigured = true;
+}
 
+/**
+ * Configure ZigBee reporting intervals and tolerances
+ */
+static void zigbeeConfigureReporting() {
   zbTempHum.setReporting(ZIGBEE_REPORTING_MIN_INTERVAL, ZIGBEE_REPORTING_MAX_INTERVAL, ZIGBEE_REPORTING_TEMP_TOLERANCE);
   zbTempHum.setHumidityReporting(ZIGBEE_REPORTING_MIN_INTERVAL, ZIGBEE_REPORTING_MAX_INTERVAL, ZIGBEE_REPORTING_HUMIDITY_TOLERANCE);
   zbIlluminance.setReporting(ZIGBEE_REPORTING_MIN_INTERVAL, ZIGBEE_REPORTING_MAX_INTERVAL, ZIGBEE_REPORTING_ILLUMINANCE_TOLERANCE);
+}
 
-  Serial.println("[ZigBee] Initialisation complete, waiting for coordinator connection");
-  ledSetState(LED_PAIRING);
-
+/**
+ * Wait for ZigBee connection
+ */
+static bool zigbeeWaitForConnection(unsigned long timeoutMs, bool tickLedBlink) {
   unsigned long start     = millis();
   unsigned long lastDotMs = 0;
-  while (!Zigbee.connected() && millis() - start < ZIGBEE_CONNECTION_TIMEOUT_MS) { // Wait for coordinator connection with timeout
-    if (taskUpdate(&taskLedBlink)) { // Manually tick the LED blink state machine — loop() does not run during setup().
+
+  while (!Zigbee.connected() && millis() - start < timeoutMs) {
+    if (tickLedBlink && taskUpdate(&taskLedBlink)) {
       ledUpdate();
     }
 
@@ -71,16 +78,67 @@ void zigbeeInit() {
       lastDotMs = nowMs;
       Serial.print(".");
     }
+
+    delay(10);
   }
-    
-  taskLedBlink.lastRun = millis(); // clear taskledblink to avoid interference with normal LED updates in loop()
+
   Serial.println();
+  return Zigbee.connected();
+}
+    
+/**
+ * Initialise ZigBee and add endpoints
+ */
+void zigbeeInit() {
+  zigbeeConfigureEndpoints();
+
+  Serial.println("[ZigBee] Starting End Device ..."); // Start ZigBee as End Device
+  if (!Zigbee.begin()) {
+    Serial.println("[ZigBee] ERROR: begin() failed");
+    return;
+  }
+
+  zigbeeConfigureReporting();
+
+  Serial.println("[ZigBee] Initialisation complete, waiting for coordinator connection");
+  ledSetState(LED_PAIRING);
+
+  zigbeeWaitForConnection(ZIGBEE_CONNECTION_TIMEOUT_MS, true);
+
+  taskLedBlink.lastRun = millis(); // clear taskledblink to avoid interference with normal LED updates in loop()
 
   if (Zigbee.connected()) {
     Serial.println("[ZigBee] Connected to coordinator");
   } else {
     Serial.println("[ZigBee] No coordinator found - press pairing button again to start pairing");
   }
+}
+
+/**
+ * Attempt to rejoin the ZigBee network using stored credentials. Returns true if rejoin was successful, false otherwise.
+ * This is used as part of the staged recovery process after a connection loss is detected.
+ */
+bool zigbeeAttemptRejoin(unsigned long timeoutMs) {
+  zigbeeConfigureEndpoints();
+
+  Serial.println("[ZigBee] Recovery: restarting ZigBee stack ...");
+  if (!Zigbee.begin()) {
+    Serial.println("[ZigBee] Recovery: begin() failed");
+    return false;
+  }
+
+  zigbeeConfigureReporting();
+  Serial.println("[ZigBee] Recovery: waiting for coordinator connection ...");
+
+  const bool connected = zigbeeWaitForConnection(timeoutMs, false);
+  if (connected) {
+    Serial.println("[ZigBee] Recovery: rejoin successful");
+  }
+  else {
+    Serial.println("[ZigBee] Recovery: rejoin timeout");
+  }
+
+  return connected;
 }
 
 /*
