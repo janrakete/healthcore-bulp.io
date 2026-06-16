@@ -102,7 +102,8 @@ const appConfig = {
   CONF_healthcheckMaxLogs                             : toInt(process.env.CONF_healthcheckMaxLogs),
   CONF_dashboardRefreshIntervalMs                     : toInt(process.env.CONF_dashboardRefreshIntervalMs),
   CONF_dashboardRecentAlertsCount                     : toInt(process.env.CONF_dashboardRecentAlertsCount),
-  CONF_logMaxLength                                   : toInt(process.env.CONF_logMaxLength)
+  CONF_logMaxLength                                   : toInt(process.env.CONF_logMaxLength),
+  CONF_repositoryURL                                  : process.env.CONF_repositoryURL
 };
 
 module.exports = appConfig;

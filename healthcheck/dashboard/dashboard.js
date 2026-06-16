@@ -986,7 +986,8 @@ function renderStatus() {
         [i18n.t("Name"),           info.serverName       || "—"],
         [i18n.t("StatusVersion"),  info.serverVersion    || "—"],
         ["Bonjour ID",             info.serverIDBonjour  || "—"],
-        ["Status",                 info.status           || "—"]
+        ["Status",                 info.status           || "—"],
+        [i18n.t("LastCommit"),     info.serverCodeLastCommit || "—"]
     ];
 
     const serverContent     = document.createElement("div");
@@ -1004,6 +1005,73 @@ function renderStatus() {
         serverContent.appendChild(contentLabel);
         serverContent.appendChild(contentValue);
     }
+
+    const updateButton        = document.createElement("button"); 
+    updateButton.className    = "button is-small hc-button";
+    updateButton.textContent  = i18n.t("UpdateCheck");
+
+    updateButton.addEventListener("click", async function () {
+        try {
+            const response = await fetch(CONF_serverBaseUrl + "/info/update", { headers: buildApiHeaders() });
+            const data     = await response.json();
+            if (data.status === "ok") {
+                document.getElementById("update-status").classList.add("is-size-7", "tag", "mt-3");
+                if (data.updateAvailable == true) {
+                    document.getElementById("update-status").classList.add("hc-tag-failed");
+                    document.getElementById("update-status").classList.remove("hc-tag-ok");
+                    document.getElementById("update-status").textContent = i18n.t("UpdateAvailable");
+
+                    // add a link to call "/info/update/install" to trigger the update process, with a warning about potential downtime
+                    const installLink = document.createElement("a");
+                    installLink.href = "#";
+                    installLink.textContent = i18n.t("UpdateInstall");
+                    installLink.className = "is-size-7 ml-2";
+                    installLink.addEventListener("click", async function (e) {
+                        e.preventDefault();
+                        if (confirm(i18n.t("UpdateInstallConfirm"))) {
+                            try {
+                                const installResponse = await fetch(CONF_serverBaseUrl + "/info/update/install", { headers: buildApiHeaders() });
+                                const installData     = await installResponse.json();
+                                if (installData.status === "ok") {
+                                    alert(i18n.t("UpdateInstallStarted"));
+                                }
+                                else {
+                                    alert(i18n.t("UpdateInstallFailed"));
+                                }
+                            }
+                            catch (error) {
+                                console.error("API call to trigger update installation failed:", error);
+                                alert(i18n.t("UpdateInstallFailed"));
+                            }
+                        }
+                    });
+                    document.getElementById("update-status").appendChild(installLink);
+                }
+                else {                   
+                    document.getElementById("update-status").classList.remove("hc-tag-failed");
+                    document.getElementById("update-status").classList.add("hc-tag-ok");
+                    document.getElementById("update-status").textContent = i18n.t("UpdateUpToDate");
+                }
+            }
+            else {
+                console.error("API call to update server info returned unexpected response:", data);
+            }
+        }
+        catch (error) {
+            console.error("API call to update server info failed:", error);
+        }
+    });
+    
+    const spacer        = document.createElement("div");
+    spacer.className    = "mb-3";
+    serverContent.appendChild(spacer);
+
+    serverContent.appendChild(updateButton);
+    serverContent.appendChild(document.createElement("br"));
+
+    const updateStatus      = document.createElement("span");
+    updateStatus.id         = "update-status";
+    serverContent.appendChild(updateStatus);
 
     serverCard.appendChild(serverContent);
     container.appendChild(serverCard);

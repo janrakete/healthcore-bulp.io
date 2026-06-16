@@ -158,5 +158,21 @@
     "German": {
         "en": "German",
         "de": "Deutsch"
+    },
+    "LastCommit": {
+        "en": "Last commit",
+        "de": "Letzter Commit"
+    },
+    "UpdateCheck": {
+        "en": "Check for updates",
+        "de": "Nach Updates suchen"
+    },
+    "UpdateAvailable": {
+        "en": "An update is available.",
+        "de": "Ein Update ist verfügbar."
+    },
+    "UpdateUpToDate": {
+        "en": "Software is up to date.",
+        "de": "Software ist auf dem neuesten Stand."
     }
 }

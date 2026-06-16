@@ -201,6 +201,23 @@ async function startServer() {
   scenarios.pushEngine  = pushEngine; // make push engine available in scenarios
 
   /**
+   * Loading settings from database
+   */
+  try {
+    const result = await database.prepare("SELECT * FROM settings LIMIT 1").get();
+    if (result) {
+      appConfig.CONF_settings = result;
+      common.conLog("Server: Settings loaded from database", "gre");
+    }
+    else {
+      common.conLog("Server: No settings found in database", "red");
+    } 
+  }
+  catch (error) {
+    common.conLog("Server: Error loading settings from database: " + error, "red");
+  }
+
+  /**
    * MQTT client
    */
   const mqtt       = require("mqtt");
@@ -217,7 +234,6 @@ async function startServer() {
     }
   }
   const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, mqttOptions); // connect to broker ...
-
 
   /**
   * Connects the MQTT client and subscribes to all topics.

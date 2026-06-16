@@ -102,8 +102,8 @@ html, body {
     margin-top: 0.5rem;
 }
 
-/* Active tab — purple background, white text, rounded corners on all sides */
-#hc-dashboard-tabs .is-active a {
+/* Active tab */
+#hc-dashboard-tabs .is-active a, .hc-button {
     background-color: var(--hc-color-primary) !important;
     color: var(--hc-color-text-contrast) !important;
     border-radius: var(--bulma-radius);
@@ -197,7 +197,7 @@ html, body {
     background-color: var(--hc-color-alert-acknowledged) !important; 
 }
 
-.hc-tag-resolved { 
+.hc-tag-resolved, .hc-tag-ok { 
     background-color: var(--hc-color-alert-resolved)  !important; 
 }
 
@@ -209,7 +209,7 @@ html, body {
     background-color: var(--hc-color-connected) !important; 
 }
 
-.hc-tag-disconnected { 
+.hc-tag-disconnected, .hc-tag-failed { 
     background-color: var(--hc-color-disconnected) !important; 
 }
 
