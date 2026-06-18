@@ -1012,7 +1012,7 @@ function renderStatus() {
 
     updateButton.addEventListener("click", async function () {
         try {
-            const response = await fetch(CONF_serverBaseUrl + "/info/update", { headers: buildApiHeaders() });
+            const response = await fetch(CONF_serverBaseUrl + "/update/info", { headers: buildApiHeaders() });
             const data     = await response.json();
             if (data.status === "ok") {
                 document.getElementById("update-status").classList.add("is-size-7", "tag", "mt-3");
@@ -1021,16 +1021,15 @@ function renderStatus() {
                     document.getElementById("update-status").classList.remove("hc-tag-ok");
                     document.getElementById("update-status").textContent = i18n.t("UpdateAvailable");
 
-                    // add a link to call "/info/update/install" to trigger the update process, with a warning about potential downtime
-                    const installLink = document.createElement("a");
-                    installLink.href = "#";
+                    const installLink       = document.createElement("a");
+                    installLink.href        = "#";
                     installLink.textContent = i18n.t("UpdateInstall");
-                    installLink.className = "is-size-7 ml-2";
-                    installLink.addEventListener("click", async function (e) {
-                        e.preventDefault();
+                    installLink.className   = "is-size-7 ml-2 has-text-black is-underlined";
+                    installLink.addEventListener("click", async function (event) {
+                        event.preventDefault();
                         if (confirm(i18n.t("UpdateInstallConfirm"))) {
                             try {
-                                const installResponse = await fetch(CONF_serverBaseUrl + "/info/update/install", { headers: buildApiHeaders() });
+                                const installResponse = await fetch(CONF_serverBaseUrl + "/update/install", { headers: buildApiHeaders() });
                                 const installData     = await installResponse.json();
                                 if (installData.status === "ok") {
                                     alert(i18n.t("UpdateInstallStarted"));

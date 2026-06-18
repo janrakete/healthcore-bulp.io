@@ -76,7 +76,8 @@ async function startServer() {
   app.use("/scenarios", apiKeyAuth, routesScenarios);
   const routesAlerts = require("./routes/alerts"); // import routes for alerts
   app.use("/alerts", apiKeyAuth, routesAlerts);
-  
+  const routesUpdate = require("./routes/update"); // import routes for updates
+  app.use("/update", apiKeyAuth, routesUpdate);
   /**
    * Swagger
    */

@@ -174,5 +174,21 @@
     "UpdateUpToDate": {
         "en": "Software is up to date.",
         "de": "Software ist auf dem neuesten Stand."
-    }
+    },
+    "UpdateInstallConfirm": {
+        "en": "Do you want to install the update now? The server will be restarted and unavailable for a short time.",
+        "de": "Möchten Sie das Update jetzt installieren? Der Server wird neu gestartet und für kurze Zeit nicht verfügbar sein."
+    },
+    "UpdateInstallStarted": {
+        "en": "Update started.",
+        "de": "Update gestartet."
+    },
+    "UpdateInstallFailed": {
+        "en": "Failed to start update.",
+        "de": "Fehler beim Starten des Updates."
+    },
+    "UpdateInstall": {
+        "en": "Install update",
+        "de": "Update installieren"
+    }   
 }
