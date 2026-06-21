@@ -369,7 +369,7 @@ router.get("/", async function (request, response) {
                 sql += " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
             }
 
-            common.conLog("GET Request: access table 'alerts'", "gre");
+            common.conLog("Server route 'Alerts': GET Request: access table 'alerts'", "gre");
             common.conLog("Execute statement: " + sql, "std", false);
 
             data.results = database.prepare(sql).all(condition.parameters).map((item) => enrichAlert(item));
@@ -381,7 +381,7 @@ router.get("/", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + error.message;
+        data.error  = error.message;
     }
 
     return common.sendResponse(response, data, "Server route 'Alerts'", "GET request alerts");
@@ -448,7 +448,7 @@ router.get("/stats", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + error.message;
+        data.error  = error.message;
     }
 
     return common.sendResponse(response, data, "Server route 'Alerts'", "GET request alert stats");
@@ -494,7 +494,7 @@ router.get("/:alertID", async function (request, response) {
     let data      = {};
 
     try {
-        common.conLog("GET Request: access table 'alerts' via ID " + alertID, "gre");
+        common.conLog("Server route 'Alerts': GET Request: access table 'alerts' via ID " + alertID, "gre");
         const alert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
 
         if (alert) {
@@ -509,7 +509,7 @@ router.get("/:alertID", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + error.message;
+        data.error  = error.message;
     }
 
     return common.sendResponse(response, data, "Server route 'Alerts'", "GET request alert detail");
@@ -571,7 +571,7 @@ router.patch("/:alertID", async function (request, response) {
             data.error  = "Invalid status";
         }
         else {
-            common.conLog("PATCH request for Alert via ID " + alertID, "gre");
+            common.conLog("Server route 'Alerts': PATCH request for Alert via ID " + alertID, "gre");
             const alert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
 
             if (alert) {
@@ -582,6 +582,7 @@ router.patch("/:alertID", async function (request, response) {
                 const updatedAlert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
                 if (previousStatus !== nextStatus) {
                     if (nextStatus === "resolved") { // trigger special event for resolved status to allow scenario engine to react specifically on resolution
+                        common.conLog("Server route 'Alerts': Alert resolved, triggering scenario event", "gre");
                         AlertsEngine.triggerScenarioEvent("alert_resolved", updatedAlert);
                     }
                     else { // trigger a general event for any status update to allow scenario engine to react on status changes (e.g. acknowledged or critical)
@@ -589,7 +590,7 @@ router.patch("/:alertID", async function (request, response) {
                     }
                 }
 
-                data.status = "ok";
+                data.status  = "ok";
             }
             else {
                 data.status = "error";
@@ -599,7 +600,7 @@ router.patch("/:alertID", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + error.message;
+        data.error  = error.message;
     }
 
     return common.sendResponse(response, data, "Server route 'Alerts'", "PATCH request alert");

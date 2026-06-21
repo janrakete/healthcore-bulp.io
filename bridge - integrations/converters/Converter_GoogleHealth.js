@@ -304,13 +304,13 @@ async function ensureAccessToken(context) {
   }
 
   if (!context.refreshToken) {
-    throw new Error("Integrations (Google Health): no refresh token available for account " + context.accountID);
+    throw new Error("No refresh token available for account " + context.accountID);
   }
 
   const meta = context.metadata || {};
 
   if (!meta.clientID || !meta.clientSecret) {
-    throw new Error("Integrations (Google Health): clientID/clientSecret missing in account metadata for " + context.accountID);
+    throw new Error("ClientID/clientSecret missing in account metadata for " + context.accountID);
   }
 
   const body = {
@@ -323,7 +323,7 @@ async function ensureAccessToken(context) {
   const result = await httpsRequest("POST", GOOGLE_TOKEN_URL, { body });
 
   if (result.error) {
-    throw new Error("Integrations (Google Health): token refresh failed for account " + context.accountID + ": " + result.error);
+    throw new Error("Token refresh failed for account " + context.accountID + ": " + result.error);
   }
 
   const newExpiresAt = new Date(nowMs + result.expires_in * 1000).toISOString();

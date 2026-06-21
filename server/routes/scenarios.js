@@ -174,7 +174,7 @@ router.get("/all", async function (request, response) {
             result.enabled          = result.enabled === 1 ? true : false;
         }
 
-        common.conLog("GET Request: access table 'scenarios'", "gre");
+        common.conLog("Server route 'Scenarios': GET Request: access table 'scenarios'", "gre");
         common.conLog("Execute statement: " + statement, "std", false);
 
         for (const result of results) {
@@ -188,7 +188,7 @@ router.get("/all", async function (request, response) {
                   }
                   catch (error) {
                       data.status              = "error";
-                      data.error               = "Fatal error: " + (error.stack).slice(0, 128);
+                      data.error               = error.message;
                       trigger.deviceProperties = {};
                   }
               }
@@ -201,7 +201,7 @@ router.get("/all", async function (request, response) {
                   }
                   catch (error) {
                       data.status             = "error";
-                      data.error              = "Fatal error: " + (error.stack).slice(0, 128);
+                      data.error              = error.message;
                       action.deviceProperties = {};
                   }
               }
@@ -212,7 +212,7 @@ router.get("/all", async function (request, response) {
     } 
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+        data.error  = error.message;
     }
 
     return common.sendResponse(response, data, "Server route 'Scenarios'", "GET Request");
@@ -268,6 +268,7 @@ router.get("/:scenarioID", async function (request, response) {
     try {
         const result = await database.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
         if (result) {
+            data.status             = "ok";
             result.enabled          = result.enabled === 1 ? true : false;
 
             result.triggers = await database.prepare("SELECT st.*, d.uuid AS deviceUUID, d.bridge AS deviceBridge, d.name AS deviceName, d.properties AS deviceProperties, d.powerType AS devicePowerType, ar.title AS ruleTitle FROM scenarios_triggers st LEFT JOIN devices d ON st.deviceID = d.deviceID LEFT JOIN alert_rules ar ON ar.ruleID = CAST(st.property AS INTEGER) AND st.type IN ('alert_opened', 'alert_updated', 'alert_resolved') WHERE st.scenarioID = ? LIMIT ?").all(scenarioID, appConfig.CONF_tablesMaxEntriesReturned);
@@ -280,7 +281,7 @@ router.get("/:scenarioID", async function (request, response) {
                     }
                     catch (error) {
                         data.status              = "error";
-                        data.error               = "Fatal error: " + (error.stack).slice(0, 128);
+                        data.error               = error.message;
                         trigger.deviceProperties = {};
                     }
                 }
@@ -293,15 +294,14 @@ router.get("/:scenarioID", async function (request, response) {
                     }
                     catch (error) {
                         data.status             = "error";
-                        data.error              = "Fatal error: " + (error.stack).slice(0, 128);
+                        data.error              = error.message;
                         action.deviceProperties = {};
                     }
                 }
             }
 
-            data.status    = "ok";
             data.results   = [result];
-            common.conLog("GET Request: access table 'scenarios'", "gre");
+            common.conLog("Server route 'Scenarios': GET Request: access table 'scenarios'", "gre");
         } 
         else {
             data.status = "error";
@@ -310,7 +310,7 @@ router.get("/:scenarioID", async function (request, response) {
     } 
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+        data.error  = error.message;
     }
     return common.sendResponse(response, data, "Server route 'Scenarios'", "GET Request");
 });
@@ -501,7 +501,7 @@ router.post("/", async function (request, response) {
 
                 data.ID = transaction(); // Commit transaction
 
-                common.conLog("POST Request: insert into table 'scenarios'", "gre");
+                common.conLog("Server route 'Scenarios': POST Request: insert into table 'scenarios'", "gre");
                 common.conLog("Execute statement: " + insertScenario.sql, "std", false);
                 common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
                 common.conLog("Execute statement: " + insertAction.sql, "std", false);
@@ -518,7 +518,7 @@ router.post("/", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+        data.error  = error.message;
     }
     
     return common.sendResponse(response, data, "Server route 'Scenarios'", "POST Request");
@@ -665,7 +665,7 @@ router.patch("/:scenarioID", async function (request, response) {
             database.prepare("UPDATE scenarios SET name = COALESCE(?, name), description = COALESCE(?, description), enabled = COALESCE(?, enabled), priority = COALESCE(?, priority), icon = COALESCE(?, icon), roomID = COALESCE(?, roomID), individualID = COALESCE(?, individualID) WHERE scenarioID = ?").run(
                 payload.name || null, payload.description !== undefined ? payload.description : null, payload.enabled !== undefined ? payload.enabled : null, payload.priority !== undefined ? payload.priority : null, payload.icon || null, payload.roomID || null, payload.individualID || null, scenarioID
             );
-            common.conLog("PATCH Request: access table 'scenarios'", "gre");
+            common.conLog("Server route 'Scenarios': PATCH Request: access table 'scenarios'", "gre");
         }
 
         if (payload.triggers) {  // Update triggers if provided
@@ -680,7 +680,7 @@ router.patch("/:scenarioID", async function (request, response) {
 
             insertTrigger.run(scenarioID, trigger.type || "device_value", deviceID, trigger.property || null, trigger.operator || "equals", typeof trigger.value === "object" ? JSON.stringify(trigger.value) : (trigger.value || null), trigger.valueType || "String");
           }
-          common.conLog("PATCH Request: access table 'scenarios'", "gre");
+          common.conLog("Server route 'Scenarios': PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertTrigger.sql, "std", false);
         }
 
@@ -696,7 +696,7 @@ router.patch("/:scenarioID", async function (request, response) {
 
             insertAction.run(scenarioID, action.type || "set_device_value", deviceID, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", action.delay || 0);
           }
-          common.conLog("PATCH Request: access table 'scenarios'", "gre");
+          common.conLog("Server route 'Scenarios': PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);
         }
       });
@@ -710,7 +710,7 @@ router.patch("/:scenarioID", async function (request, response) {
   }
   catch (error) {
     data.status = "error";
-    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+    data.error  = error.message;
   }
 
   return common.sendResponse(response, data, "Server route 'Scenarios'", "PATCH Request");
@@ -769,16 +769,16 @@ router.delete("/:scenarioID", async function (request, response) {
     }
     else {
       data.status = "ok";
-      common.conLog("DELETE Request: scenario '" + scenarioID + "' deleted successfully", "gre");
+      common.conLog("Server route 'Scenarios': DELETE Request: scenario '" + scenarioID + "' deleted successfully", "gre");
 
       database.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(scenarioID);
       database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID);
-      common.conLog("DELETE Request: associated triggers and actions for scenario '" + scenarioID + "' deleted successfully", "gre");
+      common.conLog("Server route 'Scenarios': DELETE Request: associated triggers and actions for scenario '" + scenarioID + "' deleted successfully", "gre");
     }
   }
   catch (error) {
     data.status = "error";
-    data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+    data.error  = error.message;
   }
 
   return common.sendResponse(response, data, "Server route 'Scenarios'", "DELETE Request");
@@ -834,7 +834,7 @@ router.post("/:scenarioID/execute", async function (request, response) {
             await global.scenarios.executeScenarioActionsManually(scenarioID);
 
             data.status = "ok";
-            common.conLog("POST Request: execute actions for scenario '" + scenarioID + "'", "gre");
+            common.conLog("Server route 'Scenarios': POST Request: execute actions for scenario '" + scenarioID + "'", "gre");
         }
         else {
             data.status = "error";
@@ -843,7 +843,7 @@ router.post("/:scenarioID/execute", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+        data.error  = error.message;
     }
 
     return common.sendResponse(response, data, "Server route 'Scenarios'", "POST Request");

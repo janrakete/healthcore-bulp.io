@@ -15,6 +15,12 @@ global.database = database; // make SQLite database global
 database.pragma("foreign_keys = ON");
 
 /**
+ * Database migration, if needed
+ */
+const DatabaseMigrationEngine = require("./libs/DatabaseMigrationsEngine");
+DatabaseMigrationEngine.runMigrations();
+
+/**
  * Start server
  * @async
  * @function startServer

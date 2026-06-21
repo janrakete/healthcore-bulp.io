@@ -69,8 +69,8 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeHTTP;
-    common.conLog("Bridge info sent!", "gre");
-    common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
+    common.conLog("HTTP: Bridge info sent!", "gre");
+    common.conLog("HTTP: Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });
   
@@ -216,7 +216,7 @@ async function startBridgeAndServer() {
     }
     catch (error) {
       data.status = "error";
-      data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+      data.error  = error.message;
     }
       
     common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
@@ -272,7 +272,7 @@ async function startBridgeAndServer() {
     }
     catch (error) {
       data.status = "error";
-      data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+      data.error  = error.message;
     }
       
     common.conLog("HTTP response: " + JSON.stringify(data), "std", false);
@@ -332,7 +332,7 @@ async function startBridgeAndServer() {
     }
     catch (error) {
       data.status = "error";
-      data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+      data.error  = error.message;
     }
       
     common.conLog("HTTP response: " + JSON.stringify(data), "std", false);

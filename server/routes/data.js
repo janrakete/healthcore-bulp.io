@@ -296,7 +296,7 @@ router.post("/:table", async function (request, response) {
          const statement = await buildSqlMutationFragment(table, payload, "INSERT");
          if (statement.status === "ok") {
             const sql = "INSERT INTO " + table + statement.statement;
-            common.conLog("POST Request: access table '" + table + "'", "gre");
+            common.conLog("Server route 'Data': POST Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + sql, "std", false);
 
             data.status = "ok";
@@ -311,7 +311,7 @@ router.post("/:table", async function (request, response) {
       }
       catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+         data.error  = error.message;
       }
    }
    else {
@@ -410,7 +410,7 @@ router.get("/:table", async function (request, response) {
                sql = sql + " LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
             }
 
-            common.conLog("GET Request: access table '" + table + "'", "gre");
+            common.conLog("Server route 'Data': GET Request: access table '" + table + "'", "gre");
             common.conLog("Execute statement: " + sql, "std", false);
 
             const results = await database.prepare(sql).all(condition.parameters);
@@ -424,7 +424,7 @@ router.get("/:table", async function (request, response) {
       }
       catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+         data.error  = error.message;
       }
    }
    else {
@@ -498,7 +498,7 @@ router.delete("/:table", async function (request, response) {
          if (condition.status === "ok") {
             if (condition.condition && condition.condition.trim() !== "") {
                const sql = "DELETE FROM " + table + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
-               common.conLog("DELETE Request: access table '" + table + "'", "gre");
+               common.conLog("Server route 'Data': DELETE Request: access table '" + table + "'", "gre");
                common.conLog("Execute statement: " + sql, "std", false);
       
                const result = await database.prepare(sql).run(condition.parameters);
@@ -507,9 +507,9 @@ router.delete("/:table", async function (request, response) {
                   data.status = "error";
                   data.error  ="Entry not found";
                }
-               else {
-                  data.status = "ok";
-                  common.conLog("DELETE Request: entry deleted successfully", "gre");
+               else {                
+                  data.status = "ok";  
+                  common.conLog("Server route 'Data': DELETE Request: entry deleted successfully", "gre");
                }
             }
             else { // if no condition is given, return error
@@ -524,7 +524,7 @@ router.delete("/:table", async function (request, response) {
       }
       catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+         data.error  = error.message;
       }
    }
    else {
@@ -612,7 +612,7 @@ router.patch("/:table", async function (request, response) {
                const statement = await buildSqlMutationFragment(table, payload, "UPDATE");
                if (statement.status === "ok") {
                   const sql = "UPDATE " + table + " SET " + statement.statement + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
-                  common.conLog("PATCH Request: access table '" + table + "'", "gre");
+                  common.conLog("Server route 'Data': PATCH Request: access table '" + table + "'", "gre");
                   common.conLog("Execute statement: " + sql, "std", false);
 
                   const params = { ...statement.parameters, ...condition.parameters };
@@ -624,7 +624,7 @@ router.patch("/:table", async function (request, response) {
                   }
                   else {
                      data.status = "ok";
-                     common.conLog("PATCH Request: entry updated successfully", "gre");
+                     common.conLog("Server route 'Data': PATCH Request: entry updated successfully", "gre");
                   }                  
                }
                else {
@@ -644,7 +644,7 @@ router.patch("/:table", async function (request, response) {
       }
       catch (error) {
          data.status = "error";
-         data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+         data.error  = error.message;
       }
    }
    else {

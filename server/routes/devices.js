@@ -26,7 +26,7 @@ function handlePendingMqttResponse(callID, response) {
         data.status = "error";
         data.error  = "No response from broker in " + appConfig.CONF_apiCallTimeoutMilliseconds + "ms";
 
-        common.conLog("Waited for MQTT response, but timed out", "red");
+        common.conLog("Server route 'Devices': Waited for MQTT response, but timed out", "red");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
         return response.status(400).json(data);
     }, appConfig.CONF_apiCallTimeoutMilliseconds);
@@ -36,7 +36,7 @@ function handlePendingMqttResponse(callID, response) {
         data.data   = message;
 
         clearTimeout(responseTimeout);
-        common.conLog("Received MQTT response in time", "gre");
+        common.conLog("Server route 'Devices': Received MQTT response in time", "gre");
         common.conLog("Server route 'Devices' HTTP response: " + JSON.stringify(data), "std", false);
         return response.status(200).json(data);
     };
@@ -198,7 +198,7 @@ router.get("/all", async function (request, response) {
     try {
         data.status = "ok";
         const statement = "SELECT * FROM devices LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
-        common.conLog("GET Request: access table 'devices'", "gre");
+        common.conLog("Server route 'Devices': GET Request: access table 'devices'", "gre");
         common.conLog("Execute statement: " + statement, "std", false);
 
         const results = await database.prepare(statement).all();
@@ -210,7 +210,7 @@ router.get("/all", async function (request, response) {
                 }
                 catch (error) {
                     data.status         = "error";
-                    data.error          = "Fatal error: " + (error.stack).slice(0, 128);
+                    data.error          = error.message;
                     device.properties   = {};
                 }
             }
@@ -222,7 +222,7 @@ router.get("/all", async function (request, response) {
     }
     catch (error) {
         data.status = "error";
-        data.error  = "Fatal error: " + (error.stack).slice(0, 128);
+        data.error  = error.message;
     }
 
 
@@ -309,7 +309,7 @@ router.post("/:bridge/scan", async function (request, response) {
 
             mqttClient.publish(bridge + "/devices/scan", JSON.stringify(message)); // ... publish to MQTT broker
             
-            common.conLog("POST request for device scan forwarded via MQTT", "gre");
+            common.conLog("Server route 'Devices': POST request for device scan forwarded via MQTT", "gre");
         }
         else {
             data.status = "error";
@@ -423,7 +423,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
         data.data.callID    = payload.callID;
 
         data.status = "ok";
-        common.conLog("GET request for device scan info", "gre");
+        common.conLog("Server route 'Devices': GET request for device scan info", "gre");
     }
     else {
         data.status = "error";
@@ -526,7 +526,7 @@ router.post("/:bridge/:uuid/connect", async function (request, response) {
             message.addDeviceToServer   = payload.body?.addDeviceToServer === true;
 
             mqttClient.publish(bridge + "/devices/connect", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("POST request for device connect via UUID " + message.uuid + " forwarded via MQTT", "gre");
+            common.conLog("Server route 'Devices': POST request for device connect via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
             handlePendingMqttResponse(message.callID, response);
         }
@@ -622,7 +622,7 @@ router.post("/:bridge/:uuid/disconnect", async function (request, response) {
             message.bridge  = bridge;
 
             mqttClient.publish(bridge + "/devices/disconnect", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("POST request for device disconnect via UUID " + message.uuid + " forwarded via MQTT", "gre");
+            common.conLog("Server route 'Devices': POST request for device disconnect via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
             handlePendingMqttResponse(message.callID, response);
         }
@@ -718,7 +718,7 @@ router.delete("/:bridge/:uuid", async function (request, response) {
             message.bridge  = bridge;
 
             mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
-            common.conLog("DELETE request for device remove via UUID " + message.uuid + " forwarded via MQTT", "gre");
+            common.conLog("Server route 'Devices': DELETE request for device remove via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
             handlePendingMqttResponse(message.callID, response);
         }
@@ -840,7 +840,7 @@ router.post("/:bridge/:uuid", async function (request, response) {
                 message.vendorName  = payload.body.vendorName;
 
                 mqttClient.publish(bridge + "/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for device add via UUID " + message.uuid + " forwarded via MQTT", "gre");
+                common.conLog("Server route 'Devices': POST request for device add via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
                 handlePendingMqttResponse(message.callID, response);
             }
@@ -996,7 +996,7 @@ router.patch("/:bridge/:uuid", async function (request, response) {
                     }
 
                     database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE uuid = ? AND bridge = ?").run(individualID, roomID, uuid, bridge);
-                    common.conLog("PATCH request for device assignment update via UUID " + uuid + " successful", "gre");
+                    common.conLog("Server route 'Devices': PATCH request for device assignment update via UUID " + uuid + " successful", "gre");
                 }
 
                 
@@ -1011,7 +1011,7 @@ router.patch("/:bridge/:uuid", async function (request, response) {
                     message.updates = bridgeFields;
 
                     mqttClient.publish(bridge + "/devices/update", JSON.stringify(message));
-                    common.conLog("PATCH request for device update via UUID " + message.uuid + " forwarded via MQTT", "gre");
+                    common.conLog("Server route 'Devices': PATCH request for device update via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
                     handlePendingMqttResponse(message.callID, response);
                 }
@@ -1128,7 +1128,7 @@ router.get("/:bridge/:uuid/values", async function (request, response) {
             if (message.bridge === "bluetooth" || message.bridge === "zigbee") { // Request latest values from the device via MQTT, i.e. Bluetooth or Zigbee
                 handlePendingMqttResponse(message.callID, response);
                 mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("GET request for device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
+                common.conLog("Server route 'Devices': GET request for device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
             }
             else { // Get latest values from database for the device, i.e. HTTP or LoRa — use numeric deviceID
                 const deviceID = common.deviceGetIDByUUID(message.uuid, bridge);
@@ -1255,7 +1255,7 @@ router.post("/:bridge/:uuid/values", async function (request, response) {
                 message.bridge  = bridge;
 
                 mqttClient.publish(bridge + "/devices/values/set", JSON.stringify(message)); // ... publish to MQTT broker
-                common.conLog("POST request for setting device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
+                common.conLog("Server route 'Devices': POST request for setting device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
 
                 handlePendingMqttResponse(message.callID, response);
             }
@@ -1371,7 +1371,7 @@ router.get("/:bridge/list", async function (request, response) {
         message.bridge      = bridge;
 
         mqttClient.publish(bridge + "/devices/list", JSON.stringify(message)); // ... publish to MQTT broker
-        common.conLog("GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
+        common.conLog("Server route 'Devices': GET request for registered and connected device list via bridge " + message.bridge + " forwarded via MQTT", "gre");
 
         handlePendingMqttResponse(message.callID, response);
     }
@@ -1508,14 +1508,14 @@ router.get("/:bridge/:uuid", async function (request, response) {
                     }
                     catch (error) {
                         data.status             = "error";
-                        data.error              = "Fatal error: " + (error.stack).slice(0, 128);
+                        data.error              = error.message;
                         data.device.properties  = {};
                     }
                 }
 
                 enrichDeviceWithAssignment(data.device);
 
-                common.conLog("GET request for device info via UUID " + payload.uuid + " successful", "gre");
+                common.conLog("Server route 'Devices': GET request for device info via UUID " + payload.uuid + " successful", "gre");
             }
             else {
                 data.status = "error";

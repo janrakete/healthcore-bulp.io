@@ -9,27 +9,22 @@ const fs              = require("fs");
 const os              = require("os");
 const path            = require("path");
 const { spawn }       = require("child_process");
+const common          = require("../common.js");
+const extractZip      = require("extract-zip");
 
-function getRepoMetaFromConfig() {
-    const raw   = String(appConfig.CONF_repositoryURL || "").replace(/^\/+|\/+$/g, "");
-    const parts = raw.split("/");
-
-    if (parts.length < 2) {
-        return null;
-    }
-
-    const owner  = parts[0];
-    const repo   = parts[1];
-    const branch = parts[4] || "master";
-
-    return { owner, repo, branch };
-}
-
+/**
+ * A helper function to run a command as a child process and return a promise that resolves when the
+ * process exits successfully or rejects if it fails.
+ * @param {string} command 
+ * @param {string[]} args 
+ * @param {object} options 
+ * @returns {Promise<void>}
+ */
 function runProcess(command, args, options = {}) {
     return new Promise((resolve, reject) => {
         const process = spawn(command, args, options);
         process.on("error", reject);
-        process.on("close", (code) => {
+        process.on("close", (code) => { // Ignore non-zero exit codes if stdio is ignored, as some commands may return non-zero codes even on success when output is not captured.
             if (code !== 0) {
                 reject(new Error(command + " failed with exit code " + code));
                 return;
@@ -39,64 +34,79 @@ function runProcess(command, args, options = {}) {
     });
 }
 
-async function runDetachedUpdateAndRestart(latestCommit) {
+/**
+ * Runs the update process by downloading the latest code from GitHub, extracting it, copying it to the server directory
+ * while excluding certain files, and then restarting the server using a detached process. 
+ * @param {string} latestCommit 
+ * @returns {Promise<void>}
+ */
+async function updateRunAndRestart(latestCommit) {
     const rootPath = path.resolve(__dirname, "../..");
-    const repoMeta = getRepoMetaFromConfig();
 
-    if (!repoMeta) {
-        throw new Error("Invalid CONF_repositoryURL. Expected at least '<owner>/<repo>'");
+    const repoURLFixed = String(appConfig.CONF_repositoryURL || "").replace(/^\/+|\/+$/g, ""); // Trim leading/trailing slashes
+    const repoURLParts = repoURLFixed.split("/");
+
+    if (repoURLParts.length < 3) {
+        common.conLog("Server route 'Update': Invalid CONF_repositoryURL: " + appConfig.CONF_repositoryURL, "red");
+        throw new Error("Invalid CONF_repositoryURL. Expected format '<owner>/<repo>/commits/<branch>'");
     }
+    else {
+        const repoMeta  = {};
+        repoMeta.owner  = repoURLParts[0];
+        repoMeta.repo   = repoURLParts[1];
+        repoMeta.branch = repoURLParts[3];
 
-    const zipUrl = "https://github.com/" + repoMeta.owner + "/" + repoMeta.repo + "/archive/refs/heads/" + repoMeta.branch + ".zip";
-    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "healthcore-update-"));
-    const zipPath = path.join(tempDir, "update.zip");
-    const unzipDir = path.join(tempDir, "unzipped");
+        common.conLog("Server route 'Update': Starting update process for commit " + latestCommit + " in repository:", "yel");
+        common.conLog("Repository: " + repoMeta.owner + "/" + repoMeta.repo, "std", false);
+        common.conLog("Branch: " + repoMeta.branch, "std", false);
 
-    try {
-        const zipResponse = await fetch(zipUrl);
-        if (!zipResponse.ok) {
-            throw new Error("GitHub ZIP download failed with HTTP " + zipResponse.status);
+        const zipUrl    = "https://github.com/" + repoMeta.owner + "/" + repoMeta.repo + "/archive/refs/heads/" + repoMeta.branch + ".zip";
+        const tempDir   = await fs.promises.mkdtemp(path.join(os.tmpdir(), "healthcore-update-")); // Create a unique temporary directory for the update process
+        const zipPath   = path.join(tempDir, "update.zip");
+        const unzipDir  = path.join(tempDir, "unzipped");
+
+        try {
+            const zipResponse = await fetch(zipUrl);
+            if (!zipResponse.ok) {
+                throw new Error("GitHub ZIP download failed with HTTP " + zipResponse.status);
+            }
+
+            const zipBuffer = Buffer.from(await zipResponse.arrayBuffer());
+            await fs.promises.writeFile(zipPath, zipBuffer);
+            await fs.promises.mkdir(unzipDir, { recursive: true });
+
+            await extractZip(zipPath, { dir: unzipDir }); // Extract the ZIP file to the temporary directory
+
+            const extractedFolder   = path.join(unzipDir, repoMeta.repo + "-" + repoMeta.branch);
+            const databaseFileName  = path.basename(String(appConfig.CONF_databaseFilename || "").trim());
+            const rsyncArgs = [
+                "-a",
+                "--delete",
+                "--exclude", ".git",
+                "--exclude", ".env.local",
+                "--exclude", "logs",
+                "--exclude", "node_modules",
+                "--exclude", "*.db",
+                extractedFolder + "/",
+                rootPath + "/"
+            ];
+
+            if (databaseFileName && databaseFileName !== "." && databaseFileName !== "..") { // Exclude the database file if it's specified and valid
+                 rsyncArgs.splice(rsyncArgs.length - 2, 0, "--exclude", databaseFileName);
+            }
+
+            await runProcess("rsync", rsyncArgs, { cwd: rootPath, stdio: "ignore" });
+
+            const startScript = path.join(rootPath, "production-start.sh");
+            await runProcess("chmod", ["+x", startScript], { cwd: rootPath, stdio: "ignore" });
+
+            spawn("./production-start.sh", [], { cwd: rootPath, detached: true, stdio: "ignore" }).unref();
+
+            common.conLog("Server route 'Update': Update installed. Restart command executed for commit " + latestCommit, "gre");
         }
-
-        const zipBuffer = Buffer.from(await zipResponse.arrayBuffer());
-        await fs.promises.writeFile(zipPath, zipBuffer);
-        await fs.promises.mkdir(unzipDir, { recursive: true });
-
-        await runProcess("unzip", ["-q", zipPath, "-d", unzipDir], { stdio: "ignore" });
-
-        const extractedFolder = path.join(unzipDir, repoMeta.repo + "-" + repoMeta.branch);
-        const databaseFileName = path.basename(String(appConfig.CONF_databaseFilename || "").trim());
-        const rsyncArgs = [
-            "-a",
-            "--delete",
-            "--exclude", ".git",
-            "--exclude", ".env",
-            "--exclude", ".env.local",
-            "--exclude", "logs",
-            "--exclude", "node_modules",
-            "--exclude", "*.db",
-            "--exclude", "*.sqlite",
-            "--exclude", "*.sqlite3",
-            extractedFolder + "/",
-            rootPath + "/"
-        ];
-
-        if (databaseFileName && databaseFileName !== "." && databaseFileName !== "..") {
-            rsyncArgs.splice(6, 0, "--exclude", databaseFileName);
+        finally {
+            await fs.promises.rm(tempDir, { recursive: true, force: true }); // Clean up the temporary directory after the update process is complete, regardless of success or failure
         }
-
-        await runProcess("rsync", rsyncArgs, { cwd: rootPath, stdio: "ignore" });
-
-        const startScript = path.join(rootPath, "production-start.sh");
-        await runProcess("chmod", ["+x", startScript], { cwd: rootPath, stdio: "ignore" });
-
-        // Start script handles PM2 restart/replace internally.
-        spawn("./production-start.sh", [], { cwd: rootPath, detached: true, stdio: "ignore" }).unref();
-
-        common.conLog("Update installed. Restart command executed for commit " + latestCommit, "gre");
-    }
-    finally {
-        await fs.promises.rm(tempDir, { recursive: true, force: true });
     }
 }
 
@@ -133,9 +143,9 @@ router.get("/info", async function (request, response) {
     data.latestCommit       = appConfig.CONF_settings.codeLastCommit;
 
     try {
-        const responseFetch    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
-        const dataFetch        = await responseFetch.json();
-        const latestCommitHash = dataFetch.sha || null;
+        const fetchResponse    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
+        const fetchData        = await fetchResponse.json();
+        const latestCommitHash = fetchData.sha || null;
 
         if (latestCommitHash && latestCommitHash !== appConfig.CONF_settings.codeLastCommit) {
             data.updateAvailable = true;
@@ -143,10 +153,12 @@ router.get("/info", async function (request, response) {
         }
     }
     catch (error) {
-        common.conLog("Error checking for updates: " + error.message, "red");
+        common.conLog("Server route 'Update': Error checking for updates: " + error.message, "red");
+        data.status = "error";
+        data.error  = error.message;
     }
 
-    common.conLog("Update check response: " + JSON.stringify(data), "std", false);
+    common.conLog("Server route 'Update': Update check response: " + JSON.stringify(data), "std", false);
     return common.sendResponse(response, data, "Server route 'Update'", "GET request update info");
 });
 
@@ -187,44 +199,46 @@ router.get("/info", async function (request, response) {
  *            example: "No update available"
  */
 router.post("/install", async function (request, response) {
-    try {
-        const updateInfo = {
-            status: "ok",
-            updateAvailable: false,
-            latestCommit: appConfig.CONF_settings.codeLastCommit,
-        };
+    let data    = {};
 
-        const responseFetch    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
-        const dataFetch        = await responseFetch.json();
-        const latestCommitHash = dataFetch.sha || null;
+    try {
+        data.status          = "ok";
+        data.updateAvailable = false;
+        data.latestCommit    = appConfig.CONF_settings.codeLastCommit;
+
+        const fetchResponse    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
+        const fetchData        = await fetchResponse.json();
+        const latestCommitHash = fetchData.sha || null;
 
         if (latestCommitHash && latestCommitHash !== appConfig.CONF_settings.codeLastCommit) {
-            updateInfo.updateAvailable = true;
-            updateInfo.latestCommit    = latestCommitHash;
+            data.updateAvailable = true;
+            data.latestCommit    = latestCommitHash;
         }
 
-        if (!updateInfo.updateAvailable) {
-            return common.sendResponse(response, updateInfo, "Server route 'Update'", "POST request install update");
+        if (data.updateAvailable === false) {
+            common.sendResponse(response, data, "Server route 'Update'", "POST request install update");
         }
+        else {
+            common.sendResponse(response, data, "Server route 'Update'", "POST request install update");
 
-        common.sendResponse(
-            response,
-            { status: "ok", message: "Update installation started", latestCommit: updateInfo.latestCommit },
-            "Server route 'Update'",
-            "POST request install update"
-        );
-
-        runDetachedUpdateAndRestart(updateInfo.latestCommit)
-            .catch((error) => {
-                common.conLog("Detached update failed: " + error.message, "red");
+            updateRunAndRestart(data.latestCommit).catch((error) => {
+                common.conLog("Server route 'Update': Detached update failed: " + error.message, "red");
             });
 
-        return;
+            database.prepare("UPDATE settings SET codeLastCommit = ?").run(data.latestCommit);
+            appConfig.CONF_settings.codeLastCommit = data.latestCommit;
+
+            return;
+        }
 
     }
     catch (error) {
-        common.conLog("Error installing update: " + error.message, "red");
-        return common.sendResponse(response, { status: "error", message: "An error occurred while trying to install the update" }, "Server route 'Update'", "POST request install update");
+        common.conLog("Server route 'Update': Error installing update: " + error.message, "red");
+
+        data.status = "error";
+        data.error  = error.message;
+
+        return common.sendResponse(response, data, "Server route 'Update'", "POST request install update");
     }
 });
 

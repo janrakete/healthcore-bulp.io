@@ -20,6 +20,7 @@
     "dayjs": "^1.11.19",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "extract-zip": "^2.0.1",
     "firebase-admin": "^13.6.0",
     "isolation-forest": "^0.0.9",
     "mqtt": "^5.13.1",

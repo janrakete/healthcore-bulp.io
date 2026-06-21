@@ -73,8 +73,8 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeBluetooth;
-    common.conLog("Bridge info sent!", "gre");
-    common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
+    common.conLog("Bluetooth: Bridge info sent!", "gre");
+    common.conLog("Bluetooth: Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });
   
@@ -341,7 +341,7 @@ async function startBridgeAndServer() {
                   message.forceReconnect = true; // because this is Bluetooth, reconnect devices after creation
 
                   mqttClient.publish("server/devices/create", JSON.stringify(message)); // ... publish to MQTT broker
-                  common.conLog("Try to add device " + message.uuid + " to server", "yel");
+                  common.conLog("Bluetooth: Try to add device " + message.uuid + " to server", "yel");
                 }
 
                 device.deviceRaw = deviceRaw; // save device object for later use

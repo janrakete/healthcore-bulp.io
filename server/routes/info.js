@@ -60,7 +60,7 @@ router.get("/", async function (request, response) {
 
     const bridges = appConfig.CONF_bridges;
     for (const bridge of bridges) { // Check each bridge
-        common.conLog("Server: Checking bridge: " + bridge, "yel");
+        common.conLog("Server route 'Info': Checking bridge: " + bridge, "yel");
         const port = appConfig["CONF_portBridge" + bridge]; // Get port for the bridge (undefined for MQTT-only bridges like "integrations")
 
         const bridgeStatus  = {};
@@ -91,7 +91,7 @@ router.get("/", async function (request, response) {
         data.bridges.push(bridgeStatus);
     }
    
-    common.conLog("Server info sent!", "gre");
+    common.conLog("Server route 'Info': Server info sent!", "gre");
     common.conLog("Server route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
 
     return response.status(200).json(data);

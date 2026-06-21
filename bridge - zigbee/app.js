@@ -45,8 +45,8 @@ async function startBridgeAndServer() {
     data.status = bridgeStatus.status;
     data.bridge = BRIDGE_PREFIX;
     data.port   = appConfig.CONF_portBridgeZigBee;
-    common.conLog("Bridge info sent!", "gre");
-    common.conLog("Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
+    common.conLog("ZigBee: Bridge info sent!", "gre");
+    common.conLog("ZigBee: Bridge route 'Info' HTTP response: " + JSON.stringify(data), "std", false);
     return response.status(200).json(data);
   });  
 

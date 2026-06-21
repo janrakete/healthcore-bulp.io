@@ -31,7 +31,7 @@ async function startHealthcheck() {
   );
 
   if (!appConfig.CONF_corsURL || String(appConfig.CONF_corsURL).trim() === "") {
-   common.conLog("Auth: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
+   common.conLog("Healthcheck: No CORS URLs configured. All URLs are allowed. Set CONF_corsURL in .env.local", "red");
   }
 
   app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
@@ -76,7 +76,7 @@ async function startHealthcheck() {
   });
 
   app.listen(appConfig.CONF_portHealthcheck, function () { // bind to localhost only
-    common.conLog("Healthcheck server listening on " + common.ipGetOwn() + ":" + appConfig.CONF_portHealthcheck, "green");
+    common.conLog("Healthcheck: Server listening on " + common.ipGetOwn() + ":" + appConfig.CONF_portHealthcheck, "green");
   });
 }
 
