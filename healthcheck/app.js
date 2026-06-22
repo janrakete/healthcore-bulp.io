@@ -76,7 +76,7 @@ async function startHealthcheck() {
   });
 
   app.listen(appConfig.CONF_portHealthcheck, function () { // bind to localhost only
-    common.conLog("Healthcheck: Server listening on " + common.ipGetOwn() + ":" + appConfig.CONF_portHealthcheck, "green");
+    common.conLog("Healthcheck: Server listening on " + common.ipGetOwn() + ":" + appConfig.CONF_portHealthcheck, "gre");
   });
 }
 

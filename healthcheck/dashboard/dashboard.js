@@ -1029,7 +1029,7 @@ function renderStatus() {
                         event.preventDefault();
                         if (confirm(i18n.t("UpdateInstallConfirm"))) {
                             try {
-                                const installResponse = await fetch(CONF_serverBaseUrl + "/update/install", { headers: buildApiHeaders() });
+                                const installResponse = await fetch(CONF_serverBaseUrl + "/update/install", { method: "POST", headers: buildApiHeaders() });
                                 const installData     = await installResponse.json();
                                 if (installData.status === "ok") {
                                     alert(i18n.t("UpdateInstallStarted"));

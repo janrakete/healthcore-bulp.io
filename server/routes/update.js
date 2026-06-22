@@ -220,14 +220,14 @@ router.post("/install", async function (request, response) {
         else {
             common.sendResponse(response, data, "Server route 'Update'", "POST request install update");
 
-            updateRunAndRestart(data.latestCommit).catch((error) => {
-                common.conLog("Server route 'Update': Detached update failed: " + error.message, "red");
-            });
-
             database.prepare("UPDATE settings SET codeLastCommit = ?").run(data.latestCommit);
             database.prepare("INSERT INTO update_history (migrationID, type) VALUES (?, 'commit')").run(data.latestCommit);
  
             appConfig.CONF_settings.codeLastCommit = data.latestCommit;
+
+            updateRunAndRestart(data.latestCommit).catch((error) => {
+                common.conLog("Server route 'Update': Detached update failed: " + error.message, "red");
+            });
 
             return;
         }

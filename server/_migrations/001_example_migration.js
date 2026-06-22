@@ -14,13 +14,13 @@ module.exports = {
      * @param {Object} database
      */
     async up(database) {
-        const columns = database.prepare("PRAGMA table_info('settings')").all();
+        /*const columns = database.prepare("PRAGMA table_info('settings')").all();
         const hasExampleColumn = columns.some((column) => column.name === "exampleColumn");
 
         if (!hasExampleColumn) {
             await database.exec("ALTER TABLE settings ADD COLUMN exampleColumn TEXT");
         }
 
-        database.prepare("UPDATE settings SET exampleColumn = COALESCE(exampleColumn, '')").run();
-    },
+        database.prepare("UPDATE settings SET exampleColumn = COALESCE(exampleColumn, '')").run();*/
+    }
 };
