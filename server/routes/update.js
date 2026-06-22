@@ -99,9 +99,10 @@ async function updateRunAndRestart(latestCommit) {
             const startScript = path.join(rootPath, "production-start.sh");
             await runProcess("chmod", ["+x", startScript], { cwd: rootPath, stdio: "ignore" });
 
-            spawn("./production-start.sh", [], { cwd: rootPath, detached: true, stdio: "ignore" }).unref();
+            const restartLogPath = path.join(rootPath, "logs", "update-restart-" + Date.now() + ".log");
+            spawn("nohup", [ "bash", "-c", `sleep 2 && cd "${rootPath}" && ./production-start.sh >> "${restartLogPath}" 2>&1 &`], { cwd: rootPath, detached: true, stdio: "ignore"}).unref(); // Start the restart process in a detached child process that runs independently of the main server process, allowing it to continue even if the main process exits during the update.
 
-            common.conLog("Server route 'Update': Update installed. Restart command executed for commit " + latestCommit, "gre");
+            common.conLog("Server route 'Update': Services restarting in 2 seconds (see " + restartLogPath + " for details)", "gre");
         }
         finally {
             await fs.promises.rm(tempDir, { recursive: true, force: true }); // Clean up the temporary directory after the update process is complete, regardless of success or failure
