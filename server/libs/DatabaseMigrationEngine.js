@@ -39,13 +39,13 @@ function loadMigrations(migrationsDir) {
 }
 
 /**
- * Applies pending migrations in a transaction and stores progress in update_migrations.
+ * Applies pending migrations in a transaction and stores progress in update_history.
  */
 function runMigrations() {
     const migrationsDir = path.resolve(__dirname, "../_migrations");
     
 
-    const appliedRows   = database.prepare("SELECT migrationID FROM update_migrations").all(); // get list of applied migrations
+    const appliedRows   = database.prepare("SELECT migrationID FROM update_history WHERE type = 'database'").all(); // get list of applied migrations
     const appliedSet    = new Set(appliedRows.map((row) => row.migrationID));
 
     const migrations        = loadMigrations(migrationsDir);
@@ -67,7 +67,7 @@ function runMigrations() {
 
         const transaction = database.transaction(() => {
             migration.up(database);// run the migration's up function to apply changes
-            database.prepare("INSERT INTO update_migrations (migrationID) VALUES (?)").run(migration.id);
+            database.prepare("INSERT INTO update_history (migrationID, type) VALUES (?, 'database')").run(migration.id);
         });
 
         transaction();

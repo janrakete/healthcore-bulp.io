@@ -9,7 +9,6 @@ const fs              = require("fs");
 const os              = require("os");
 const path            = require("path");
 const { spawn }       = require("child_process");
-const common          = require("../common.js");
 const extractZip      = require("extract-zip");
 
 /**
@@ -181,22 +180,22 @@ router.get("/info", async function (request, response) {
  *                 status:
  *                   type: string
  *                   example: "ok"
- *                message:
- *                  type: string
- *                  example: "Update installation started"
- *      "400":
- *        description: Bad request, e.g. if no update is available.
- *       content:
- *        application/json:
- *         schema:
- *          type: object
- *         properties:
- *          status:
- *            type: string
- *            example: "error"
- *          message:
- *            type: string
- *            example: "No update available"
+ *                 message:
+ *                   type: string
+ *                   example: "Update installation started"
+ *       "400":
+ *         description: Bad request, e.g. if no update is available.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "No update available"
  */
 router.post("/install", async function (request, response) {
     let data    = {};
@@ -226,6 +225,8 @@ router.post("/install", async function (request, response) {
             });
 
             database.prepare("UPDATE settings SET codeLastCommit = ?").run(data.latestCommit);
+            database.prepare("INSERT INTO update_history (migrationID, type) VALUES (?, 'commit')").run(data.latestCommit);
+ 
             appConfig.CONF_settings.codeLastCommit = data.latestCommit;
 
             return;

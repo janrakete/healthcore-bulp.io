@@ -17,7 +17,7 @@ database.pragma("foreign_keys = ON");
 /**
  * Database migration, if needed
  */
-const DatabaseMigrationEngine = require("./libs/DatabaseMigrationsEngine");
+const DatabaseMigrationEngine = require("./libs/DatabaseMigrationEngine");
 DatabaseMigrationEngine.runMigrations();
 
 /**
