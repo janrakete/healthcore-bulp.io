@@ -18,8 +18,6 @@ Healthcore can **run on any hardware** — a Raspberry Pi, a PC, or any other de
 
 Just imagine something like Home Assistant or OpenHAB, but specialized for healthcare. **That’s exactly what this is**.
 
-In addition, this repository also contains an app for Android and iOS that demonstrates how Healthcore can communicate with an interface. 
-
 So let’s democratize and de-monopolize the healthcare sector. Make healthcare devices and infrastructure affordable for everyone!
 
 🤘HEALTHCORE!!!🤘
@@ -52,7 +50,7 @@ In the middle — that’s the Healthcore. The Healthcore consists of several No
 
 And now the best part: you can **add your own devices to the Healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
 
-On the left, you can see how various interfaces communicate bi-directionally with the Healthcore via a standardized API and visualize the data, for example. Just **bring your own interface** (or use the bulp.io app - see below).
+On the left, you can see how various interfaces communicate bi-directionally with the Healthcore via a standardized API and visualize the data, for example. Just **bring your own interface**.
 
 ## 📁 Folder structure
 ```plaintext
