@@ -266,59 +266,7 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
 
 ## 📱 App
-Yes, there is also an app in this repository. More specifically, it is the official bulp.io app or rather the source code for it.
-
-It is fully functional and can be used until you have programmed your own interface.
-
-The app is located in the `app/` folder and has its own `package.json`. So you have to install it separately from Healthcore via npm. Here are the steps. By the way: the app is programmed in the Ionic Framework/Capacitor with Vanilla JS. 
-
-Installing and compiling the app:
-1. Change to folder `app/`
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Run locally in web browser: 
-   ```bash
-   npm run dev
-   ```
-4. Open in browser:
-   `http://localhost:5173/` (the correct url is shown in the console)
-
-5. Deploy to Android:
-   1. To setup the environment for Android, follow the instructions [here](https://capacitorjs.com/docs/getting-started/environment-setup) 
-
-   2. If you want to use Firebase Cloud Messaging (= push notifications), you need to generate and save two files:
-      1. `google-services.json` (https://support.google.com/firebase/answer/7015592?hl=en) to `app/android/app/` 
-      2. `push-firebase-admin.json` (https://firebase.google.com/docs/admin/setup?hl=de#initialize_the_sdk_in_non-google_environments). Keep this file **outside** the repository, so there is no chance to commit it accidentally. You can change the path in `.env.local` via `CONF_pushFirebaseKeyPath`. Default is same level as the repository.
-
-   3. Build:
-      ```bash
-      npm run build
-      ```
-
-   4. Sync:
-      ```bash
-      npx cap sync 
-      ```
-
-   5. Compile and deploy to device (Android device must be connected - maybe first start Android Studio once and make sure that debug mode on device is activated, then connect device with Android Studio):
-      ```bash
-      npx cap run android 
-      ```
-
-6. Deploy to iOS:
-   Coming soon (but it's nearly the same like Android)
-
-7. To see the console output of the app:
-   Use Chrome and type `chrome://inspect/`
-
-8. Make changes to app config (if you want):
-   See `app/public/assets/config.json`
-
-That's it. Basically, it is of course advisable to familiarize yourself with Ionic and Capacitor. Many problems encountered during compilation have already been discussed and, in the best case, solved somewhere in those forums.
+You can find the app here: https://github.com/janrakete/app-bulp.io
 
 ## 🔎 Testing
 You can test Healthcore in two different ways: automated tests and manual tests.
