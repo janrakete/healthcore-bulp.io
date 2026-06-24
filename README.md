@@ -59,15 +59,15 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 │   ├── routes/            # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
 │   ├── middleware/        # Middleware features 
 │   └── libs/              # Additionally libraries
-├── bridge - bluetooth/    # Bluetooth ↔ MQTT bridge
+├── bridge-bluetooth/    # Bluetooth ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge - zigbee/       # ZigBee ↔ MQTT bridge
+├── bridge-zigbee/       # ZigBee ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge - lora/         # LoRa ↔ MQTT bridge
+├── bridge-lora/         # LoRa ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge - http/         # HTTP ↔ MQTT bridge
+├── bridge-http/         # HTTP ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge - integrations/ # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
+├── bridge-integrations/ # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
 │   └── converters/        # Provider converters
 ├── tests/                 # Jest tests, manual tests and example device firmware
 ├── healthcheck/           # Healthcheck (see below)
@@ -96,11 +96,11 @@ node broker/app.js
 node server/app.js
 
 # Bridges
-node "bridge - bluetooth/app.js"
-node "bridge - zigbee/app.js"
-node "bridge - lora/app.js"
-node "bridge - http/app.js"
-node "bridge - integrations/app.js"
+node "bridge-bluetooth/app.js"
+node "bridge-zigbee/app.js"
+node "bridge-lora/app.js"
+node "bridge-http/app.js"
+node "bridge-integrations/app.js"
 ```
 
 If you want to use it for production (only macOS / Linux), just run
@@ -289,7 +289,7 @@ The rule is simple: **first run `npm test`** to make sure all automated tests pa
 
 The Healthcore can receive data directly from devices, but it can also retrieve and store data through APIs provided by services such as Google Health or Garmin.
 
-These integrations are implemented through `bridge - integrations`. Each data provider must have its own implementation in the `converters` subfolder. A "Google Health" integration already exists and will be used as the example below.
+These integrations are implemented through `bridge-integrations`. Each data provider must have its own implementation in the `converters` subfolder. A "Google Health" integration already exists and will be used as the example below.
 
 ### 1. Create a Google Cloud project
 

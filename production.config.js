@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "bridge - bluetooth",
+      name: "bridge-bluetooth",
       script: "app.js",
       instances: 1,
       autorestart: true,
@@ -10,13 +10,13 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeBluetooth
       },
-      cwd: "./bridge - bluetooth",
-      error_file: "../logs/bridge - bluetooth - errors.log",
-      out_file: "../logs/bridge - bluetooth - output.log",
+      cwd: "./bridge-bluetooth",
+      error_file: "../logs/bridge-bluetooth - errors.log",
+      out_file: "../logs/bridge-bluetooth - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
-      name: "bridge - http",
+      name: "bridge-http",
       script: "app.js",
       instances: 1,
       autorestart: true,
@@ -25,13 +25,13 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeHTTP
       },
-      cwd: "./bridge - http",
-      error_file: "../logs/bridge - http - errors.log",
-      out_file: "../logs/bridge - http - output.log",
+      cwd: "./bridge-http",
+      error_file: "../logs/bridge-http - errors.log",
+      out_file: "../logs/bridge-http - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
-      name: "bridge - lora",
+      name: "bridge-lora",
       script: "app.js",
       instances: 1,
       autorestart: true,
@@ -40,13 +40,13 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeLoRa
       },
-      cwd: "./bridge - lora",
-      error_file: "../logs/bridge - lora - errors.log",
-      out_file: "../logs/bridge - lora - output.log",
+      cwd: "./bridge-lora",
+      error_file: "../logs/bridge-lora - errors.log",
+      out_file: "../logs/bridge-lora - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
-      name: "bridge - zigbee",
+      name: "bridge-zigbee",
       script: "app.js",
       instances: 1,
       autorestart: true,
@@ -55,13 +55,13 @@ module.exports = {
         NODE_ENV: "production",
         PORT: process.env.CONF_portBridgeZigbee
       },
-      cwd: "./bridge - zigbee",
-      error_file: "../logs/bridge - zigbee - errors.log",
-      out_file: "../logs/bridge - zigbee - output.log",
+      cwd: "./bridge-zigbee",
+      error_file: "../logs/bridge-zigbee - errors.log",
+      out_file: "../logs/bridge-zigbee - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
-      name: "bridge - integrations",
+      name: "bridge-integrations",
       script: "app.js",
       instances: 1,
       autorestart: true,
@@ -69,9 +69,9 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       },
-      cwd: "./bridge - integrations",
-      error_file: "../logs/bridge - integrations - errors.log",
-      out_file: "../logs/bridge - integrations - output.log",
+      cwd: "./bridge-integrations",
+      error_file: "../logs/bridge-integrations - errors.log",
+      out_file: "../logs/bridge-integrations - output.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss"
     },    
     {

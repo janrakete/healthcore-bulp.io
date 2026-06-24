@@ -4,7 +4,7 @@
  * Tests for BLE ConverterStandard
  */
 
-const { ConverterStandard } = require("../bridge - bluetooth/converters/ConverterStandard");
+const { ConverterStandard } = require("../bridge-bluetooth/converters/ConverterStandard");
 
 // =====================================================================
 // ConverterStandard (BLE base)
@@ -151,8 +151,8 @@ describe("BLE ConverterStandard", () => {
 // =====================================================================
 // Converter_BangleJS2BLE
 // =====================================================================
-const { Converter_BangleJS2BLE } = require("../bridge - bluetooth/converters/Converter_BangleJS2BLE");
-const { Converter_BulpSensorBLE } = require("../bridge - bluetooth/converters/Converter_BulpSensorBLE");
+const { Converter_BangleJS2BLE } = require("../bridge-bluetooth/converters/Converter_BangleJS2BLE");
+const { Converter_BulpSensorBLE } = require("../bridge-bluetooth/converters/Converter_BulpSensorBLE");
 
 describe("Converter_BangleJS2BLE", () => {
   let converter;

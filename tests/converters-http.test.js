@@ -4,7 +4,7 @@
  * Tests for HTTP ConverterStandard (with validate)
  */
 
-const { ConverterStandard } = require("../bridge - http/converters/ConverterStandard");
+const { ConverterStandard } = require("../bridge-http/converters/ConverterStandard");
 
 // =====================================================================
 // HTTP ConverterStandard
