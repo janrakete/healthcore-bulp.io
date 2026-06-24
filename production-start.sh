@@ -17,7 +17,7 @@
 # Exit immediately if any command fails
 set -e
 
-# Ensure locally installed npm binaries are available in PATH
+# Ensure locally installed npm binaries are available in PATH!
 export PATH="./node_modules/.bin:$PATH"
 
 # --- Step 1: PM2 Process Manager -------------------------------------------
