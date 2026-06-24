@@ -4,7 +4,7 @@
  * Tests for LoRa ConverterStandard
  */
 
-const { ConverterStandard }       = require("../bridge - lora/converters/ConverterStandard");
+const { ConverterStandard }       = require("../bridge-lora/converters/ConverterStandard");
 
 // =====================================================================
 // LoRa ConverterStandard

@@ -8,7 +8,7 @@
 jest.mock("../config", () => ({ CONF_zigBeeReportingTimeout: 5000 }), { virtual: true });
 jest.mock("../common", () => ({ conLog: jest.fn() }), { virtual: true });
 
-const { ConverterStandard } = require("../bridge - zigbee/converters/ConverterStandard");
+const { ConverterStandard } = require("../bridge-zigbee/converters/ConverterStandard");
 
 // =====================================================================
 // ZigBee ConverterStandard
@@ -128,7 +128,7 @@ describe("ZigBee ConverterStandard", () => {
 // =====================================================================
 // Converter_BULPIOBULPTOP1
 // =====================================================================
-const { Converter_BULPIOBULPTOP1 } = require("../bridge - zigbee/converters/Converter_BULPIOBULPTOP1");
+const { Converter_BULPIOBULPTOP1 } = require("../bridge-zigbee/converters/Converter_BULPIOBULPTOP1");
 
 describe("Converter_BULPIOBULPTOP1", () => {
   let converter;
