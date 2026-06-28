@@ -109,7 +109,23 @@ pm2 save
 # Not needed on Windows — handled by pm2-windows-startup above.
 if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" ]]; then
   echo "🔄 Setting up autostart..."
-  pm2 startup || true
+  if systemctl --user is-enabled pm2 "pm2-$USER" >/dev/null 2>&1 || systemctl is-enabled pm2 "pm2-$USER" >/dev/null 2>&1; then
+    echo "PM2 autostart is already enabled."
+  else
+    if command -v sudo >/dev/null 2>&1; then
+      PM2_BIN=$(command -v pm2)
+      if sudo -n env PATH="$PATH" "$PM2_BIN" startup systemd -u "$USER" --hp "$HOME" >/dev/null 2>&1; then
+        echo "PM2 autostart enabled."
+      else
+        echo "Could not enable autostart without interactive sudo."
+        echo "Run this once manually:"
+        echo "sudo env PATH=\$PATH:/usr/bin $PM2_BIN startup systemd -u $USER --hp $HOME"
+      fi
+    else
+      echo "sudo not found. Run this once manually:"
+      echo "pm2 startup systemd -u $USER --hp $HOME"
+    fi
+  fi
 fi
 
 echo "✅ PM2 Setup completed!"
