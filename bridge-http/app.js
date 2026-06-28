@@ -11,7 +11,7 @@ const BRIDGE_PREFIX = "http";
 /**
  * Load converters for devices
  */
-const { Converters } = require("./Converters.js");
+const { Converters } = require("./converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**

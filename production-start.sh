@@ -87,6 +87,13 @@ fi
 echo "📂 Creating logs directory ..."
 mkdir -p logs
 
+# Ensure current user can write PM2 log files.
+if [[ ! -w logs ]] || find logs -maxdepth 1 -type f ! -writable | grep -q .; then
+  echo "🔐 Fixing logs permissions ..."
+  sudo chown -R "$USER":"$USER" logs
+  chmod -R u+rwX logs
+fi
+
 # --- Step 6: Start All Services --------------------------------------------
 # Reads service definitions from production.config.js and starts them.
 echo "🚀 Starting services..."
@@ -102,7 +109,7 @@ pm2 save
 # Not needed on Windows — handled by pm2-windows-startup above.
 if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" ]]; then
   echo "🔄 Setting up autostart..."
-  pm2 startup
+  pm2 startup || true
 fi
 
 echo "✅ PM2 Setup completed!"
