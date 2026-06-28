@@ -17,6 +17,24 @@
 # Exit immediately if any command fails
 set -e
 
+# Resolve deployment user from CONF_rootUser / CONF_osRootUser in .env/.env.local (.env.local overrides .env)
+DEPLOY_USER=""
+if [ -f .env ]; then
+  DEPLOY_USER=$(grep -E '^(CONF_rootUser|CONF_osRootUser)=' .env | tail -n 1 | cut -d= -f2- | tr -d '"' | xargs || true)
+fi
+if [ -f .env.local ]; then
+  DEPLOY_USER=$(grep -E '^(CONF_rootUser|CONF_osRootUser)=' .env.local | tail -n 1 | cut -d= -f2- | tr -d '"' | xargs || true)
+fi
+if [ -z "$DEPLOY_USER" ]; then
+  DEPLOY_USER="bulp"
+fi
+
+if [ "$(id -un)" != "$DEPLOY_USER" ]; then
+  echo "❌ This script must be run as '$DEPLOY_USER' (current user: $(id -un))."
+  echo "Run it with: su - $DEPLOY_USER"
+  exit 1
+fi
+
 # Ensure locally installed npm binaries are available in PATH
 export PATH="./node_modules/.bin:$PATH"
 
@@ -39,8 +57,8 @@ if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" ]]; then
 
   # Stop PM2 user/system services if present so processes are not resurrected.
   systemctl --user stop pm2 2>/dev/null || true
-  systemctl --user stop "pm2-$USER" 2>/dev/null || true
-  systemctl stop "pm2-$USER" 2>/dev/null || true
+  systemctl --user stop "pm2-$DEPLOY_USER" 2>/dev/null || true
+  systemctl stop "pm2-$DEPLOY_USER" 2>/dev/null || true
 fi
 
 # --- Step 3: Stop and Delete All Services ----------------------------------
@@ -76,6 +94,7 @@ if command -v sudo > /dev/null 2>&1; then
   sudo -n env PM2_HOME=/root/.pm2 PATH="$PATH" pm2 kill 2>/dev/null || true
   sudo -n systemctl stop pm2-root 2>/dev/null || true
   sudo -n systemctl stop pm2 2>/dev/null || true
+  sudo -n systemctl disable pm2-root 2>/dev/null || true
 fi
 
 # --- Step 7: Kill Listeners On Service Ports -------------------------------

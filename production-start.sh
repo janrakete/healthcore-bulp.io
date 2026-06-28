@@ -17,8 +17,47 @@
 # Exit immediately if any command fails
 set -e
 
+# Resolve deployment user from CONF_rootUser / CONF_osRootUser in .env/.env.local (.env.local overrides .env)
+DEPLOY_USER=""
+if [ -f .env ]; then
+  DEPLOY_USER=$(grep -E '^(CONF_rootUser|CONF_osRootUser)=' .env | tail -n 1 | cut -d= -f2- | tr -d '"' | xargs || true)
+fi
+if [ -f .env.local ]; then
+  DEPLOY_USER=$(grep -E '^(CONF_rootUser|CONF_osRootUser)=' .env.local | tail -n 1 | cut -d= -f2- | tr -d '"' | xargs || true)
+fi
+if [ -z "$DEPLOY_USER" ]; then
+  DEPLOY_USER="bulp"
+fi
+
+DEPLOY_HOME=$(getent passwd "$DEPLOY_USER" | cut -d: -f6)
+if [ -z "$DEPLOY_HOME" ]; then
+  DEPLOY_HOME="/home/$DEPLOY_USER"
+fi
+
+if [ "$(id -un)" != "$DEPLOY_USER" ]; then
+  echo "❌ This script must be run as '$DEPLOY_USER' (current user: $(id -un))."
+  echo "Run it with: su - $DEPLOY_USER"
+  exit 1
+fi
+
 # Ensure locally installed npm binaries are available in PATH!
 export PATH="./node_modules/.bin:$PATH"
+
+# Prevent duplicate PM2 stacks after reboot by removing legacy root autostart.
+if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" ]]; then
+  if systemctl is-enabled pm2-root >/dev/null 2>&1; then
+    echo "⚠️ Found enabled pm2-root service. Disabling it to avoid duplicate PM2 daemons ..."
+    if command -v sudo >/dev/null 2>&1 && sudo -n systemctl disable --now pm2-root >/dev/null 2>&1; then
+      echo "pm2-root disabled."
+    else
+      echo "❌ pm2-root is enabled and could not be disabled automatically (sudo password required)."
+      echo "Run once manually:"
+      echo "sudo systemctl disable --now pm2-root"
+      echo "sudo rm -f /etc/systemd/system/pm2-root.service"
+      exit 1
+    fi
+  fi
+fi
 
 # --- Step 1: PM2 Process Manager -------------------------------------------
 # PM2 is used to manage, monitor and keep all services alive in production.
@@ -90,7 +129,7 @@ mkdir -p logs
 # Ensure current user can write PM2 log files.
 if [[ ! -w logs ]] || find logs -maxdepth 1 -type f ! -writable | grep -q .; then
   echo "🔐 Fixing logs permissions ..."
-  sudo chown -R "$USER":"$USER" logs
+  sudo chown -R "$DEPLOY_USER":"$DEPLOY_USER" logs
   chmod -R u+rwX logs
 fi
 
@@ -109,21 +148,21 @@ pm2 save
 # Not needed on Windows — handled by pm2-windows-startup above.
 if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" ]]; then
   echo "🔄 Setting up autostart..."
-  if systemctl --user is-enabled pm2 "pm2-$USER" >/dev/null 2>&1 || systemctl is-enabled pm2 "pm2-$USER" >/dev/null 2>&1; then
+  if systemctl is-enabled "pm2-$DEPLOY_USER" >/dev/null 2>&1; then
     echo "PM2 autostart is already enabled."
   else
     if command -v sudo >/dev/null 2>&1; then
       PM2_BIN=$(command -v pm2)
-      if sudo -n env PATH="$PATH" "$PM2_BIN" startup systemd -u "$USER" --hp "$HOME" >/dev/null 2>&1; then
+      if sudo -n env PATH="$PATH" "$PM2_BIN" startup systemd -u "$DEPLOY_USER" --hp "$DEPLOY_HOME" >/dev/null 2>&1; then
         echo "PM2 autostart enabled."
       else
         echo "Could not enable autostart without interactive sudo."
         echo "Run this once manually:"
-        echo "sudo env PATH=\$PATH:/usr/bin $PM2_BIN startup systemd -u $USER --hp $HOME"
+        echo "sudo env PATH=\$PATH:/usr/bin $PM2_BIN startup systemd -u $DEPLOY_USER --hp $DEPLOY_HOME"
       fi
     else
       echo "sudo not found. Run this once manually:"
-      echo "pm2 startup systemd -u $USER --hp $HOME"
+      echo "pm2 startup systemd -u $DEPLOY_USER --hp $DEPLOY_HOME"
     fi
   fi
 fi
