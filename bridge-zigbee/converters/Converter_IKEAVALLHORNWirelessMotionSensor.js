@@ -78,14 +78,10 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
             const CLUSTER_OCCUPANCY     = 1030;    // msOccupancySensing
 
             // Helper to find the endpoint that has a specific input cluster
-            const getEndpointFor = (clusterId) => {
-                return device.endpoints.find(e => e.inputClusters.includes(clusterId));
-            };
-
             // 1. Motion (Occupancy)
-            const epMotion = getEndpointFor(CLUSTER_OCCUPANCY);
+            const epMotion = this.getEndpointByInputCluster(device, CLUSTER_OCCUPANCY);
             if (epMotion) {
-                await epMotion.bind("msOccupancySensing", coordinatorEndpoint);
+                await this.safeBind(epMotion, "msOccupancySensing", coordinatorEndpoint);
                 try {
                     await epMotion.configureReporting("msOccupancySensing", [{
                         attribute: "occupancy",
@@ -96,16 +92,13 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
                 }
                 catch (error) { /* Device may be asleep, reporting will be configured on next wake */ }
 
-                try {
-                    await epMotion.read("msOccupancySensing", ["occupancy"], options);
-                }
-                catch (error) { /* Device may be asleep, read will succeed on next wake */ }
+                await this.safeRead(epMotion, "msOccupancySensing", ["occupancy"], options); // Device may be asleep, read will succeed on next wake
             }
 
             // 2. Illuminance
-            const epIlluminance = getEndpointFor(CLUSTER_ILLUMINANCE);
+            const epIlluminance = this.getEndpointByInputCluster(device, CLUSTER_ILLUMINANCE);
             if (epIlluminance) {
-                await epIlluminance.bind("msIlluminanceMeasurement", coordinatorEndpoint);
+                await this.safeBind(epIlluminance, "msIlluminanceMeasurement", coordinatorEndpoint);
                 try {
                     await epIlluminance.configureReporting("msIlluminanceMeasurement", [{
                         attribute: "measuredValue",
@@ -116,16 +109,13 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
                 }
                 catch (error) { /* Device may be asleep, reporting will be configured on next wake */ }
 
-                try {
-                    await epIlluminance.read("msIlluminanceMeasurement", ["measuredValue"], options);
-                }
-                catch (error) { /* Device may be asleep, read will succeed on next wake */ }
+                await this.safeRead(epIlluminance, "msIlluminanceMeasurement", ["measuredValue"], options); // Device may be asleep, read will succeed on next wake
             }
 
             // 3. Battery
-            const epPower = getEndpointFor(CLUSTER_POWER);
+            const epPower = this.getEndpointByInputCluster(device, CLUSTER_POWER);
             if (epPower) {
-                await epPower.bind("genPowerCfg", coordinatorEndpoint);
+                await this.safeBind(epPower, "genPowerCfg", coordinatorEndpoint);
                 try {
                     await epPower.configureReporting("genPowerCfg", [
                         { attribute: "batteryPercentageRemaining", minimumReportInterval: 3600, maximumReportInterval: 65000, reportableChange: 1 },
@@ -133,10 +123,7 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
                     ], options);
                 }
                 catch (error) { /* Device may be asleep, reporting will be configured on next wake */ }
-                try {
-                    await epPower.read("genPowerCfg", ["batteryPercentageRemaining", "batteryVoltage"], options);
-                }
-                catch (error) { /* Device may be asleep, read will succeed on next wake */ }
+                await this.safeRead(epPower, "genPowerCfg", ["batteryPercentageRemaining", "batteryVoltage"], options); // Device may be asleep, read will succeed on next wake
             }
         }
         catch (error) {

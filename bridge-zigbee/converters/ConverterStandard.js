@@ -18,6 +18,86 @@ class ConverterStandard {
     }
 
     /**
+     * Optional hook for converter-specific binding/reporting configuration.
+     * Converters with no special setup can keep this default no-op implementation.
+     * @param {Object} device - ZigBee herdsman device object.
+     * @param {Object} coordinatorEndpoint - Coordinator endpoint to bind/report to.
+     * @returns {Promise<void|undefined>}
+     */
+    async setupReporting(device, coordinatorEndpoint) {
+        return undefined;
+    }
+
+    /**
+     * Find the first endpoint that contains a given input cluster ID.
+     * @param {Object} device - ZigBee herdsman device object.
+     * @param {number} clusterId - Numeric ZigBee cluster ID.
+     * @returns {Object|undefined}
+     */
+    getEndpointByInputCluster(device, clusterId) {
+        if (!device || !Array.isArray(device.endpoints)) {
+            return undefined;
+        }
+        return device.endpoints.find(endpoint => Array.isArray(endpoint.inputClusters) && endpoint.inputClusters.includes(clusterId));
+    }
+
+    /**
+     * Safely bind a cluster to coordinator endpoint.
+     * @returns {Promise<boolean>} true if successful, otherwise false
+     */
+    async safeBind(endpoint, cluster, coordinatorEndpoint) {
+        try {
+            await endpoint.bind(cluster, coordinatorEndpoint);
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Safely read attributes from a cluster.
+     * @returns {Promise<boolean>} true if successful, otherwise false
+     */
+    async safeRead(endpoint, cluster, attributes, options) {
+        try {
+            await endpoint.read(cluster, attributes, options);
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Safely write attributes to a cluster.
+     * @returns {Promise<boolean>} true if successful, otherwise false
+     */
+    async safeWrite(endpoint, cluster, payload, options) {
+        try {
+            await endpoint.write(cluster, payload, options);
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Safely send a cluster command.
+     * @returns {Promise<boolean>} true if successful, otherwise false
+     */
+    async safeCommand(endpoint, cluster, command, payload, options) {
+        try {
+            await endpoint.command(cluster, command, payload, options);
+            return true;
+        }
+        catch (error) {
+            return false;
+        }
+    }
+
+    /**
      * Binding clusters and setting up reporting intervals
      * @param {Object} endpoint - The device endpoint to configure
      * @param {string} cluster - The cluster name to configure reporting for
