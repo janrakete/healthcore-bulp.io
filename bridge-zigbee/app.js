@@ -435,6 +435,11 @@ async function startBridgeAndServer() {
   const zigBee = new ZigBeeController({
     serialPort: { path: appConfig.CONF_zigBeeAdapterPort, adapter: appConfig.CONF_zigBeeAdapterName },
     databasePath: "./devices.db",
+    network: {
+      ...(appConfig.CONF_zigBeeNetworkPanID && appConfig.CONF_zigBeeNetworkPanID.trim() ? { panID: Number.parseInt(appConfig.CONF_zigBeeNetworkPanID.trim(), 16) } : {}),
+      ...(appConfig.CONF_zigBeeNetworkChannelList && appConfig.CONF_zigBeeNetworkChannelList.trim() ? { channelList: appConfig.CONF_zigBeeNetworkChannelList.split(",").map(num => Number.parseInt(num.trim(), 10)).filter(num => Number.isInteger(num)) } : {}),
+      ...(appConfig.CONF_zigBeeNetworkKey && appConfig.CONF_zigBeeNetworkKey.trim() ? { networkKey: Array.from(Buffer.from(appConfig.CONF_zigBeeNetworkKey.trim().replace(/[^a-fA-F0-9]/g, ""), "hex")) } : {})
+    },
     acceptJoiningDeviceHandler: (ieeeAddr) => !bridgeStatus.devicesBlocklist.has(ieeeAddr) // reject devices on blocklist
   });
 
