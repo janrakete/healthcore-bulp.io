@@ -121,14 +121,25 @@ async function fetchArray(path) {
  * @returns {Promise<Array>} Array of enriched device objects, or an empty array on error.
  */
 async function fetchDevices() {
-    const devicesAll        = await fetchArray("/devices/all");
+    let devicesAll = await fetchArray("/devices/all");
 
-    // loop through all bridges, call /devices/{bridge}/list for each and merge the informatiob about connected devices from [data][devicesConnected] via UUID
-    
+    for (const bridge of dashboardState.serverInfo.bridges) {
+        console.log(bridge);
+
+        if (bridge.status === "online") {
+            const devicesConnected = await fetchArray("/devices/" + bridge.bridge.toLowerCase() + "/list");
+            console.log(devicesConnected);
+            
+            for (const device of devicesConnected) {
+                console.log(device);
 
 
+            }
+        
+        }
+    }
 
-
+    return devicesAll;
 }
 
 /**
@@ -244,21 +255,12 @@ async function fetchInfo() {
  * @returns {Promise<void>}
  */
 async function refreshAllData() {
-    const [devices, individuals, rooms, alerts, alertStats, serverInfo] = await Promise.all([
-        fetchDevices(),
-        fetchIndividuals(),
-        fetchRooms(),
-        fetchAlerts(),
-        fetchAlertStats(),
-        fetchInfo()
-    ]);
-
-    dashboardState.devices      = devices;
-    dashboardState.individuals  = individuals;
-    dashboardState.rooms        = rooms;
-    dashboardState.alerts       = alerts;
-    dashboardState.alertStats   = alertStats;
-    dashboardState.serverInfo   = serverInfo;
+    dashboardState.serverInfo   = await fetchInfo();
+    dashboardState.devices      = await fetchDevices();
+    dashboardState.individuals  = await fetchIndividuals();
+    dashboardState.rooms        = await fetchRooms();
+    dashboardState.alerts       = await fetchAlerts();
+    dashboardState.alertStats   = await fetchAlertStats();
     
     renderActiveTab(); // Clear the loading message on successful refresh
 
