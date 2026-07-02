@@ -12,7 +12,7 @@ const BRIDGE_PREFIX = "zigbee";
 /**
  * Load converters for devices
  */
-const { Converters } = require("./Converters.js");
+const { Converters } = require("./converters.js");
 const convertersList = new Converters(); // create new object for converters
 
 /**
@@ -217,6 +217,7 @@ async function startBridgeAndServer() {
       this.lastKnownValues           = new Map(); // cache of last known values per device (keyed by UUID)
       this.deviceLastSeen            = new Map(); // Map of UUID -> timestamp of last data received (for watchdog)
       this.batteryAlertsSent         = new Map(); // Map of UUID -> timestamp of last battery alert (to prevent alert spam)
+      this.reportingConfiguredAt     = new Map(); // Map of UUID -> timestamp when setupReporting last completed
       this.devicesBlocklist          = new Map(); // Map of IEEE address -> timestamp, blocked from re-joining the network after removal
       this.maintenanceInterval       = undefined; // Interval timer for the maintenance loop (watchdog + signal strength)
       this.deviceScanCallID          = undefined;
@@ -367,6 +368,57 @@ async function startBridgeAndServer() {
   }
 
   /**
+   * Tries to setup converter-specific reporting/bindings for a device.
+   * For sleepy battery devices this may only work while they are awake.
+   * @param {Object} device - The device to configure.
+   */
+  async function deviceSetupReporting(device) {
+    if (device.deviceConverter) {
+      common.conLog("ZigBee: Trying to call setupReporting ...", "yel");
+
+      const cooldownSeconds   = appConfig.CONF_devicesZigBeeReportingSetupCooldownSeconds;
+      const cooldownMs        = cooldownSeconds * 1000;
+      const now               = Date.now();
+      const lastConfiguredAt  = bridgeStatus.reportingConfiguredAt.get(device.uuid);
+
+      if (lastConfiguredAt && (now - lastConfiguredAt) < cooldownMs) { // if last setupReporting was successful and cooldown is still active, skip this call
+        const remainingSeconds = Math.ceil((cooldownMs - (now - lastConfiguredAt)) / 1000);
+        common.conLog("ZigBee: setupReporting skipped for " + device.uuid + " (cooldown active, " + remainingSeconds + "s remaining)", "std", false);
+        return;
+      }
+
+      try {
+        const coordinatorDevice = zigBee.getDevices().find(zigBeeDevice => zigBeeDevice.type === "Coordinator"); // get coordinator device from zigbee-herdsman
+        if (!coordinatorDevice) {
+          common.conLog("ZigBee: Coordinator device not found, cannot setup reporting for " + device.uuid, "red");
+          return;
+        }
+
+        const coordinatorEndpoint = coordinatorDevice.getEndpoint(1); // get endpoint 1 of coordinator device (for binding/reporting)
+        if (!coordinatorEndpoint) {
+          common.conLog("ZigBee: Could not get endpoint 1 from coordinator, cannot setup reporting for " + device.uuid, "red");
+          return;
+        }
+
+        const coordinatorAddress = coordinatorEndpoint.deviceIeeeAddress || coordinatorDevice.ieeeAddr; // get IEEE address of coordinator for writing to iasCieAddr
+        common.conLog("ZigBee: setupReporting coordinator address for " + device.uuid + ": " + coordinatorAddress, "std", false);
+
+        await device.deviceConverter.setupReporting(device.deviceRaw, coordinatorEndpoint);
+
+        const configuredAt = Date.now(); // timestamp when setupReporting completed successfully
+        bridgeStatus.reportingConfiguredAt.set(device.uuid, configuredAt);
+        common.conLog("ZigBee: setupReporting completed for " + device.uuid + " at " + new Date(configuredAt).toISOString(), "gre", false);
+      }
+      catch (error) {
+        common.conLog("ZigBee: Error setting up reporting for " + device.uuid + ": " + error.message, "red");
+      }
+    }
+    else {
+      common.conLog("ZigBee: Device converter missing or has no setupReporting function", "red", false);
+    }
+  }
+
+  /**
    * =============================================================================================
    * Events at ZigBee adapter (but first, disable debug logging of zigbee-herdsman)
    * ==============================================================================
@@ -383,6 +435,11 @@ async function startBridgeAndServer() {
   const zigBee = new ZigBeeController({
     serialPort: { path: appConfig.CONF_zigBeeAdapterPort, adapter: appConfig.CONF_zigBeeAdapterName },
     databasePath: "./devices.db",
+    network: {
+      ...(appConfig.CONF_zigBeeNetworkPanID && appConfig.CONF_zigBeeNetworkPanID.trim() ? { panID: Number.parseInt(appConfig.CONF_zigBeeNetworkPanID.trim(), 16) } : {}),
+      ...(appConfig.CONF_zigBeeNetworkChannelList && appConfig.CONF_zigBeeNetworkChannelList.trim() ? { channelList: appConfig.CONF_zigBeeNetworkChannelList.split(",").map(num => Number.parseInt(num.trim(), 10)).filter(num => Number.isInteger(num)) } : {}),
+      ...(appConfig.CONF_zigBeeNetworkKey && appConfig.CONF_zigBeeNetworkKey.trim() ? { networkKey: Array.from(Buffer.from(appConfig.CONF_zigBeeNetworkKey.trim().replace(/[^a-fA-F0-9]/g, ""), "hex")) } : {})
+    },
     acceptJoiningDeviceHandler: (ieeeAddr) => !bridgeStatus.devicesBlocklist.has(ieeeAddr) // reject devices on blocklist
   });
 
@@ -575,6 +632,22 @@ async function startBridgeAndServer() {
       else {
         common.conLog("... but is not registered at server", "std", false);      
       }
+
+      setTimeout(async () => { // wait 2 seconds before calling setupReporting to give the device time to finish its announce process
+        try {
+          const announcedDevice = deviceGetInfo(uuid, bridgeStatus.devicesRegisteredAtServer);
+          if (!announcedDevice) { // if device is not found or has no converter, skip setupReporting
+            return;
+          }
+
+          common.conLog("ZigBee: deviceAnnounce - running setupReporting for " + uuid, "yel");
+          await deviceSetupReporting(announcedDevice);
+          common.conLog("ZigBee: deviceAnnounce - setupReporting done for " + uuid, "gre", false);
+        }
+        catch (error) {
+          common.conLog("ZigBee: deviceAnnounce - setupReporting error for " + uuid + ": " + error.message, "red");
+        }
+      }, 2000);
     
       let message      = {};
       message.uuid     = uuid;
@@ -790,6 +863,7 @@ async function startBridgeAndServer() {
       delete deviceCopy.deviceRaw;
       delete deviceCopy.deviceConverter;
       delete deviceCopy.endpoint;
+      deviceCopy.reportingConfiguredAt = bridgeStatus.reportingConfiguredAt.get(deviceCopy.uuid);
       return deviceCopy;
     });
 
@@ -877,32 +951,7 @@ async function startBridgeAndServer() {
         bridgeStatus.devicesConnected.set(device.uuid, device); // add device to map of connected devices
       }
 
-      common.conLog("ZigBee: Check if device converter has setupReporting function ...", "yel");
-      if (device.deviceConverter !== undefined && device.deviceConverter.setupReporting !== undefined ) {
-        common.conLog("ZigBee: Device converter has setupReporting function, trying to call it ...", "gre", false);
-
-        try {
-          const coordinatorDevice = zigBee.getDevices().find(zigBeeDevice => zigBeeDevice.type === "Coordinator");
-          if (!coordinatorDevice) {
-            common.conLog("ZigBee: Coordinator device not found, cannot setup reporting for " + device.uuid, "red");
-            return;
-          }
-
-          const coordinatorEndpoint = coordinatorDevice.getEndpoint(1);
-          if (!coordinatorEndpoint) {
-            common.conLog("ZigBee: Could not get endpoint 1 from coordinator, cannot setup reporting for " + device.uuid, "red");
-            return;
-          }
-
-          await device.deviceConverter.setupReporting(device.deviceRaw, coordinatorEndpoint);
-        }
-        catch (error) {
-          common.conLog("ZigBee: Error setting up reporting for " + device.uuid + ": " + error.message, "red");
-        }
-      }
-      else {
-        common.conLog("ZigBee: Device converter has no setupReporting function", "std", false);
-      }
+      await deviceSetupReporting(device);
 
       mqttClient.publish("server/devices/connect", JSON.stringify(device));        
     }

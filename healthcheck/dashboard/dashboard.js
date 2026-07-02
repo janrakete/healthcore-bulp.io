@@ -121,7 +121,14 @@ async function fetchArray(path) {
  * @returns {Promise<Array>} Array of enriched device objects, or an empty array on error.
  */
 async function fetchDevices() {
-    return fetchArray("/devices/all");
+    const devicesAll        = await fetchArray("/devices/all");
+
+    // loop through all bridges, call /devices/{bridge}/list for each and merge the informatiob about connected devices from [data][devicesConnected] via UUID
+    
+
+
+
+
 }
 
 /**

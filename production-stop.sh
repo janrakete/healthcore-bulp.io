@@ -17,8 +17,29 @@
 # Exit immediately if any command fails
 set -e
 
+# Resolve deployment user from CONF_rootUser / CONF_osRootUser in .env/.env.local (.env.local overrides .env)
+DEPLOY_USER=""
+if [ -f .env ]; then
+  DEPLOY_USER=$(grep -E '^(CONF_rootUser|CONF_osRootUser)=' .env | tail -n 1 | cut -d= -f2- | tr -d '"' | xargs || true)
+fi
+if [ -f .env.local ]; then
+  DEPLOY_USER=$(grep -E '^(CONF_rootUser|CONF_osRootUser)=' .env.local | tail -n 1 | cut -d= -f2- | tr -d '"' | xargs || true)
+fi
+if [ -z "$DEPLOY_USER" ]; then
+  DEPLOY_USER="bulp"
+fi
+
+if [ "$(id -un)" != "$DEPLOY_USER" ]; then
+  echo "❌ This script must be run as '$DEPLOY_USER' (current user: $(id -un))."
+  echo "Run it with: su - $DEPLOY_USER"
+  exit 1
+fi
+
 # Ensure locally installed npm binaries are available in PATH
 export PATH="./node_modules/.bin:$PATH"
+
+# Collect PM2 managed PIDs before stopping (used as a fallback cleanup).
+PM2_PIDS=$(pm2 pid all 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+$' || true)
 
 # --- Step 1: Check PM2 -----------------------------------------------------
 echo "🔧 Checking PM2 installation ..."
@@ -33,6 +54,11 @@ fi
 if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "cygwin" ]]; then
   echo "🔄 Removing autostart ..."
   pm2 unstartup || true
+
+  # Stop PM2 user/system services if present so processes are not resurrected.
+  systemctl --user stop pm2 2>/dev/null || true
+  systemctl --user stop "pm2-$DEPLOY_USER" 2>/dev/null || true
+  systemctl stop "pm2-$DEPLOY_USER" 2>/dev/null || true
 fi
 
 # --- Step 3: Stop and Delete All Services ----------------------------------
@@ -47,5 +73,68 @@ pm2 delete all || true
 # Fully shuts down the PM2 daemon process.
 echo "💀 Killing PM2 daemon ..."
 pm2 kill || true
+
+# --- Step 5: Force-Kill Remaining Process IDs ------------------------------
+# In some cases PM2 exits but one of its child Node processes stays alive.
+if [[ -n "$PM2_PIDS" ]]; then
+  echo "🧹 Cleaning up remaining PM2 child processes ..."
+  for pid in $PM2_PIDS; do
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  done
+fi
+
+# --- Step 6: Stop Root PM2 (if present) ------------------------------------
+# Some deployments were started with sudo and are owned by root.
+if command -v sudo > /dev/null 2>&1; then
+  echo "🔐 Stopping root PM2 processes (if any) ..."
+  sudo -n env PM2_HOME=/root/.pm2 PATH="$PATH" pm2 stop all 2>/dev/null || true
+  sudo -n env PM2_HOME=/root/.pm2 PATH="$PATH" pm2 delete all 2>/dev/null || true
+  sudo -n env PM2_HOME=/root/.pm2 PATH="$PATH" pm2 kill 2>/dev/null || true
+  sudo -n systemctl stop pm2-root 2>/dev/null || true
+  sudo -n systemctl stop pm2 2>/dev/null || true
+  sudo -n systemctl disable pm2-root 2>/dev/null || true
+fi
+
+# --- Step 7: Kill Listeners On Service Ports -------------------------------
+# Final fallback: terminate any process still listening on configured ports.
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
+if [ -f .env.local ]; then
+  set -a
+  source .env.local
+  set +a
+fi
+
+SERVICE_PORTS=(
+  "$CONF_portBroker"
+  "$CONF_portServer"
+  "$CONF_portBridgeZigBee"
+  "$CONF_portBridgeHTTP"
+  "$CONF_portBridgeBluetooth"
+  "$CONF_portBridgeLoRa"
+  "$CONF_portHealthcheck"
+)
+
+echo "🧨 Releasing service ports ..."
+for port in "${SERVICE_PORTS[@]}"; do
+  if [[ -z "$port" ]]; then
+    continue
+  fi
+
+  if command -v fuser > /dev/null 2>&1; then
+    fuser -k "${port}/tcp" 2>/dev/null || true
+  elif command -v lsof > /dev/null 2>&1; then
+    LISTENER_PIDS=$(lsof -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+    if [[ -n "$LISTENER_PIDS" ]]; then
+      kill -9 $LISTENER_PIDS 2>/dev/null || true
+    fi
+  fi
+done
 
 echo "✅ All services stopped successfully!"

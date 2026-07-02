@@ -106,7 +106,7 @@ node "bridge-integrations/app.js"
 If you want to use it for production (only macOS / Linux), just run
 ```bash
 chmod +x production-start.sh
-./production-start.sh
+./production-start.sh # maybe with sudo 
 ```
 or
 ```bash
