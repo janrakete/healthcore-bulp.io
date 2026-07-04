@@ -64,7 +64,7 @@ const chartInstances = {
  */
 async function fetchConfig() {
     try {
-        const response = await fetch("/api/config");
+        const response = await fetch("/api/config", { headers: buildApiHeaders() });
         const data     = await response.json();
 
         CONF_serverBaseUrl                  = data.CONF_serverBaseUrl;
@@ -114,28 +114,65 @@ async function fetchArray(path) {
 }
 
 /**
+ * Fetches  the list of devices connected to a specific bridge from the Healthcore server.
+ * Returns an array of device objects, or [] on error.
+ * @async
+ * @function fetchDevicesConnected
+ * @param {string} bridge - The bridge name (e.g. "zigbee").
+ * @returns {Promise<Array>} Array of device objects, or an empty array on error.
+ */
+async function fetchDevicesConnected(bridge) {
+    try {
+        const data = await (await fetch(CONF_serverBaseUrl + "/devices/" + bridge + "/list", { headers: buildApiHeaders() })).json();
+        return Array.isArray(data.data.devicesConnected) ? data.data.devicesConnected : [];
+    }
+    catch (error) {
+        console.error("API call failed [" + bridge + "]:", error);
+        return [];
+    }
+}
+
+/**
  * Fetches all registered devices from the Healthcore server.
  * Each device object is enriched by the server with individual and room data.
+ * Also marks each device with a "connected" property based on the bridge's connected devices list.
  * @async
  * @function fetchDevices
  * @returns {Promise<Array>} Array of enriched device objects, or an empty array on error.
  */
 async function fetchDevices() {
     let devicesAll = await fetchArray("/devices/all");
+ 
+    for (const device of devicesAll) { // Initialise all devices as disconnected (0) before checking bridge connection status
+        device.connected = 0;
+    }
 
-    for (const bridge of dashboardState.serverInfo.bridges) {
-        console.log(bridge);
-
+    for (const bridge of dashboardState.serverInfo.bridges) { // Check each bridge's connection status and fetch its connected devices
         if (bridge.status === "online") {
-            const devicesConnected = await fetchArray("/devices/" + bridge.bridge.toLowerCase() + "/list");
-            console.log(devicesConnected);
-            
-            for (const device of devicesConnected) {
-                console.log(device);
-
-
+            const devicesConnected = await fetchDevicesConnected(bridge.bridge.toLowerCase());
+ 
+            for (const deviceConnected of devicesConnected) {
+                const deviceMatch = devicesAll.find(device => device.uuid === deviceConnected.uuid);
+                if (deviceMatch) {
+                    switch (bridge.bridge.toLowerCase()) {
+                        case "zigbee":
+                            deviceMatch.connected = 1;
+                            break;
+                        case "bluetooth":
+                            deviceMatch.connected = 1;
+                            break;
+                        case "lora":
+                            deviceMatch.connected = 2;
+                            break;
+                        case "http":
+                            deviceMatch.connected = 2;
+                            break;
+                        case "integrations":
+                            deviceMatch.connected = 2;
+                            break;
+                    }
+                }
             }
-        
         }
     }
 
@@ -849,8 +886,8 @@ function buildDeviceRow(device) {
     row.appendChild(td(capitalise(device.bridge)));
 
     const statusCell = document.createElement("td");
-    const isConnected = Number(device.connected) === 1;
-    statusCell.appendChild(buildConnectionTag(isConnected));
+    console.log("device.connected", device.connected);
+    statusCell.appendChild(buildConnectionTag(Number(device.connected)));
     row.appendChild(statusCell);
 
     const personName = device.individual ? (device.individual.firstname + " " + device.individual.lastname).trim(): "—";
@@ -1272,13 +1309,24 @@ function buildAlertStatusTag(status) {
 /**
  * Builds a Bulma tag <span> for a device connection status.
  * @function buildConnectionTag
- * @param {boolean} isConnected - Whether the device is currently connected.
+ * @param {number} status - Connection status: 0 = disconnected, 1 = connected, other = unknown.
  * @returns {HTMLElement} A <span class="tag hc-tag-connected|disconnected"> element.
  */
-function buildConnectionTag(isConnected) {
+function buildConnectionTag(status) {
     const tag       = document.createElement("span");
-    tag.className   = isConnected ? "tag hc-tag-connected" : "tag hc-tag-disconnected";
-    tag.textContent = isConnected ? i18n.t("Connected") : i18n.t("Disconnected");
+
+    if (status === 0) {
+        tag.className   = "tag hc-tag-disconnected";
+        tag.textContent = i18n.t("Disconnected");
+    }
+    else if (status === 1) {
+        tag.className   = "tag hc-tag-connected";
+        tag.textContent = i18n.t("Connected");
+    }
+    else {
+        tag.className   = "tag hc-tag-unknown";
+        tag.textContent = i18n.t("Unknown");
+    }
     return tag;
 }
 

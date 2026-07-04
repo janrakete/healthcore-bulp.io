@@ -57,6 +57,7 @@
 
     --hc-color-connected: #4caf50;
     --hc-color-disconnected: #ff5722;
+    --hc-color-unknown: #5f5f5f;
 
     --hc-color-text-contrast: #fff;
     --hc-color-text-on-tile: #000;
@@ -211,6 +212,10 @@ html, body {
 
 .hc-tag-disconnected, .hc-tag-failed { 
     background-color: var(--hc-color-disconnected) !important; 
+}
+
+.hc-tag-unknown { 
+    background-color: var(--hc-color-unknown) !important; 
 }
 
 /* Overview — recent-data row separator (inside purple .box, so use a white-alpha border) */

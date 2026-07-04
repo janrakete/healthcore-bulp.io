@@ -25,6 +25,7 @@
     "isolation-forest": "^0.0.9",
     "mqtt": "^5.13.1",
     "node-cron": "^4.2.1",
+    "node-llama-cpp": "^3.19.0",
     "nodemon": "^3.1.14",
     "serialport": "^13.0.0",
     "sleep-promise": "^9.1.0",
