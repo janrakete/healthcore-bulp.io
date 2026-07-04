@@ -13,3 +13,4 @@ push-firebase-admin.json
 healthcore_database.db
 healthcore_database.db-shm
 healthcore_database.db-wal
+/server/libs/UnderstandingEngine-models
