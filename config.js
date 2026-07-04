@@ -108,7 +108,8 @@ const appConfig = {
   CONF_osRootUser                                     : process.env.CONF_osRootUser,
   CONF_zigBeeNetworkKey                               : process.env.CONF_zigBeeNetworkKey,
   CONF_zigBeeNetworkPanID                             : process.env.CONF_zigBeeNetworkPanID,
-  CONF_zigBeeNetworkChannelList                       : process.env.CONF_zigBeeNetworkChannelList
+  CONF_zigBeeNetworkChannelList                       : process.env.CONF_zigBeeNetworkChannelList,
+  CONF_understandingEngineModel                       : process.env.CONF_understandingEngineModel
 };
 
 module.exports = appConfig;
