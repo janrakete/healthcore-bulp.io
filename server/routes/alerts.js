@@ -346,7 +346,7 @@ function buildOrderByClause(orderByString, table) {
  *                   example: "Fatal error: <message>"
  */
 router.get("/", async function (request, response) {
-    let data = {};
+    const data = {};
 
     try {
         data.status = "ok";
@@ -436,7 +436,7 @@ router.get("/", async function (request, response) {
  *                   example: "Fatal error: <message>"
  */
 router.get("/stats", async function (request, response) {
-    let data = {};
+    const data = {};
 
     try {
         data.status            = "ok";

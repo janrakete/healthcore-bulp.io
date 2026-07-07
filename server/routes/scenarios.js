@@ -7,6 +7,58 @@ const appConfig     = require("../../config");
 const router        = require("express").Router();
 
 /**
+ * =============================================================================================
+ * Helper functions
+ * ================
+ */
+
+/**
+ * Validates and normalizes action payloads for scenario creation/update.
+ * @param {Array<Object>} actions
+ * @returns {{status: string, error?: string, actions?: Array<Object>}}
+ */
+function scenarioActionsValidateAndNormalize(actions) {
+    const data = {};
+
+    if (!Array.isArray(actions)) {
+        data.status = "error";
+        data.error  = "Actions must be an array";
+        return (data);
+    }
+
+    const actionsUnnormalized = actions.map((action) => ({ ...action }));
+
+    for (const action of actionsUnnormalized) { // Validate and normalize each action
+        action.type = action.type || "set_device_value";
+
+        if (action.type === "pause") {
+            const pauseSeconds = Number(action.value);
+
+            if (!Number.isFinite(pauseSeconds) || pauseSeconds <= 0) {
+                data.status = "error";
+                data.error  = "Invalid pause action";
+                return (data);
+            }
+
+            action.delay = 0;
+        }
+        else if (action.type === "notification" || action.type === "push_notification") {
+            action.delay = 0;
+        }
+        else {
+            const delay  = Number(action.delay || 0);
+            action.delay = Number.isFinite(delay) && delay > 0 ? delay : 0;
+        }        
+
+    }
+
+    data.status  = "ok";
+    data.actions = actionsUnnormalized;
+
+    return (data);
+}
+
+/**
  * @swagger
  * components:
  *   schemas:
@@ -444,6 +496,13 @@ router.post("/", async function (request, response) {
     try {
         if (payload.name && payload.triggers && payload.actions) {
             if (Array.isArray(payload.triggers) && Array.isArray(payload.actions)) {
+                const normalizedActionsResult = scenarioActionsValidateAndNormalize(payload.actions);
+                if (normalizedActionsResult.status !== "ok") {
+                    data.status = "error";
+                    data.error  = normalizedActionsResult.error;
+                    return common.sendResponse(response, data, "Server route 'Scenarios'", "POST Request");
+                }
+
                 data.status = "ok";
                 
                 const insertScenario    = database.prepare("INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))");
@@ -480,7 +539,7 @@ router.post("/", async function (request, response) {
                         );
                     }
 
-                    for (const action of payload.actions) { // Insert actions — translate uuid+bridge → numeric deviceID
+                    for (const action of normalizedActionsResult.actions) { // Insert actions — translate uuid+bridge → numeric deviceID
                         const actionUUID   = action.uuid || null;
                         const actionBridge = action.bridge || null;
                         const deviceID     = (actionUUID && actionBridge) ? common.deviceGetIDByUUID(actionUUID, actionBridge) : null;
@@ -492,7 +551,7 @@ router.post("/", async function (request, response) {
                             action.property || null,
                             typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null),
                             action.valueType || "String",
-                            action.delay || 0
+                            Number(action.delay || 0)
                         );
                     }
 
@@ -685,16 +744,21 @@ router.patch("/:scenarioID", async function (request, response) {
         }
 
         if (payload.actions) { // Update actions if provided
+                    const normalizedActionsResult = scenarioActionsValidateAndNormalize(payload.actions);
+                    if (normalizedActionsResult.status !== "ok") {
+                        throw new Error(normalizedActionsResult.error);
+                    }
+
           database.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(scenarioID); // Delete existing actions
 
           const insertAction = database.prepare("INSERT INTO scenarios_actions (scenarioID, type, deviceID, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)"); // Insert new actions — translate uuid+bridge → numeric deviceID
 
-          for (const action of payload.actions) {
+                    for (const action of normalizedActionsResult.actions) {
             const actionUUID   = action.uuid || null;
             const actionBridge = action.bridge || null;
             const deviceID     = (actionUUID && actionBridge) ? common.deviceGetIDByUUID(actionUUID, actionBridge) : null;
 
-            insertAction.run(scenarioID, action.type || "set_device_value", deviceID, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", action.delay || 0);
+                        insertAction.run(scenarioID, action.type || "set_device_value", deviceID, action.property || null, typeof action.value === "object" ? JSON.stringify(action.value) : (action.value || null), action.valueType || "String", Number(action.delay || 0));
           }
           common.conLog("Server route 'Scenarios': PATCH Request: access table 'scenarios'", "gre");
           common.conLog("Execute statement: " + insertAction.sql, "std", false);

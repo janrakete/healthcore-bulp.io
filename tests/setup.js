@@ -209,6 +209,19 @@ function createTestDatabase() {
       success       INTEGER,
       error         TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS reporting_reports (
+      reportID INTEGER PRIMARY KEY AUTOINCREMENT,
+      individualID INTEGER NOT NULL,
+      reportDate TEXT NOT NULL,
+      factsJson TEXT NOT NULL,
+      summaryText TEXT NOT NULL,
+      modelName TEXT,
+      reportLanguage TEXT NOT NULL DEFAULT 'de',
+      status TEXT NOT NULL DEFAULT 'generated',
+      dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(individualID, reportDate)
+    );
   `);
 
   return db;
@@ -286,11 +299,13 @@ function createTestApp() {
   const routesScenarios = require("../server/routes/scenarios");
   const routesDevices  = require("../server/routes/devices");
   const routesAlerts = require("../server/routes/alerts");
+  const routesReports = require("../server/routes/reports");
 
   app.use("/data",      apiKeyAuth, routesData);
   app.use("/scenarios", apiKeyAuth, routesScenarios);
   app.use("/devices",   apiKeyAuth, routesDevices);
   app.use("/alerts",    apiKeyAuth, routesAlerts);
+  app.use("/reports",   apiKeyAuth, routesReports);
 
   return app;
 }

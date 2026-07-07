@@ -74,16 +74,25 @@ async function startServer() {
 
   const infoData = require("./routes/info"); // import routes for server info
   app.use("/info", infoData);
+
   const routesData = require("./routes/data"); // import routes for data manipulation
   app.use("/data", apiKeyAuth, routesData);
+
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
   app.use("/devices", apiKeyAuth, routesDevices);
+
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
   app.use("/scenarios", apiKeyAuth, routesScenarios);
+
   const routesAlerts = require("./routes/alerts"); // import routes for alerts
   app.use("/alerts", apiKeyAuth, routesAlerts);
+
+  const routesReports = require("./routes/reports"); // import routes for reporting
+  app.use("/reports", apiKeyAuth, routesReports);
+
   const routesUpdate = require("./routes/update"); // import routes for updates
   app.use("/update", apiKeyAuth, routesUpdate);
+
   /**
    * Swagger
    */
@@ -187,6 +196,34 @@ async function startServer() {
     const minutes = String(now.getMinutes()).padStart(2, "0");
     scenarios.handleTimeEvent(hours + ":" + minutes);
   });
+
+  /**
+   * Reporting engine and reporting service
+   */
+  const ReportingEngine  = require("./libs/ReportingEngine");
+  const ReportingService = require("./libs/ReportingEngineService");
+  const reportingEngine  = new ReportingEngine();
+  global.reportingService = new ReportingService(reportingEngine);
+
+  if (appConfig.CONF_reportingEnabled === true) {
+    try {
+      await reportingEngine.initialize(appConfig.CONF_reportingEngineModel);
+      common.conLog("Reporting: Engine ready", "gre");
+    }
+    catch (error) {
+      common.conLog("Reporting: Engine initialization failed: " + error.message, "red");
+    }
+
+    Cron.schedule(appConfig.CONF_reportingCron, async () => {
+      try {
+        await global.reportingService.generateAndStoreReports();
+      }
+      catch (error) {
+        common.conLog("Reporting: Generation failed: " + error.message, "red");
+      }
+    });
+    common.conLog("Reporting: Cron scheduled with '" + appConfig.CONF_reportingCron + "'", "yel");
+  }
 
   /**
    * Alerts Engine

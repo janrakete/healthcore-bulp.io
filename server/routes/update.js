@@ -12,6 +12,12 @@ const { spawn }       = require("child_process");
 const extractZip      = require("extract-zip");
 
 /**
+ * =============================================================================================
+ * Helper functions
+ * ================
+ */
+
+/**
  * A helper function to run a command as a child process and return a promise that resolves when the
  * process exits successfully or rejects if it fails.
  * @param {string} command 
