@@ -1,7 +1,7 @@
 /**
  * =============================================================================================
- * Reporting Engine - Generates structured daily care reports from deterministic facts.
- * =================================================================================
+ * Reporting Engine - Generates structured care reports from deterministic facts
+ * =============================================================================
  */
 
 const appConfig = require("../../config");
@@ -42,15 +42,6 @@ class ReportingEngine {
             common.conLog("Failed to initialize Reporting Engine: " + error.message, "red");
             throw error;
         }
-    }
-
-    /**
-     * Analyzes the provided data and returns insights.
-     * @param {string} data - The data to analyze.
-     * @returns {Promise<string>} - Insights derived from the analysis.
-     */
-    async analyze(data) {
-        return this.generateReport({ input: data }, { language: appConfig.CONF_reportingLanguage});
     }
 
     /**

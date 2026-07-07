@@ -200,9 +200,9 @@ async function startServer() {
   /**
    * Reporting engine and reporting service
    */
-  const ReportingEngine  = require("./libs/ReportingEngine");
-  const ReportingService = require("./libs/ReportingEngineService");
-  const reportingEngine  = new ReportingEngine();
+  const ReportingEngine   = require("./libs/ReportingEngine");
+  const ReportingService  = require("./libs/ReportingEngineService");
+  const reportingEngine   = new ReportingEngine();
   global.reportingService = new ReportingService(reportingEngine);
 
   if (appConfig.CONF_reportingEnabled === true) {
@@ -216,7 +216,7 @@ async function startServer() {
 
     Cron.schedule(appConfig.CONF_reportingCron, async () => {
       try {
-        await global.reportingService.generateAndStoreReports();
+        await reportingService.generateAndStoreReports();
       }
       catch (error) {
         common.conLog("Reporting: Generation failed: " + error.message, "red");

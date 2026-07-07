@@ -30,11 +30,11 @@ class ReportingService {
 
         const reports = [];
 
-        for (const individual of individuals) {
+        for (const individual of individuals) { // Generate report for each individual
             const facts = this.buildFactsForIndividual(individual, targetDate);
 
-            let summaryText     = reportNoDataSummaryGet(reportLanguage);
-            let modelName       = "fallback";
+            let summaryText     = reportNoDataSummaryGet(reportLanguage); // Default summary text when no data is available
+            let modelName       = null;
 
             if (facts.totalReadings > 0 && this.reportingEngine && typeof this.reportingEngine.generateReport === "function") { // Only generate report if there are readings and the reporting engine is available
                 try {
@@ -44,9 +44,20 @@ class ReportingService {
                 catch (error) {
                     common.conLog("Reporting Service: LLM generation failed for individual " + individual.individualID + ": " + error.message, "red");
                 }
-            }
+            } 
 
-            this.upsertReport(individual.individualID, targetDate, facts, summaryText, modelName, reportLanguage);
+            const existingReport = database.prepare("SELECT reportID FROM reporting_reports WHERE individualID = ? AND reportDate = ? AND reportLanguage = ?").get(individual.individualID, targetDate, reportLanguage);
+
+            if (existingReport) {  // If report already exists ...
+                database.prepare( // ... update it with new facts and summary text ...
+                    "UPDATE reporting_reports SET factsJson = ?, summaryText = ?, modelName = ?, status = 'generated', dateTimeAdded = datetime('now', 'localtime') WHERE reportID = ?"
+                ).run(JSON.stringify(facts), summaryText, modelName || null, existingReport.reportID);
+            }
+            else {
+                database.prepare( // ... otherwise insert a new report record
+                    "INSERT INTO reporting_reports (individualID, reportDate, factsJson, summaryText, modelName, reportLanguage, status, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, 'generated', datetime('now', 'localtime'))"
+                ).run(individual.individualID, targetDate, JSON.stringify(facts), summaryText, modelName || null, reportLanguage || "en");
+            }
 
             reports.push({
                 individualID: individual.individualID,
@@ -116,7 +127,7 @@ class ReportingService {
             });
         }
 
-        const roomNamesById        = this.getRoomNamesById(devices);
+        const roomNamesById        = this.getRoomNamesByID(devices);
         const roomActivityCounter  = new Map();
         const propertyCounter      = new Map();
 
@@ -152,6 +163,7 @@ class ReportingService {
     }
 
     /**
+     * Returns true if the given hour is within the configured night window
      * @param {number} hour
      * @returns {boolean}
      */
@@ -174,6 +186,7 @@ class ReportingService {
     }
 
     /**
+     * Returns true if the given hour falls within the very early hour window (before the configured night window)
      * @param {number} hour
      * @returns {boolean}
      */
@@ -196,6 +209,7 @@ class ReportingService {
     }
 
     /**
+     * Returns true if the given hour falls within the very late hour window (after the configured night window)
      * @param {number} hour
      * @returns {boolean}
      */
@@ -218,6 +232,7 @@ class ReportingService {
     }
 
     /**
+     * Returns the start and end hours of the night window based on configuration
      * @returns {{startHour:number,endHour:number}}
      */
     getNightWindowHours() {
@@ -231,6 +246,7 @@ class ReportingService {
     }
 
     /**
+     * Returns the devices assigned to the given individual
      * @param {Object} individual
      * @returns {Array<Object>}
      */
@@ -241,12 +257,13 @@ class ReportingService {
     }
 
     /**
+     * Returns a map of room IDs to room names for the given devices
      * @param {Array<Object>} devices
      * @returns {Map<number,string>}
      */
-    getRoomNamesById(devices) {
+    getRoomNamesByID(devices) {
         const roomIDs = [...new Set(devices.map((device) => Number(device.roomID)).filter((roomID) => Number.isFinite(roomID) && roomID > 0))];
-        const map = new Map();
+        const map     = new Map();
 
         if (roomIDs.length === 0) {
             return map;
@@ -263,20 +280,7 @@ class ReportingService {
     }
 
     /**
-     * @param {number} individualID
-     * @param {string} reportDate
-     * @param {Object} facts
-     * @param {string} summaryText
-     * @param {string} modelName
-     * @param {string} reportLanguage
-     */
-    upsertReport(individualID, reportDate, facts, summaryText, modelName, reportLanguage) {
-        database.prepare(
-            "INSERT INTO reporting_reports (individualID, reportDate, factsJson, summaryText, modelName, reportLanguage, status, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, 'generated', datetime('now', 'localtime')) ON CONFLICT(individualID, reportDate) DO UPDATE SET factsJson = excluded.factsJson, summaryText = excluded.summaryText, modelName = excluded.modelName, reportLanguage = excluded.reportLanguage, status = 'generated', dateTimeAdded = datetime('now', 'localtime')"
-        ).run(individualID, reportDate, JSON.stringify(facts), summaryText, modelName || null, reportLanguage || "de");
-    }
-
-    /**
+     * Yesterday's date in YYYY-MM-DD format
      * @returns {string}
      */
     getYesterdayDateString() {
@@ -286,6 +290,7 @@ class ReportingService {
     }
 
     /**
+     * Returns the start and end Unix timestamps for the given date
      * @param {string} dateString
      * @returns {{startUnix:number,endUnix:number}}
      */
@@ -300,16 +305,16 @@ class ReportingService {
     }
 
     /**
+     * Converts a Map to a sorted array of objects
      * @param {Map<string, number>} counter
      * @returns {Array<{name:string,count:number}>}
      */
     mapToSortedArray(counter) {
-        return [...counter.entries()]
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
+        return [...counter.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
     }
 
     /**
+     * Converts a Unix timestamp (in seconds) to an ISO string
      * @param {number|string} unixSeconds
      * @returns {string}
      */

@@ -181,13 +181,13 @@ router.post("/generate", async function (request, response) {
 
         if (!global.reportingService || typeof global.reportingService.generateAndStoreReports !== "function") {
             data.status = "error";
-            data.error  = "Reporting service is not initialized";
+            data.error  = "Reporting Service is not initialized";
             return common.sendResponse(response, data, "Server route 'Reports'", "POST Request");
         }
 
-        const results = await global.reportingService.generateAndStoreReports(date, { language });
-        data.status  = "ok";
-        data.results = results;
+        const results   = await global.reportingService.generateAndStoreReports(date, { language });
+        data.status     = "ok";
+        data.results    = results;
     }
     catch (error) {
         data.status = "error";
