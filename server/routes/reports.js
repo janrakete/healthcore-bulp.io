@@ -22,6 +22,15 @@ function isValidDate(value) {
 }
 
 /**
+ * Validates if a given value is a parseable ISO date-time string.
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isValidIsoDateTime(value) {
+    return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+/**
  * Normalizes and validates report language codes.
  * @param {string} value
  * @returns {string}
@@ -144,7 +153,7 @@ router.get("/", function (request, response) {
  *  /reports/generate:
  *    post:
  *      summary: Generate reports manually
- *      description: Manually trigger the generation of reports for a specific date and language. If no date is provided, reports will be generated for the current date. The language parameter allows specifying the desired report language.
+ *      description: Manually trigger the generation of reports for a specific start/end date-time range and language.
  *      tags:
  *        - Reports
  *      requestBody:
@@ -154,9 +163,12 @@ router.get("/", function (request, response) {
  *            schema:
  *              type: object
  *              properties:
- *                date:
+ *                startDateTime:
  *                  type: string
- *                  example: "2026-07-05"
+ *                  example: "2026-07-07T00:00:00Z"
+ *                endDateTime:
+ *                  type: string
+ *                  example: "2026-07-08T00:00:00Z"
  *                language:
  *                  type: string
  *                  example: "en"
@@ -170,12 +182,31 @@ router.post("/generate", async function (request, response) {
     const data = {};
 
     try {
-        const date     = request.body && request.body.date;
-        const language = reportLanguageNormalize(request.body && request.body.language);
+        const startDateTime = request.body && request.body.startDateTime;
+        const endDateTime   = request.body && request.body.endDateTime;
+        const language      = reportLanguageNormalize(request.body && request.body.language);
 
-        if (date !== undefined && !isValidDate(date)) {
+        if ((startDateTime !== undefined && endDateTime === undefined) || (startDateTime === undefined && endDateTime !== undefined)) {
             data.status = "error";
-            data.error  = "Date must be in YYYY-MM-DD format";
+            data.error  = "startDateTime and endDateTime must be provided together";
+            return common.sendResponse(response, data, "Server route 'Reports'", "POST Request");
+        }
+
+        if (startDateTime !== undefined && !isValidIsoDateTime(startDateTime)) {
+            data.status = "error";
+            data.error  = "startDateTime must be a valid ISO date-time string";
+            return common.sendResponse(response, data, "Server route 'Reports'", "POST Request");
+        }
+
+        if (endDateTime !== undefined && !isValidIsoDateTime(endDateTime)) {
+            data.status = "error";
+            data.error  = "endDateTime must be a valid ISO date-time string";
+            return common.sendResponse(response, data, "Server route 'Reports'", "POST Request");
+        }
+
+        if (startDateTime !== undefined && endDateTime !== undefined && Date.parse(startDateTime) >= Date.parse(endDateTime)) {
+            data.status = "error";
+            data.error  = "startDateTime must be before endDateTime";
             return common.sendResponse(response, data, "Server route 'Reports'", "POST Request");
         }
 
@@ -185,7 +216,7 @@ router.post("/generate", async function (request, response) {
             return common.sendResponse(response, data, "Server route 'Reports'", "POST Request");
         }
 
-        const results   = await global.reportingService.generateAndStoreReports(date, { language });
+        const results   = await global.reportingService.generateAndStoreReports(undefined, { language, startDateTime, endDateTime });
         data.status     = "ok";
         data.results    = results;
     }

@@ -68,7 +68,7 @@ class ReportingEngine {
             return String(report || "").trim();
         }
         catch (error) {
-            common.conLog("Daily report generation failed: " + error.message, "red");
+            common.conLog("Reporting generation failed: " + error.message, "red");
             throw error;
         }
     }
@@ -83,10 +83,10 @@ class ReportingEngine {
         const promptLanguageName = reportLanguageNameGet(language);
 
         return [
-            "You are a nursing assistant AI. Create a factual, concise daily report for caregivers.",
+            "You are a nursing assistant AI. Create a factual, concise care report for the selected period.",
             "Output language must be: " + promptLanguageName + " (code: " + language + ").",
             "Use only the provided facts. Do not invent values and do not provide diagnoses.",
-            "Structure: 1) Brief overview, 2) Observed activity, 3) Notable findings, 4) Suggested observation for next day.",
+            "Structure: 1) Brief overview, 2) Observed activity, 3) Notable findings, 4) Suggested observation for the next period.",
             "If data is sparse, say this clearly.",
             "Facts (JSON):",
             JSON.stringify(facts)

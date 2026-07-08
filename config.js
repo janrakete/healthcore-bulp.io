@@ -114,8 +114,6 @@ const appConfig = {
   CONF_reportingCron                                  : process.env.CONF_reportingCron,
   CONF_reportingLanguage                              : process.env.CONF_reportingLanguage,
   CONF_reportingLanguageSupported                     : (process.env.CONF_reportingLanguageSupported || "").split(",").map(lang => lang.trim()).filter(Boolean),  
-  CONF_reportingNightStartHour                        : toInt(process.env.CONF_reportingNightStartHour),
-  CONF_reportingNightEndHour                          : toInt(process.env.CONF_reportingNightEndHour),
   CONF_reportingEngineTemperature                     : toFloat(process.env.CONF_reportingEngineTemperature),
   CONF_reportingEngineMaxTokens                       : toInt(process.env.CONF_reportingEngineMaxTokens),
 };
