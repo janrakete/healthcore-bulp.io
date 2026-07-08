@@ -9,6 +9,12 @@ const router          = require("express").Router();
 const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
 
 /**
+ * =============================================================================================
+ * Helper functions
+ * ================
+ */
+
+/**
  * Validates that a name (table or column) contains only safe characters.
  * @param {string} name - The name to validate.
  * @returns {boolean} - Returns true if the name is safe, false otherwise.

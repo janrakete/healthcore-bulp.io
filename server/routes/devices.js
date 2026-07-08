@@ -194,7 +194,7 @@ function getRoom(roomID) {
  *                    example: "Error message"
  */
 router.get("/all", async function (request, response) {
-    let data = {};
+    const data = {};
     try {
         data.status = "ok";
         const statement = "SELECT * FROM devices LIMIT " + appConfig.CONF_tablesMaxEntriesReturned;
