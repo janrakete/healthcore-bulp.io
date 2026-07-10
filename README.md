@@ -126,6 +126,36 @@ production-start.sh uses the process manager, so that a service is restarted if 
 - **Connections**  
   - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
 
+Installation example for Raspberry Pi:
+```bash
+# Update and reboot the system
+sudo apt update
+sudo apt full-upgrade -y
+sudo apt install -y git curl bluetooth bluez
+sudo reboot
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Activate Bluetooth
+sudo systemctl enable bluetooth
+sudo systemctl start bluetooth
+sudo rfkill unblock bluetooth
+
+# Clone repository
+git clone https://github.com/janrakete/healthcore-bulp.io.git
+cd healthcore-bulp.io
+npm install
+
+# Find out ZigBee adapter port
+ls -l /dev/serial/by-id # change this in .env.local, i.e. CONF_zigBeeAdapterPort=/dev/ttyUSB0
+
+# Start Healthcore and put it to autostart
+chmod +x production-start.sh
+./production-start.sh
+```
+
 ## 📈 Healthcheck
 Healthcore has an integrated dashboard (= Healthcheck) to view the status of the system and to display several data from the APIs.
 
