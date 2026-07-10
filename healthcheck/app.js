@@ -36,7 +36,7 @@ async function startHealthcheck() {
 
   app.use(function (error, request, response, next) { // if request contains JSON and the JSON is invalid
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-      let data = {};
+      const data = {};
       data.status        = "error";
       data.errorMessage  = "JSON in request is invalid";
       response.json(data);

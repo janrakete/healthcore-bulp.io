@@ -15,7 +15,7 @@ const options = {
       description: "This file is an auto-generated swagger doc from JSDoc comments.",
     },
   },
-  apis: ["./routes/info.js", "./routes/data.js", "./routes/devices.js", "./routes/scenarios.js", "./routes/alerts.js", "./routes/update.js"], // files containing annotations for the OpenAPI Specification
+  apis: ["./routes/info.js", "./routes/data.js", "./routes/devices.js", "./routes/scenarios.js", "./routes/alerts.js", "./routes/update.js", "./routes/reports.js"], 
 };
 
 const swaggerSpec = swaggerJsdoc(options);

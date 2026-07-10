@@ -109,7 +109,13 @@ const appConfig = {
   CONF_zigBeeNetworkKey                               : process.env.CONF_zigBeeNetworkKey,
   CONF_zigBeeNetworkPanID                             : process.env.CONF_zigBeeNetworkPanID,
   CONF_zigBeeNetworkChannelList                       : process.env.CONF_zigBeeNetworkChannelList,
-  CONF_understandingEngineModel                       : process.env.CONF_understandingEngineModel
+  CONF_reportingEngineModel                           : process.env.CONF_reportingEngineModel,
+  CONF_reportingEnabled                               : toBool(process.env.CONF_reportingEnabled),
+  CONF_reportingCron                                  : process.env.CONF_reportingCron,
+  CONF_reportingLanguage                              : process.env.CONF_reportingLanguage,
+  CONF_reportingLanguageSupported                     : (process.env.CONF_reportingLanguageSupported || "").split(",").map(lang => lang.trim()).filter(Boolean),  
+  CONF_reportingEngineTemperature                     : toFloat(process.env.CONF_reportingEngineTemperature),
+  CONF_reportingEngineMaxTokens                       : toInt(process.env.CONF_reportingEngineMaxTokens),
 };
 
 module.exports = appConfig;
