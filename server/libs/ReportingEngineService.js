@@ -93,7 +93,7 @@ class ReportingService {
             };
         }
 
-        const placeholders  = deviceIDs.map(() => "?").join(",");
+        const placeholders  = deviceIDs.map(() => "?").join(","); // 
         const readings      = database.prepare(
             "SELECT mdv.*, d.name AS deviceName, d.productName, d.roomID FROM mqtt_devices_values AS mdv JOIN devices AS d ON d.deviceID = mdv.deviceID WHERE mdv.deviceID IN (" + placeholders + ") AND mdv.dateTimeAsNumeric >= ? AND mdv.dateTimeAsNumeric < ? ORDER BY mdv.dateTimeAsNumeric ASC"
         ).all(...deviceIDs, range.startUnix, range.endUnix);
@@ -133,11 +133,11 @@ class ReportingService {
     }
 
     /**
-     * Resolves a usable [start,end) unix range from optional ISO date-time strings.
+    * Resolves a usable [start,end) unix range in milliseconds from optional ISO date-time strings.
      * If both values are omitted, defaults to yesterday 00:00:00 - today 00:00:00.
      * @param {string|undefined} startDateTime
      * @param {string|undefined} endDateTime
-     * @returns {{startUnix:number, endUnix:number}}
+    * @returns {{startUnix:number, endUnix:number}}
      */
     resolveRange(startDateTime, endDateTime) {
         if (startDateTime === undefined && endDateTime === undefined) {
@@ -148,8 +148,8 @@ class ReportingService {
             throw new Error("startDateTime and endDateTime must be provided together");
         }
 
-        const startUnix = this.toUnixSeconds(startDateTime);
-        const endUnix   = this.toUnixSeconds(endDateTime);
+        const startUnix = this.toUnixMilliseconds(startDateTime);
+        const endUnix   = this.toUnixMilliseconds(endDateTime);
 
         if (!Number.isFinite(startUnix) || !Number.isFinite(endUnix)) {
             throw new Error("startDateTime and endDateTime must be valid ISO date-time strings");
@@ -174,8 +174,8 @@ class ReportingService {
         startDate.setDate(startDate.getDate() - 1);
 
         return {
-            startUnix: Math.floor(startDate.getTime() / 1000),
-            endUnix: Math.floor(endDate.getTime() / 1000)
+            startUnix: startDate.getTime(),
+            endUnix: endDate.getTime()
         };
     }
 
@@ -305,29 +305,29 @@ class ReportingService {
     }
 
     /**
-     * Converts Unix seconds to YYYY-MM-DD string
-     * @param {number|string} unixSeconds
+     * Converts Unix milliseconds to YYYY-MM-DD string
+     * @param {number|string} unixMs
      * @returns {string}
      */
-    toDateString(unixSeconds) {
-        const unixNumeric = Number(unixSeconds);
+    toDateString(unixTime) {
+        const unixNumeric = Number(unixTime);
         if (!Number.isFinite(unixNumeric)) {
             return new Date().toISOString().slice(0, 10);
         }
-        return new Date(unixNumeric * 1000).toISOString().slice(0, 10);
+        return new Date(unixNumeric).toISOString().slice(0, 10);
     }
 
     /**
-     * Converts an ISO 8601 string to Unix seconds
+     * Converts an ISO 8601 string to Unix milliseconds
      * @param {string} isoDateTime
      * @returns {number}
      */
-    toUnixSeconds(isoDateTime) {
+    toUnixMilliseconds(isoDateTime) {
         const unixMs = Date.parse(String(isoDateTime || "")); // Returns NaN for invalid dates
         if (!Number.isFinite(unixMs)) {
             return NaN;
         }
-        return Math.floor(unixMs / 1000);
+        return unixMs;
     }
 
     /**
@@ -340,16 +340,16 @@ class ReportingService {
     }
 
     /**
-     * Converts Unix seconds to ISO 8601 string
-     * @param {number|string} unixSeconds
+     * Converts Unix milliseconds to ISO 8601 string
+     * @param {number|string} unixMs
      * @returns {string}
      */
-    toIso(unixSeconds) {
-        const unixNumeric = Number(unixSeconds);
+    toIso(unixTime) {
+        const unixNumeric = Number(unixTime);
         if (!Number.isFinite(unixNumeric)) {
             return "";
         }
-        return new Date(unixNumeric * 1000).toISOString();
+        return new Date(unixNumeric).toISOString();
     }
 }
 

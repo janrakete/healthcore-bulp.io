@@ -22,7 +22,7 @@ class ReportingEngine {
      * @param {string} modelPath - Path to the AI model file.
      */
     async initialize(modelPath) {
-        const resolvedModelPath = modelPath || appConfig.CONF_reportingEngineModel;
+        const resolvedModelPath = "./libs/ReportingEngine-models/" + modelPath;
 
         if (!resolvedModelPath) {
             throw new Error("Model path is required for initialization.");
@@ -36,7 +36,7 @@ class ReportingEngine {
             this.model              = await this.llama.loadModel({ modelPath: resolvedModelPath });
             this.LlamaChatSession   = llamaModule.LlamaChatSession;
             this.modelPath          = resolvedModelPath;
-            common.conLog("Reporting Engine initialized with model: " + resolvedModelPath, "gre");
+            common.conLog("Reporting: Engine initialized with model: " + resolvedModelPath, "gre");
         }
         catch (error) {
             common.conLog("Failed to initialize Reporting Engine: " + error.message, "red");

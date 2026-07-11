@@ -70,7 +70,7 @@ beforeAll(() => {
       "INSERT INTO mqtt_devices_values (deviceID, dateTimeAsNumeric, property, value, valueAsNumeric, hour) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
       device.deviceID,
-      Math.floor(entry.unixMs / 1000),
+      entry.unixMs,
       entry.property,
       entry.value,
       entry.valueAsNumeric,
