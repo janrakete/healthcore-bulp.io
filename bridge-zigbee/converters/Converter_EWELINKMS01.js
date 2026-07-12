@@ -15,13 +15,15 @@ class Converter_EWELINKMS01 extends ConverterStandard {
 
         this.properties["ssIasZone"] = {};
         this.properties["ssIasZone"]["motion"] = {
-            name:        "motion",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    ["yes", "no"],
-            valueType:   "Options"
+            name:               "motion",
+            reportingInclude:   true,
+            reportingRole:      "activity",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           ["yes", "no"],
+            valueType:          "Options"
         };
     }
 

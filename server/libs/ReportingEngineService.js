@@ -8,6 +8,7 @@ const appConfig     = require("../../config");
 const common        = require("../../common");
 
 const { reportLanguageNormalize, reportNoDataSummaryGet } = require("./ReportingEngineLanguage");
+const INACTIVE_EVENT_VALUES = new Set(["0", "false", "off", "no", "inactive", "undetected"]);
 
 class ReportingService {
     /**
@@ -88,6 +89,8 @@ class ReportingService {
                 roomActivity: [],
                 topProperties: [],
                 numericPropertyStats: {},
+                propertyDailySummaries: {},
+                propertySpikeFindings: [],
                 openAlerts: this.getOpenAlerts(individual.individualID),
                 devices: []
             };
@@ -102,14 +105,22 @@ class ReportingService {
         const lastReading   = readings.length > 0 ? readings[readings.length - 1] : null; // Last reading in the time window, or null if no readings
 
         const roomNamesById        = this.getRoomNamesById(devices);
+        const reportingDefinitions = this.buildReportingPropertyDefinitionsByDevice(devices);
         const roomActivityCounter  = new Map();
         const propertyCounter      = new Map();
 
         for (const entry of readings) { // Count room activity and property occurrences
             const roomName = roomNamesById.get(Number(entry.roomID));
             roomActivityCounter.set(roomName, (roomActivityCounter.get(roomName) || 0) + 1);
-            propertyCounter.set(entry.property, (propertyCounter.get(entry.property) || 0) + 1);
+
+            const reportablePropertyName = this.getReportablePropertyName(entry, reportingDefinitions);
+            if (reportablePropertyName) {
+                propertyCounter.set(reportablePropertyName, (propertyCounter.get(reportablePropertyName) || 0) + 1);
+            }
         }
+
+        const propertyDailySummaries = this.buildPropertyDailySummaries(readings, reportingDefinitions);
+        const propertySpikeFindings  = this.buildSpikeFindingsFromDailySummaries(propertyDailySummaries);
 
         return {
             individual,                                                                         // Include individual info for context, e.g., name, roomID. Needed for LLM context.
@@ -121,7 +132,9 @@ class ReportingService {
             lastActivity: lastReading ? this.toIso(lastReading.dateTimeAsNumeric) : null,       // ISO 8601 string for the last reading's timestamp
             roomActivity: this.mapToSortedArray(roomActivityCounter),                           // Array of {name: roomName, count: number} sorted by count descending. This is used to determine which rooms had the most activity during the time window.
             topProperties: this.mapToSortedArray(propertyCounter).slice(0, 10),                 // Array of top 10 properties with counts, sorted by count descending. This is used to determine which properties had the most readings during the time window.
-            numericPropertyStats: this.buildNumericPropertyStats(readings),                      // Object with min/max/avg/count for numeric properties (sensor-agnostic summary).
+            numericPropertyStats: this.buildNumericPropertyStats(readings, reportingDefinitions), // Object with min/max/avg/count for report-relevant numeric properties.
+            propertyDailySummaries,                                                              // Daily active event summaries for report-relevant properties.
+            propertySpikeFindings,                                                               // Flattened spike findings across all report-relevant properties.
             openAlerts: this.getOpenAlerts(individual.individualID),                            // Array of open and acknowledged alerts for the individual. Needed for LLM context to provide relevant information about the individual's health status.
             devices: devices.map((device) => ({                                                 // Include device info for context, e.g., deviceID, name, productName, roomID. This is used to provide context for the report generation.
                 deviceID: device.deviceID,
@@ -185,21 +198,25 @@ class ReportingService {
      * @param {Array<Object>} readings
      * @returns {Object} - keys are property names, values are {min, max, avg, count}
      */
-    buildNumericPropertyStats(readings) {
+    buildNumericPropertyStats(readings, reportingDefinitions) {
         const buckets = new Map();
 
         for (const entry of readings) {
+            const reportablePropertyName = this.getReportablePropertyName(entry, reportingDefinitions);
+            if (!reportablePropertyName) {
+                continue;
+            }
+
             const value = Number(entry.valueAsNumeric);
             if (!Number.isFinite(value)) {
                 continue; // Skip non-numeric properties (e.g. boolean state, strings)
             }
 
-            const property = entry.property;
-            if (!buckets.has(property)) {
-                buckets.set(property, { min: value, max: value, sum: value, count: 1 });
+            if (!buckets.has(reportablePropertyName)) {
+                buckets.set(reportablePropertyName, { min: value, max: value, sum: value, count: 1 });
             }
             else {
-                const bucket  = buckets.get(property);
+                const bucket  = buckets.get(reportablePropertyName);
                 bucket.min    = Math.min(bucket.min, value);
                 bucket.max    = Math.max(bucket.max, value);
                 bucket.sum   += value;
@@ -208,8 +225,8 @@ class ReportingService {
         }
 
         const stats = {};
-        for (const [property, bucket] of buckets.entries()) {
-            stats[property] = {
+        for (const [propertyName, bucket] of buckets.entries()) {
+            stats[propertyName] = {
                 min:   bucket.min,
                 max:   bucket.max,
                 avg:   Math.round((bucket.sum / bucket.count) * 100) / 100,
@@ -218,6 +235,236 @@ class ReportingService {
         }
 
         return stats;
+    }
+
+    /**
+     * Builds reporting property definitions by device from persisted converter metadata.
+     * Requires property.reportingInclude to be explicitly set, otherwise the property is excluded.
+     * @param {Array<Object>} devices
+     * @returns {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>}
+     */
+    buildReportingPropertyDefinitionsByDevice(devices) {
+        const definitionsByDevice = new Map();
+
+        for (const device of devices) {
+            const deviceID = Number(device.deviceID);
+            const definitions = new Map();
+
+            if (!Number.isFinite(deviceID)) {
+                continue;
+            }
+
+            let properties = [];
+            try {
+                properties = JSON.parse(String(device.properties || "[]"));
+            }
+            catch (error) {
+                common.conLog("Reporting Service: Invalid device properties JSON for deviceID " + deviceID + ": " + error.message, "red");
+                definitionsByDevice.set(deviceID, definitions);
+                continue;
+            }
+
+            if (!Array.isArray(properties)) {
+                common.conLog("Reporting Service: Expected properties array for deviceID " + deviceID, "red");
+                definitionsByDevice.set(deviceID, definitions);
+                continue;
+            }
+
+            for (const property of properties) {
+                const propertyName = String(property && property.name || "").trim();
+                if (propertyName.length === 0) {
+                    continue;
+                }
+
+                if (typeof property.reportingInclude !== "boolean") {
+                    common.conLog("Reporting Service: Missing reportingInclude for property '" + propertyName + "' on deviceID " + deviceID, "red");
+                    continue;
+                }
+
+                definitions.set(propertyName.toLowerCase(), {
+                    reportingInclude: property.reportingInclude,
+                    reportingRole: typeof property.reportingRole === "string" ? property.reportingRole : null
+                });
+            }
+
+            definitionsByDevice.set(deviceID, definitions);
+        }
+
+        return definitionsByDevice;
+    }
+
+    /**
+     * Resolves the reporting definition for a reading entry.
+     * @param {Object} entry
+     * @param {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>} reportingDefinitions
+     * @returns {{reportingInclude:boolean,reportingRole:string|null}|null}
+     */
+    getReportingPropertyDefinition(entry, reportingDefinitions) {
+        const deviceID = Number(entry && entry.deviceID);
+        const propertyName = String(entry && entry.property || "").trim().toLowerCase();
+
+        if (!Number.isFinite(deviceID) || propertyName.length === 0) {
+            return null;
+        }
+
+        const byDevice = reportingDefinitions.get(deviceID);
+        if (!byDevice) {
+            return null;
+        }
+
+        const definition = byDevice.get(propertyName);
+        if (!definition || definition.reportingInclude !== true) {
+            return null;
+        }
+
+        return definition;
+    }
+
+    /**
+     * Returns the canonical property name when a reading is report-relevant.
+     * @param {Object} entry
+     * @param {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>} reportingDefinitions
+     * @returns {string|null}
+     */
+    getReportablePropertyName(entry, reportingDefinitions) {
+        const definition = this.getReportingPropertyDefinition(entry, reportingDefinitions);
+        if (!definition) {
+            return null;
+        }
+
+        const propertyName = String(entry && entry.property || "").trim();
+        if (propertyName.length === 0) {
+            return null;
+        }
+
+        return propertyName;
+    }
+
+    /**
+     * Builds daily active-event summaries per report-relevant property.
+     * @param {Array<Object>} readings
+     * @param {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>} reportingDefinitions
+     * @returns {Object}
+     */
+    buildPropertyDailySummaries(readings, reportingDefinitions) {
+        const countersByProperty = new Map();
+
+        for (const entry of readings) {
+            const reportablePropertyName = this.getReportablePropertyName(entry, reportingDefinitions);
+            if (!reportablePropertyName || !this.isPropertyEventActive(entry)) {
+                continue;
+            }
+
+            if (!countersByProperty.has(reportablePropertyName)) {
+                countersByProperty.set(reportablePropertyName, new Map());
+            }
+
+            const dayCounter = countersByProperty.get(reportablePropertyName);
+            const day = this.toDateString(entry.dateTimeAsNumeric);
+            dayCounter.set(day, (dayCounter.get(day) || 0) + 1);
+        }
+
+        const summaries = {};
+        const propertyNames = [...countersByProperty.keys()].sort((a, b) => a.localeCompare(b));
+
+        for (const propertyName of propertyNames) {
+            const dayCounter = countersByProperty.get(propertyName);
+            const dailyCounts = [...dayCounter.entries()]
+                .map(([date, count]) => ({ date, count }))
+                .sort((a, b) => a.date.localeCompare(b.date));
+            const spikeDays = this.buildSpikeDaysFromDailyCounts(dailyCounts);
+
+            summaries[propertyName] = {
+                totalCount: dailyCounts.reduce((sum, dayEntry) => sum + dayEntry.count, 0),
+                dailyCounts,
+                spikeDays
+            };
+        }
+
+        return summaries;
+    }
+
+    /**
+     * Builds spike-day records for one property from sorted daily counts.
+     * @param {Array<{date:string,count:number}>} dailyCounts
+     * @returns {Array<{date:string,count:number,previousMax:number,deltaToPreviousMax:number}>}
+     */
+    buildSpikeDaysFromDailyCounts(dailyCounts) {
+        const spikeDays = [];
+        let previousMax = -1;
+
+        for (const dayEntry of dailyCounts) {
+            if (previousMax >= 0 && dayEntry.count > previousMax) {
+                spikeDays.push({
+                    date: dayEntry.date,
+                    count: dayEntry.count,
+                    previousMax,
+                    deltaToPreviousMax: dayEntry.count - previousMax
+                });
+            }
+
+            if (dayEntry.count > previousMax) {
+                previousMax = dayEntry.count;
+            }
+        }
+
+        return spikeDays;
+    }
+
+    /**
+     * Flattens spike findings across all properties.
+     * @param {Object} propertyDailySummaries
+     * @returns {Array<{property:string,date:string,count:number,previousMax:number,deltaToPreviousMax:number}>}
+     */
+    buildSpikeFindingsFromDailySummaries(propertyDailySummaries) {
+        const findings = [];
+
+        for (const [property, summary] of Object.entries(propertyDailySummaries)) {
+            if (!summary || !Array.isArray(summary.spikeDays)) {
+                continue;
+            }
+
+            for (const spike of summary.spikeDays) {
+                findings.push({
+                    property,
+                    date: spike.date,
+                    count: spike.count,
+                    previousMax: spike.previousMax,
+                    deltaToPreviousMax: spike.deltaToPreviousMax
+                });
+            }
+        }
+
+        return findings.sort((a, b) => {
+            const byDate = a.date.localeCompare(b.date);
+            if (byDate !== 0) {
+                return byDate;
+            }
+            return a.property.localeCompare(b.property);
+        });
+    }
+
+    /**
+     * Returns true when a reading represents an active event for reporting.
+     * @param {Object} entry
+     * @returns {boolean}
+     */
+    isPropertyEventActive(entry) {
+        if (!entry) {
+            return false;
+        }
+
+        const numeric = Number(entry.valueAsNumeric);
+        if (Number.isFinite(numeric)) {
+            return numeric > 0;
+        }
+
+        const textValue = String(entry.value || "").trim().toLowerCase();
+        if (textValue.length === 0) {
+            return false;
+        }
+
+        return !INACTIVE_EVENT_VALUES.has(textValue);
     }
 
     /**
@@ -245,7 +492,7 @@ class ReportingService {
      */
     getAssignedDevices(individual) {
         return database.prepare(
-            "SELECT deviceID, name, productName, roomID FROM devices WHERE individualID = ? OR (roomID = ? AND COALESCE(individualID, 0) = 0) ORDER BY deviceID ASC"
+            "SELECT deviceID, name, productName, roomID, properties FROM devices WHERE individualID = ? OR (roomID = ? AND COALESCE(individualID, 0) = 0) ORDER BY deviceID ASC"
         ).all(individual.individualID, individual.roomID || 0);
     }
 

@@ -52,6 +52,10 @@ beforeAll(() => {
     name: "Bathroom Sensor",
     individualID: individualID,
     roomID: roomResult.lastInsertRowid,
+    properties: JSON.stringify([
+      { name: "motion", valueType: "Options", reportingInclude: true, reportingRole: "activity" },
+      { name: "state", valueType: "Options", reportingInclude: false, reportingRole: "actuator" }
+    ])
   });
 
   reportDate = new Date().toISOString().slice(0, 10);
@@ -131,6 +135,14 @@ describe("Reporting generation", () => {
     expect(facts.numericPropertyStats.motion.avg).toBe(1);
     expect(facts.numericPropertyStats.motion.count).toBe(3);
 
+    expect(facts.propertyDailySummaries).toBeDefined();
+    expect(facts.propertyDailySummaries.motion).toBeDefined();
+    expect(facts.propertyDailySummaries.motion.totalCount).toBe(3);
+    expect(Array.isArray(facts.propertyDailySummaries.motion.dailyCounts)).toBe(true);
+    expect(Array.isArray(facts.propertyDailySummaries.motion.spikeDays)).toBe(true);
+    expect(Array.isArray(facts.propertySpikeFindings)).toBe(true);
+    expect(facts.propertyDailySummaries.motion.dailyCounts.length).toBeGreaterThanOrEqual(1);
+
     // openAlerts: array present (empty because no alerts inserted for this individual)
     expect(Array.isArray(facts.openAlerts)).toBe(true);
   });
@@ -203,5 +215,106 @@ describe("Reporting generation", () => {
 
     expect(readResponse.status).toBe(200);
     expect(readResponse.body.results.length).toBe(1);
+  });
+
+  test("end-to-end: /reports/generate persists generic property summary fields", async () => {
+    const reportingEngineMock = {
+      generateReport: jest.fn().mockResolvedValue("E2E Bericht"),
+      getModelPath: jest.fn().mockReturnValue("mock-model")
+    };
+
+    global.reportingService = new ReportingService(reportingEngineMock);
+
+    const endDateTime = new Date().toISOString();
+    const startDateTime = new Date(Date.now() - (24 * 60 * 60 * 1000)).toISOString();
+
+    const generateResponse = await request(app)
+      .post("/reports/generate")
+      .send({ startDateTime, endDateTime, language: "de" });
+
+    expect(generateResponse.status).toBe(200);
+    expect(generateResponse.body.status).toBe("ok");
+    expect(generateResponse.body.results.length).toBe(1);
+
+    const generatedReportDate = generateResponse.body.results[0].reportDate;
+    const reportsResponse = await request(app)
+      .get("/reports")
+      .query({ date: generatedReportDate, includeFacts: true });
+
+    expect(reportsResponse.status).toBe(200);
+    expect(reportsResponse.body.status).toBe("ok");
+    expect(reportsResponse.body.results.length).toBe(1);
+
+    const facts = reportsResponse.body.results[0].facts;
+    expect(facts).toBeDefined();
+    expect(facts.motionDailySummary).toBeUndefined();
+    expect(facts.propertyDailySummaries).toBeDefined();
+    expect(facts.propertyDailySummaries.motion).toBeDefined();
+    expect(facts.propertyDailySummaries.motion.totalCount).toBeGreaterThan(0);
+    expect(Array.isArray(facts.propertySpikeFindings)).toBe(true);
+  });
+
+  test("detects daily property spikes against previous days", () => {
+    const service = new ReportingService(null);
+    const reportingDefinitions = new Map([
+      [1, new Map([
+        ["motion", { reportingInclude: true, reportingRole: "activity" }],
+        ["state", { reportingInclude: false, reportingRole: "actuator" }]
+      ])]
+    ]);
+
+    const readings = [
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-07T08:00:00Z") },
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-08T08:00:00Z") },
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-08T09:00:00Z") },
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-09T08:00:00Z") },
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-09T09:00:00Z") },
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-09T10:00:00Z") },
+      { deviceID: 1, property: "motion", value: "0", valueAsNumeric: 0, dateTimeAsNumeric: Date.parse("2026-07-09T11:00:00Z") },
+      { deviceID: 1, property: "state", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-09T12:00:00Z") }
+    ];
+
+    const summaries = service.buildPropertyDailySummaries(readings, reportingDefinitions);
+    const summary = summaries.motion;
+    const findings = service.buildSpikeFindingsFromDailySummaries(summaries);
+
+    expect(summary.totalCount).toBe(6);
+    expect(summary.dailyCounts).toEqual([
+      { date: "2026-07-07", count: 1 },
+      { date: "2026-07-08", count: 2 },
+      { date: "2026-07-09", count: 3 }
+    ]);
+    expect(summary.spikeDays).toEqual([
+      { date: "2026-07-08", count: 2, previousMax: 1, deltaToPreviousMax: 1 },
+      { date: "2026-07-09", count: 3, previousMax: 2, deltaToPreviousMax: 1 }
+    ]);
+    expect(findings).toEqual([
+      { property: "motion", date: "2026-07-08", count: 2, previousMax: 1, deltaToPreviousMax: 1 },
+      { property: "motion", date: "2026-07-09", count: 3, previousMax: 2, deltaToPreviousMax: 1 }
+    ]);
+  });
+
+  test("excludes properties without reportingInclude metadata", () => {
+    const service = new ReportingService(null);
+    const devices = [
+      {
+        deviceID: 1,
+        properties: JSON.stringify([
+          { name: "motion", reportingInclude: true },
+          { name: "temperature" }
+        ])
+      }
+    ];
+
+    const definitions = service.buildReportingPropertyDefinitionsByDevice(devices);
+    const readings = [
+      { deviceID: 1, property: "motion", value: "1", valueAsNumeric: 1, dateTimeAsNumeric: Date.parse("2026-07-10T08:00:00Z") },
+      { deviceID: 1, property: "temperature", value: "22", valueAsNumeric: 22, dateTimeAsNumeric: Date.parse("2026-07-10T09:00:00Z") }
+    ];
+
+    const summaries = service.buildPropertyDailySummaries(readings, definitions);
+
+    expect(summaries.motion).toBeDefined();
+    expect(summaries.temperature).toBeUndefined();
   });
 });

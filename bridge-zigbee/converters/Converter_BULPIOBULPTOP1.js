@@ -22,61 +22,71 @@ class Converter_BULPIOBULPTOP1 extends ConverterStandard {
         // EP 1: Temperature (msTemperatureMeasurement, ZigBee unit: 1/100 °C)
         this.properties["msTemperatureMeasurement"] = {};
         this.properties["msTemperatureMeasurement"]["measuredValue"] = {
-            name:      "temperature",
-            standard:  false,
-            notify:    true,
-            read:      true,
-            write:     false,
-            anyValue:  0,
-            valueType: "Numeric"
+            name:               "temperature",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         // EP 1: Humidity (msRelativeHumidity, ZigBee unit: 1/100 %)
         this.properties["msRelativeHumidity"] = {};
         this.properties["msRelativeHumidity"]["measuredValue"] = {
-            name:      "humidity",
-            standard:  false,
-            notify:    true,
-            read:      true,
-            write:     false,
-            anyValue:  0,
-            valueType: "Numeric"
+            name:               "humidity",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         // EP 2: Presence / movement detection (msOccupancySensing, bit 0 = occupied)
         this.properties["msOccupancySensing"] = {};
         this.properties["msOccupancySensing"]["occupancy"] = {
-            name:      "presence",
-            standard:  false,
-            notify:    true,
-            read:      true,
-            write:     false,
-            anyValue:  ["yes", "no"],
-            valueType: "Options"
+            name:               "presence",
+            reportingInclude:   true,
+            reportingRole:      "activity",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           ["yes", "no"],
+            valueType:          "Options"
         };
 
         // EP 3: Illuminance (msIlluminanceMeasurement, ZigBee unit: 10000 * log10(lux) + 1)
         this.properties["msIlluminanceMeasurement"] = {};
         this.properties["msIlluminanceMeasurement"]["measuredValue"] = {
-            name:      "illuminance",
-            standard:  false,
-            notify:    true,
-            read:      true,
-            write:     false,
-            anyValue:  0,
-            valueType: "Numeric"
+            name:               "illuminance",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         // EP 4: Fall alarm (genAnalogInput, presentValue: 1.0 = fall detected, 0.0 = normal)
         this.properties["genAnalogInput"] = {};
         this.properties["genAnalogInput"]["presentValue"] = {
-            name:      "fall",
-            standard:  false,
-            notify:    true,
-            read:      true,
-            write:     false,
-            anyValue:  ["yes", "no"],
-            valueType: "Options"
+            name:               "fall",
+            reportingInclude:   true,
+            reportingRole:      "activity",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           ["yes", "no"],
+            valueType:          "Options"
         };
     }
 

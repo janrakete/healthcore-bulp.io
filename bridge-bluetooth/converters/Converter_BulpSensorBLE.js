@@ -15,39 +15,47 @@ class Converter_BulpSensorBLE extends ConverterStandard {
         this.vendorName     = "bulp";
 
         this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
-            name:        "rotarySwitch",
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    0,
-            valueType:   "Numeric"
+            name:               "rotarySwitch",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         this.properties["19b10000e8f2537e4f6cd104768a1219"] = {
-            name:        "button",
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    ["pressed", "notPressed"],
-            valueType:   "Options"
+            name:               "button",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           ["pressed", "notPressed"],
+            valueType:          "Options"
         };
 
         this.properties["19b10000e8f2537e4f6cd104768a1218"] = {
-            name:        "speaker",
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    ["on", "off"],
-            valueType:   "Options"
+            name:               "speaker",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           ["on", "off"],
+            valueType:          "Options"
         };
 
         this.properties["19b10000e8f2537e4f6cd104768a1216"] = {
-            name:        "led",
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    ["on", "off"],
-            valueType:   "Options"
+            name:               "led",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           ["on", "off"],
+            valueType:          "Options"
         };
 
         this.properties["2a19"] = {

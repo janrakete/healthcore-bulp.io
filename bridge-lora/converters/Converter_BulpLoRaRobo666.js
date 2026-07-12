@@ -14,17 +14,21 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
         this.powerType  = "BATTERY";
 
         this.properties[0] = {
-            name:       "heartRate",
-            read:       true,
-            anyValue:   0,
-            valueType:  "Numeric"
+            name:               "heartRate",
+            reportingInclude:   true,
+            reportingRole:      "activity",
+            read:               true,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         this.properties[1] = {
-            name:       "color",
-            read:       true,
-            anyValue:   ["red", "green", "yellow"],
-            valueType:  "Options"
+            name:               "color",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            read:               true,
+            anyValue:           ["red", "green", "yellow"],
+            valueType:          "Options"
         };
     }
 

@@ -15,13 +15,15 @@ class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {
-            name:        "power",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       true,
-            anyValue:    ["on", "off"],
-            valueType:   "Options"
+            name:               "power",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              true,
+            anyValue:           ["on", "off"],
+            valueType:          "Options"
         };
     }
 

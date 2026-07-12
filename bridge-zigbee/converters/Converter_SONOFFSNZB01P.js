@@ -15,13 +15,15 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["button"] = {
-            name:        "button",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    ["pressed", "notPressed", "longPressed", "doublePressed"],
-            valueType:   "Options"
+            name:               "button",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           ["pressed", "notPressed", "longPressed", "doublePressed"],
+            valueType:          "Options"
         };
     }
 

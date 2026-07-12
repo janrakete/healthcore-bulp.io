@@ -19,48 +19,56 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
         // Occupancy sensing cluster (motion detection)
         this.properties["msOccupancySensing"] = {};
         this.properties["msOccupancySensing"]["occupancy"] = {
-            name:        "motion",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    ["yes", "no"],
-            valueType:   "Options"
+            name:               "motion",
+            reportingInclude:   true,
+            reportingRole:      "activity",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           ["yes", "no"],
+            valueType:          "Options"
         };
 
         // Illuminance measurement cluster
         this.properties["msIlluminanceMeasurement"] = {};
         this.properties["msIlluminanceMeasurement"]["measuredValue"] = {
-            name:        "illuminance",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    0,
-            valueType:   "Numeric"
+            name:               "illuminance",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         // Battery level cluster
         this.properties["genPowerCfg"] = {};
         this.properties["genPowerCfg"]["batteryPercentageRemaining"] = {
-            name:        "battery",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    0,
-            valueType:   "Numeric"
+            name:               "battery",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         // Battery voltage
         this.properties["genPowerCfg"]["batteryVoltage"] = {
-            name:        "voltage",
-            standard:    false,
-            notify:      true,
-            read:        true,
-            write:       false,
-            anyValue:    0,
-            valueType:   "Numeric"
+            name:               "voltage",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
     }
 

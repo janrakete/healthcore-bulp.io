@@ -24,31 +24,37 @@ class Converter_BangleJS2BLE extends ConverterStandard {
             valueType:   "Subproperties",
             subproperties: {
                 l: {
-                    name: "light",
-                    standard:    false,
-                    notify:      true,
-                    read:        true,
-                    write:       false,
-                    anyValue: ["on", "off"],
-                    valueType: "Options"
+                    name:               "light",
+                    reportingInclude:   false,
+                    reportingRole:      "actuator",
+                    standard:           false,
+                    notify:             true,
+                    read:               true,
+                    write:              false,
+                    anyValue:           ["on", "off"],
+                    valueType:          "Options"
                 },
                 a: {
-                    name: "alarm",
-                    standard:    false,
-                    notify:      true,
-                    read:        true,
-                    write:       false,
-                    anyValue: ["on", "off"],
-                    valueType: "Options"
+                    name:               "alarm",
+                    reportingInclude:   false,
+                    reportingRole:      "actuator",
+                    standard:           false,
+                    notify:             true,
+                    read:               true,
+                    write:              false,
+                    anyValue:           ["on", "off"],
+                    valueType:          "Options"
                 },
                 h: {
-                    name: "heartRate",
-                    standard:    false,
-                    notify:      true,
-                    read:        true,
-                    write:       false,
-                    anyValue:    0,
-                    valueType: "Numeric"
+                    name:               "heartRate",
+                    reportingInclude:   false,
+                    reportingRole:      "actuator",
+                    standard:           false,
+                    notify:             true,
+                    read:               true,
+                    write:              false,
+                    anyValue:           0,
+                    valueType:          "Numeric"
                 }
             }
         };

@@ -14,17 +14,21 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
         this.powerType      = "MAINS";
 
         this.properties[0] = {
-            name:       "voltage",
-            read:       true,
-            anyValue:   0,
-            valueType:  "Numeric"
+            name:               "voltage",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            read:               true,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         this.properties[1] = {
-            name:       "switch",
-            read:       true,
-            anyValue:   ["pressed", "notPressed", "longPressed"],
-            valueType:  "Options"
+            name:               "switch",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            read:               true,
+            anyValue:           ["pressed", "notPressed", "longPressed"],
+            valueType:          "Options"
         };
     }
 

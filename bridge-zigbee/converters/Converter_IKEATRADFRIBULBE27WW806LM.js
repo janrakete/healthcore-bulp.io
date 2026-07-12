@@ -15,24 +15,28 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {
-            name:        "state",
-            standard:    false,
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    ["on", "off"],
-            valueType:   "Options"
+            name:               "state",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           ["on", "off"],
+            valueType:          "Options"
         };
 
         this.properties["genLevelCtrl"] = {};
         this.properties["genLevelCtrl"]["currentLevel"] = {
-            name:        "brightness",
-            standard:    false,
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    0,
-            valueType:   "Numeric"
+            name:               "brightness",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
     }
 

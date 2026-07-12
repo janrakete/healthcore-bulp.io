@@ -15,45 +15,53 @@ class Converter_Paulmann29150 extends ConverterStandard {
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {
-            name:        "state",
-            standard:    false,
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    ["on", "off"],
-            valueType:   "Options"
+            name:               "state",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           ["on", "off"],
+            valueType:          "Options"
         };
 
         this.properties["genLevelCtrl"] = {};
         this.properties["genLevelCtrl"]["currentLevel"] = {
-            name:        "brightness",
-            standard:    false,
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    0,
-            valueType:   "Numeric"
+            name:               "brightness",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           0,
+            valueType:          "Numeric"
         };
 
         this.properties["lightingColorCtrl"] = {};
         this.properties["lightingColorCtrl"]["currentHue"] = {
-            name:        "hue",
-            standard:    false,
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    0, // 0-254
-            valueType:   "Numeric"
+            name:               "hue",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           0, // 0-254
+            valueType:          "Numeric"
         };
 
         this.properties["lightingColorCtrl"]["currentSaturation"] = {
-            name:        "saturation",
-            standard:    false,
-            notify:      false,
-            read:        true,
-            write:       true,
-            anyValue:    0, // 0-254
-            valueType:   "Numeric"
+            name:               "saturation",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             false,
+            read:               true,
+            write:              true,
+            anyValue:           0, // 0-254
+            valueType:          "Numeric"
         };
     }
 
