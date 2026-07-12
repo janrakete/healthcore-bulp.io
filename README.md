@@ -33,6 +33,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 🔌 [API communication](#-api-communication)
 - 🔐 [Security](#-security)
 - 📱 [App](#-app)
+- 🤖 [Using an LLM for reports](#-using-an-llm-for-reports)
 - 🔎 [Testing](#-testing)
 - 💓 [External data via APIs](#-external-data-via-apis)
 
@@ -294,6 +295,17 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 
 ## 📱 App
 You can find the app here: https://github.com/janrakete/app-bulp.io
+
+## 🤖 Using an LLM for reports
+To generate reports for each person and the rooms they live in using a local LLM, download a free GGUF model (for example from https://huggingface.co/mradermacher/models?search=instruct). Make sure the filename contains **`Instruct`**, as these models are optimized for instruction-following tasks.
+
+Copy the downloaded model into the `/libs/ReportingEngine-models` directory.
+
+Then update the `.env.local` file and set the `CONF_reportingEngineModel` variable to the name of the downloaded model file.
+
+You can now generate and access reports through the following API endpoints:
+* `/reports/generate`
+* `/reports`
 
 ## 🔎 Testing
 You can test Healthcore in two different ways: automated tests and manual tests.
