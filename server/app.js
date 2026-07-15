@@ -17,8 +17,8 @@ database.pragma("foreign_keys = ON");
 /**
  * Database migration, if needed
  */
-const DatabaseMigrationEngine = require("./libs/DatabaseMigrationEngine");
-DatabaseMigrationEngine.runMigrations();
+const databaseMigrationEngine = require("./libs/DatabaseMigrationEngine");
+databaseMigrationEngine.runMigrations();
 
 /**
  * Start server
@@ -73,7 +73,7 @@ async function startServer() {
   const apiKeyAuth = require("./middleware/auth");
 
   const infoData = require("./routes/info"); // import routes for server info
-  app.use("/info", infoData);
+  app.use("/info", apiKeyAuth, infoData);
 
   const routesData = require("./routes/data"); // import routes for data manipulation
   app.use("/data", apiKeyAuth, routesData);
@@ -161,9 +161,9 @@ async function startServer() {
    * Bonjour service
    */
   try {
-    const BonjourService = require("bonjour-service");
-    const BonjourCtor = BonjourService.Bonjour || BonjourService.default || BonjourService; // support different import styles of bonjour-service (depending on version)
-    const bonjour = new BonjourCtor();
+    const bonjourService = require("bonjour-service");
+    const bonjourCtor = bonjourService.Bonjour || bonjourService.default || bonjourService; // support different import styles of bonjour-service (depending on version)
+    const bonjour = new bonjourCtor();
 
     bonjour.publish({
       name: appConfig.CONF_serverIDBonjour,
@@ -189,12 +189,17 @@ async function startServer() {
   /**
    * Time-based scenario scheduler (fires once per minute via node-cron)
    */
-  const Cron = require("node-cron");
-  Cron.schedule("* * * * *", () => {
+  const cron = require("node-cron");
+  cron.schedule("* * * * *", async () => {
     const now     = new Date();
     const hours   = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
-    scenarios.handleTimeEvent(hours + ":" + minutes);
+    try {
+      await scenarios.handleTimeEvent(hours + ":" + minutes);
+    }
+    catch (error) {
+      common.conLog("Scenarios: Error in time-based scheduler: " + error.message, "red");
+    }
   });
 
   /**
@@ -214,7 +219,7 @@ async function startServer() {
       common.conLog("Reporting: Engine initialization failed: " + error.message, "red");
     }
 
-    Cron.schedule(appConfig.CONF_reportingCron, async () => {
+    cron.schedule(appConfig.CONF_reportingCron, async () => {
       try {
         await reportingService.generateAndStoreReports();
       }
@@ -234,8 +239,8 @@ async function startServer() {
   /*
    * Credential Engine
    */
-  const CredentialEngine  = require("./libs/CredentialEngine");
-  global.credentialEngine = CredentialEngine;
+  const credentialEngine  = require("./libs/CredentialEngine");
+  global.credentialEngine = credentialEngine;
 
   /**
    * Push notifications

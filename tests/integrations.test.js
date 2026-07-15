@@ -34,11 +34,11 @@ afterAll(() => {
 // ─── CredentialEngine ────────────────────────────────────────────────────────
 
 describe("CredentialEngine", () => {
-  let CredentialEngine;
+  let credentialEngine;
 
   beforeAll(() => {
     // Require after global.database is set so initSchema() runs against the test DB
-    CredentialEngine = require("../server/libs/CredentialEngine");
+    credentialEngine = require("../server/libs/CredentialEngine");
   });
 
   beforeEach(() => {
@@ -57,7 +57,7 @@ describe("CredentialEngine", () => {
 
   // listAccounts
   it("listAccounts returns enabled accounts", () => {
-    const accounts = CredentialEngine.listAccounts();
+    const accounts = credentialEngine.listAccounts();
     expect(accounts.length).toBe(1);
     expect(accounts[0].accountID).toBe("acc-1");
     expect(accounts[0].provider).toBe("googleHealth");
@@ -66,37 +66,37 @@ describe("CredentialEngine", () => {
 
   it("listAccounts excludes disabled accounts", () => {
     db.prepare("UPDATE integrations_accounts SET enabled = 0 WHERE accountID = ?").run("acc-1");
-    const accounts = CredentialEngine.listAccounts();
+    const accounts = credentialEngine.listAccounts();
     expect(accounts.length).toBe(0);
   });
 
   // setToken
   it("setToken updates accessToken and expiresAt", () => {
     const newExpiry = "2099-01-01T00:00:00.000Z";
-    CredentialEngine.setToken("acc-1", "tok-new", newExpiry);
+    credentialEngine.setToken("acc-1", "tok-new", newExpiry);
 
-    const accounts = CredentialEngine.listAccounts();
+    const accounts = credentialEngine.listAccounts();
     expect(accounts[0].accessToken).toBe("tok-new");
     expect(accounts[0].expiresAt).toBe(newExpiry);
   });
 
   it("setToken accepts null expiresAt", () => {
-    CredentialEngine.setToken("acc-1", "tok-null-expiry", null);
-    const accounts = CredentialEngine.listAccounts();
+    credentialEngine.setToken("acc-1", "tok-null-expiry", null);
+    const accounts = credentialEngine.listAccounts();
     expect(accounts[0].accessToken).toBe("tok-null-expiry");
     expect(accounts[0].expiresAt).toBeNull();
   });
 
   // syncRunStart / syncRunFinish
   it("syncRunStart inserts a row and returns a syncRunID", () => {
-    const runID = CredentialEngine.syncRunStart("acc-1");
+    const runID = credentialEngine.syncRunStart("acc-1");
     expect(typeof runID).toBe("number");
     expect(runID).toBeGreaterThan(0);
   });
 
   it("syncRunFinish marks success when no error", () => {
-    const runID = CredentialEngine.syncRunStart("acc-1");
-    CredentialEngine.syncRunFinish(runID, null);
+    const runID = credentialEngine.syncRunStart("acc-1");
+    credentialEngine.syncRunFinish(runID, null);
 
     const row = db.prepare("SELECT * FROM integrations_sync_runs WHERE syncRunID = ?").get(runID);
     expect(row.success).toBe(1);
@@ -105,8 +105,8 @@ describe("CredentialEngine", () => {
   });
 
   it("syncRunFinish records error message on failure", () => {
-    const runID = CredentialEngine.syncRunStart("acc-1");
-    CredentialEngine.syncRunFinish(runID, "provider rate-limit");
+    const runID = credentialEngine.syncRunStart("acc-1");
+    credentialEngine.syncRunFinish(runID, "provider rate-limit");
 
     const row = db.prepare("SELECT * FROM integrations_sync_runs WHERE syncRunID = ?").get(runID);
     expect(row.success).toBe(0);
@@ -128,7 +128,7 @@ describe("Server integration MQTT handlers", () => {
    * The publish mock is set up in setupGlobals as jest.fn().
    */
 
-  let CredentialEngine;
+  let credentialEngine;
   const BRIDGE = "integrations";
 
   /**
@@ -143,7 +143,7 @@ describe("Server integration MQTT handlers", () => {
   }
 
   beforeAll(() => {
-    CredentialEngine = require("../server/libs/CredentialEngine");
+    credentialEngine = require("../server/libs/CredentialEngine");
   });
 
   beforeEach(() => {
@@ -180,7 +180,7 @@ describe("Server integration MQTT handlers", () => {
       return;
     }
     try {
-      const accounts = CredentialEngine.listAccounts();
+      const accounts = credentialEngine.listAccounts();
       integrationRespond(data, "accounts/list", { status: "ok", accounts });
     } catch (err) {
       integrationRespond(data, "accounts/list", { status: "error", error: err.message });
@@ -198,7 +198,7 @@ describe("Server integration MQTT handlers", () => {
       return;
     }
     try {
-      CredentialEngine.setToken(data.accountID, data.accessToken, data.expiresAt || null);
+      credentialEngine.setToken(data.accountID, data.accessToken, data.expiresAt || null);
       integrationRespond(data, "accounts/tokens/set", { status: "ok", accountID: data.accountID });
     } catch (err) {
       integrationRespond(data, "accounts/tokens/set", { status: "error", error: err.message });
@@ -216,7 +216,7 @@ describe("Server integration MQTT handlers", () => {
       return;
     }
     try {
-      const syncRunID = CredentialEngine.syncRunStart(data.accountID);
+      const syncRunID = credentialEngine.syncRunStart(data.accountID);
       integrationRespond(data, "syncrun/start", { status: "ok", accountID: data.accountID, syncRunID });
     } catch (err) {
       integrationRespond(data, "syncrun/start", { status: "error", error: err.message });
@@ -234,7 +234,7 @@ describe("Server integration MQTT handlers", () => {
       return;
     }
     try {
-      CredentialEngine.syncRunFinish(data.syncRunID, data.error || null);
+      credentialEngine.syncRunFinish(data.syncRunID, data.error || null);
       integrationRespond(data, "syncrun/finish", { status: "ok", syncRunID: data.syncRunID });
     } catch (err) {
       integrationRespond(data, "syncrun/finish", { status: "error", error: err.message });
@@ -270,7 +270,7 @@ describe("Server integration MQTT handlers", () => {
       expect.stringContaining("\"status\":\"ok\"")
     );
     // Verify DB was actually updated
-    const accounts = CredentialEngine.listAccounts();
+    const accounts = credentialEngine.listAccounts();
     expect(accounts[0].accessToken).toBe("new-tok");
   });
 
@@ -291,7 +291,7 @@ describe("Server integration MQTT handlers", () => {
   });
 
   it("syncrun/finish: marks run as successful", async () => {
-    const runID = CredentialEngine.syncRunStart("h-acc");
+    const runID = credentialEngine.syncRunStart("h-acc");
     await handleSyncRunFinish({ bridge: BRIDGE, callID: "c13", syncRunID: runID, error: null });
     const [, raw] = global.mqttClient.publish.mock.calls[0];
     expect(JSON.parse(raw).status).toBe("ok");
@@ -301,7 +301,7 @@ describe("Server integration MQTT handlers", () => {
   });
 
   it("syncrun/finish: records error string on failure", async () => {
-    const runID = CredentialEngine.syncRunStart("h-acc");
+    const runID = credentialEngine.syncRunStart("h-acc");
     await handleSyncRunFinish({ bridge: BRIDGE, callID: "c14", syncRunID: runID, error: "rate-limit" });
     const row = db.prepare("SELECT * FROM integrations_sync_runs WHERE syncRunID = ?").get(runID);
     expect(row.success).toBe(0);

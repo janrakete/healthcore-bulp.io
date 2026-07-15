@@ -132,7 +132,7 @@ function createHashFromString(input, algo = "sha256", length = 64) {
 function devicePropertiesToArray(properties) {
     const result = [];
 
-    const Translations = require("./i18n.json");
+    const translations = require("./i18n.json");
 
     for (const key of Object.keys(properties)) {
         const rootProperty = properties[key];
@@ -176,8 +176,8 @@ function devicePropertiesToArray(properties) {
 
     for (let i = 0; i < result.length; i++) { // loop through result array to add translated names
         const property = result[i];
-        if (Translations[property.name]) {
-            property.translation = Translations[property.name];
+        if (translations[property.name]) {
+            property.translation = translations[property.name];
         } else {
             property.translation = null;
         }
@@ -186,9 +186,9 @@ function devicePropertiesToArray(properties) {
             let anyValueTranslated = [];
             for (const value of property.anyValue) {
                 const translatedValue = {};
-                if (Translations[value]) {
+                if (translations[value]) {
                     translatedValue.value = value;
-                    translatedValue.translation = Translations[value];
+                    translatedValue.translation = translations[value];
                     anyValueTranslated.push(translatedValue);
                 } else {
                     anyValueTranslated.push({ value: value, translation: null });

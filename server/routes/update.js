@@ -150,6 +150,9 @@ router.get("/info", async function (request, response) {
 
     try {
         const fetchResponse    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
+        if (!fetchResponse.ok) {
+            throw new Error("GitHub API returned status " + fetchResponse.status);
+        }
         const fetchData        = await fetchResponse.json();
         const latestCommitHash = fetchData.sha || null;
 
@@ -213,6 +216,9 @@ router.post("/install", async function (request, response) {
         data.latestCommit    = appConfig.CONF_settings.codeLastCommit;
 
         const fetchResponse    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
+        if (!fetchResponse.ok) {
+            throw new Error("GitHub API returned status " + fetchResponse.status);
+        }
         const fetchData        = await fetchResponse.json();
         const latestCommitHash = fetchData.sha || null;
 

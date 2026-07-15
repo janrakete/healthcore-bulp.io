@@ -253,26 +253,26 @@ async function startBridge() {
     }
 
     // Iterate registered devices; each device UUID equals the accountID in integrations_accounts
-    for (const [deviceUuid, device] of bridgeStatus.devicesRegisteredAtServer.entries()) {
-      const account = accountMap.get(deviceUuid); // look up credentials by device UUID = accountID
+    for (const [deviceUUID, device] of bridgeStatus.devicesRegisteredAtServer.entries()) {
+      const account = accountMap.get(deviceUUID); // look up credentials by device UUID = accountID
       if (!account) {
-        common.conLog("Integrations: No credentials for device " + deviceUuid + " — skipping (add account via API)", "yel");
+        common.conLog("Integrations: No credentials for device " + deviceUUID + " — skipping (add account via API)", "yel");
         continue;
       }
 
       const converter = getConverter(device.productName); // find API converter by productName (e.g. "GoogleHealth")
       if (!converter) {
-        common.conLog("Integrations: No converter for productName \"" + device.productName + "\" (device: " + deviceUuid + ")", "red");
+        common.conLog("Integrations: No converter for productName \"" + device.productName + "\" (device: " + deviceUUID + ")", "red");
         continue;
       }
 
       let syncRunID = null;
       try {
-        const startResp = await rpcCall("server/integrations/syncrun/start", { accountID: deviceUuid });
+        const startResp = await rpcCall("server/integrations/syncrun/start", { accountID: deviceUUID });
         syncRunID       = startResp.syncRunID;
       }
       catch (error) {
-        common.conLog("Integrations: Could not start sync run for device " + deviceUuid + ": " + error.message, "red");
+        common.conLog("Integrations: Could not start sync run for device " + deviceUUID + ": " + error.message, "red");
         continue;
       }
 
@@ -283,12 +283,12 @@ async function startBridge() {
         
         if (tokenResult.accessToken !== account.accessToken || tokenResult.expiresAt !== account.expiresAt) { // 2. Persist updated token if the converter refreshed it
           await rpcCall("server/integrations/accounts/tokens/set", {
-            accountID:   deviceUuid,
+            accountID:   deviceUUID,
             accessToken: tokenResult.accessToken,
             expiresAt:   tokenResult.expiresAt,
           });
           
-          common.conLog("Integrations: Access token refreshed for device " + deviceUuid, "gre");
+          common.conLog("Integrations: Access token refreshed for device " + deviceUUID, "gre");
           account.accessToken = tokenResult.accessToken; // update local copy so subsequent checks see the new value
           account.expiresAt   = tokenResult.expiresAt;
         }
@@ -297,7 +297,7 @@ async function startBridge() {
 
         for (const event of pullResult.events) { // 5. Emit each event via standard device values path
           let message    = {};
-          message.uuid   = event.uuid; // equals deviceUuid (one device per account)
+          message.uuid   = event.uuid; // equals deviceUUID (one device per account)
           message.bridge = BRIDGE_PREFIX;
           message.values = { [event.property]: { value: event.value, valueAsNumeric: Number(event.value), valueType: event.valueType } };
           mqttClient.publish("server/devices/values/get", JSON.stringify(message));
@@ -305,7 +305,7 @@ async function startBridge() {
       }
       catch (error) {
         syncError = error.message;
-        common.conLog("Integrations: Sync error for device " + deviceUuid + ": " + error.message, "red");
+        common.conLog("Integrations: Sync error for device " + deviceUUID + ": " + error.message, "red");
       }
       
       try { // 6. Finish the sync run record regardless of success or failure

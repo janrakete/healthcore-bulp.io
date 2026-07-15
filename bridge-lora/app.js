@@ -214,7 +214,7 @@ async function startBridgeAndServer() {
   /**
    * Auto-reconnect: periodically try to reopen the serial port if it is closed.
    */
-  setInterval(() => {
+  const reconnectIntervalID = setInterval(() => {
     if (bridgeStatus.portOpened === false) {
       common.conLog("LoRa: Attempting to reconnect to LoRa Adapter ...", "yel");
       loRa.open((error) => {
@@ -466,6 +466,7 @@ async function startBridgeAndServer() {
   process.on("SIGINT", function () {
     common.conLog("LoRa: Graceful shutdown initiated ...", "yel");
 
+    clearInterval(reconnectIntervalID); // stop auto-reconnect attempts before closing the port
     loRa.close(); // close serial port for LoRa adapter
 
     const message = {};

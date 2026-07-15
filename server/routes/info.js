@@ -74,6 +74,10 @@ router.get("/", async function (request, response) {
                 const answer        = await fetch(appConfig.CONF_baseURL + ":" + port + "/info", { signal: controller.signal });
                 clearTimeout(timeoutID);
 
+                if (!answer.ok) {
+                    throw new Error("Bridge '" + bridge + "' returned status " + answer.status);
+                }
+
                 const answerData    = await answer.json();
                 bridgeStatus.status = answerData.status;
             }

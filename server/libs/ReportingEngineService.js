@@ -7,8 +7,9 @@
 const appConfig     = require("../../config");
 const common        = require("../../common");
 
-const { reportLanguageNormalize, reportNoDataSummaryGet } = require("./ReportingEngineLanguage");
-const INACTIVE_EVENT_VALUES = new Set(["0", "false", "off", "no", "inactive", "undetected"]);
+const reportingEngineLanguage = require("./ReportingEngineLanguage");
+
+const EVENT_VALUES_INACTIVE = new Set(["0", "false", "off", "no", "inactive", "undetected"]);
 
 class ReportingService {
     /**
@@ -27,7 +28,7 @@ class ReportingService {
         const range             = this.resolveRange(options.startDateTime, options.endDateTime);
         const targetDate        = reportDate || this.toDateString(range.startUnix);
         const requestedLanguage = options.language || appConfig.CONF_reportingLanguage;
-        const reportLanguage    = reportLanguageNormalize(requestedLanguage);
+        const reportLanguage    = reportingEngineLanguage.reportLanguageNormalize(requestedLanguage);
         const individuals       = database.prepare("SELECT individualID, firstname, lastname, roomID FROM individuals ORDER BY individualID ASC").all();
 
         const reports = [];
@@ -35,7 +36,7 @@ class ReportingService {
         for (const individual of individuals) {
             const facts = this.buildFactsForIndividual(individual, targetDate, range);
 
-            let summaryText     = reportNoDataSummaryGet(reportLanguage);
+            let summaryText     = reportingEngineLanguage.reportNoDataSummaryGet(reportLanguage);
             let modelName       = null;
 
             if (facts.totalReadings > 0 && this.reportingEngine && typeof this.reportingEngine.generateReport === "function") { // Only generate report if there are readings and the reporting engine is available
@@ -74,7 +75,7 @@ class ReportingService {
      * @returns {Object}
      */
     buildFactsForIndividual(individual, reportDate, range) {
-        const devices   = this.getAssignedDevices(individual);
+        const devices   = this.getAssignedDevices(individual); // Get all devices assigned to the individual, either directly or via room assignment
         const deviceIDs = devices.map((device) => Number(device.deviceID)).filter((id) => Number.isFinite(id) && id > 0);
 
         if (deviceIDs.length === 0) {
@@ -91,12 +92,12 @@ class ReportingService {
                 numericPropertyStats: {},
                 propertyDailySummaries: {},
                 propertySpikeFindings: [],
-                openAlerts: this.getOpenAlerts(individual.individualID),
+                alerts: this.getAlerts(individual.individualID),
                 devices: []
             };
         }
 
-        const placeholders  = deviceIDs.map(() => "?").join(","); // 
+        const placeholders  = deviceIDs.map(() => "?").join(",");
         const readings      = database.prepare(
             "SELECT mdv.*, d.name AS deviceName, d.productName, d.roomID FROM mqtt_devices_values AS mdv JOIN devices AS d ON d.deviceID = mdv.deviceID WHERE mdv.deviceID IN (" + placeholders + ") AND mdv.dateTimeAsNumeric >= ? AND mdv.dateTimeAsNumeric < ? ORDER BY mdv.dateTimeAsNumeric ASC"
         ).all(...deviceIDs, range.startUnix, range.endUnix);
@@ -109,11 +110,11 @@ class ReportingService {
         const roomActivityCounter  = new Map();
         const propertyCounter      = new Map();
 
-        for (const entry of readings) { // Count room activity and property occurrences
-            const roomName = roomNamesById.get(Number(entry.roomID));
+        for (const reading of readings) { // Count room activity and property occurrences
+            const roomName = roomNamesById.get(Number(reading.roomID));
             roomActivityCounter.set(roomName, (roomActivityCounter.get(roomName) || 0) + 1);
 
-            const reportablePropertyName = this.getReportablePropertyName(entry, reportingDefinitions);
+            const reportablePropertyName = this.getReportablePropertyName(reading, reportingDefinitions); // Only count properties that are report-relevant
             if (reportablePropertyName) {
                 propertyCounter.set(reportablePropertyName, (propertyCounter.get(reportablePropertyName) || 0) + 1);
             }
@@ -123,20 +124,20 @@ class ReportingService {
         const propertySpikeFindings  = this.buildSpikeFindingsFromDailySummaries(propertyDailySummaries);
 
         return {
-            individual,                                                                         // Include individual info for context, e.g., name, roomID. Needed for LLM context.
-            reportDate,                                                                         // The report date label (YYYY-MM-DD).
-            windowStart: this.toIso(range.startUnix),                                           // ISO 8601 string for the start of the time window.
-            windowEnd: this.toIso(range.endUnix),                                               // ISO 8601 string for the end of the time window
-            totalReadings: readings.length,                                                     // Total number of readings in the time window. This is used to determine if there is enough data to generate a report.
-            firstActivity: firstReading ? this.toIso(firstReading.dateTimeAsNumeric) : null,    // ISO 8601 string for the first reading's timestamp. 
-            lastActivity: lastReading ? this.toIso(lastReading.dateTimeAsNumeric) : null,       // ISO 8601 string for the last reading's timestamp
-            roomActivity: this.mapToSortedArray(roomActivityCounter),                           // Array of {name: roomName, count: number} sorted by count descending. This is used to determine which rooms had the most activity during the time window.
-            topProperties: this.mapToSortedArray(propertyCounter).slice(0, 10),                 // Array of top 10 properties with counts, sorted by count descending. This is used to determine which properties had the most readings during the time window.
-            numericPropertyStats: this.buildNumericPropertyStats(readings, reportingDefinitions), // Object with min/max/avg/count for report-relevant numeric properties.
-            propertyDailySummaries,                                                              // Daily active event summaries for report-relevant properties.
-            propertySpikeFindings,                                                               // Flattened spike findings across all report-relevant properties.
-            openAlerts: this.getOpenAlerts(individual.individualID),                            // Array of open and acknowledged alerts for the individual. Needed for LLM context to provide relevant information about the individual's health status.
-            devices: devices.map((device) => ({                                                 // Include device info for context, e.g., deviceID, name, productName, roomID. This is used to provide context for the report generation.
+            individual,                                                                                                 // Include individual info for context, e.g., name, roomID. Needed for LLM context.
+            reportDate,                                                                                                 // The report date label (YYYY-MM-DD).
+            windowStart: this.toIso(range.startUnix),                                                                   // ISO 8601 string for the start of the time window.
+            windowEnd: this.toIso(range.endUnix),                                                                       // ISO 8601 string for the end of the time window
+            totalReadings: readings.length,                                                                             // Total number of readings in the time window. This is used to determine if there is enough data to generate a report.
+            firstActivity: firstReading ? this.toIso(firstReading.dateTimeAsNumeric) : null,                            // ISO 8601 string for the first reading's timestamp. 
+            lastActivity: lastReading ? this.toIso(lastReading.dateTimeAsNumeric) : null,                               // ISO 8601 string for the last reading's timestamp
+            roomActivity: this.mapToSortedArray(roomActivityCounter),                                                   // Array of {name: roomName, count: number} sorted by count descending. This is used to determine which rooms had the most activity during the time window.
+            topProperties: this.mapToSortedArray(propertyCounter).slice(0, appConfig.CONF_reportingTopPropertiesCount), // Array of top properties with counts, sorted by count descending. This is used to determine which properties had the most readings during the time window.
+            numericPropertyStats: this.buildNumericPropertyStats(readings, reportingDefinitions),                       // Object with min/max/avg/count for report-relevant numeric properties.
+            propertyDailySummaries,                                                                                     // Daily active event summaries for report-relevant properties.
+            propertySpikeFindings,                                                                                      // Flattened spike findings across all report-relevant properties.
+            alerts: this.getAlerts(individual.individualID),                                                            // Array of alerts for the individual. Needed for LLM context to provide relevant information about the individual's health status.
+            devices: devices.map((device) => ({                                                                         // Include device info for context, e.g., deviceID, name, productName, roomID. This is used to provide context for the report generation.
                 deviceID: device.deviceID,
                 name: device.name,
                 productName: device.productName,
@@ -201,13 +202,13 @@ class ReportingService {
     buildNumericPropertyStats(readings, reportingDefinitions) {
         const buckets = new Map();
 
-        for (const entry of readings) {
-            const reportablePropertyName = this.getReportablePropertyName(entry, reportingDefinitions);
+        for (const reading of readings) {
+            const reportablePropertyName = this.getReportablePropertyName(reading, reportingDefinitions); // Only include properties that are report-relevant (reportingInclude = true)
             if (!reportablePropertyName) {
                 continue;
             }
 
-            const value = Number(entry.valueAsNumeric);
+            const value = Number(reading.valueAsNumeric);
             if (!Number.isFinite(value)) {
                 continue; // Skip non-numeric properties (e.g. boolean state, strings)
             }
@@ -294,7 +295,7 @@ class ReportingService {
     }
 
     /**
-     * Resolves the reporting definition for a reading entry.
+     * Resolves the reporting definition for a reading entry (deviceID + property) from the reportingDefinitions map. Returns null if not found or if reportingInclude is not true.
      * @param {Object} entry
      * @param {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>} reportingDefinitions
      * @returns {{reportingInclude:boolean,reportingRole:string|null}|null}
@@ -321,7 +322,7 @@ class ReportingService {
     }
 
     /**
-     * Returns the canonical property name when a reading is report-relevant.
+     * Returns the canonical property name when a reading is report-relevant, i.e. reportingInclude is true. Returns null otherwise.
      * @param {Object} entry
      * @param {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>} reportingDefinitions
      * @returns {string|null}
@@ -341,7 +342,7 @@ class ReportingService {
     }
 
     /**
-     * Builds daily active-event summaries per report-relevant property.
+     * Builds daily active-event summaries per report-relevant property, i.e. properties with reportingInclude = true. Each property has a total count, an array of daily counts, and an array of spike days.
      * @param {Array<Object>} readings
      * @param {Map<number, Map<string, {reportingInclude:boolean,reportingRole:string|null}>>} reportingDefinitions
      * @returns {Object}
@@ -349,9 +350,9 @@ class ReportingService {
     buildPropertyDailySummaries(readings, reportingDefinitions) {
         const countersByProperty = new Map();
 
-        for (const entry of readings) {
-            const reportablePropertyName = this.getReportablePropertyName(entry, reportingDefinitions);
-            if (!reportablePropertyName || !this.isPropertyEventActive(entry)) {
+        for (const reading of readings) {
+            const reportablePropertyName = this.getReportablePropertyName(reading, reportingDefinitions);
+            if (!reportablePropertyName || !this.isPropertyEventActive(reading)) {
                 continue;
             }
 
@@ -360,7 +361,7 @@ class ReportingService {
             }
 
             const dayCounter = countersByProperty.get(reportablePropertyName);
-            const day = this.toDateString(entry.dateTimeAsNumeric);
+            const day = this.toDateString(reading.dateTimeAsNumeric);
             dayCounter.set(day, (dayCounter.get(day) || 0) + 1);
         }
 
@@ -369,9 +370,7 @@ class ReportingService {
 
         for (const propertyName of propertyNames) {
             const dayCounter = countersByProperty.get(propertyName);
-            const dailyCounts = [...dayCounter.entries()]
-                .map(([date, count]) => ({ date, count }))
-                .sort((a, b) => a.date.localeCompare(b.date));
+            const dailyCounts = [...dayCounter.entries()].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
             const spikeDays = this.buildSpikeDaysFromDailyCounts(dailyCounts);
 
             summaries[propertyName] = {
@@ -385,7 +384,8 @@ class ReportingService {
     }
 
     /**
-     * Builds spike-day records for one property from sorted daily counts.
+     * Builds spike-day records for one property from sorted daily counts, where a spike day is defined as a day with a count greater than any previous day.
+     * Each spike day includes the date, count, previous max, and delta to previous max. i.e. the difference between the current count and the previous max.
      * @param {Array<{date:string,count:number}>} dailyCounts
      * @returns {Array<{date:string,count:number,previousMax:number,deltaToPreviousMax:number}>}
      */
@@ -412,7 +412,8 @@ class ReportingService {
     }
 
     /**
-     * Flattens spike findings across all properties.
+     * Flattens spike findings across all properties. Each finding includes the property name, date, count, previous max, and delta to previous max.
+     * The findings are sorted by date ascending, then by property name ascending.
      * @param {Object} propertyDailySummaries
      * @returns {Array<{property:string,date:string,count:number,previousMax:number,deltaToPreviousMax:number}>}
      */
@@ -446,6 +447,7 @@ class ReportingService {
 
     /**
      * Returns true when a reading represents an active event for reporting.
+     * A reading is considered active if its numeric value is greater than 0, or if its text value is not in the set of inactive values.
      * @param {Object} entry
      * @returns {boolean}
      */
@@ -464,17 +466,17 @@ class ReportingService {
             return false;
         }
 
-        return !INACTIVE_EVENT_VALUES.has(textValue);
+        return !EVENT_VALUES_INACTIVE.has(textValue);
     }
 
     /**
-     * Returns open and acknowledged alerts for an individual, for LLM context.
+     * Returns alerts for an individual, for LLM context.
      * @param {number} individualID
      * @returns {Array<Object>}
      */
-    getOpenAlerts(individualID) {
+    getAlerts(individualID) {
         return database.prepare(
-            "SELECT type, score, title, property, source, dateTimeAdded FROM alerts WHERE individualID = ? AND status IN ('open', 'acknowledged') ORDER BY score DESC, dateTimeAdded DESC"
+            "SELECT type, score, title, property, source, dateTimeAdded FROM alerts WHERE individualID = ? AND status IN ('open', 'acknowledged', 'resolved') ORDER BY score DESC, dateTimeAdded DESC"
         ).all(individualID).map((alert) => ({
             type:          alert.type,
             score:         alert.score,

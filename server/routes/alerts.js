@@ -7,7 +7,7 @@ const appConfig    = require("../../config");
 const router       = require("express").Router();
 const AlertsEngine = require("../libs/AlertsEngine");
 
-const allowedStatuses = ["open", "acknowledged", "resolved", "critical"];
+const STATUSES_ALLOWED = ["open", "acknowledged", "resolved", "critical"];
 
 /**
  * =============================================================================================
@@ -566,7 +566,7 @@ router.patch("/:alertID", async function (request, response) {
     let data         = {};
 
     try {
-        if (!allowedStatuses.includes(nextStatus)) {
+        if (!STATUSES_ALLOWED.includes(nextStatus)) {
             data.status = "error";
             data.error  = "Invalid status";
         }

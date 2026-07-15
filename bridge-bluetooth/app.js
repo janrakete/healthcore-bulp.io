@@ -7,7 +7,8 @@
 const appConfig       = require("../config");
 const common          = require("../common");
 
-const BRIDGE_PREFIX   = "bluetooth"; 
+const BRIDGE_PREFIX          = "bluetooth"; 
+const UART_BUFFER_MAX_LENGTH = 4096; // safety cap against malformed/never-terminated device streams (see device._buffers usage below)
 
 /**
  * Loads the Bluetooth SIG company identifiers from devices_companies.yaml
@@ -268,6 +269,12 @@ async function startBridgeAndServer() {
 
                                 if (property.valueType === "Subproperties") { // if property has multiple subproperties (text-based UART)
                                   device._buffers[characteristic.uuid] += (Buffer.isBuffer(value) ? value.toString("utf8") : String(value)); // Append incoming fragment to buffer and process only complete newline-terminated lines
+
+                                  if (device._buffers[characteristic.uuid].length > UART_BUFFER_MAX_LENGTH) { // safety cap against malformed/never-terminated device streams
+                                    common.conLog("Bluetooth: UART buffer exceeded max length for " + characteristic.uuid + ", resetting", "red");
+                                    device._buffers[characteristic.uuid] = "";
+                                    return;
+                                  }
 
                                   const lines = device._buffers[characteristic.uuid].split("\n");
                                   device._buffers[characteristic.uuid] = lines.pop(); // keep the incomplete remainder for the next data event

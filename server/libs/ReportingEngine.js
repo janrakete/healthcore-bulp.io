@@ -7,7 +7,7 @@
 const appConfig = require("../../config");
 const common    = require("../../common");
 
-const { reportLanguageNormalize, reportLanguageNameGet } = require("./ReportingEngineLanguage");
+const reportingEngineLanguage = require("./ReportingEngineLanguage");
 
 class ReportingEngine {
     constructor() {
@@ -62,7 +62,7 @@ class ReportingEngine {
         try {
             const context   = await this.model.createContext();
             const session   = new this.LlamaChatSession({ contextSequence: context.getSequence() });
-            const language  = reportLanguageNormalize(options.language || appConfig.CONF_reportingLanguage);
+            const language  = reportingEngineLanguage.reportLanguageNormalize(options.language || appConfig.CONF_reportingLanguage);
             const prompt    = this.buildReportPrompt(facts || {}, language);
             const report    = await session.prompt(prompt, { temperature: appConfig.CONF_reportingEngineTemperature, maxTokens: appConfig.CONF_reportingEngineMaxTokens });
             return String(report || "").trim();
@@ -80,7 +80,7 @@ class ReportingEngine {
      * @returns {string}
      */
     buildReportPrompt(facts, language) {
-        const promptLanguageName = reportLanguageNameGet(language);
+        const promptLanguageName = reportingEngineLanguage.reportLanguageNameGet(language);
 
         return [
             "You are a nursing assistant AI. Create a factual, concise care report for the selected period.",
