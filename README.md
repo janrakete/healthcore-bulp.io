@@ -1,8 +1,6 @@
 # Healthcore by bulp.io
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-
-▷ **Current status:** 0% ████████████████████████████▒▒ 100% (= first running version)
+![GitHub License](https://img.shields.io/github/license/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722) ![GitHub last commit](https://img.shields.io/github/last-commit/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722) ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722) ![GitHub top language](https://img.shields.io/github/languages/top/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722)
 
 Hi.
 
@@ -10,13 +8,15 @@ Welcome to Healthcore❗️
 
 But wait: **what the hell is Healthcore**❓
 
-The Healthcore is part of the **open software and hardware architecture of [bulp.io](https://www.bulp.io)**. With bulp, healthcare devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, bulp centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members. bulp.io follows the **open-core approach**: the software core is open source, while revenue is generated through hardware and services.
+Healthcore is an **open software and hardware architecture for healthcare devices**. With Healthcore, devices from any manufacturer can communicate with each other and any interface through a variety of protocols and APIs. In this way, Healthcore centrally captures a person's **condition in many different ways**, reacts automatically to changes in their environment, and optionally informs caregivers, nurses or family members. 
 
-The software core is called "Healthcore" (obviously!) and it **standardizes** the data from various devices, processes scenarios, and triggers actions. A simple API allows interfaces such as apps to visualize the device data.
+Healthcore **standardizes** the data from various devices, processes scenarios, and triggers actions. A simple API allows interfaces such as apps to visualize the device data.
 
 Healthcore can **run on any hardware** — a Raspberry Pi, a PC, or any other device with a Linux system or Windows. The choice is yours.
 
 Just imagine something like Home Assistant or OpenHAB, but specialized for healthcare. **That’s exactly what this is**.
+
+Healthcore is used by [bulp.io](https://www.bulp.io/), which produces some really cool healthcare hardware around the Healthcore.
 
 So let’s democratize and de-monopolize the healthcare sector. Make healthcare devices and infrastructure affordable for everyone!
 
@@ -32,14 +32,13 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 🧩 [Own converters](#-own-converters)
 - 🔌 [API communication](#-api-communication)
 - 🔐 [Security](#-security)
-- 📱 [App](#-app)
 - 🤖 [Using an LLM for reports](#-using-an-llm-for-reports)
 - 🔎 [Testing](#-testing)
 - 💓 [External data via APIs](#-external-data-via-apis)
 
 ## 🏗️ Architecture
-Let’s take a look at the **architecture** of bulp.io:
-![alt text](architecture.png "bulp.io architecture")
+Let’s take a look at the **architecture**:
+![alt text](architecture.png "Healthcore architecture")
 
 In the middle — that’s the Healthcore. The Healthcore consists of several Node.js servers with different tasks. The Node.js servers communicate with each other via MQTT. The most important thing is that there is a separate bridge for each protocol, which standardizes the incoming and outgoing data of the devices. The Healthcore supports the following protocols:
 - Bluetooth
@@ -172,7 +171,7 @@ http://localhost:9990
 9990 is the standard port Healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want. If you also want to call the Healthcheck from another client in the same network, please use the IP that is displayed in the console after start. 
 
 ## 🧩 Own converters
-The **Own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
+The **own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
 
 1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MyConverter.js`).
 2. **Extend** `ConverterStandard`:
@@ -292,9 +291,6 @@ By default, Healthcore is initially unsecured to facilitate configuration and de
 3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository. If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
 
 4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
-
-## 📱 App
-You can find the app here: https://github.com/janrakete/app-bulp.io
 
 ## 🤖 Using an LLM for reports
 To generate reports for each person and the rooms they live in using a local LLM, download a free GGUF model (for example from https://huggingface.co/mradermacher/models?search=instruct). Make sure the filename contains **`Instruct`**, as these models are optimized for instruction-following tasks.
