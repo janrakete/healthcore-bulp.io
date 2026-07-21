@@ -16,6 +16,9 @@ Healthcore can **run on any hardware** — a Raspberry Pi, a PC, or any other de
 
 Just imagine something like Home Assistant or OpenHAB, but specialized for healthcare. **That’s exactly what this is**.
 
+> [!TIP]
+> Healthcore can also be used to manage smart home devices such as motion detectors or window sensors. After all, that’s the only way to get the full picture.
+
 Healthcore is used by [bulp.io](https://www.bulp.io/), which produces some really cool healthcare hardware around the Healthcore.
 
 So let’s democratize and de-monopolize the healthcare sector. Make healthcare devices and infrastructure affordable for everyone!
@@ -160,7 +163,7 @@ chmod +x production-stop.sh
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
 ## 🔐 Security
-> [!IMPORTANT]  
+> [!WARNING]  
 > By default, Healthcore is initially unsecured to facilitate configuration and development.
 
 If `CONF_apiKey`, `CONF_corsURL`, `CONF_brokerUsername`/`CONF_brokerPassword` and/or `CONF_tlsPath` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
