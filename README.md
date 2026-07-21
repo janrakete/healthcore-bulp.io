@@ -73,6 +73,9 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 ├── healthcheck/           # Healthcheck (see below)
 ```
 
+> [!NOTE]  
+> All variables are defined in `.env` in the root directory. They can be overridden using the `.env.local` file.
+
 ## 🔧 Installation (hardware)
 - **Host platform**  
   - Raspberry Pi 4 or (or better) or any Linux/Windows PC with network access
@@ -158,7 +161,9 @@ production-start.sh uses the process manager, so that a service is restarted if 
 
 ## 🔐 Security
 > [!IMPORTANT]  
-> By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey`, `CONF_corsURL`, `CONF_brokerUsername`/`CONF_brokerPassword` and/or `CONF_tlsPath` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
+> By default, Healthcore is initially unsecured to facilitate configuration and development.
+
+If `CONF_apiKey`, `CONF_corsURL`, `CONF_brokerUsername`/`CONF_brokerPassword` and/or `CONF_tlsPath` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
 
 1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
 
