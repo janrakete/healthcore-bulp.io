@@ -240,7 +240,12 @@ http://localhost:9990
 9990 is the standard port Healthcheck and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want. If you also want to call the Healthcheck from another client in the same network, please use the IP that is displayed in the console after start. 
 
 ## 🧩 Own converters
-The **own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. Below is a detailed Bluetooth bridge example:
+The **own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. 
+
+> [!IMPORTANT]  
+> As an open-source project, Healthcore thrives on having as many converters as possible. So please add your converters via a pull request or as an issue. Use Claude Code or Codex with the following prompt to create converters for well-known smart home components: “Create a ZigBee converter for the SONOFF S60ZBTPF. Use the examples in /bridge-zigbee as a guide.” 
+
+Below is a detailed Bluetooth bridge example:
 
 1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MyConverter.js`).
 2. **Extend** `ConverterStandard`:
