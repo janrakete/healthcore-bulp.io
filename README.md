@@ -17,7 +17,7 @@ Healthcore can **run on any hardware** — a Raspberry Pi, a PC, or any other de
 Just imagine something like Home Assistant or OpenHAB, but specialized for healthcare. **That’s exactly what this is**.
 
 > [!TIP]
-> Healthcore can also be used to manage smart home devices such as motion detectors or window sensors. After all, that’s the only way to get the full picture.
+> Healthcore can also be used to manage **smart home devices** such as motion detectors or window sensors. After all, that’s the only way to get the full picture.
 
 Healthcore is used by [bulp.io](https://www.bulp.io/), which produces some really cool healthcare hardware around the Healthcore.
 
@@ -43,7 +43,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 Let’s take a look at the **architecture**:
 ![alt text](architecture.png "Healthcore architecture")
 
-In the middle — that’s the Healthcore. The Healthcore consists of several Node.js servers with different tasks. The Node.js servers communicate with each other via MQTT. The most important thing is that there is a separate bridge for each protocol, which standardizes the incoming and outgoing data of the devices. The Healthcore supports the following protocols:
+In the middle — that’s the Healthcore. The Healthcore consists of several Node.js servers with different tasks. The Node.js servers communicate with each other via MQTT. The most important thing is that there is a separate bridge for each protocol, which standardizes the incoming and outgoing data of the devices. Healthcore supports the following protocols:
 - Bluetooth
 - ZigBee
 - LoRa P2P
@@ -84,45 +84,15 @@ On the left, you can see how various interfaces communicate bi-directionally wit
   - Raspberry Pi 4 or (or better) or any Linux/Windows PC with network access
 - **Adapters**  
   - **Bluetooth**: Built-in BLE or USB dongle  
-  - **ZigBee**: USB coordinator (e.g. CC2531, ConBee II, Sonoff Zigbee 3.0 USB stick)  
+  - **ZigBee**: USB coordinator (e.g. CC2531, ConBee II, Sonoff Zigbee 3.0 USB stick - full list [here](https://www.zigbee2mqtt.io/guide/adapters/))
   - **LoRa**: USB or serial LoRa adapter (e.g. Dragino LA66 LoRaWAN USB Adapter)
 - **Connections**  
-  - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
-
-Installation example for Raspberry Pi:
-```bash
-# Update and reboot the system
-sudo apt update
-sudo apt full-upgrade -y
-sudo apt install -y git curl bluetooth bluez
-sudo reboot
-
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Activate Bluetooth
-sudo systemctl enable bluetooth
-sudo systemctl start bluetooth
-sudo rfkill unblock bluetooth
-
-# Clone repository
-git clone https://github.com/janrakete/healthcore-bulp.io.git
-cd healthcore-bulp.io
-npm install
-
-# Find out ZigBee adapter port
-ls -l /dev/serial/by-id # change this in .env.local, i.e. CONF_zigBeeAdapterPort=/dev/ttyUSB0
-
-# Start Healthcore and put it to autostart
-chmod +x production-start.sh
-./production-start.sh
-```
+  - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local` (`CONF_loRaAdapter*` and/or `CONF_zigBeeAdapter*`)
 
 ## 💻 Installation (software)
 
 **Prerequisites**
-- Node.js (v22 or higher) and npm
+- Node.js (v24 or higher) and npm
 
 **Project setup**
 1. Clone/download the repository and `cd` into its root.
@@ -162,6 +132,36 @@ chmod +x production-stop.sh
 
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
+**Installation example** for Raspberry Pi:
+```bash
+# Update and reboot the system
+sudo apt update
+sudo apt full-upgrade -y
+sudo apt install -y git curl bluetooth bluez
+sudo reboot
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Activate Bluetooth
+sudo systemctl enable bluetooth
+sudo systemctl start bluetooth
+sudo rfkill unblock bluetooth
+
+# Clone repository
+git clone https://github.com/janrakete/healthcore-bulp.io.git
+cd healthcore-bulp.io
+npm install
+
+# Find out ZigBee adapter port
+ls -l /dev/serial/by-id # change this in .env.local, i.e. CONF_zigBeeAdapterPort=/dev/ttyUSB0
+
+# Start Healthcore and put it to autostart
+chmod +x production-start.sh
+./production-start.sh
+```
+
 ## 🔐 Security
 > [!WARNING]  
 > By default, Healthcore is initially unsecured to facilitate configuration and development.
@@ -187,8 +187,41 @@ http://localhost:9998/api-docs/
 
 **Example for ZigBee:**
 ```js
-Example coming soon.
+// Base URL
+const API = "http://localhost:9998";
+
+// 1) Start scan (pairing mode)
+const scanResponse = await fetch(API + "/devices/zigbee/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ duration: 30 })
+});
+const scanData  = await scanResponse.json();
+const callID    = scanData.data.callID;
+
+// 2) Read discovered devices (wait a few seconds after starting scan)
+const infoResponse  = await fetch(API + "/devices/zigbee/scan/info?callID=" + callID);
+const infoData      = await infoResponse.json();
+const foundDevice   = infoData.data.devices[0]; // getting first device
+
+// 3) Get current values
+const valuesResponse    = await fetch(API + "/devices/zigbee/" + foundDevice.uuid + "/values");
+const valuesData        = await valuesResponse.json();
+console.log(valuesData);
+
+// 4) Set value(s) (only works for writable properties)
+await fetch(API + "/devices/zigbee/" + foundDevice.uuid + "/values", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        values: {
+            state: "on"
+        }
+    })
+});
 ```
+
+If a value write does not change anything, check the converter of your device in `bridge-zigbee/converters/` and verify that the property is writable.
 
 If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
 
@@ -215,89 +248,97 @@ The **own converters** subsystem lets you transform raw device data (e.g., binar
    In `Converter_MyConverter.js`, import the base and declare your class:  
 
    ```js
-    const { ConverterStandard } = require("./ConverterStandard.js");
+   const { ConverterStandard } = require("./ConverterStandard.js");
 
-    class Converter_MyConverter extends ConverterStandard { // always extend "ConverterStandard"
-      static productName = "bulp-AZ-123"; // static property to identify the product name this converter is for
+   class Converter_MyConverter extends ConverterStandard {
+      static productName = "bulp-AZ-123"; // Must match the product name that is reported by the device.
 
-      constructor() { 
-          super(); // call the parent class constructor
+      constructor() {
+         // Initializes base converter internals and standard property catalog.
+         super();
 
-          this.powerType = "MAINS"; // set the power type for this device ("MAINS" or "BATTERY")
+         // Metadata used when the device is created in Healthcore.
+         this.powerType     = "MAINS";
+         this.vendorName    = "bulp.io";
 
-          // Define the properties supported by this device, using their Bluetooth UUIDs as keys. Each property object contains metadata used for conversion and access control.
-          this.properties["19b10000e8f2537e4f6cd104768a1217"] = {
-              name:        "rotarySwitch", // property name (easy to understand)
-              notify:      true, // notify healthcore if this value changes
-              read:        true, // read access
-              write:       false, // write access
-              anyValue:    0, // pre-defined value
-              standard:    false, // is this a standard value? (https://www.bluetooth.com/wp-content/uploads/Files/Specification/Assigned_Numbers.html)
-              valueType:   "Numeric" // Numeric or String or Options
-          };
+         // Custom BLE characteristics (UUIDs)
+         this.properties["19b10000e8f2537e4f6cd104768a1217"] = { // BLE characteristic UUID used as key
+            name: "rotarySwitch", // property name exposed by the API
+            reportingInclude: false, // do not include this field in reporting output
+            reportingRole: "actuator", // reporting role metadata used by Healthcore
+            notify: true, // subscribe to notifications when value changes
+            read: true, // allow reading this value from the device
+            write: false, // no writing to this characteristic
+            anyValue: 0, // fallback/example value type for validation
+            valueType: "Numeric" // value kind shown to the app layer
+         };
 
-          this.properties["19b10000e8f2537e4f6cd104768a1218"] = {
-              name:        "speaker",
-              notify:      false,
-              read:        true,
-              write:       true,
-              anyValue:    ["on", "off"],
-              valueType:   "Options"
-          };
+         this.properties["19b10000e8f2537e4f6cd104768a1218"] = {
+            name: "speaker",
+            reportingInclude: false,
+            reportingRole: "actuator",
+            notify: false,
+            read: true,
+            write: true,
+            anyValue: ["on", "off"],
+            valueType: "Options"
+         };
 
-          // ...
+         // Optional: include standard BLE properties from ConverterStandard
+         this.properties["2a19"] = {
+            standard: true,
+            read: true
+         };
+
+         // Replaces { standard: true } placeholders with full standard metadata.
+         this.resolveStandardProperties();
       }
 
-      // GET: Converts a raw value from the device into a higher-level representation, based on the property metadata.
+      // Convert raw BLE values to Healthcore value objects.
       get(property, value) {
-          if (property.read === false) {
-            return undefined; // property is not readable, so return undefined
-          }   
-          else {
-              if (property.standard === true) { // if this is a standard property then use common converter
-                  return this.getStandard(property, value);
-              }
-              else { // device-specific conversion logic
-                switch (property.name) {
-                    case "rotarySwitch":
-                        const buf = Buffer.from(value);
-                        return {"value": buf[0], "valueAsNumeric": buf[0]};
-                    case "speaker":
-                        return value[0] === 1 ? {"value": "on", "valueAsNumeric": 1} : {"value": "off", "valueAsNumeric": 0};
-                    default:
-                        return undefined;
-                }
-              }
-          }
+         if (property.read === false) {
+            return undefined;
+         }
+
+         // Use shared conversion logic for standard UUIDs.
+         if (property.standard === true) {
+            return this.getStandard(property, value);
+         }
+
+         // Handle device-specific UUIDs.
+         switch (property.name) {
+            case "rotarySwitch":
+               const buf = Buffer.from(value);
+               return { "value": buf[0], "valueAsNumeric": buf[0] };
+            case "speaker":
+               return value[0] === 1
+                  ? { "value": "on", "valueAsNumeric": 1 }
+                  : { "value": "off", "valueAsNumeric": 0 };
+            default:
+               return undefined;
+         }
       }
 
-      // SET: Converts a higher-level value into a format suitable for writing to the device, based on the property metadata.
+      // Convert app values to raw bytes before writing to the BLE device.
       set(property, value) {
-          if (property.write === false) {
-              return undefined; // if property is not writable, so return undefined
-          }
-          else {
-            switch (property.name) {
-                case "speaker":
-                    if (property.anyValue.includes(value)) {
-                        return Buffer.from([value === "on" ? 1 : 0]);
-                    } else {
-                        return undefined;
-                    }
-                case "led":
-                    if (property.anyValue.includes(value)) {
-                        return Buffer.from([value === "on" ? 1 : 0]);
-                    } else {
-                        return undefined;
-                    }
-                default:
-                    return undefined;
-            }   
-          }       
-      }
-    }
+         if (property.write === false) {
+            return undefined;
+         }
 
-    module.exports = { Converter_MyConverter };
+         switch (property.name) {
+            case "speaker":
+               // Only allow values listed in property.anyValue.
+               if (property.anyValue.includes(value)) {
+                  return Buffer.from([value === "on" ? 1 : 0]);
+               }
+               return undefined;
+            default:
+               return undefined;
+         }
+      }
+   }
+
+   module.exports = { Converter_MyConverter };
     ```
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
