@@ -26,15 +26,15 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 
 - 🏗️ [Architecture](#%EF%B8%8F-architecture)
 - 📁 [Folder structure](#-folder-structure)
-- 💻 [Installation (software)](#-installation-software)
 - 🔧 [Installation (hardware)](#-installation-hardware)
+- 💻 [Installation (software)](#-installation-software)
+- 🔐 [Security](#-security)
+- 🔌 [API communication](#-api-communication)
 - 📈 [Healthcheck](#-healthcheck)
 - 🧩 [Own converters](#-own-converters)
-- 🔌 [API communication](#-api-communication)
-- 🔐 [Security](#-security)
+- 💓 [External data via APIs](#-external-data-via-apis)
 - 🤖 [Using an LLM for reports](#-using-an-llm-for-reports)
 - 🔎 [Testing](#-testing)
-- 💓 [External data via APIs](#-external-data-via-apis)
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture**:
@@ -59,18 +59,58 @@ On the left, you can see how various interfaces communicate bi-directionally wit
 │   ├── routes/            # Routes for communication Interface via SSE ↔ Server ↔ Interface via API 
 │   ├── middleware/        # Middleware features 
 │   └── libs/              # Additionally libraries
-├── bridge-bluetooth/    # Bluetooth ↔ MQTT bridge
+├── bridge-bluetooth/      # Bluetooth ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge-zigbee/       # ZigBee ↔ MQTT bridge
+├── bridge-zigbee/         # ZigBee ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge-lora/         # LoRa ↔ MQTT bridge
+├── bridge-lora/           # LoRa ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge-http/         # HTTP ↔ MQTT bridge
+├── bridge-http/           # HTTP ↔ MQTT bridge
 │   └── converters/        # Common and own converters
-├── bridge-integrations/ # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
+├── bridge-integrations/   # External API providers ↔ MQTT bridge (Google Health, Garmin, …)
 │   └── converters/        # Provider converters
 ├── tests/                 # Jest tests, manual tests and example device firmware
 ├── healthcheck/           # Healthcheck (see below)
+```
+
+## 🔧 Installation (hardware)
+- **Host platform**  
+  - Raspberry Pi 4 or (or better) or any Linux/Windows PC with network access
+- **Adapters**  
+  - **Bluetooth**: Built-in BLE or USB dongle  
+  - **ZigBee**: USB coordinator (e.g. CC2531, ConBee II, Sonoff Zigbee 3.0 USB stick)  
+  - **LoRa**: USB or serial LoRa adapter (e.g. Dragino LA66 LoRaWAN USB Adapter)
+- **Connections**  
+  - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
+
+Installation example for Raspberry Pi:
+```bash
+# Update and reboot the system
+sudo apt update
+sudo apt full-upgrade -y
+sudo apt install -y git curl bluetooth bluez
+sudo reboot
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Activate Bluetooth
+sudo systemctl enable bluetooth
+sudo systemctl start bluetooth
+sudo rfkill unblock bluetooth
+
+# Clone repository
+git clone https://github.com/janrakete/healthcore-bulp.io.git
+cd healthcore-bulp.io
+npm install
+
+# Find out ZigBee adapter port
+ls -l /dev/serial/by-id # change this in .env.local, i.e. CONF_zigBeeAdapterPort=/dev/ttyUSB0
+
+# Start Healthcore and put it to autostart
+chmod +x production-start.sh
+./production-start.sh
 ```
 
 ## 💻 Installation (software)
@@ -116,45 +156,33 @@ chmod +x production-stop.sh
 
 production-start.sh uses the process manager, so that a service is restarted if it crashes. The relevant logs can be found in the `logs` folder.
 
-## 🔧 Installation (hardware)
-- **Host platform**  
-  - Raspberry Pi 4 or (or better) or any Linux/Windows PC with network access
-- **Adapters**  
-  - **Bluetooth**: Built-in BLE or USB dongle  
-  - **ZigBee**: USB coordinator (e.g. CC2531, ConBee II, Sonoff Zigbee 3.0 USB stick)  
-  - **LoRa**: USB or serial LoRa adapter (e.g. Dragino LA66 LoRaWAN USB Adapter)
-- **Connections**  
-  - Plug adapters into host; note device paths (e.g. `/dev/ttyUSB0` or `COMx`) and set in `.env.local`
+## 🔐 Security
+> [!IMPORTANT]  
+> By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey`, `CONF_corsURL`, `CONF_brokerUsername`/`CONF_brokerPassword` and/or `CONF_tlsPath` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
 
-Installation example for Raspberry Pi:
+1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
+
+2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key` header containing the specified key.
+
+3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository. If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
+
+4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
+
+## 🔌 API communication
+Healthcore provides a comprehensive API that allows you to control all data and devices in a standardized way. Here is a complete example of connecting to a ZigBee device.
+
+You can explore all APIs using Swagger:
 ```bash
-# Update and reboot the system
-sudo apt update
-sudo apt full-upgrade -y
-sudo apt install -y git curl bluetooth bluez
-sudo reboot
-
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Activate Bluetooth
-sudo systemctl enable bluetooth
-sudo systemctl start bluetooth
-sudo rfkill unblock bluetooth
-
-# Clone repository
-git clone https://github.com/janrakete/healthcore-bulp.io.git
-cd healthcore-bulp.io
-npm install
-
-# Find out ZigBee adapter port
-ls -l /dev/serial/by-id # change this in .env.local, i.e. CONF_zigBeeAdapterPort=/dev/ttyUSB0
-
-# Start Healthcore and put it to autostart
-chmod +x production-start.sh
-./production-start.sh
+http://localhost:9998/api-docs/
 ```
+(9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
+
+**Example for ZigBee:**
+```js
+Example coming soon.
+```
+
+If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
 
 ## 📈 Healthcheck
 Healthcore has an integrated dashboard (= Healthcheck) to view the status of the system and to display several data from the APIs.
@@ -265,64 +293,6 @@ The **own converters** subsystem lets you transform raw device data (e.g., binar
     ```
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
-## 🔌 API communication
-Healthcore provides a comprehensive API that allows you to control all data and devices in a standardized way. Here is a complete example of connecting to a ZigBee device.
-
-You can explore all APIs using Swagger:
-```bash
-http://localhost:9998/api-docs/
-```
-(9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
-
-**Example for ZigBee:**
-```js
-Example coming soon.
-```
-
-If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
-
-## 🔐 Security
-By default, Healthcore is initially unsecured to facilitate configuration and development. If `CONF_apiKey`, `CONF_corsURL`, `CONF_brokerUsername`/`CONF_brokerPassword` and/or `CONF_tlsPath` remain empty in the `.env.local` file, security measures are inactive; however, they can be enabled as follows:
-
-1. **CORS**: Cross-Origin Resource Sharing (CORS) is a mechanism that enables Healthcore to specify which origins (domain, scheme, or port) are authorized to access the API. To define these permitted origins, the respective values must be entered as a comma-separated list under `CONF_corsURL` in the `.env.local` file. Please ensure that URLs do not include a trailing slash (/), as this is generally not required and may lead to configuration errors.
-
-2. **API**: To implement API key authentication, the key must be defined in the `.env.local` file under `CONF_apiKey`. Subsequent requests to the API must include the `x-api-key` header containing the specified key.
-
-3. **TLS (HTTPS)**: To further secure API communication, a certificate can be used. This can be created using https://github.com/FiloSottile/mkcert. The created files must be named `cert.pem` and `key.pem`. Please keep these files **outside** the repository, so there is no chance to commit them accidentally. You can change the path in `.env.local` via `CONF_tlsPath`. Default is same level as the repository. If a certificate is set, then automatically MQTTS instead of MQTT is used. So you have to change `CONF_brokerAddress` to `mqtts://localhost:9999` in `.env.local`.
-
-4. **MQTT**: To use an authentification for MQTT, set `CONF_brokerUsername` and `CONF_brokerPassword` in `.env.local`.
-
-## 🤖 Using an LLM for reports
-To generate reports for each person and the rooms they live in using a local LLM, download a free GGUF model (for example from https://huggingface.co/mradermacher/models?search=instruct). Make sure the filename contains **`Instruct`**, as these models are optimized for instruction-following tasks.
-
-Copy the downloaded model into the `/libs/ReportingEngine-models` directory.
-
-Then update the `.env.local` file and set the `CONF_reportingEngineModel` variable to the name of the downloaded model file.
-
-You can now generate and access reports through the following API endpoints:
-* `/reports/generate`
-* `/reports`
-
-## 🔎 Testing
-You can test Healthcore in two different ways: automated tests and manual tests.
-
-### Automated tests
-The automated tests live in the `tests/` folder and are powered by [Jest](https://jestjs.io/). They cover converters for all bridges, data CRUD operations, device management, scenario logic, SQL validation, and authentication. Everything runs against an **in-memory SQLite database**, so no real hardware or running services are needed.
-
-To run all automated tests:
-```bash
-npm test
-```
-
-That's it. If something breaks, you'll know immediately.
-
-### Manual tests
-Some things simply can't be automated — real Bluetooth adapters, physical ZigBee devices, push notifications on actual phones, network resilience, and end-to-end flows through the entire system. That's where the manual test plan comes in.
-
-The full manual test plan is documented in [`tests/MANUAL.md`](tests/MANUAL.md).
-
-The rule is simple: **first run `npm test`** to make sure all automated tests pass, **then** work through the manual tests when you have the hardware connected.
-
 ## 💓 External data via APIs
 
 The Healthcore can receive data directly from devices, but it can also retrieve and store data through APIs provided by services such as Google Health or Garmin.
@@ -389,3 +359,34 @@ To encrypt the tokens stored in the database:
 2. Encrypt the tokens using **AES-256-GCM** and the configured secret key.
 
 3. Replace the plain-text values in the `integrations_accounts` table with the encrypted versions.
+
+## 🤖 Using an LLM for reports
+To generate reports for each person and the rooms they live in using a local LLM, download a free GGUF model (for example from https://huggingface.co/mradermacher/models?search=instruct). Make sure the filename contains **`Instruct`**, as these models are optimized for instruction-following tasks.
+
+Copy the downloaded model into the `/libs/ReportingEngine-models` directory.
+
+Then update the `.env.local` file and set the `CONF_reportingEngineModel` variable to the name of the downloaded model file.
+
+You can now generate and access reports through the following API endpoints:
+* `/reports/generate`
+* `/reports`
+
+## 🔎 Testing
+You can test Healthcore in two different ways: automated tests and manual tests.
+
+### Automated tests
+The automated tests live in the `tests/` folder and are powered by [Jest](https://jestjs.io/). They cover converters for all bridges, data CRUD operations, device management, scenario logic, SQL validation, and authentication. Everything runs against an **in-memory SQLite database**, so no real hardware or running services are needed.
+
+To run all automated tests:
+```bash
+npm test
+```
+
+That's it. If something breaks, you'll know immediately.
+
+### Manual tests
+Some things simply can't be automated — real Bluetooth adapters, physical ZigBee devices, push notifications on actual phones, network resilience, and end-to-end flows through the entire system. That's where the manual test plan comes in.
+
+The full manual test plan is documented in [`tests/MANUAL.md`](tests/MANUAL.md).
+
+The rule is simple: **first run `npm test`** to make sure all automated tests pass, **then** work through the manual tests when you have the hardware connected.
