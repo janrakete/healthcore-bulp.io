@@ -293,7 +293,7 @@ http://localhost:9998/api-docs/
 (9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
 
 ### Available routes:
-- **/info:** Info routes provide runtime and health details about the server and connected services
+- ```/info:``` Info routes provide runtime and health details about the server and connected services
 - **/data:** Data routes offer generic CRUD access to allowed database tables with filtering and update controls
 - **/devices:** Device routes handle discovery, registration, connection management, metadata updates, and reading/writing device values across bridges
 - **/scenarios:** Scenario routes let you create, manage, and execute automation logic made of triggers and actions
