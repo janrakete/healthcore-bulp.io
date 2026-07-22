@@ -27,6 +27,7 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 
 ## 👉 Read more about ...
 
+- 🚀 [Quick start](#-quick-start)
 - 🏗️ [Architecture](#%EF%B8%8F-architecture)
 - 📁 [Folder structure](#-folder-structure)
 - 🔧 [Installation (hardware)](#-installation-hardware)
@@ -38,6 +39,121 @@ So let’s democratize and de-monopolize the healthcare sector. Make healthcare 
 - 💓 [External data via APIs](#-external-data-via-apis)
 - 🤖 [Using an LLM for reports](#-using-an-llm-for-reports)
 - 🔎 [Testing](#-testing)
+
+## 🚀 Quick start
+
+This quick start walks you through a realistic first setup with:
+- a ZigBee router (coordinator USB stick)
+- a ZigBee motion sensor
+- one-week data collection
+- one generated weekly report
+
+### 1. Prepare hardware
+You need:
+- Host: Raspberry Pi / Linux PC / Windows PC
+- ZigBee router (coordinator), e.g. ConBee II or Sonoff Zigbee 3.0 USB dongle
+- ZigBee motion sensor (any supported model, or your own converter)
+
+Connect the ZigBee router to your host via USB.
+
+### 2. Download repository
+```bash
+git clone https://github.com/janrakete/healthcore-bulp.io.git
+cd healthcore-bulp.io
+npm install
+```
+
+### 3. Define ZigBee router in `.env.local`
+Create `.env.local` in the project root and set at least:
+```dotenv
+CONF_zigBeeAdapterPort=/dev/ttyUSB0
+CONF_zigBeeAdapterName=zstack
+```
+
+Typical values:
+- Linux: `/dev/ttyUSB0` or `/dev/serial/by-id/...`
+- Windows: `COM3`, `COM4`, ...
+
+Adapter type depends on your hardware/chipset (examples: `zstack`, `ezsp`, `deconz`).
+
+### 4. Create converter for your ZigBee motion sensor
+1. Use an LLM (for example GitHub Copilot, Claude Code, or Codex) to generate the converter.
+2. Prompt example (adapt sensor model and bridge path):
+   ```text
+   Create a ZigBee converter for the Aqara RTCGQ11LM motion sensor.
+   Use the examples in /bridge-zigbee as a guide.
+   Extend ConverterStandard, set static productName exactly to the model name,
+   and include occupancy, battery, and tamper properties where supported.
+   ```
+3. Save the generated file in `bridge-zigbee/converters/`, for example `Converter_MyMotionSensor.js`.
+4. Verify `static productName` matches the model name reported by ZigBee exactly.
+5. Restart the ZigBee bridge. Converters are auto-loaded from `bridge-zigbee/converters/`.
+
+If your sensor is already supported, you can skip this step.
+
+### 5. Download an LLM and configure it
+1. Download a GGUF instruct model (filename should contain `Instruct`).
+2. Put the model file in `server/libs/ReportingEngine-models/`.
+3. Add model name to `.env.local`:
+```dotenv
+CONF_reportingEngineModel=YourModelName-Instruct.gguf
+```
+
+### 6. Start Healthcore services
+Run each service in its own terminal:
+```bash
+node broker/app.js
+node server/app.js
+node bridge-zigbee/app.js
+```
+
+### 7. Add the ZigBee motion sensor via routes
+1. Start ZigBee scan:
+```bash
+curl -X POST http://localhost:9998/devices/zigbee/scan \
+   -H "Content-Type: application/json" \
+   -d '{"duration":30}'
+```
+2. Get scan result and copy the discovered sensor UUID:
+```bash
+curl "http://localhost:9998/devices/zigbee/scan/info?callID=YOUR_CALL_ID"
+```
+3. Create the device in Healthcore:
+```bash
+curl -X POST http://localhost:9998/devices/zigbee/YOUR_SENSOR_UUID \
+   -H "Content-Type: application/json" \
+   -d '{
+      "name":"Hall Motion Sensor",
+      "description":"ZigBee PIR"
+       }'
+```
+
+### 8. Collect data from the sensor for one week
+- Keep broker, server, and ZigBee bridge running continuously for 7 days
+- Keep the motion sensor paired and powered
+- Trigger sensor events naturally (room usage) so occupancy data is written
+
+Optional spot check:
+```bash
+curl "http://localhost:9998/data/mqtt_devices_values?deviceID=YOUR_SENSOR_UUID&orderBy=dateTimeAsNumeric,DESC&limit=20"
+```
+
+### 9. Generate report for last week
+After 7 days, call:
+```bash
+curl -X POST http://localhost:9998/reports/generate \
+   -H "Content-Type: application/json" \
+   -d '{
+      "startDateTime":"2026-07-15T00:00:00Z",
+      "endDateTime":"2026-07-22T00:00:00Z",
+      "language":"en"
+   }'
+```
+
+Then fetch stored reports:
+```bash
+curl http://localhost:9998/reports
+```
 
 ## 🏗️ Architecture
 Let’s take a look at the **architecture**:
@@ -243,7 +359,7 @@ http://localhost:9990
 The **own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. 
 
 > [!IMPORTANT]  
-> As an open-source project, Healthcore thrives on having **as many converters as possible**. So please add your converters via a pull request or as an issue. Use Claude Code or Codex with the following **prompt to create converters** for well-known smart home components: “Create a ZigBee converter for the SONOFF S60ZBTPF. Use the examples in /bridge-zigbee as a guide.” 
+> As an open-source project, Healthcore thrives on having **as many converters as possible**. So please add your converters via a pull request or as an issue. Use GitHub Copilot, Claude Code or Codex with the following **prompt to create converters** for well-known smart home components: “Create a ZigBee converter for the SONOFF S60ZBTPF. Use the examples in /bridge-zigbee as a guide.” 
 
 Below is a detailed Bluetooth bridge example:
 
@@ -400,7 +516,7 @@ Insert these values into the `integrations_accounts` table together with an arbi
 
 ### 5. Create the device
 
-Add a new device through the app under "External Devices".
+Add a new device through the API.
 
 The device's "Device ID" must match the "Account ID" stored in the `integrations_accounts` table.
 
