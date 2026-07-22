@@ -292,6 +292,15 @@ http://localhost:9998/api-docs/
 ```
 (9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
 
+**Available routes:**
+- Info: Info routes provide runtime and health details about the server and connected services
+- Data: Data routes offer generic CRUD access to allowed database tables with filtering and update controls
+- Devices: Device routes handle discovery, registration, connection management, metadata updates, and reading/writing device values across bridges
+- Scenarios: Scenario routes let you create, manage, and execute automation logic made of triggers and actions
+- Alerts: Alert routes expose alert lists, statistics, single-alert lookup, and status updates
+- Reports: Report routes return stored reports and trigger manual report generation for a selected time range
+- Update: Update routes check for newer versions and install the latest code from the repository
+
 **Example for using ZigBee device:**
 ```js
 // Base URL
