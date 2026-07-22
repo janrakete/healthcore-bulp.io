@@ -55,8 +55,15 @@ router.get("/", async function (request, response) {
     data.serverName             = appConfig.CONF_serverID;
     data.serverVersion          = appConfig.CONF_serverVersion;
     data.serverIDBonjour        = appConfig.CONF_serverIDBonjour;
-    data.serverCodeLastCommit   = appConfig.CONF_settings.codeLastCommit;
     data.bridges                = [];
+
+    const latestCommitUpdate = await database.prepare("SELECT * FROM update_history WHERE type='commit' ORDER BY dateTimeApplied DESC LIMIT 1").get();
+    if (latestCommitUpdate) {
+        data.serverCodeLastCommit = latestCommitUpdate.migrationID;
+    }
+    else {
+        data.serverCodeLastCommit = null;
+    }
 
     const bridges = appConfig.CONF_bridges;
     for (const bridge of bridges) { // Check each bridge

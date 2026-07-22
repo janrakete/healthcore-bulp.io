@@ -33,7 +33,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env.local"), override: true }
 const Database = require("better-sqlite3");
 const { find } = require("async");
 
-const DB_FILENAME = process.env.CONF_databaseFilename || "../healthcore_database.db";
+const DB_FILENAME = "../healthcore_database.db";
 const DB_PATH     = path.resolve(__dirname, DB_FILENAME);
 const DEMO_PREFIX = "[Demo] ";
 

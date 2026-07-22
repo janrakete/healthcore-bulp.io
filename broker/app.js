@@ -9,7 +9,7 @@ const common    = require("../common");
 /**
  * SQLite
  */
-const database = require("better-sqlite3")(appConfig.CONF_databaseFilename);
+const database = require("better-sqlite3")("../healthcore_database.db");
 database.pragma("foreign_keys = ON");
 
 /**

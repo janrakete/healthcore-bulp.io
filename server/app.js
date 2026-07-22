@@ -5,12 +5,26 @@
  */
 const appConfig   = require("../config");
 const common      = require("../common");
+
+const fs          = require("fs");
+const path        = require("path");
+
 global.common     = common; // make Common functions global
 
 /**
- * SQLite
+ * Database
  */
-const database  = require("better-sqlite3")(appConfig.CONF_databaseFilename);
+const databasePathCurrent   = path.resolve(__dirname, "../healthcore_database.db");
+const databasePathSchema    = path.resolve(__dirname, "../healthcore_database.db-schema");
+if (!fs.existsSync(databasePathCurrent)) { // if database file does not exist, copy schema file to create it
+  fs.copyFileSync(databasePathSchema, databasePathCurrent);
+  common.conLog("Server: Database not found, file created from schema", "yel");
+}
+else {
+  common.conLog("Server: Database file found", "gre");
+}
+
+const database  = require("better-sqlite3")(databasePathCurrent);
 global.database = database; // make SQLite database global
 database.pragma("foreign_keys = ON");
 
@@ -104,7 +118,6 @@ async function startServer() {
    */
   let server;
   if (appConfig.CONF_tlsPath) {
-    const fs    = require("fs");
     const https = require("https");
     try {
       const tlsOptions = {
@@ -273,7 +286,6 @@ async function startServer() {
   let mqttOptions  = { clientId: "server", username: appConfig.CONF_brokerUsername, password: appConfig.CONF_brokerPassword };
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
-      const fs                       = require("fs");
       mqttOptions.ca                 = [ fs.readFileSync(appConfig.CONF_tlsPath + "cert.pem") ];
       mqttOptions.rejectUnauthorized = appConfig.CONF_tlsRejectUnauthorized; 
       common.conLog("MQTT: TLS certificate loaded, using secure connection to broker", "gre");  

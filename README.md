@@ -87,7 +87,6 @@ Adapter type depends on your hardware/chipset (examples: `zstack`, `ezsp`, `deco
    ```
 3. Save the generated file in `bridge-zigbee/converters/`, for example `Converter_MyMotionSensor.js`.
 4. Verify `static productName` matches the model name reported by ZigBee exactly.
-5. Restart the ZigBee bridge. Converters are auto-loaded from `bridge-zigbee/converters/`.
 
 If your sensor is already supported, you can skip this step.
 
@@ -535,7 +534,7 @@ To generate reports for each person and the rooms they live in using a local LLM
 
 Copy the downloaded model into the `/libs/ReportingEngine-models` directory.
 
-Then update the `.env.local` file and set the `CONF_reportingEngineModel` variable to the name of the downloaded model file.
+Then update the `.env.local` file and set the `CONF_reportingEngineModel` variable to the name of the downloaded model file (i.e. "HARC-Qwen2.5-7B-Instruct.Q4_K_M.gguf").
 
 You can now generate and access reports through the following API endpoints:
 * `/reports/generate`

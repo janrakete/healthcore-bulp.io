@@ -83,7 +83,7 @@ async function updateRunAndRestart(latestCommit) {
             await extractZip(zipPath, { dir: unzipDir }); // Extract the ZIP file to the temporary directory
 
             const extractedFolder   = path.join(unzipDir, repoMeta.repo + "-" + repoMeta.branch);
-            const databaseFileName  = path.basename(String(appConfig.CONF_databaseFilename || "").trim());
+            const databaseFileName  = path.basename("../healthcore_database.db").trim();
             const rsyncArgs = [
                 "-a",
                 "--delete",
@@ -146,7 +146,14 @@ router.get("/info", async function (request, response) {
     const data              = {};
     data.status             = "ok";
     data.updateAvailable    = false;
-    data.latestCommit       = appConfig.CONF_settings.codeLastCommit;
+
+    const latestCommitUpdate = await database.prepare("SELECT * FROM update_history WHERE type='commit' ORDER BY dateTimeApplied DESC LIMIT 1").get();
+    if (latestCommitUpdate) {
+        data.latestCommit = latestCommitUpdate.migrationID;
+    }
+    else {
+        data.latestCommit = null;
+    }
 
     try {
         const fetchResponse    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
@@ -156,7 +163,7 @@ router.get("/info", async function (request, response) {
         const fetchData        = await fetchResponse.json();
         const latestCommitHash = fetchData.sha || null;
 
-        if (latestCommitHash && latestCommitHash !== appConfig.CONF_settings.codeLastCommit) {
+        if (latestCommitHash && latestCommitHash !== data.latestCommit) {
             data.updateAvailable = true;
             data.latestCommit    = latestCommitHash;
         }
@@ -213,7 +220,15 @@ router.post("/install", async function (request, response) {
     try {
         data.status          = "ok";
         data.updateAvailable = false;
-        data.latestCommit    = appConfig.CONF_settings.codeLastCommit;
+
+        const latestCommitUpdate = await database.prepare("SELECT * FROM update_history WHERE type='commit' ORDER BY dateTimeApplied DESC LIMIT 1").get();
+        if (latestCommitUpdate) {
+            data.latestCommit = latestCommitUpdate.migrationID;
+        }
+        else {
+            data.latestCommit = null;
+        }
+
 
         const fetchResponse    = await fetch("https://api.github.com/repos/" + appConfig.CONF_repositoryURL);
         if (!fetchResponse.ok) {
@@ -222,7 +237,7 @@ router.post("/install", async function (request, response) {
         const fetchData        = await fetchResponse.json();
         const latestCommitHash = fetchData.sha || null;
 
-        if (latestCommitHash && latestCommitHash !== appConfig.CONF_settings.codeLastCommit) {
+        if (latestCommitHash && latestCommitHash !== data.latestCommit) {
             data.updateAvailable = true;
             data.latestCommit    = latestCommitHash;
         }
@@ -233,11 +248,8 @@ router.post("/install", async function (request, response) {
         else {
             common.sendResponse(response, data, "Server route 'Update'", "POST request install update");
 
-            database.prepare("UPDATE settings SET codeLastCommit = ?").run(data.latestCommit);
             database.prepare("INSERT INTO update_history (migrationID, type) VALUES (?, 'commit')").run(data.latestCommit);
  
-            appConfig.CONF_settings.codeLastCommit = data.latestCommit;
-
             updateRunAndRestart(data.latestCommit).catch((error) => {
                 common.conLog("Server route 'Update': Detached update failed: " + error.message, "red");
             });
