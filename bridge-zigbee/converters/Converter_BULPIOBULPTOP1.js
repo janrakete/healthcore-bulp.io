@@ -18,7 +18,7 @@ class Converter_BULPIOBULPTOP1 extends ConverterStandard {
         super();
 
         this.powerType  = "MAINS"; // bulp.top 1 is mains-powered (no battery)
-        this.vendorName = "bulp";
+        this.vendorName = "bulp.io";
 
         // EP 1: Temperature (msTemperatureMeasurement, ZigBee unit: 1/100 °C)
         this.properties["msTemperatureMeasurement"] = {};
