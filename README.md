@@ -294,12 +294,12 @@ http://localhost:9998/api-docs/
 
 ### Available routes:
 - ```/info:``` Info routes provide runtime and health details about the server and connected services
-- **/data:** Data routes offer generic CRUD access to allowed database tables with filtering and update controls
-- **/devices:** Device routes handle discovery, registration, connection management, metadata updates, and reading/writing device values across bridges
-- **/scenarios:** Scenario routes let you create, manage, and execute automation logic made of triggers and actions
-- **/alerts:** Alert routes expose alert lists, statistics, single-alert lookup, and status updates
-- **/reports:** Report routes return stored reports and trigger manual report generation for a selected time range
-- **/update:** Update routes check for newer versions and install the latest code from the repository
+- ```/data:``` Data routes offer generic CRUD access to allowed database tables with filtering and update controls
+- ```/devices:``` Device routes handle discovery, registration, connection management, metadata updates, and reading/writing device values across bridges
+- ```/scenarios:``` Scenario routes let you create, manage, and execute automation logic made of triggers and actions
+- ```/alerts:``` Alert routes expose alert lists, statistics, single-alert lookup, and status updates
+- ```/reports:``` Report routes return stored reports and trigger manual report generation for a selected time range
+- ```/update:``` Update routes check for newer versions and install the latest code from the repository
 
 ### Example for using ZigBee device:
 ```js
