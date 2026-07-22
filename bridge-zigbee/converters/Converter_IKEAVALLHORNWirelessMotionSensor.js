@@ -14,7 +14,8 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "BATTERY";
+        this.powerType  = "BATTERY";
+        this.vendorName = "IKEA of Sweden";
 
         // Occupancy sensing cluster (motion detection)
         this.properties["msOccupancySensing"] = {};

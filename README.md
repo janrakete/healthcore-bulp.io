@@ -116,16 +116,7 @@ curl -X POST http://localhost:9998/devices/zigbee/scan \
 ```
 2. Get scan result and copy the discovered sensor UUID:
 ```bash
-curl "http://localhost:9998/devices/zigbee/scan/info?callID=YOUR_CALL_ID"
-```
-3. Create the device in Healthcore:
-```bash
-curl -X POST http://localhost:9998/devices/zigbee/YOUR_SENSOR_UUID \
-   -H "Content-Type: application/json" \
-   -d '{
-      "name":"Hall Motion Sensor",
-      "description":"ZigBee PIR"
-       }'
+curl "http://localhost:9998/devices/zigbee/scan/info?callID=CALL_ID"
 ```
 
 ### 8. Collect data from the sensor for one week
@@ -135,7 +126,7 @@ curl -X POST http://localhost:9998/devices/zigbee/YOUR_SENSOR_UUID \
 
 Optional spot check:
 ```bash
-curl "http://localhost:9998/data/mqtt_devices_values?deviceID=YOUR_SENSOR_UUID&orderBy=dateTimeAsNumeric,DESC&limit=20"
+curl "http://localhost:9998/data/mqtt_devices_values?deviceID=SENSOR_UUID&orderBy=dateTimeAsNumeric,DESC&limit=20"
 ```
 
 ### 9. Generate report for last week
@@ -301,7 +292,7 @@ http://localhost:9998/api-docs/
 ```
 (9998 is the standard server port and localhost the standard base URL, configured in `.env` - overwrite it in `.env.local` if you want)
 
-**Example for ZigBee:**
+**Example for using ZigBee device:**
 ```js
 // Base URL
 const API = "http://localhost:9998";
@@ -359,9 +350,9 @@ http://localhost:9990
 The **own converters** subsystem lets you transform raw device data (e.g., binary BLE characteristic values) into structured JSON properties that your interface (i.e. your app) can use. Each bridge (Bluetooth, ZigBee, LoRa, HTTP) has its own `converters/` folder with individual converter classes extending a shared `ConverterStandard` base. 
 
 > [!IMPORTANT]  
-> As an open-source project, Healthcore thrives on having **as many converters as possible**. So please add your converters via a pull request or as an issue. Use GitHub Copilot, Claude Code or Codex with the following **prompt to create converters** for well-known smart home components: “Create a ZigBee converter for the SONOFF S60ZBTPF. Use the examples in /bridge-zigbee as a guide.” 
+> As an open-source project, Healthcore thrives on having **as many converters as possible**. So please add your converters via a pull request or as an issue. Use GitHub Copilot, Claude Code or Codex with the following **prompt to create converters** for well-known smart home components: _“Create a ZigBee converter for the SONOFF S60ZBTPF. Use the examples in /bridge-zigbee as a guide.”_ 
 
-Below is a detailed Bluetooth bridge example:
+Below is a detailed Bluetooth device example:
 
 1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MyConverter.js`).
 2. **Extend** `ConverterStandard`:

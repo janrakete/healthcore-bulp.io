@@ -11,7 +11,8 @@ class Converter_Paulmann29150 extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "MAINS";
+        this.powerType  = "MAINS";
+        this.vendorName = "Paulmann Licht GmbH";
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {

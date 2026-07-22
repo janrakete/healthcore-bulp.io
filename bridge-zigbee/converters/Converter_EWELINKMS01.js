@@ -11,7 +11,8 @@ class Converter_EWELINKMS01 extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "BATTERY";
+        this.powerType  = "BATTERY";
+        this.vendorName = "eWeLink";
 
         this.properties["ssIasZone"] = {};
         this.properties["ssIasZone"]["motion"] = {

@@ -11,7 +11,8 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
     constructor() {
         super();
 
-        this.powerType = "MAINS";
+        this.powerType  = "MAINS";
+        this.vendorName = "IKEA of Sweden";
 
         this.properties["genOnOff"] = {};
         this.properties["genOnOff"]["onOff"] = {

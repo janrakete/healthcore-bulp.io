@@ -552,6 +552,10 @@ async function startBridgeAndServer() {
         else {
           common.conLog("ZigBee: Converter found for " + message.productName, "gre");
           message.powerType   = deviceConverter.powerType;
+          if (message.vendorName === undefined || message.vendorName === null || message.vendorName.trim() === "") { // if vendorName is missing from device, use vendorName from converter
+            message.vendorName = deviceConverter.vendorName;
+          }
+
           message.properties  = common.devicePropertiesToArray(deviceConverter.properties);        
         }
 
