@@ -1,4 +1,4 @@
-# Healthcore by bulp.io
+# 🤘Healthcore by bulp.io
 
 ![GitHub License](https://img.shields.io/github/license/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722) ![GitHub last commit](https://img.shields.io/github/last-commit/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722) ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722) ![GitHub top language](https://img.shields.io/github/languages/top/janrakete/healthcore-bulp.io?labelColor=%23311b92&color=%23ff5722)
 
@@ -19,7 +19,7 @@ Just imagine something like Home Assistant or OpenHAB, but specialized for healt
 > [!TIP]
 > Healthcore can also be used to manage **smart home devices** such as motion detectors or window sensors. After all, that’s the only way to get the full picture.
 
-Healthcore is used by [bulp.io](https://www.bulp.io/), which produces some really cool healthcare hardware around the Healthcore.
+Healthcore is used by [bulp.io](https://www.bulp.io/), which produces some really cool hardware around the Healthcore.
 
 So let’s democratize and de-monopolize the healthcare sector. Make healthcare devices and infrastructure affordable for everyone!
 
