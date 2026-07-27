@@ -17,6 +17,45 @@
 # Exit immediately if any command fails
 set -e
 
+load_env_file() {
+  local env_file="$1"
+  local raw_line=""
+  local line=""
+  local key=""
+  local value=""
+
+  [ -f "$env_file" ] || return 0
+
+  while IFS= read -r raw_line || [ -n "$raw_line" ]; do
+    line="${raw_line#"${raw_line%%[![:space:]]*}"}"
+
+    if [[ -z "$line" || "${line:0:1}" == "#" ]]; then
+      continue
+    fi
+
+    key="${line%%=*}"
+    value="${line#*=}"
+
+    if [[ "$key" == "$line" ]]; then
+      continue
+    fi
+
+    key="${key#export }"
+    key="${key%"${key##*[![:space:]]}"}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    value="${value#"${value%%[![:space:]]*}"}"
+
+    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then
+      value="${BASH_REMATCH[1]}"
+    else
+      value="${value%%[[:space:]]#*}"
+      value="${value%"${value##*[![:space:]]}"}"
+    fi
+
+    export "$key=$value"
+  done < "$env_file"
+}
+
 # Resolve deployment user from CONF_rootUser / CONF_osRootUser in .env/.env.local (.env.local overrides .env)
 DEPLOY_USER=""
 if [ -f .env ]; then
@@ -81,20 +120,16 @@ npm install --production
 
 # --- Step 3: Environment Variables ------------------------------------------
 # Load .env and .env.local files into the current shell environment.
-# "set -a" auto-exports all variables; "set +a" stops auto-exporting.
+# Parse dotenv syntax directly so values with spaces remain valid.
 # .env.local overrides .env values (loaded second).
 echo "📁 Loading environment variables ..."
 if [ -f .env ]; then
-  set -a
-  source .env
-  set +a
+  load_env_file .env
   echo ".env loaded"
 fi
 
 if [ -f .env.local ]; then
-  set -a
-  source .env.local
-  set +a
+  load_env_file .env.local
   echo ".env.local loaded"
 fi
 
