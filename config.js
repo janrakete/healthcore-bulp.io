@@ -24,17 +24,21 @@ function toBool(value, defaultValue = false) {
   if (typeof value === "boolean") {
     return value;
   }
+
   if (typeof value !== "string") {
     return defaultValue;
   }
 
   const normalized = value.trim().toLowerCase();
+  
   if (["true", "1", "yes", "on"].includes(normalized)) { // Accept common truthy values
     return true;
   }
+  
   if (["false", "0", "no", "off"].includes(normalized)) { // Accept common falsy values
     return false;
   }
+  
   return defaultValue;
 }
 
