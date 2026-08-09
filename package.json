@@ -34,6 +34,7 @@
     "swagger-ui-express": "^5.0.1",
     "uri-js": "^4.4.1",
     "util": "^0.12.5",
+    "websocket": "^1.0.35",
     "zigbee-herdsman": "^4.2.0"
   },
   "devDependencies": {

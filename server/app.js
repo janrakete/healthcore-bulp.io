@@ -261,7 +261,7 @@ async function startServer() {
   const PushEngine      = require("./libs/PushEngine");
   const pushEngine      = new PushEngine();
   scenarios.pushEngine  = pushEngine; // make push engine available in scenarios
-
+  
   /**
    * Loading settings from database
    */
@@ -278,6 +278,13 @@ async function startServer() {
   catch (error) {
     common.conLog("Server: Error loading settings from database: " + error, "red");
   }
+
+  /**
+   * Plexus Engine (WebSocket connection to Plexus)
+   */
+  const PlexusEngine = require("./libs/PlexusEngine");
+  global.plexusEngine = new PlexusEngine();
+  global.plexusEngine.connect();
 
   /**
    * MQTT client

@@ -119,7 +119,13 @@ const appConfig = {
   CONF_reportingLanguageSupported                     : (process.env.CONF_reportingLanguageSupported || "").split(",").map(lang => lang.trim()).filter(Boolean),  
   CONF_reportingEngineTemperature                     : toFloat(process.env.CONF_reportingEngineTemperature),
   CONF_reportingEngineMaxTokens                       : toInt(process.env.CONF_reportingEngineMaxTokens),
-  CONF_reportingTopPropertiesCount                    : toInt(process.env.CONF_reportingTopPropertiesCount)
+  CONF_reportingTopPropertiesCount                    : toInt(process.env.CONF_reportingTopPropertiesCount),
+  CONF_plexusURL                                      : process.env.CONF_plexusURL,
+  CONF_plexusPort                                     : toInt(process.env.CONF_plexusPort),
+  CONF_plexusIdentifier                               : process.env.CONF_plexusIdentifier,
+  CONF_plexusApiKey                                   : process.env.CONF_plexusApiKey,
+  CONF_plexusReconnectDelaySecondsBase                : toInt(process.env.CONF_plexusReconnectDelaySecondsBase),
+  CONF_plexusReconnectDelaySecondsMax                 : toInt(process.env.CONF_plexusReconnectDelaySecondsMax)
 };
 
 module.exports = appConfig;
