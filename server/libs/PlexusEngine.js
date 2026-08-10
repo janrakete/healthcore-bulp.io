@@ -31,9 +31,10 @@ class PlexusEngine {
             else {
                 common.conLog("Plexus Engine: Connecting to the server ...", "yel");
 
-                let serverURL       = appConfig.CONF_plexusURL;
-                if ((appConfig.CONF_plexusPort !== undefined) && (appConfig.CONF_plexusPort !== null)) {
-                    serverURL = serverURL + ":" + appConfig.CONF_plexusPort;
+                let serverURL    = appConfig.CONF_plexusURL;
+                const plexusPort = appConfig.CONF_plexusPort;
+                if ((plexusPort !== undefined) && (plexusPort !== null) && (String(plexusPort).trim() !== "")) {
+                    serverURL = serverURL + ":" + String(plexusPort).trim();
                 }
 
                 if (this.webserviceClient != null) { // Remove all listeners to avoid duplicate event handling
@@ -55,7 +56,7 @@ class PlexusEngine {
                     payload.apiKey      = appConfig.CONF_plexusApiKey;
                     connection.sendUTF(JSON.stringify(payload)); // Send authentication request
 
-                    connection.on("message", (message) => {
+                    connection.on("message", async(message) => {
                         if (message.type === "utf8") {
 
                             let payload = {};
@@ -88,7 +89,52 @@ class PlexusEngine {
                             }
                             else {
                                 if ((this.connected === true) && (this.authenticated === true)) {
-                                    // Handle authenticated message, API Call, etc.
+                                    const payloadType = String(payload.type ?? "").trim();
+                                    if (payloadType !== "") {
+
+                                        /**
+                                         * Handle "call" request
+                                         */
+                                        if (payloadType === "call") {
+                                            const payloadCall   = String(payload.call ?? "").trim();
+                                            const payloadMethod = String(payload.method ?? "").trim();
+
+                                            if (payloadCall !== "") {
+                                                if (payloadMethod !== "") {
+                                                    common.conLog("Plexus Engine: Received API call: " + payloadCall + " (method: " + payloadMethod + "), trying to call internally ...", "yel");
+                                                    const response  = await fetch(appConfig.CONF_baseURL + ":" + appConfig.CONF_port + "/" + payloadCall, { method: payloadMethod });
+                                                    const data      = await response.json();
+
+                                                    
+
+
+
+                                                    // Handle the API call here
+                                                }
+                                                else {
+                                                    connection.sendUTF(JSON.stringify({
+                                                        type:   "call",
+                                                        status: "error",
+                                                        error:  "Missing 'method' parameter"
+                                                    }));
+                                                }
+                                            }
+                                            else {
+                                                connection.sendUTF(JSON.stringify({
+                                                    type:   "call",
+                                                    status: "error",
+                                                    error:  "Missing 'call' parameter"
+                                                }));
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        connection.sendUTF(JSON.stringify({
+                                            type:   "call",
+                                            status: "error",
+                                            error:  "Missing 'type' parameter"
+                                        }));
+                                    }
                                 }
                                 else {
                                     common.conLog("Plexus Engine: Received message without authentication.", "red");

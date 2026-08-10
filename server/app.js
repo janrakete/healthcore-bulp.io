@@ -284,7 +284,9 @@ async function startServer() {
    */
   const PlexusEngine = require("./libs/PlexusEngine");
   global.plexusEngine = new PlexusEngine();
-  global.plexusEngine.connect();
+  if (global.plexusEngine.active === true) {
+    global.plexusEngine.connect();
+  }
 
   /**
    * MQTT client
