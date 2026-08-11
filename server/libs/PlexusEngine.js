@@ -31,10 +31,10 @@ class PlexusEngine {
             else {
                 common.conLog("Plexus Engine: Connecting to the server ...", "yel");
 
-                let serverURL    = appConfig.CONF_plexusURL;
-                const plexusPort = appConfig.CONF_plexusPort;
+                let serverPlexusURL    = appConfig.CONF_plexusURL;
+                const plexusPort       = appConfig.CONF_plexusPort;
                 if ((plexusPort !== undefined) && (plexusPort !== null) && (String(plexusPort).trim() !== "")) {
-                    serverURL = serverURL + ":" + String(plexusPort).trim();
+                    serverPlexusURL = serverPlexusURL + ":" + String(plexusPort).trim();
                 }
 
                 if (this.webserviceClient != null) { // Remove all listeners to avoid duplicate event handling
@@ -44,7 +44,7 @@ class PlexusEngine {
                 this.webserviceClient = new websocketClient();
 
                 this.webserviceClient.on("connect", (connection) => {
-                    common.conLog("Plexus Engine: Connected to the server " + serverURL, "gre");
+                    common.conLog("Plexus Engine: Connected to the server " + serverPlexusURL, "gre");
                     this.connected        = true;
                     this.reconnectAttempt = 0; // reset reconnection backoff on successful connect
 
@@ -102,7 +102,13 @@ class PlexusEngine {
                                             if (payloadCall !== "") {
                                                 if (payloadMethod !== "") {
                                                     common.conLog("Plexus Engine: Received API call: " + payloadCall + " (method: " + payloadMethod + "), trying to call internally ...", "yel");
-                                                    const response  = await fetch(appConfig.CONF_baseURL + ":" + appConfig.CONF_port + "/" + payloadCall, { method: payloadMethod });
+
+                                                    let serverURL    = appConfig.CONF_baseURL;
+                                                    const portServer = appConfig.CONF_portServer;
+                                                    if ((portServer !== undefined) && (portServer !== null) && (String(portServer).trim() !== "")) {
+                                                        serverURL = serverURL + ":" + String(portServer).trim();
+                                                    }
+                                                    const response  = await fetch(serverURL + payloadCall, { method: payloadMethod });
                                                     const data      = await response.json();
 
                                                     
@@ -152,7 +158,7 @@ class PlexusEngine {
                         this.connected     = false;
                         this.authenticated = false;
                         this.clientID      = null;
-                        this.scheduleReconnect(serverURL);
+                        this.scheduleReconnect();
                     });
                 });
 
@@ -161,10 +167,10 @@ class PlexusEngine {
                     this.connected     = false;
                     this.authenticated = false;
                     this.clientID      = null;
-                    this.scheduleReconnect(serverURL);
+                    this.scheduleReconnect();
                 });
 
-                this.webserviceClient.connect(serverURL);
+                this.webserviceClient.connect(serverPlexusURL);
             }
         }
         else {
@@ -175,7 +181,7 @@ class PlexusEngine {
     /**
      * Schedules a reconnect attempt with exponential backoff
      */
-    scheduleReconnect(serverURL) {
+    scheduleReconnect() {
         if (this.reconnectTimer !== null) { // already scheduled
             return; 
         }
@@ -183,7 +189,7 @@ class PlexusEngine {
         this.reconnectAttempt++;
         const jitter = Math.random() * 1000; // Add some jitter to avoid thundering herd problem
         const delay  = Math.min(appConfig.CONF_plexusReconnectDelaySecondsBase * 1000 * Math.pow(2, this.reconnectAttempt - 1), appConfig.CONF_plexusReconnectDelaySecondsMax * 1000) + jitter;
-        common.conLog("Plexus Engine: Reconnecting in " + (delay / 1000) + "s (attempt " + this.reconnectAttempt + ") ...", "yel");
+        common.conLog("Plexus Engine: Reconnecting in " + (delay / 1000).toFixed(2) + "s (attempt " + this.reconnectAttempt + ") ...", "yel");
 
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
