@@ -96,8 +96,9 @@ class PlexusEngine {
                                          * Handle "call" request
                                          */
                                         if (payloadType === "call") {
-                                            const payloadCall   = String(payload.call ?? "").trim();
-                                            const payloadMethod = String(payload.method ?? "").trim();
+                                            const payloadCall     = String(payload.call ?? "").trim();
+                                            const payloadMethod   = String(payload.method ?? "").trim();
+                                            const payloadContent  = payload.content ?? {};
 
                                             if (payloadCall !== "") {
                                                 if (payloadMethod !== "") {
@@ -108,14 +109,29 @@ class PlexusEngine {
                                                     if ((portServer !== undefined) && (portServer !== null) && (String(portServer).trim() !== "")) {
                                                         serverURL = serverURL + ":" + String(portServer).trim();
                                                     }
-                                                    const response  = await fetch(serverURL + payloadCall, { method: payloadMethod });
-                                                    const data      = await response.json();
-
                                                     
+                                                    try {
+                                                        const fetchParameters   = {};
+                                                        fetchParameters.method  = payloadMethod;
+                                                        fetchParameters.headers = { "Content-Type": "application/json" };
+                                                        fetchParameters.body    = payloadMethod === "GET" ? undefined : JSON.stringify(payloadContent);
 
+                                                        const response  = await fetch(serverURL + payloadCall, fetchParameters);
+                                                        const content   = await response.json();
 
-
-                                                    // Handle the API call here
+                                                        connection.sendUTF(JSON.stringify({
+                                                            type:      "call",
+                                                            status:    "ok",
+                                                            content:   content
+                                                        }));
+                                                    }
+                                                    catch (error) {
+                                                        connection.sendUTF(JSON.stringify({
+                                                            type:   "call",
+                                                            status: "error",
+                                                            error:  "Internal server error: " + error.message
+                                                        }));
+                                                    }
                                                 }
                                                 else {
                                                     connection.sendUTF(JSON.stringify({
