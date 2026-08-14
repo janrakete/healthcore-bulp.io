@@ -20,6 +20,31 @@ function toFloat(value) {
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
+function toHexInt(value) {
+  if (typeof value !== "string" || !/^[0-9a-fA-F]{1,4}$/.test(value.trim())) {
+    return undefined;
+  }
+
+  return Number.parseInt(value.trim(), 16);
+}
+
+function toIntArray(value) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const values = value.split(",").map(entry => Number.parseInt(entry.trim(), 10));
+  return values.some(Number.isNaN) ? undefined : values;
+}
+
+function toByteArray(value) {
+  if (typeof value !== "string" || !/^[0-9a-fA-F]{32}$/.test(value.trim())) {
+    return undefined;
+  }
+
+  return Array.from(Buffer.from(value.trim(), "hex"));
+}
+
 function toBool(value, defaultValue = false) {
   if (typeof value === "boolean") {
     return value;
@@ -109,9 +134,9 @@ const appConfig = {
   CONF_logMaxLength                                   : toInt(process.env.CONF_logMaxLength),
   CONF_repositoryURL                                  : process.env.CONF_repositoryURL,
   CONF_osRootUser                                     : process.env.CONF_osRootUser,
-  CONF_zigBeeNetworkKey                               : process.env.CONF_zigBeeNetworkKey,
-  CONF_zigBeeNetworkPanID                             : process.env.CONF_zigBeeNetworkPanID,
-  CONF_zigBeeNetworkChannelList                       : process.env.CONF_zigBeeNetworkChannelList,
+  CONF_zigBeeNetworkKey                               : toByteArray(process.env.CONF_zigBeeNetworkKey),
+  CONF_zigBeeNetworkPanID                             : toHexInt(process.env.CONF_zigBeeNetworkPanID),
+  CONF_zigBeeNetworkChannelList                       : toIntArray(process.env.CONF_zigBeeNetworkChannelList),
   CONF_reportingEngineModel                           : process.env.CONF_reportingEngineModel,
   CONF_reportingEnabled                               : toBool(process.env.CONF_reportingEnabled),
   CONF_reportingCron                                  : process.env.CONF_reportingCron,
