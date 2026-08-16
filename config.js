@@ -150,7 +150,8 @@ const appConfig = {
   CONF_plexusIdentifier                               : process.env.CONF_plexusIdentifier,
   CONF_plexusApiKey                                   : process.env.CONF_plexusApiKey,
   CONF_plexusReconnectDelaySecondsBase                : toInt(process.env.CONF_plexusReconnectDelaySecondsBase),
-  CONF_plexusReconnectDelaySecondsMax                 : toInt(process.env.CONF_plexusReconnectDelaySecondsMax)
+  CONF_plexusReconnectDelaySecondsMax                 : toInt(process.env.CONF_plexusReconnectDelaySecondsMax),
+  CONF_apiCallLogsMaxEntries                          : toInt(process.env.CONF_apiCallLogsMaxEntries)
 };
 
 module.exports = appConfig;
