@@ -1,10 +1,13 @@
 /**
  * =============================================================================================
- * Routes for Info (= just a simple endpoint to check if the server is running)
- * ============================================================================
+ * Routes for Info
+ * ===============
  */
 const appConfig       = require("../../config");
 const router          = require("express").Router();
+
+const fs              = require("fs");
+const path            = require("path");
 
 /**
  * @swagger
@@ -107,5 +110,55 @@ router.get("/", async function (request, response) {
 
     return response.status(200).json(data);
 });
+
+/**
+ * @swagger
+ * /info/logs:
+ *   get:
+ *     summary: Retrieve server logs
+ *     description: This endpoint provides the last 200 lines of logs from all log files in the server's logs directory.
+ *     tags:
+ *       - Info
+ *     responses:
+ *       "200":
+ *         description: Successfully retrieved server logs.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "ok"
+ *                 lines:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       source:
+ *                         type: string
+ *                         example: "server"
+ *                       line:
+ *                         type: string
+ *                         example: "[2024-06-01T12:00:00Z] Server started successfully."
+ */
+router.get("/logs", async function (request, response) {
+    const logsDirectory = path.join(__dirname, "../..", "logs");
+    const files         = fs.readdirSync(logsDirectory).filter(file => file.endsWith(".log"));
+    
+    let lines = [];
+    for (const file of files) {
+        const source    = file.replace(/ - (output|errors)\.log$/, "");
+        const content   = fs.readFileSync(path.join(logsDirectory, file), "utf8");
+        for (const line of content.split("\n").slice(-200)) {
+            if (line.trim()) {
+                lines.push({ source, line });
+            }
+        }
+    }
+    
+    lines.sort((a, b) => a.line.localeCompare(b.line)); // relies on ISO-like timestamp prefix
+    response.json({ status: "ok", lines });
+});    
 
 module.exports = router;
