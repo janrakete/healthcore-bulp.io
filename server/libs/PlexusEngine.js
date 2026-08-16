@@ -99,6 +99,7 @@ class PlexusEngine {
                                             const payloadCall     = String(payload.call ?? "").trim();
                                             const payloadMethod   = String(payload.method ?? "").trim();
                                             const payloadContent  = payload.content ?? {};
+                                            const payloadUUID     = String(payload.uuid ?? "").trim();
 
                                             if (payloadCall !== "") {
                                                 if (payloadMethod !== "") {
@@ -122,14 +123,16 @@ class PlexusEngine {
                                                         connection.sendUTF(JSON.stringify({
                                                             type:      "call",
                                                             status:    "ok",
-                                                            content:   content
+                                                            content:   content,
+                                                            uuid:      payloadUUID
                                                         }));
                                                     }
                                                     catch (error) {
                                                         connection.sendUTF(JSON.stringify({
                                                             type:   "call",
                                                             status: "error",
-                                                            error:  "Internal server error: " + error.message
+                                                            error:  "Internal server error: " + error.message,
+                                                            uuid:   payloadUUID
                                                         }));
                                                     }
                                                 }
@@ -137,7 +140,8 @@ class PlexusEngine {
                                                     connection.sendUTF(JSON.stringify({
                                                         type:   "call",
                                                         status: "error",
-                                                        error:  "Missing 'method' parameter"
+                                                        error:  "Missing 'method' parameter",
+                                                        uuid:   payloadUUID
                                                     }));
                                                 }
                                             }
@@ -145,7 +149,8 @@ class PlexusEngine {
                                                 connection.sendUTF(JSON.stringify({
                                                     type:   "call",
                                                     status: "error",
-                                                    error:  "Missing 'call' parameter"
+                                                    error:  "Missing 'call' parameter",
+                                                    uuid:   payloadUUID
                                                 }));
                                             }
                                         }
@@ -154,7 +159,8 @@ class PlexusEngine {
                                         connection.sendUTF(JSON.stringify({
                                             type:   "call",
                                             status: "error",
-                                            error:  "Missing 'type' parameter"
+                                            error:  "Missing 'type' parameter",
+                                            uuid:   payload.uuid
                                         }));
                                     }
                                 }
