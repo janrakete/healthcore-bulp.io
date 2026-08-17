@@ -172,7 +172,7 @@ router.get("/logs", async function (request, response) {
 
     const timestampPattern = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?::\s*)?/;
 
-    lines.sort((lineA, lineB) => { // Sort lines by timestamp in descending order
+    lines.sort((lineA, lineB) => { // Sort lines by timestamp in ascending order
         const timestampA = lineA.match(timestampPattern)?.[1];
         const timestampB = lineB.match(timestampPattern)?.[1];
 
@@ -180,7 +180,7 @@ router.get("/logs", async function (request, response) {
             return timestampA ? -1 : timestampB ? 1 : 0;
         }
 
-        return timestampB.localeCompare(timestampA);
+        return timestampA.localeCompare(timestampB);
     });
     
     common.conLog("Server route 'Info': Logs retrieved from " + files.length + " log files.", "gre");
