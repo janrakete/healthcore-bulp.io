@@ -133,6 +133,8 @@ router.get("/logs", async function (request, response) {
     const logsDirectory = path.join(__dirname, "../..", "logs");
     const files         = fs.readdirSync(logsDirectory).filter(file => file.endsWith(".log")); // Get all log files in the logs directory
 
+    const data = {};
+
     const maxEntries = appConfig.CONF_apiCallLogsMaxEntries;
     const lines      = (await Promise.all(files.map(async file => { // Read each log file and return the last maxEntries lines
         if (maxEntries <= 0) {
@@ -186,7 +188,11 @@ router.get("/logs", async function (request, response) {
     common.conLog("Server route 'Info': Logs retrieved from " + files.length + " log files.", "gre");
 
     const ansiEscapePattern = /\x1B\[[0-?]*[ -\/]*[@-~]/g;
-    response.type("text/plain").send(lines.map(line => line.replace(timestampPattern, "").replace(ansiEscapePattern, "")).join("\n"));
+
+    data.status = "ok";
+    data.result = lines.map(line => line.replace(timestampPattern, "").replace(ansiEscapePattern, "")).join("\n");
+
+    return response.status(200).json(data);
 });    
 
 module.exports = router;
