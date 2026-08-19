@@ -151,7 +151,9 @@ const appConfig = {
   CONF_plexusApiKey                                   : process.env.CONF_plexusApiKey,
   CONF_plexusReconnectDelaySecondsBase                : toInt(process.env.CONF_plexusReconnectDelaySecondsBase),
   CONF_plexusReconnectDelaySecondsMax                 : toInt(process.env.CONF_plexusReconnectDelaySecondsMax),
-  CONF_apiCallLogsMaxEntries                          : toInt(process.env.CONF_apiCallLogsMaxEntries)
+  CONF_apiCallLogsMaxEntries                          : toInt(process.env.CONF_apiCallLogsMaxEntries),
+  CONF_plexusHeartbeatIntervalSeconds                 : toInt(process.env.CONF_plexusHeartbeatIntervalSeconds),
+  CONF_plexusHeartbeatTimeoutSeconds                  : toInt(process.env.CONF_plexusHeartbeatTimeoutSeconds)
 };
 
 module.exports = appConfig;

@@ -13,11 +13,14 @@ class PlexusEngine {
     constructor() {
         this.active           = (appConfig.CONF_plexusIdentifier !== undefined && appConfig.CONF_plexusIdentifier !== "") ? true : false;
         this.webserviceClient = null;
+        this.connection       = null;
         this.clientID         = null;
         this.connected        = false;
         this.authenticated    = false;
         this.reconnectAttempt = 0;
         this.reconnectTimer   = null;
+        this.heartbeatTimer   = null;
+        this.heartbeatTimeout = null;
     }
 
     /**
@@ -45,6 +48,7 @@ class PlexusEngine {
 
                 this.webserviceClient.on("connect", (connection) => {
                     common.conLog("Plexus Engine: Connected to the server " + serverPlexusURL, "gre");
+                    this.connection       = connection;
                     this.connected        = true;
                     this.reconnectAttempt = 0; // reset reconnection backoff on successful connect
 
@@ -74,13 +78,54 @@ class PlexusEngine {
                             }
 
                             /**
+                             * Handle heartbeat response
+                             */
+                            if (payload.type === "pong") {
+                                if (connection === this.connection && this.heartbeatTimeout !== null) {
+                                    clearTimeout(this.heartbeatTimeout);
+                                    this.heartbeatTimeout = null;
+                                }
+                                return;
+                            }
+                            /**
                              * Handle authentication request
                              */
-                            if (payload.type === "authenticate") {
+                            else if (payload.type === "authenticate") {
                                 if (payload.status === "ok") {
                                     common.conLog("Plexus Engine: Authorization successful.", "gre");
                                     this.authenticated  = true;
                                     this.clientID       = payload.clientID; 
+
+                                    if (this.heartbeatTimer !== null) {
+                                        clearInterval(this.heartbeatTimer);
+                                    }
+                                    if (this.heartbeatTimeout !== null) {
+                                        clearTimeout(this.heartbeatTimeout);
+                                        this.heartbeatTimeout = null;
+                                    }
+
+                                    this.heartbeatTimer = setInterval(() => { // Send heartbeat ping to server
+                                        if (connection !== this.connection || this.authenticated !== true) {
+                                            return;
+                                        }
+
+                                        try {
+                                            if (this.heartbeatTimeout !== null) {
+                                                clearTimeout(this.heartbeatTimeout);
+                                            }
+                                            
+                                            connection.sendUTF(JSON.stringify({ type: "ping" }));
+                                            this.heartbeatTimeout = setTimeout(() => {
+                                                common.conLog("Plexus Engine: Heartbeat timed out.", "red");
+                                                this.handleConnectionLoss(connection);
+                                                connection.close();
+                                            }, appConfig.CONF_plexusHeartbeatTimeoutSeconds * 1000);
+                                        }
+                                        catch (error) {
+                                            common.conLog("Plexus Engine: Heartbeat failed: " + error.toString(), "red");
+                                            this.handleConnectionLoss(connection);
+                                        }
+                                    }, appConfig.CONF_plexusHeartbeatIntervalSeconds * 1000);
                                 }
                                 else {
                                     common.conLog("Plexus Engine: Authorization failed (" + payload.error + ")", "red");
@@ -173,23 +218,18 @@ class PlexusEngine {
 
                     connection.on("error", (error) => {
                         common.conLog("Plexus Engine: Connection error: " + error.toString(), "red");
+                        this.handleConnectionLoss(connection);
                     });
 
                     connection.on("close", () => {
                         common.conLog("Plexus Engine: Connection closed.", "yel");
-                        this.connected     = false;
-                        this.authenticated = false;
-                        this.clientID      = null;
-                        this.scheduleReconnect();
+                        this.handleConnectionLoss(connection);
                     });
                 });
 
                 this.webserviceClient.on("connectFailed", (error) => {
                     common.conLog("Plexus Engine: Connection failed: " + error.toString(), "red");
-                    this.connected     = false;
-                    this.authenticated = false;
-                    this.clientID      = null;
-                    this.scheduleReconnect();
+                    this.handleConnectionLoss();
                 });
 
                 this.webserviceClient.connect(serverPlexusURL);
@@ -198,6 +238,25 @@ class PlexusEngine {
         else {
             common.conLog("Plexus Engine: Not active (identifier not set in .env.local).", "yel");
         }
+    }
+
+    /**
+     * Clears the current connection state and schedules one reconnect.
+     */
+    handleConnectionLoss(connection = null) {
+        if (connection !== null && connection !== this.connection) {
+            return;
+        }
+
+        clearInterval(this.heartbeatTimer);
+        clearTimeout(this.heartbeatTimeout);
+        this.heartbeatTimer   = null;
+        this.heartbeatTimeout = null;
+        this.connection       = null;
+        this.connected        = false;
+        this.authenticated    = false;
+        this.clientID         = null;
+        this.scheduleReconnect();
     }
 
     /**
