@@ -26,6 +26,32 @@ class Converter_EWELINKMS01 extends ConverterStandard {
             anyValue:           ["yes", "no"],
             valueType:          "Options"
         };
+
+        // Battery reporting also serves as a periodic heartbeat, since this IAS Zone device otherwise only reports on motion changes.
+        this.properties["genPowerCfg"] = {};
+        this.properties["genPowerCfg"]["batteryPercentageRemaining"] = {
+            name:               "battery",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
+        };
+
+        this.properties["genPowerCfg"]["batteryVoltage"] = {
+            name:               "voltage",
+            reportingInclude:   false,
+            reportingRole:      "actuator",
+            standard:           false,
+            notify:             true,
+            read:               true,
+            write:              false,
+            anyValue:           0,
+            valueType:          "Numeric"
+        };
     }
 
     async setupReporting(device, coordinatorEndpoint) {
@@ -49,6 +75,17 @@ class Converter_EWELINKMS01 extends ConverterStandard {
                 enrollrspcode: 0,
                 zoneid: 1
             });
+
+            // Battery reporting (~1h to ~18h) gives the watchdog periodic traffic to see, independent of motion activity.
+            const endpointPower = this.getEndpointByInputCluster(device, 1); // 1 = genPowerCfg
+            if (endpointPower) {
+                await this.safeBind(endpointPower, "genPowerCfg", coordinatorEndpoint);
+                await this.safeConfigureReporting(endpointPower, "genPowerCfg", [
+                    { attribute: "batteryPercentageRemaining", minimumReportInterval: 3600, maximumReportInterval: 65000, reportableChange: 1 },
+                    { attribute: "batteryVoltage", minimumReportInterval: 3600, maximumReportInterval: 65000, reportableChange: 1 }
+                ]);
+                await this.safeRead(endpointPower, "genPowerCfg", ["batteryPercentageRemaining", "batteryVoltage"]);
+            }
         }
         catch (error) {
             return undefined;
@@ -72,6 +109,18 @@ class Converter_EWELINKMS01 extends ConverterStandard {
                             default:
                                 return {"value" : "no", "valueAsNumeric": 0};
                         }
+                    case "battery":
+                        if (data.batteryPercentageRemaining === undefined) {
+                            return undefined;
+                        }
+                        const batteryPercent = Math.round(data.batteryPercentageRemaining / 2); // ZigBee reports battery in half-percent units
+                        return {"value": batteryPercent + "%", "valueAsNumeric": batteryPercent};
+                    case "voltage":
+                        if (data.batteryVoltage === undefined) {
+                            return undefined;
+                        }
+                        const voltage = data.batteryVoltage / 10; // ZigBee reports voltage in 100mV units
+                        return {"value": voltage.toFixed(1) + "V", "valueAsNumeric": voltage};
                     default:
                         return undefined;
                 }
