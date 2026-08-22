@@ -86,8 +86,8 @@ async function startServer() {
    */
   const apiKeyAuth = require("./middleware/auth");
 
-  const infoData = require("./routes/info"); // import routes for server info
-  app.use("/info", apiKeyAuth, infoData);
+  const routesInfo = require("./routes/info"); // import routes for server info
+  app.use("/info", apiKeyAuth, routesInfo);
 
   const routesData = require("./routes/data"); // import routes for data manipulation
   app.use("/data", apiKeyAuth, routesData);
