@@ -199,10 +199,65 @@ class PlexusEngine {
                                                 }));
                                             }
                                         }
+                                        else if (payloadType === "login") {
+                                            const payloadUsername   = String(payload.username ?? "").trim();
+                                            const payloadPassword   = String(payload.password ?? "").trim();
+                                            const payloadUUID       = String(payload.uuid ?? "").trim();
+
+                                            if (payloadUsername !== "" && payloadPassword !== "") {
+                                                common.conLog("Plexus Engine: Received login request for username: " + payloadUsername, "yel");
+
+                                                try {
+                                                    const result = database.prepare("SELECT * FROM users WHERE username = ? AND password = ? LIMIT 1").all(payloadUsername, payloadPassword);
+
+                                                    if (result.length === 1) {
+                                                        connection.sendUTF(JSON.stringify({
+                                                            type:   "login",
+                                                            status: "ok",
+                                                            content: {
+                                                                userID:   result[0].userID,
+                                                                username: result[0].username
+                                                            },
+                                                            uuid: payloadUUID
+                                                        }));
+                                                    }
+                                                    else {
+                                                        connection.sendUTF(JSON.stringify({
+                                                            type:   "login",
+                                                            status: "error",
+                                                            error:  "Invalid username or password",
+                                                            uuid:   payloadUUID
+                                                        }));
+                                                    }
+                                                }
+                                                catch (error) {
+                                                    connection.sendUTF(JSON.stringify({
+                                                        type:   "login",
+                                                        status: "error",
+                                                        error:  "Internal server error: " + error.message,
+                                                        uuid:   payloadUUID
+                                                    }));
+                                                }
+                                            }
+                                            else {
+                                                connection.sendUTF(JSON.stringify({
+                                                    type:   "login",
+                                                    status: "error",
+                                                    error:  "Missing username or password",
+                                                    uuid:   payloadUUID
+                                                }));
+                                            }
+                                        }
+                                        else {
+                                            connection.sendUTF(JSON.stringify({
+                                                status: "error",
+                                                error:  "Unknown 'type' parameter: " + payloadType,
+                                                uuid:   payload.uuid
+                                            }));
+                                        }
                                     }
                                     else {
                                         connection.sendUTF(JSON.stringify({
-                                            type:   "call",
                                             status: "error",
                                             error:  "Missing 'type' parameter",
                                             uuid:   payload.uuid
@@ -211,10 +266,10 @@ class PlexusEngine {
                                 }
                                 else {
                                     common.conLog("Plexus Engine: Received message without authentication.", "red");
-                                }                            
+                                }
                             }
                         }
-                    });            
+                    });
 
                     connection.on("error", (error) => {
                         common.conLog("Plexus Engine: Connection error: " + error.toString(), "red");
