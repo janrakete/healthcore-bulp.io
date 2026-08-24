@@ -7,6 +7,8 @@
 const appConfig = require("../../config");
 const common    = require("../../common");
 
+const bcrypt    = require("bcrypt");
+
 const websocketClient = require("websocket").client;    
 
 class PlexusEngine {
@@ -208,18 +210,29 @@ class PlexusEngine {
                                                 common.conLog("Plexus Engine: Received login request for username: " + payloadUsername, "yel");
 
                                                 try {
-                                                    const result = database.prepare("SELECT * FROM users WHERE username = ? AND password = ? LIMIT 1").all(payloadUsername, payloadPassword);
+                                                    const result = database.prepare("SELECT * FROM users WHERE username = ? LIMIT 1").all(payloadUsername);
 
                                                     if (result.length === 1) {
-                                                        connection.sendUTF(JSON.stringify({
-                                                            type:   "login",
-                                                            status: "ok",
-                                                            content: {
-                                                                userID:   result[0].userID,
-                                                                username: result[0].username
-                                                            },
-                                                            uuid: payloadUUID
-                                                        }));
+                                                        const passwordMatch = await bcrypt.compare(payloadPassword, result[0].password);
+                                                        if (passwordMatch === true) {
+                                                            connection.sendUTF(JSON.stringify({
+                                                                type:   "login",
+                                                                status: "ok",
+                                                                content: {
+                                                                    userID:   result[0].userID,
+                                                                    username: result[0].username
+                                                                },
+                                                                uuid: payloadUUID
+                                                            }));
+                                                        }
+                                                        else {
+                                                            connection.sendUTF(JSON.stringify({
+                                                                type:   "login",
+                                                                status: "error",
+                                                                error:  "Invalid username or password",
+                                                                uuid:   payloadUUID
+                                                            }));
+                                                        }
                                                     }
                                                     else {
                                                         connection.sendUTF(JSON.stringify({
