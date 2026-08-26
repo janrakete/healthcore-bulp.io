@@ -24,6 +24,7 @@
     "extract-zip": "^2.0.1",
     "firebase-admin": "^13.6.0",
     "isolation-forest": "^0.0.9",
+    "jsonwebtoken": "^9.0.3",
     "mqtt": "^5.13.1",
     "node-cron": "^4.2.1",
     "node-llama-cpp": "^3.19.0",

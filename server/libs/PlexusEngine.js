@@ -8,6 +8,7 @@ const appConfig = require("../../config");
 const common    = require("../../common");
 
 const bcrypt    = require("bcrypt");
+const jwt       = require("jsonwebtoken");
 
 const websocketClient = require("websocket").client;    
 
@@ -147,56 +148,94 @@ class PlexusEngine {
                                             const payloadMethod   = String(payload.method ?? "").trim();
                                             const payloadContent  = payload.content ?? {};
                                             const payloadUUID     = String(payload.uuid ?? "").trim();
-
-                                            if (payloadCall !== "") {
-                                                if (payloadMethod !== "") {
-                                                    common.conLog("Plexus Engine: Received API call: " + payloadCall + " (method: " + payloadMethod + "), trying to call internally ...", "yel");
-
-                                                    let serverURL    = appConfig.CONF_baseURL;
-                                                    const portServer = appConfig.CONF_portServer;
-                                                    if ((portServer !== undefined) && (portServer !== null) && (String(portServer).trim() !== "")) {
-                                                        serverURL = serverURL + ":" + String(portServer).trim();
-                                                    }
-                                                    
-                                                    try {
-                                                        const fetchParameters   = {};
-                                                        fetchParameters.method  = payloadMethod;
-                                                        fetchParameters.headers = { "Content-Type": "application/json" };
-                                                        fetchParameters.body    = payloadMethod === "GET" ? undefined : JSON.stringify(payloadContent);
-
-                                                        const response  = await fetch(serverURL + payloadCall, fetchParameters);
-                                                        const content   = await response.json();
-
-                                                        connection.sendUTF(JSON.stringify({
-                                                            type:      "call",
-                                                            status:    "ok",
-                                                            content:   content,
-                                                            uuid:      payloadUUID
-                                                        }));
-                                                    }
-                                                    catch (error) {
+                                            const payloadToken    = String(payload.token ?? "").trim();
+                                            
+                                            /**
+                                             * Validate JWT token if provided
+                                             */
+                                            if (payloadToken !== "") {
+                                                try {
+                                                    const tokenDecoded = jwt.verify(payloadToken, appConfig.CONF_plexusJwtSecret);
+                                                    if (tokenDecoded === undefined || tokenDecoded === null) {
                                                         connection.sendUTF(JSON.stringify({
                                                             type:   "call",
                                                             status: "error",
-                                                            error:  "Internal server error: " + error.message,
+                                                            error:  "Invalid token",
                                                             uuid:   payloadUUID
                                                         }));
                                                     }
+                                                    else { // If token is ok, handle API call internally
+                                                        if (payloadCall !== "") {
+                                                            if (payloadMethod !== "") {
+                                                                common.conLog("Plexus Engine: Received API call: " + payloadCall + " (method: " + payloadMethod + "), trying to call internally ...", "yel");
+
+                                                                let serverURL    = appConfig.CONF_baseURL;
+                                                                const portServer = appConfig.CONF_portServer;
+                                                                if ((portServer !== undefined) && (portServer !== null) && (String(portServer).trim() !== "")) {
+                                                                    serverURL = serverURL + ":" + String(portServer).trim();
+                                                                }
+                                                                
+                                                                try {
+                                                                    const fetchParameters   = {};
+                                                                    fetchParameters.method  = payloadMethod;
+                                                                    fetchParameters.headers = { "Content-Type": "application/json" };
+                                                                    fetchParameters.body    = payloadMethod === "GET" ? undefined : JSON.stringify(payloadContent);
+
+                                                                    const response  = await fetch(serverURL + payloadCall, fetchParameters);
+                                                                    const content   = await response.json();
+
+                                                                    connection.sendUTF(JSON.stringify({
+                                                                        type:      "call",
+                                                                        status:    "ok",
+                                                                        content:   content,
+                                                                        uuid:      payloadUUID
+                                                                    }));
+                                                                }
+                                                                catch (error) {
+                                                                    connection.sendUTF(JSON.stringify({
+                                                                        type:   "call",
+                                                                        status: "error",
+                                                                        error:  "Internal server error: " + error.message,
+                                                                        uuid:   payloadUUID
+                                                                    }));
+                                                                }
+                                                            }
+                                                            else {
+                                                                connection.sendUTF(JSON.stringify({
+                                                                    type:   "call",
+                                                                    status: "error",
+                                                                    error:  "Missing 'method' parameter",
+                                                                    uuid:   payloadUUID
+                                                                }));
+                                                            }
+                                                        }
+                                                        else {
+                                                            connection.sendUTF(JSON.stringify({
+                                                                type:   "call",
+                                                                status: "error",
+                                                                error:  "Missing 'call' parameter",
+                                                                uuid:   payloadUUID
+                                                            }));
+                                                        }
+
+
+                                                    }
                                                 }
-                                                else {
+                                                catch (error) {
                                                     connection.sendUTF(JSON.stringify({
                                                         type:   "call",
                                                         status: "error",
-                                                        error:  "Missing 'method' parameter",
+                                                        error:  "Invalid token",
                                                         uuid:   payloadUUID
                                                     }));
+                                                    return;
                                                 }
                                             }
                                             else {
                                                 connection.sendUTF(JSON.stringify({
                                                     type:   "call",
                                                     status: "error",
-                                                    error:  "Missing 'call' parameter",
+                                                    error:  "Missing token",
                                                     uuid:   payloadUUID
                                                 }));
                                             }
@@ -215,12 +254,16 @@ class PlexusEngine {
                                                     if (result.length === 1) {
                                                         const passwordMatch = await bcrypt.compare(payloadPassword, result[0].password);
                                                         if (passwordMatch === true) {
+
+                                                            const token = jwt.sign({ userID: result[0].userID, username: result[0].username }, appConfig.CONF_plexusJwtSecret, { expiresIn: appConfig.CONF_plexusJwtExpire });
+
                                                             connection.sendUTF(JSON.stringify({
                                                                 type:   "login",
                                                                 status: "ok",
                                                                 content: {
                                                                     userID:   result[0].userID,
-                                                                    username: result[0].username
+                                                                    username: result[0].username,
+                                                                    token:    token
                                                                 },
                                                                 uuid: payloadUUID
                                                             }));
@@ -272,7 +315,7 @@ class PlexusEngine {
                                     else {
                                         connection.sendUTF(JSON.stringify({
                                             status: "error",
-                                            error:  "Missing 'type' parameter",
+                                            error:  "Missing type",
                                             uuid:   payload.uuid
                                         }));
                                     }
