@@ -182,6 +182,8 @@ function createTestDatabase() {
       sourceProperty TEXT NOT NULL,
       aggregationType TEXT NOT NULL DEFAULT 'SumBelowThreshold',
       aggregationWindowHours INTEGER DEFAULT 24,
+      activeTimeStart TEXT,
+      activeTimeEnd TEXT,
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
       minReadings INTEGER DEFAULT 1,

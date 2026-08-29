@@ -328,12 +328,21 @@ class AlertsEngine {
    * @returns {Object|null}
    */
   getRuleAggregation(rule, context, property) {
-    const aggregationWindowHours = Math.max(1, Number(rule.aggregationWindowHours) || 24);
-    const thresholdTimestamp = Date.now() - (aggregationWindowHours * 60 * 60 * 1000);
+    const aggregationWindowHours  = Math.max(1, Number(rule.aggregationWindowHours) || 24);
+    const thresholdTimestamp      = Date.now() - (aggregationWindowHours * 60 * 60 * 1000);
+    const activeTimeWindow        = this.getActiveTimeWindow(rule);
+    const conditions              = ["deviceID = ?", "property = ?", "dateTimeAsNumeric >= ?"];
+    const parameters              = [context.deviceID, property, thresholdTimestamp];
+
+    if (activeTimeWindow) {
+      conditions.push("valueAsNumeric > 0");
+      conditions.push(this.buildActiveTimeWindowSql(activeTimeWindow));
+      parameters.push(activeTimeWindow.start, activeTimeWindow.end);
+    }
 
     const result = database.prepare(
-      "SELECT COUNT(*) AS readings, COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_devices_values WHERE deviceID = ? AND property = ? AND dateTimeAsNumeric >= ?"
-    ).get(context.deviceID, property, thresholdTimestamp);
+      "SELECT COUNT(*) AS readings, COALESCE(SUM(valueAsNumeric), 0) AS total FROM mqtt_devices_values WHERE " + conditions.join(" AND ")
+    ).get(...parameters);
 
     if (!result) {
       return null;
@@ -342,8 +351,41 @@ class AlertsEngine {
     return {
       readings:               Number(result.readings) || 0,
       total:                  Number(result.total) || 0,
-      aggregationWindowHours: aggregationWindowHours
+      aggregationWindowHours: aggregationWindowHours,
+      activeTimeWindow:       activeTimeWindow
     };
+  }
+
+  /**
+   * Returns a validated optional daily time window configured on a rule.
+   * @param {Object} rule
+   * @returns {{start:string,end:string}|null}
+   */
+  getActiveTimeWindow(rule) {
+    if (rule.aggregationType !== "SumAboveThreshold") {
+      return null;
+    }
+
+    const start       = String(rule.activeTimeStart || "").trim();
+    const end         = String(rule.activeTimeEnd || "").trim();
+    const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+    return timePattern.test(start) && timePattern.test(end) ? { start, end } : null;
+  }
+
+  /**
+   * Builds a SQLite predicate for a daily time window, including windows across midnight.
+   * @param {{start:string,end:string}} activeTimeWindow
+   * @returns {string}
+   */
+  buildActiveTimeWindowSql(activeTimeWindow) {
+    const timeColumn = "strftime('%H:%M', dateTimeAsNumeric / 1000, 'unixepoch', 'localtime')";
+
+    if (activeTimeWindow.start <= activeTimeWindow.end) {
+      return timeColumn + " >= ? AND " + timeColumn + " <= ?";
+    }
+
+    return "(" + timeColumn + " >= ? OR " + timeColumn + " <= ?)";
   }
 
   /**
@@ -590,6 +632,9 @@ class AlertsEngine {
       return this.translate("alertSummarySumBelow", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
     }
     else if (rule.aggregationType === "SumAboveThreshold") {
+      if (aggregation.activeTimeWindow) {
+        return this.translate("alertSummarySumAboveTimeWindow", label, this.translateProperty(rule.sourceProperty), aggregation.activeTimeWindow.start, aggregation.activeTimeWindow.end, aggregation.total, Number(rule.thresholdMax || 0));
+      }
       return this.translate("alertSummarySumAbove", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
     }
     else {
@@ -608,6 +653,9 @@ class AlertsEngine {
       return this.translate("alertExplanationSumBelow", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else if (rule.aggregationType === "SumAboveThreshold") {
+      if (aggregation.activeTimeWindow) {
+        return this.translate("alertExplanationSumAboveTimeWindow", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.activeTimeWindow.start, aggregation.activeTimeWindow.end);
+      }
       return this.translate("alertExplanationSumAbove", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {

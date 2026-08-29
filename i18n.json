@@ -175,6 +175,10 @@
         "de": "{0} hat die konfigurierte Summe für '{1}' in den letzten {2} Stunden überschritten (aktuelle Summe: {3}, erwartetes Maximum: {4}).",
         "en": "{0} exceeded the configured total for '{1}' in the last {2} hours (current total: {3}, expected maximum: {4})."
     },
+    "alertSummarySumAboveTimeWindow": {
+        "de": "{0} hat die konfigurierte Summe für '{1}' zwischen {2} und {3} Uhr überschritten (aktuelle Summe: {4}, erwartetes Maximum: {5}).",
+        "en": "{0} exceeded the configured total for '{1}' between {2} and {3} (current total: {4}, expected maximum: {5})."
+    },
     "alertSummaryRuleMatched": {
         "de": "{0} hat die konfigurierte Regel ausgelöst.",
         "en": "{0} matched the configured rule."
@@ -186,6 +190,10 @@
     "alertExplanationSumAbove": {
         "de": "Die rollierende Summe für '{0}' über {1} Daten beträgt {2} innerhalb der letzten {3} Stunden und überschreitet das Maximum.",
         "en": "The rolling sum for '{0}' across {1} data points is {2} within the last {3} hours, exceeding the maximum."
+    },
+    "alertExplanationSumAboveTimeWindow": {
+        "de": "Für '{0}' wurden zwischen {3} und {4} Uhr {1} aktive Ereignisse mit einer Summe von {2} erfasst. Dies überschreitet das konfigurierte Maximum.",
+        "en": "For '{0}', {1} active events with a total of {2} were recorded between {3} and {4}. This exceeds the configured maximum."
     },
     "alertExplanationRuleActive": {
         "de": "Eine konfigurierte Regel wurde aktiv.",

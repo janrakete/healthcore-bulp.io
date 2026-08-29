@@ -264,6 +264,42 @@ describe("Alerts engine", () => {
     expect(alert.score).toBeGreaterThan(0);
   });
 
+  test("counts only active values within a configured time window", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, activeTimeStart, activeTimeEnd, thresholdMax, minReadings) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Night bathroom activity", "motion", "SumAboveThreshold", 24, "00:00", "00:01", 0, 1);
+
+    const today = new Date();
+    const activeInWindow = new Date(today);
+    activeInWindow.setHours(0, 0, 0, 0);
+    const inactiveInWindow = new Date(activeInWindow);
+    inactiveInWindow.setSeconds(30);
+    const activeOutsideWindow = new Date(today);
+    activeOutsideWindow.setHours(12, 0, 0, 0);
+
+    [
+      { value: "yes", numeric: 1, timestamp: activeInWindow.getTime() },
+      { value: "no", numeric: 0, timestamp: inactiveInWindow.getTime() },
+      { value: "yes", numeric: 1, timestamp: activeOutsideWindow.getTime() }
+    ].forEach((entry) => {
+      db.prepare(
+        "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+      ).run(careDevice001ID, "motion", entry.value, entry.numeric, entry.timestamp);
+    });
+
+    alerts.handleDeviceValues({
+      uuid: "care_device_001",
+      bridge: "http",
+      values: { motion: { value: "yes", valueAsNumeric: 1 } }
+    });
+
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Night bathroom activity");
+    expect(alert).toBeDefined();
+    expect(alert.summary).toContain("00:00");
+    expect(alert.summary).toContain("1");
+    expect(alert.explanation).toContain("1");
+  });
+
   test("scenario 'notification' action creates a ScenarioEvent alert and does NOT fire alert_opened scenario event (loop guard)", async () => {
     // Build a scenario that fires on alert_opened and has a notification action.
     // Without the guard, createScenarioAlert would emit alert_opened, which would
