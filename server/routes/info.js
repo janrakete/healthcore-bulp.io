@@ -130,69 +130,78 @@ router.get("/", async function (request, response) {
  *                 2026-08-15 00:11:38: [00:11:38] Server started successfully.
  */
 router.get("/logs", async function (request, response) {
-    const logsDirectory = path.join(__dirname, "../..", "logs");
-    const files         = fs.readdirSync(logsDirectory).filter(file => file.endsWith(".log")); // Get all log files in the logs directory
-
     const data = {};
 
-    const maxEntries = appConfig.CONF_apiCallLogsMaxEntries;
-    const lines      = (await Promise.all(files.map(async file => { // Read each log file and return the last maxEntries lines
-        if (maxEntries <= 0) {
-            return [];
-        }
+    const logsDirectory = path.join(__dirname, "../..", "logs");
+    
+    if (fs.existsSync(logsDirectory)) {
+        const files         = fs.readdirSync(logsDirectory).filter(file => file.endsWith(".log")); // Get all log files in the logs directory
 
-        const fileHandle = await fs.promises.open(path.join(logsDirectory, file), "r");
 
-        try {
-            const fileSize  = (await fileHandle.stat()).size;
-            const chunks    = [];
-            const chunkSize = 64 * 1024;
-            let position    = fileSize;
-            let lineBreaks  = 0;
-
-            while (position > 0 && lineBreaks <= maxEntries) { // Read the file in reverse until we have enough lines
-                const bytesToRead = Math.min(chunkSize, position);
-                position -= bytesToRead;
-
-                const buffer = Buffer.alloc(bytesToRead);
-                await fileHandle.read(buffer, 0, bytesToRead, position);
-                chunks.unshift(buffer);
-
-                for (const byte of buffer) {
-                    if (byte === 0x0A) {
-                        lineBreaks++;
-                    }
-                }
+        const maxEntries = appConfig.CONF_apiCallLogsMaxEntries;
+        const lines      = (await Promise.all(files.map(async file => { // Read each log file and return the last maxEntries lines
+            if (maxEntries <= 0) {
+                return [];
             }
 
-            return Buffer.concat(chunks).toString("utf8").split("\n").slice(-maxEntries); // Return the last maxEntries lines
-        }
-        finally {
-            await fileHandle.close();
-        }
-    }))).flat();
+            const fileHandle = await fs.promises.open(path.join(logsDirectory, file), "r");
 
-    const timestampPattern = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?::\s*)?/;
+            try {
+                const fileSize  = (await fileHandle.stat()).size;
+                const chunks    = [];
+                const chunkSize = 64 * 1024;
+                let position    = fileSize;
+                let lineBreaks  = 0;
 
-    lines.sort((lineA, lineB) => { // Sort lines by timestamp in ascending order
-        const timestampA = lineA.match(timestampPattern)?.[1];
-        const timestampB = lineB.match(timestampPattern)?.[1];
+                while (position > 0 && lineBreaks <= maxEntries) { // Read the file in reverse until we have enough lines
+                    const bytesToRead = Math.min(chunkSize, position);
+                    position -= bytesToRead;
 
-        if (!timestampA || !timestampB) {
-            return timestampA ? -1 : timestampB ? 1 : 0;
-        }
+                    const buffer = Buffer.alloc(bytesToRead);
+                    await fileHandle.read(buffer, 0, bytesToRead, position);
+                    chunks.unshift(buffer);
 
-        return timestampA.localeCompare(timestampB);
-    });
-    
-    common.conLog("Server route 'Info': Logs retrieved from " + files.length + " log files.", "gre");
+                    for (const byte of buffer) {
+                        if (byte === 0x0A) {
+                            lineBreaks++;
+                        }
+                    }
+                }
 
-    const ansiEscapePattern = /\x1B\[[0-?]*[ -\/]*[@-~]/g;
+                return Buffer.concat(chunks).toString("utf8").split("\n").slice(-maxEntries); // Return the last maxEntries lines
+            }
+            finally {
+                await fileHandle.close();
+            }
+        }))).flat();
 
-    data.status = "ok";
-    data.result = lines.map(line => line.replace(timestampPattern, "").replace(ansiEscapePattern, "")).join("\n");
+        const timestampPattern = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?::\s*)?/;
 
-    return response.status(200).json(data);
+        lines.sort((lineA, lineB) => { // Sort lines by timestamp in ascending order
+            const timestampA = lineA.match(timestampPattern)?.[1];
+            const timestampB = lineB.match(timestampPattern)?.[1];
+
+            if (!timestampA || !timestampB) {
+                return timestampA ? -1 : timestampB ? 1 : 0;
+            }
+
+            return timestampA.localeCompare(timestampB);
+        });
+        
+        common.conLog("Server route 'Info': Logs retrieved from " + files.length + " log files.", "gre");
+
+        const ansiEscapePattern = /\x1B\[[0-?]*[ -\/]*[@-~]/g;
+
+        data.status = "ok";
+        data.result = lines.map(line => line.replace(timestampPattern, "").replace(ansiEscapePattern, "")).join("\n");
+
+    }
+    else {
+        data.status     = "error";
+        data.message    = "Logs directory does not exist.";
+    }
+
+    return common.sendResponse(response, data, "Server route 'Info'", "GET request info");
 });    
 
 module.exports = router;

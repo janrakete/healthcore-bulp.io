@@ -143,8 +143,70 @@ describe("Reporting generation", () => {
     expect(Array.isArray(facts.propertySpikeFindings)).toBe(true);
     expect(facts.propertyDailySummaries.motion.dailyCounts.length).toBeGreaterThanOrEqual(1);
 
-    // openAlerts: array present (empty because no alerts inserted for this individual)
-    expect(Array.isArray(facts.openAlerts)).toBe(true);
+    // alerts: array present (empty because no alerts were inserted for this individual)
+    expect(Array.isArray(facts.alerts)).toBe(true);
+  });
+
+  test("includes time-windowed inactivity alerts as structured report facts", () => {
+    const now = Date.now();
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Bathroom group", "Bathroom sensors");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, 1);
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?)"
+    ).run("No bathroom activity", "motion", "NoActivityForDuration", "device_group", group.lastInsertRowid);
+    db.prepare(
+      "INSERT INTO alerts (ruleID, type, status, score, title, summary, recommendation, deviceID, property, individualID, roomID, source, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
+    ).run(1, "NoActivityForDuration", "open", 1, "No bathroom activity", "No activity for 30 minutes.", "Check on Lea.", 1, "motion", individualID, 1, "alerts_rule");
+
+    const service = new ReportingService(null);
+    const facts = service.buildFactsForIndividual(
+      { individualID: individualID, firstname: "Lea", lastname: "Example", roomID: 1 },
+      reportDate,
+      { startUnix: now - (60 * 60 * 1000), endUnix: now + (60 * 1000) }
+    );
+
+    expect(facts.inactivityFindings).toHaveLength(1);
+    const groupID = group.lastInsertRowid;
+    expect(facts.inactivityFindings[0]).toMatchObject({
+      title: "No bathroom activity",
+      status: "open",
+      property: "motion",
+      recommendation: "Check on Lea.",
+      scopeGroupID: Number(groupID),
+      scopeDevices: [{ deviceID: 1, name: "Bathroom Sensor" }]
+    });
+  });
+
+  test("excludes inactivity alerts resolved before the report range", () => {
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alerts (ruleID, type, status, score, title, summary, deviceID, property, individualID, roomID, source, dateTimeAdded, dateTimeResolved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(? / 1000, 'unixepoch', 'localtime'), datetime(? / 1000, 'unixepoch', 'localtime'))"
+    ).run(1, "NoActivityForDuration", "resolved", 1, "Previous inactivity", "Already resolved.", 1, "motion", individualID, 1, "alerts_rule", now - (4 * 60 * 60 * 1000), now - (3 * 60 * 60 * 1000));
+
+    const service = new ReportingService(null);
+    const findings = service.inactivityFindingsGet(individualID, {
+      startUnix: now - (2 * 60 * 60 * 1000),
+      endUnix: now - (60 * 60 * 1000)
+    });
+
+    expect(findings).toEqual([]);
+  });
+
+  test("includes a room-scoped inactivity alert for the person assigned to that room", () => {
+    db.prepare("DELETE FROM alerts").run();
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alerts (ruleID, type, status, score, title, summary, deviceID, property, individualID, roomID, source, dateTimeAdded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))"
+    ).run(1, "NoActivityForDuration", "open", 1, "No bathroom activity", "No activity in the bathroom.", null, "motion", 0, 1, "alerts_rule");
+
+    const service = new ReportingService(null);
+    const findings = service.inactivityFindingsGet(individualID, {
+      startUnix: now - (60 * 60 * 1000),
+      endUnix: now + (60 * 1000)
+    }, 1);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].title).toBe("No bathroom activity");
   });
 
   test("validates explicit start/end range", () => {

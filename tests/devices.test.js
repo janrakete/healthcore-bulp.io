@@ -41,6 +41,38 @@ afterAll(() => {
 
 // ─── GET /devices/all ────────────────────────────────────────────────────────
 
+describe("Device groups API", () => {
+
+  test("creates a device group and adds a device membership", async () => {
+    const device = insertTestDevice(db, {
+      uuid: "dev_group_001",
+      bridge: "http",
+      productName: "Group Test Sensor",
+    });
+
+    const createRes = await request(app)
+      .post("/devices-groups")
+      .send({ name: "Care Group", description: "Group for monitoring" });
+
+    expect(createRes.status).toBe(200);
+    expect(createRes.body.status).toBe("ok");
+    expect(createRes.body.group.groupID).toBeDefined();
+
+    const groupID = createRes.body.group.groupID;
+    const addRes = await request(app)
+      .post(`/devices-groups/${groupID}/devices`)
+      .send({ deviceID: device.deviceID });
+
+    expect(addRes.status).toBe(200);
+    expect(addRes.body.status).toBe("ok");
+
+    const detailRes = await request(app).get(`/devices-groups/${groupID}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.status).toBe("ok");
+    expect(detailRes.body.group.members.some((member) => member.deviceID === device.deviceID)).toBe(true);
+  });
+});
+
 describe("GET /devices/all", () => {
 
   beforeAll(() => {

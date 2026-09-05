@@ -199,6 +199,14 @@
         "de": "Eine konfigurierte Regel wurde aktiv.",
         "en": "A configured rule became active."
     },
+    "alertSummaryNoActivity": {
+        "de": "{0}: Seit {2} Minuten wurde kein aktiver Wert für '{1}' erfasst. Letzte Aktivität: {3}.",
+        "en": "{0}: No active '{1}' reading was recorded for {2} minutes. Last activity: {3}."
+    },
+    "alertExplanationNoActivity": {
+        "de": "Der letzte Wert für '{0}', der der Bedingung '{1}' entspricht, liegt {2} Minuten zurück. Die konfigurierte Inaktivitätsdauer beträgt {3} Minuten.",
+        "en": "The last '{0}' reading matching '{1}' was {2} minutes ago. The configured inactivity duration is {3} minutes."
+    },
     "alertRecommendationDefault": {
         "de": "Aktuelle Daten prüfen und entscheiden, ob eine Intervention erforderlich ist.",
         "en": "Review the recent values and decide whether an intervention is required."
@@ -218,9 +226,5 @@
     "alertDeviceFallback": {
         "de": "Gerät",
         "en": "Device"
-    },
-    "alertTitleScenarioEvent": {
-        "de": "Szenario-Ereignis",
-        "en": "Scenario event"
     }
 }

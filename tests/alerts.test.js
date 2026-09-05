@@ -18,6 +18,7 @@ jest.mock("../config", () => ({
   CONF_alertsHistorySize:                20,
   CONF_alertsMinHistoryEntries:          10,
   CONF_alertsMaxSignalsPerAlert:         5,
+  CONF_alertsLanguage:                   "de",
   CONF_language:                         "de",
 }));
 
@@ -262,6 +263,265 @@ describe("Alerts engine", () => {
     const alert = db.prepare("SELECT * FROM alerts WHERE type = 'SumAboveThreshold'").get();
     expect(alert).toBeDefined();
     expect(alert.score).toBeGreaterThan(0);
+  });
+
+  test("creates and resolves a dynamic inactivity alert for boolean sensor values", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, recommendation) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("No room activity", "motion", "NoActivityForDuration", 3, "truthy", "Check on the person in the room.");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+
+    let alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
+    expect(alert).toBeDefined();
+    expect(alert.status).toBe("open");
+    expect(alert.individualID).toBeGreaterThan(0);
+    expect(alert.roomID).toBeGreaterThan(0);
+    expect(alert.summary).toContain("Seit 5 Minuten");
+    expect(alert.explanation).toContain("konfigurierte Inaktivitätsdauer");
+
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+
+    alert = db.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alert.alertID);
+    expect(alert.status).toBe("resolved");
+  });
+
+  test("uses device group membership from the devices_groups tables", () => {
+    const secondDevice = insertTestDevice(db, {
+      uuid: "care_device_004",
+      bridge: "http",
+      name: "Door Sensor",
+      individualID: 0,
+      roomID: 0
+    });
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care sensors", "Active monitoring group");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, secondDevice.deviceID);
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("No group activity from table", "motion", "NoActivityForDuration", 3, "truthy", "device_group", group.lastInsertRowid);
+
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(secondDevice.deviceID, "motion", "yes", 1, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity from table")).toBeUndefined();
+
+    alerts.inactivityRulesEvaluate(now + (3 * 60 * 1000));
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity from table");
+    expect(alert).toBeDefined();
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("uses a configured comparison to support numeric sensor values", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "greater_or_equal", "100");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", "95", 95, now - (10 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    expect(db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get()).toBeUndefined();
+
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", "110", 110, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
+    expect(alert).toBeDefined();
+    expect(alert.status).toBe("open");
+  });
+
+  test("uses the latest activity from an explicit sensor group", () => {
+    const secondDevice = insertTestDevice(db, {
+      uuid: "care_device_002",
+      bridge: "http",
+      name: "Hallway Sensor",
+      individualID: 0,
+      roomID: 0
+    });
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care group", "Active monitoring group");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, secondDevice.deviceID);
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("No group activity", "motion", "NoActivityForDuration", 3, "truthy", "device_group", group.lastInsertRowid);
+    const insertReading = db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    );
+    insertReading.run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+    insertReading.run(secondDevice.deviceID, "motion", "yes", 1, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity")).toBeUndefined();
+
+    alerts.inactivityRulesEvaluate(now + (3 * 60 * 1000));
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity");
+    expect(alert).toBeDefined();
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("preserves optional person and room context for an explicit sensor group", () => {
+    const room = db.prepare("SELECT * FROM rooms WHERE name = ?").get("Care Room");
+    const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ?").get("Mia");
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Mia group", "Mia scoped sensors");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID, scopeIndividualID, scopeRoomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Mia group inactivity", "motion", "NoActivityForDuration", 3, "truthy", "device_group", group.lastInsertRowid, individual.individualID, room.roomID);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Mia group inactivity");
+    expect(alert.individualID).toBe(individual.individualID);
+    expect(alert.roomID).toBe(room.roomID);
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("does not keep a sensor group inactivity alert open outside its time window", () => {
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Night group", "Night queue");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+    const nowTimestamp = now.getTime();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activeTimeStart, activeTimeEnd, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Night group inactivity", "motion", "NoActivityForDuration", 3, "truthy", "00:00", "01:00", "device_group", group.lastInsertRowid);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, nowTimestamp - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(nowTimestamp);
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("Night group inactivity")).toBeUndefined();
+  });
+
+  test("does not evaluate an explicit sensor group without configured devices", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("Empty sensor group", "motion", "NoActivityForDuration", 3, "truthy", "device_group", 999999);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, Date.now() - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate();
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("Empty sensor group")).toBeUndefined();
+  });
+
+  test("uses all matching devices assigned to an individual scope", () => {
+    const room = db.prepare("SELECT * FROM rooms WHERE name = ?").get("Care Room");
+    const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ?").get("Mia");
+    const roomDevice = insertTestDevice(db, {
+      uuid: "care_device_003",
+      bridge: "http",
+      name: "Room Sensor",
+      individualID: 0,
+      roomID: room.roomID
+    });
+    // Create a device group for Mia's sensors with context
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Mia's sensors", "Sensors assigned to Mia");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, roomDevice.deviceID);
+    
+    const now = Date.now();
+    // Use new unified model: scopeGroupID with optional individualID/roomID context
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeGroupID, scopeIndividualID, scopeRoomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("No activity for Mia", "motion", "NoActivityForDuration", 3, "truthy", group.lastInsertRowid, individual.individualID, room.roomID);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(roomDevice.deviceID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No activity for Mia");
+    expect(alert).toBeDefined();
+    expect(alert.individualID).toBe(individual.individualID);
+    expect(alert.roomID).toBe(room.roomID);
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("uses all matching devices in a room scope", () => {
+    const room = db.prepare("SELECT * FROM rooms WHERE name = ?").get("Care Room");
+    // Create a device group for room sensors with room context
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care room sensors", "Sensors in the care room");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    
+    const now = Date.now();
+    // Use new unified model: scopeGroupID with optional roomID context
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeGroupID, scopeRoomID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("No activity in care room", "motion", "NoActivityForDuration", 3, "truthy", group.lastInsertRowid, room.roomID);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No activity in care room");
+    expect(alert).toBeDefined();
+    expect(alert.roomID).toBe(room.roomID);
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("does not resolve an inactivity alert while a new device value is processed", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator) VALUES (?, ?, ?, ?, ?)"
+    ).run("No room activity", "motion", "NoActivityForDuration", 3, "truthy");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    alerts.handleDeviceValues({
+      uuid:   "care_device_001",
+      bridge: "http",
+      values: { motion: { value: "no", valueAsNumeric: 0 } }
+    });
+
+    const alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
+    expect(alert.status).toBe("open");
+  });
+
+  test("resolves an inactivity alert when an updated rule has no matching activity", () => {
+    const ruleResult = db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "greater_or_equal", "100");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", "110", 110, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE ruleID = ?").get(ruleResult.lastInsertRowid);
+    expect(alert.status).toBe("open");
+
+    db.prepare("UPDATE alert_rules SET activityValue = ? WHERE ruleID = ?").run("200", ruleResult.lastInsertRowid);
+    alerts.inactivityRulesEvaluate(now);
+
+    expect(db.prepare("SELECT status FROM alerts WHERE alertID = ?").get(alert.alertID).status).toBe("resolved");
   });
 
   test("counts only active values within a configured time window", () => {

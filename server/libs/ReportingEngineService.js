@@ -92,6 +92,7 @@ class ReportingService {
                 numericPropertyStats: {},
                 propertyDailySummaries: {},
                 propertySpikeFindings: [],
+                inactivityFindings: this.inactivityFindingsGet(individual.individualID, range, individual.roomID),
                 alerts: this.getAlerts(individual.individualID),
                 devices: []
             };
@@ -136,6 +137,7 @@ class ReportingService {
             numericPropertyStats: this.buildNumericPropertyStats(readings, reportingDefinitions),                       // Object with min/max/avg/count for report-relevant numeric properties.
             propertyDailySummaries,                                                                                     // Daily active event summaries for report-relevant properties.
             propertySpikeFindings,                                                                                      // Flattened spike findings across all report-relevant properties.
+            inactivityFindings: this.inactivityFindingsGet(individual.individualID, range, individual.roomID),           // Inactivity alerts that intersect the report time window.
             alerts: this.getAlerts(individual.individualID),                                                            // Array of alerts for the individual. Needed for LLM context to provide relevant information about the individual's health status.
             devices: devices.map((device) => ({                                                                         // Include device info for context, e.g., deviceID, name, productName, roomID. This is used to provide context for the report generation.
                 deviceID: device.deviceID,
@@ -485,6 +487,65 @@ class ReportingService {
             source:        alert.source,
             dateTimeAdded: alert.dateTimeAdded
         }));
+    }
+
+    /**
+     * Returns inactivity alerts that overlap the report range. This keeps the
+     * report grounded in the same evaluated condition that triggered care action.
+     * @param {number} individualID
+     * @param {{startUnix:number,endUnix:number}} range
+     * @param {number} [roomID=0]
+     * @returns {Array<Object>}
+     */
+    inactivityFindingsGet(individualID, range, roomID = 0) {
+        const result = database.prepare(
+            "SELECT a.alertID, a.title, a.status, a.score, a.property, a.summary, a.explanation, a.recommendation, a.dateTimeAdded, a.dateTimeResolved, d.name AS deviceName, d.productName, r.name AS roomName, ar.inactivityDurationMinutes, ar.activityOperator, ar.activityValue, ar.scopeGroupID FROM alerts AS a LEFT JOIN devices AS d ON d.deviceID = a.deviceID LEFT JOIN rooms AS r ON r.roomID = a.roomID LEFT JOIN alert_rules AS ar ON ar.ruleID = a.ruleID WHERE (a.individualID = ? OR (a.individualID = 0 AND a.roomID = ?)) AND a.type = 'NoActivityForDuration' AND (CAST(strftime('%s', a.dateTimeAdded, 'utc') AS INTEGER) * 1000) < ? AND (a.dateTimeResolved IS NULL OR (CAST(strftime('%s', a.dateTimeResolved, 'utc') AS INTEGER) * 1000) >= ?) ORDER BY a.dateTimeAdded ASC"
+        ).all(individualID, Number(roomID) || 0, range.endUnix, range.startUnix).map((alert) => ({
+            alertID:                   alert.alertID,                                        // Unique identifier for the alert
+            title:                     alert.title,                                          // Human-readable title of the alert
+            status:                    alert.status,                                         // Current status of the alert (e.g., open, acknowledged, resolved)
+            score:                     Number(alert.score) || 0,                             // Severity score of the alert
+            property:                  alert.property,                                       // Property or attribute related to the alert
+            summary:                   alert.summary,                                        // Brief summary of the alert
+            explanation:               alert.explanation,                                    // Detailed explanation of the alert
+            recommendation:            alert.recommendation,                                 // Recommended action for the alert
+            alertOpenedAt:             alert.dateTimeAdded,                                  // Timestamp when the alert was opened
+            alertResolvedAt:           alert.dateTimeResolved,                               // Timestamp when the alert was resolved
+            deviceName:                alert.deviceName || alert.productName || null,        // Name of the device associated with the alert
+            roomName:                  alert.roomName || null,                               // Name of the room associated with the alert
+            inactivityDurationMinutes: alert.inactivityDurationMinutes === null ? null : Number(alert.inactivityDurationMinutes), // Duration of inactivity in minutes
+            activityOperator:          alert.activityOperator || "truthy",                   // Operator used to evaluate activity (e.g., "truthy", "falsy")
+            activityValue:             alert.activityValue,                                  // Value used to evaluate activity
+            scopeGroupID:              Number(alert.scopeGroupID) || 0,                      // ID of the scope group associated with the alert
+            scopeDevices:              this.getScopeDevices(Number(alert.scopeGroupID) || 0) // List of devices in the scope group
+        }));
+        return result;
+    }
+
+    /**
+     * Resolves an explicit sensor group's current display names for report facts.
+     * Individual and room scopes intentionally return an empty list because their
+     * device membership is dynamic and already represented by the scope type.
+     * @param {number} scopeGroupID
+     * @returns {Array<{deviceID:number,name:string}>}
+     */
+    getScopeDevices(scopeGroupID = 0) {
+        if (Number(scopeGroupID) <= 0) {
+            return [];
+        }
+
+        // Fetch all device IDs that belong to the specified group.
+        const deviceIDs = database.prepare("SELECT deviceID FROM devices_group_members WHERE groupID = ? ORDER BY deviceID").all(Number(scopeGroupID)).map((row) => Number(row.deviceID)).filter((deviceID) => Number.isInteger(deviceID) && deviceID > 0);
+        if (deviceIDs.length === 0) {
+            return [];
+        }
+
+        const devices = database.prepare(
+            "SELECT deviceID, name, productName, uuid FROM devices WHERE deviceID IN (" + deviceIDs.map(() => "?").join(",") + ")"
+        ).all(...deviceIDs);
+        const namesByID = new Map(devices.map((device) => [Number(device.deviceID), device.name || device.productName || device.uuid]));
+
+        return deviceIDs.map((deviceID) => ({ deviceID, name: namesByID.get(deviceID) || "Unknown device" }));
     }
 
     /**
