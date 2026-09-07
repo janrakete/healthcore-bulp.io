@@ -146,6 +146,7 @@ curl http://localhost:9998/reports
 ```
 
 ## 🏗️ Architecture
+
 Let’s take a look at the **architecture**:
 ![alt text](architecture.png "Healthcore architecture")
 
@@ -160,6 +161,14 @@ In the middle — that’s the Healthcore. The Healthcore consists of several No
 And now the best part: you can **add your own devices to the Healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
 
 On the left, you can see how various interfaces communicate bi-directionally with the Healthcore via a standardized API and visualize the data, for example. Just **bring your own interface**.
+
+Healthcore keeps three independent concepts separate:
+
+- `devices.roomID` is the physical installation or usage room of a device.
+- `devices.individualID` is the person who owns or uses a personal device.
+- `individuals.roomID` is the person's primary room or residence.
+
+Unset room/person assignments are stored as `NULL`, not as a `0`. A device group is a separate many-to-many collection of devices through `devices_group_members`; it is not a room or a person. Alert scopes use `scopeGroupID` to select the devices to evaluate, while `scopeIndividualID` and `scopeRoomID` provide optional person/room context.
 
 ## 📁 Folder structure
 ```plaintext
@@ -295,11 +304,12 @@ http://localhost:9998/api-docs/
 - ```/info:``` Info routes provide runtime and health details about the server and connected services
 - ```/data:``` Data routes offer generic CRUD access to allowed database tables with filtering and update controls
 - ```/devices:``` Device routes handle discovery, registration, connection management, metadata updates, and reading/writing device values across bridges
+- ```/devices-groups:``` Devices can be grouped together, e.g., “All motion detectors”
 - ```/scenarios:``` Scenario routes let you create, manage, and execute automation logic made of triggers and actions
 - ```/alerts:``` Alert routes expose alert lists, statistics, single-alert lookup, and status updates
 - ```/reports:``` Report routes return stored reports and trigger manual report generation for a selected time range
 - ```/update:``` Update routes check for newer versions and install the latest code from the repository
-
+ 
 ### Example for using ZigBee device:
 ```js
 // Base URL

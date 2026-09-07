@@ -223,8 +223,9 @@ class AlertsEngine {
    */
   /**
    * Resolves device scope from alert rule configuration.
-   * Unified model: scopeGroupID = 0 means all devices, >0 means specific group.
-   * Optional individualID/roomID can provide context for reports (legacy support).
+  * Unified model: scopeGroupID = 0 means all devices, >0 means a specific device group.
+  * scopeIndividualID and scopeRoomID are optional context filters; they do not replace
+  * the device group and do not change the independent meaning of a device's room.
    * @param {Object} rule - Alert rule from database
    * @returns {{devices:Array<Object>, label:string, individualID:number, roomID:number}}
    */

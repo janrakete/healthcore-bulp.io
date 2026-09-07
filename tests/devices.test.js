@@ -56,9 +56,9 @@ describe("Device groups API", () => {
 
     expect(createRes.status).toBe(200);
     expect(createRes.body.status).toBe("ok");
-    expect(createRes.body.group.groupID).toBeDefined();
+    expect(createRes.body.ID).toBeDefined();
 
-    const groupID = createRes.body.group.groupID;
+    const groupID = createRes.body.ID;
     const addRes = await request(app)
       .post(`/devices-groups/${groupID}/devices`)
       .send({ deviceID: device.deviceID });
@@ -69,7 +69,7 @@ describe("Device groups API", () => {
     const detailRes = await request(app).get(`/devices-groups/${groupID}`);
     expect(detailRes.status).toBe(200);
     expect(detailRes.body.status).toBe("ok");
-    expect(detailRes.body.group.members.some((member) => member.deviceID === device.deviceID)).toBe(true);
+    expect(detailRes.body.result.members.some((member) => member.deviceID === device.deviceID)).toBe(true);
   });
 });
 
@@ -165,8 +165,8 @@ describe("PATCH /devices/:bridge/:deviceID (assignment)", () => {
     expect(res.body.status).toBe("ok");
 
     const row = db.prepare("SELECT * FROM devices WHERE uuid = ? AND bridge = ?").get("dev_bt_001", "bluetooth");
-    expect(row.individualID).toBe(0);
-    expect(row.roomID).toBe(0);
+    expect(row.individualID).toBeNull();
+    expect(row.roomID).toBeNull();
   });
 
   test("PATCH with non-existent individualID → error", async () => {

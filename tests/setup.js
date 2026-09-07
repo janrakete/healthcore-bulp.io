@@ -26,8 +26,8 @@ function createTestDatabase() {
       name TEXT,
       description TEXT,
       strength INTEGER,
-      individualID INTEGER DEFAULT 0,
-      roomID INTEGER DEFAULT 0,
+      individualID INTEGER REFERENCES individuals(individualID) ON DELETE SET NULL,
+      roomID INTEGER REFERENCES rooms(roomID) ON DELETE SET NULL,
       dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(uuid, bridge)
     );
@@ -38,7 +38,7 @@ function createTestDatabase() {
       individualID INTEGER PRIMARY KEY AUTOINCREMENT,
       firstname TEXT NOT NULL,
       lastname TEXT NOT NULL,
-      roomID INTEGER DEFAULT 0
+      roomID INTEGER REFERENCES rooms(roomID) ON DELETE SET NULL
     );
 
     CREATE TABLE rooms (
@@ -349,8 +349,8 @@ function insertTestDevice(db, overrides = {}) {
     properties:   JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
     name:         "Test Device",
     description:  "A test device",
-    individualID: 0,
-    roomID:       0,
+    individualID: null,
+    roomID:       null,
     ...overrides,
   };
 

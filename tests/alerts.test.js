@@ -300,8 +300,8 @@ describe("Alerts engine", () => {
       uuid: "care_device_004",
       bridge: "http",
       name: "Door Sensor",
-      individualID: 0,
-      roomID: 0
+      individualID: null,
+      roomID: null
     });
     const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care sensors", "Active monitoring group");
     db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
@@ -356,8 +356,8 @@ describe("Alerts engine", () => {
       uuid: "care_device_002",
       bridge: "http",
       name: "Hallway Sensor",
-      individualID: 0,
-      roomID: 0
+      individualID: null,
+      roomID: null
     });
     const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care group", "Active monitoring group");
     db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
@@ -437,7 +437,7 @@ describe("Alerts engine", () => {
       uuid: "care_device_003",
       bridge: "http",
       name: "Room Sensor",
-      individualID: 0,
+      individualID: null,
       roomID: room.roomID
     });
     // Create a device group for Mia's sensors with context

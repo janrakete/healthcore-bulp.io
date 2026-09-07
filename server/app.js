@@ -32,7 +32,9 @@ database.pragma("foreign_keys = ON");
  * Database migration, if needed
  */
 const databaseMigrationEngine = require("./libs/DatabaseMigrationEngine");
+database.pragma("foreign_keys = OFF"); // migrations may rebuild tables referenced by existing foreign keys
 databaseMigrationEngine.runMigrations();
+database.pragma("foreign_keys = ON");
 
 /**
  * Start server
