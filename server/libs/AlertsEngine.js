@@ -364,9 +364,8 @@ class AlertsEngine {
   }
 
   /**
-   * Determines whether one sensor reading represents activity for an inactivity rule.
-   * Supported operators are truthy, falsy, equals, not_equals, greater_than,
-   * greater_or_equal, less_than, and less_or_equal.
+  * Determines whether one sensor reading represents activity for an inactivity rule.
+  * Supported operators are truthy, falsy, equals, and not_equals.
    * @param {Object} rule
    * @param {Object} reading
    * @returns {boolean}
@@ -376,7 +375,6 @@ class AlertsEngine {
     const value = reading.value;
     const numericValue = Number(reading.valueAsNumeric);
     const expectedValue = rule.activityValue;
-    const expectedNumericValue = Number(expectedValue);
 
     if (operator === "truthy") {
       return this.isTruthySensorValue(value, numericValue);
@@ -387,32 +385,19 @@ class AlertsEngine {
     }
 
     if (operator === "equals") {
+      const numericValue = Number(reading.valueAsNumeric);
+      const expectedNumericValue = Number(expectedValue);
       return Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue)
         ? numericValue === expectedNumericValue
         : String(value) === String(expectedValue);
     }
 
     if (operator === "not_equals") {
+      const numericValue = Number(reading.valueAsNumeric);
+      const expectedNumericValue = Number(expectedValue);
       return Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue)
         ? numericValue !== expectedNumericValue
         : String(value) !== String(expectedValue);
-    }
-
-    if (!Number.isFinite(numericValue) || !Number.isFinite(expectedNumericValue)) {
-      return false;
-    }
-
-    if (operator === "greater_than") {
-      return numericValue > expectedNumericValue;
-    }
-    if (operator === "greater_or_equal") {
-      return numericValue >= expectedNumericValue;
-    }
-    if (operator === "less_than") {
-      return numericValue < expectedNumericValue;
-    }
-    if (operator === "less_or_equal") {
-      return numericValue <= expectedNumericValue;
     }
 
     return false;
@@ -568,7 +553,7 @@ class AlertsEngine {
       return;
     }
 
-    const threshold = Number(rule.thresholdMin) || appConfig.CONF_alertsAnomalyThreshold;
+    const threshold = Number(rule.anomalyThreshold) || appConfig.CONF_alertsAnomalyThreshold;
 
     if (deviation.score < threshold) {
       this.resolveOpenAlerts({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: context.deviceID, property: property });
@@ -698,7 +683,7 @@ class AlertsEngine {
    * @returns {{start:string,end:string}|null}
    */
   getActiveTimeWindow(rule) {
-    if (rule.aggregationType !== "SumAboveThreshold" && rule.aggregationType !== "NoActivityForDuration") {
+    if (rule.aggregationType !== "NoActivityForDuration") {
       return null;
     }
 
@@ -985,9 +970,6 @@ class AlertsEngine {
       return this.translate("alertSummarySumBelow", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
     }
     else if (rule.aggregationType === "SumAboveThreshold") {
-      if (aggregation.activeTimeWindow) {
-        return this.translate("alertSummarySumAboveTimeWindow", label, this.translateProperty(rule.sourceProperty), aggregation.activeTimeWindow.start, aggregation.activeTimeWindow.end, aggregation.total, Number(rule.thresholdMax || 0));
-      }
       return this.translate("alertSummarySumAbove", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
     }
     else {
@@ -1033,9 +1015,6 @@ class AlertsEngine {
       return this.translate("alertExplanationSumBelow", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else if (rule.aggregationType === "SumAboveThreshold") {
-      if (aggregation.activeTimeWindow) {
-        return this.translate("alertExplanationSumAboveTimeWindow", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.activeTimeWindow.start, aggregation.activeTimeWindow.end);
-      }
       return this.translate("alertExplanationSumAbove", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {

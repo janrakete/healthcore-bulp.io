@@ -4,7 +4,58 @@
  * ========================
  */
 
+const appConfig       = require("../../config");
 const router = require("express").Router();
+
+/**
+ * @swagger
+ *   /devices-groups:
+ *     get:
+ *       summary: Retrieve all device groups
+ *       description: Retrieves a list of all device groups.
+ *       tags:
+ *         - Device Groups
+ *       responses:
+ *         "200":
+ *           description: Device groups retrieved successfully.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   result:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         groupID:
+ *                           type: integer
+ *                           example: 1
+ *                         name:
+ *                           type: string
+ *                           example: "Living Room Sensors"
+ *                         description:
+ *                           type: string
+ *                           example: "Devices installed in the living room"
+ */
+router.get("/", function (request, response) {
+    let data = {};
+
+    try {
+        const results = database.prepare("SELECT * FROM devices_groups LIMIT " + appConfig.CONF_tablesMaxEntriesReturned).all();
+        data.status = "ok";
+        data.result = results;
+    }
+    catch (error) {
+        data.status = "error";
+        data.error = error.message;
+    }
+
+    return common.sendResponse(response, data, "Server route 'DeviceGroups'", "GET request");
+});
 
 /**
  * @swagger

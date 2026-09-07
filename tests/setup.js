@@ -200,6 +200,7 @@ function createTestDatabase() {
       activeTimeEnd TEXT,
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
+      anomalyThreshold NUMERIC,
       minReadings INTEGER DEFAULT 1,
       inactivityDurationMinutes NUMERIC,
       activityOperator TEXT,

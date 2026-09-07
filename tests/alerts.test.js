@@ -87,7 +87,7 @@ function seedValues(values) {
 describe("Alerts engine", () => {
   test("creates Anomaly Detection alert", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
@@ -116,7 +116,7 @@ describe("Alerts engine", () => {
 
   test("detects anomaly when baseline is constant but latest value differs", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
@@ -162,7 +162,7 @@ describe("Alerts engine", () => {
 
   test("auto-resolves Anomaly Detection alert when values normalize", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -190,7 +190,7 @@ describe("Alerts engine", () => {
 
   test("limits signals per alert to configured maximum", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -328,27 +328,26 @@ describe("Alerts engine", () => {
     expect(alert.deviceID).toBeNull();
   });
 
-  test("uses a configured comparison to support numeric sensor values", () => {
+  test("uses a configured equality comparison for numeric sensor values", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "greater_or_equal", "100");
+    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "equals", "100");
 
     const now = Date.now();
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", "95", 95, now - (10 * 60 * 1000));
+    ).run(careDevice001ID, "heartrate", "100", 100, now - (10 * 60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
-    expect(db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get()).toBeUndefined();
+    expect(db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get()).toBeDefined();
 
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", "110", 110, now - (5 * 60 * 1000));
+    ).run(careDevice001ID, "heartrate", "100", 100, now - (60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
     const alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
-    expect(alert).toBeDefined();
-    expect(alert.status).toBe("open");
+    expect(alert.status).toBe("resolved");
   });
 
   test("uses the latest activity from an explicit sensor group", () => {
@@ -507,12 +506,12 @@ describe("Alerts engine", () => {
   test("resolves an inactivity alert when an updated rule has no matching activity", () => {
     const ruleResult = db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "greater_or_equal", "100");
+    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "equals", "100");
 
     const now = Date.now();
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", "110", 110, now - (5 * 60 * 1000));
+    ).run(careDevice001ID, "heartrate", "100", 100, now - (5 * 60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
     const alert = db.prepare("SELECT * FROM alerts WHERE ruleID = ?").get(ruleResult.lastInsertRowid);
@@ -524,23 +523,23 @@ describe("Alerts engine", () => {
     expect(db.prepare("SELECT status FROM alerts WHERE alertID = ?").get(alert.alertID).status).toBe("resolved");
   });
 
-  test("counts only active values within a configured time window", () => {
+  test("aggregates all values within the configured hours window", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, activeTimeStart, activeTimeEnd, thresholdMax, minReadings) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    ).run("Night bathroom activity", "motion", "SumAboveThreshold", 24, "00:00", "00:01", 0, 1);
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("Bathroom activity", "motion", "SumAboveThreshold", 24, 1, 1);
 
     const today = new Date();
-    const activeInWindow = new Date(today);
-    activeInWindow.setHours(0, 0, 0, 0);
-    const inactiveInWindow = new Date(activeInWindow);
-    inactiveInWindow.setSeconds(30);
-    const activeOutsideWindow = new Date(today);
-    activeOutsideWindow.setHours(12, 0, 0, 0);
+    const firstReading = new Date(today);
+    firstReading.setHours(0, 0, 0, 0);
+    const secondReading = new Date(firstReading);
+    secondReading.setSeconds(30);
+    const thirdReading = new Date(today);
+    thirdReading.setHours(12, 0, 0, 0);
 
     [
-      { value: "yes", numeric: 1, timestamp: activeInWindow.getTime() },
-      { value: "no", numeric: 0, timestamp: inactiveInWindow.getTime() },
-      { value: "yes", numeric: 1, timestamp: activeOutsideWindow.getTime() }
+      { value: "yes", numeric: 1, timestamp: firstReading.getTime() },
+      { value: "no", numeric: 0, timestamp: secondReading.getTime() },
+      { value: "yes", numeric: 1, timestamp: thirdReading.getTime() }
     ].forEach((entry) => {
       db.prepare(
         "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
@@ -553,11 +552,10 @@ describe("Alerts engine", () => {
       values: { motion: { value: "yes", valueAsNumeric: 1 } }
     });
 
-    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Night bathroom activity");
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Bathroom activity");
     expect(alert).toBeDefined();
-    expect(alert.summary).toContain("00:00");
-    expect(alert.summary).toContain("1");
-    expect(alert.explanation).toContain("1");
+    expect(alert.summary).toContain("2");
+    expect(alert.explanation).toContain("2");
   });
 
   test("scenario 'notification' action creates a ScenarioEvent alert and does NOT fire alert_opened scenario event (loop guard)", async () => {
@@ -656,7 +654,7 @@ describe("Alerts engine", () => {
 describe("Alerts API", () => {
   test("GET /alerts returns created alerts", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -685,7 +683,7 @@ describe("Alerts API", () => {
 
   test("GET /alerts caps limit at CONF_tablesMaxEntriesReturned", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -703,7 +701,7 @@ describe("Alerts API", () => {
 
   test("GET /alerts applies default limit without query param", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
@@ -721,7 +719,7 @@ describe("Alerts API", () => {
 
   test("GET /alerts/:id returns alert with signals", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);

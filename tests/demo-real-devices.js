@@ -261,7 +261,7 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
 
   // Rule 1: Heart rate anomaly (fires for any device that sends "heartrate")
   const bangleRule = database.prepare(
-    "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin, minReadings, recommendation) VALUES (?, ?, ?, ?, ?, ?)"
+    "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold, minReadings, recommendation) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(
     DEMO_PREFIX + "Ungewöhnlicher Puls",
     "heartrate",

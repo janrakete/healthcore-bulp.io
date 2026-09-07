@@ -168,8 +168,6 @@ Healthcore keeps three independent concepts separate:
 - `devices.individualID` is the person who owns or uses a personal device.
 - `individuals.roomID` is the person's primary room or residence.
 
-Unset room/person assignments are stored as `NULL`, not as a `0`. A device group is a separate many-to-many collection of devices through `devices_group_members`; it is not a room or a person. Alert scopes use `scopeGroupID` to select the devices to evaluate, while `scopeIndividualID` and `scopeRoomID` provide optional person/room context.
-
 ## 📁 Folder structure
 ```plaintext
 ├── broker/                # MQTT broker
