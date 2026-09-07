@@ -67,7 +67,7 @@ class AlertsEngine {
       const deviceID  = device?.deviceID || null;
 
       if (data.status === "offline") { // "offline" opens or updates a connectivity risk alert
-        const alert = this.upsertAlert({
+        const alert = this.openOrUpdateAlert({
           ruleID:         0,
           type:           "device_connectivity_risk",
           score:          0.9,
@@ -118,11 +118,10 @@ class AlertsEngine {
 
       const rules = database.prepare(
         "SELECT * FROM alert_rules WHERE aggregationType = 'NoActivityForDuration' ORDER BY ruleID ASC"
-      ).all();
+      ).all().map((rule) => this.normalizeRule(rule));
 
       rules.forEach((rule) => {
-        const durationMinutes = Number(rule.inactivityDurationMinutes);
-        if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+        if (rule.inactivityMinutes <= 0) {
           common.conLog("Alerts: Inactivity rule " + rule.ruleID + " has no valid inactivityDurationMinutes", "yel");
           return;
         }
@@ -133,8 +132,7 @@ class AlertsEngine {
         }
 
         // groupID=0 means all devices (evaluate per-device), else evaluate as shared group scope
-        const groupID = Number(rule.scopeGroupID) || 0;
-        if (groupID === 0) {
+        if (rule.groupID === 0) {
           scope.devices.forEach((device) => {
             this.evaluateInactivityRuleForDevice(rule, device, currentTimestamp);
           });
@@ -172,35 +170,35 @@ class AlertsEngine {
 
     const activeTimeWindow = this.getActiveTimeWindow(rule);
     if (activeTimeWindow && !this.isTimestampInActiveTimeWindow(currentTimestamp, activeTimeWindow)) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.sourceProperty });
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property });
       return;
     }
 
     const lastActiveReading = this.getLastActiveReading(context.deviceID, rule);
     if (!lastActiveReading) {
       // A changed rule may no longer match the historical activity that opened an alert.
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.sourceProperty });
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property });
       return;
     }
 
-    const durationMilliseconds = Number(rule.inactivityDurationMinutes) * 60 * 1000;
+    const durationMilliseconds = rule.inactivityMinutes * 60 * 1000;
     const inactivityMilliseconds = Math.max(0, currentTimestamp - Number(lastActiveReading.dateTimeAsNumeric));
 
     if (inactivityMilliseconds < durationMilliseconds) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.sourceProperty });
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property });
       return;
     }
 
-    const alert = this.upsertAlert({
+    const alert = this.openOrUpdateAlert({
       ruleID:           rule.ruleID,
-      type:             rule.aggregationType,
+      type:             rule.type,
       score:            Math.min(1, inactivityMilliseconds / durationMilliseconds),
       title:            this.buildRuleTitle(rule, context.device),
       summary:          this.buildInactivitySummary(rule, context, lastActiveReading, inactivityMilliseconds),
       explanation:      this.buildInactivityExplanation(rule, lastActiveReading, inactivityMilliseconds),
       recommendation:   rule.recommendation || this.translate("alertRecommendationDefault"),
       deviceID:         context.deviceID,
-      property:         rule.sourceProperty,
+      property:         rule.property,
       individualID:     context.individualID,
       roomID:           context.roomID,
       source:           "alerts_rule"
@@ -208,19 +206,13 @@ class AlertsEngine {
 
     this.insertSignal(alert.alertID, {
       deviceID:       context.deviceID,
-      property:       rule.sourceProperty,
+      property:       rule.property,
       value:          String(lastActiveReading.value),
       valueAsNumeric: lastActiveReading.valueAsNumeric,
       weight:         Math.min(1, inactivityMilliseconds / durationMilliseconds)
     });
   }
 
-  /**
-   * Resolves the devices and display context for a configured rule scope.
-   * Existing rules use all_devices, which preserves the previous per-device behavior.
-   * @param {Object} rule
-   * @returns {{type:string,devices:Array<Object>,individualID:number,roomID:number,label:string}}
-   */
   /**
    * Resolves device scope from alert rule configuration.
   * Unified model: scopeGroupID = 0 means all devices, >0 means a specific device group.
@@ -230,31 +222,52 @@ class AlertsEngine {
    * @returns {{devices:Array<Object>, label:string, individualID:number, roomID:number}}
    */
   resolveInactivityRuleScope(rule) {
-    const groupID = Number(rule.scopeGroupID) || 0;
-    let devices = [];
-    let label = "";
-    let individualID = Number(rule.scopeIndividualID) || 0;
-    let roomID = Number(rule.scopeRoomID) || 0;
+    const groupID = rule.groupID;
+    const individualID = rule.individualID;
+    const roomID       = rule.roomID;
 
-    if (groupID > 0) {
-      // Fetch device IDs from group membership table
-      const deviceIDs = database.prepare("SELECT deviceID FROM devices_group_members WHERE groupID = ? ORDER BY deviceID")
-        .all(groupID)
-        .map(row => Number(row.deviceID))
-        .filter(id => Number.isInteger(id) && id > 0);
-
-      if (deviceIDs.length > 0) {
-        // Get group name for display label
-        const group = database.prepare("SELECT name FROM devices_groups WHERE groupID = ? LIMIT 1").get(groupID);
-        if (group) label = group.name;
-        devices = this.getDevicesWithProperty(rule.sourceProperty, deviceIDs);
-      }
-    } else {
-      // groupID=0 means all devices with this property
-      devices = this.getDevicesWithProperty(rule.sourceProperty);
+    if (groupID === 0) {
+      return {
+        devices: this.getDevicesWithProperty(rule.property),
+        label: "",
+        individualID,
+        roomID
+      };
     }
 
-    return { devices, label, individualID, roomID };
+    const deviceIDs = this.getDeviceIDsInGroup(groupID);
+    if (deviceIDs.length === 0) {
+      return { devices: [], label: "", individualID, roomID };
+    }
+
+    return {
+      devices: this.getDevicesWithProperty(rule.property, deviceIDs),
+      label: this.getDeviceGroupName(groupID),
+      individualID,
+      roomID
+    };
+  }
+
+  /**
+   * Returns the device IDs assigned to a group.
+   * @param {number} groupID
+   * @returns {Array<number>}
+   */
+  getDeviceIDsInGroup(groupID) {
+    return database.prepare("SELECT deviceID FROM devices_group_members WHERE groupID = ? ORDER BY deviceID")
+      .all(groupID)
+      .map((row) => Number(row.deviceID))
+      .filter((deviceID) => Number.isInteger(deviceID) && deviceID > 0);
+  }
+
+  /**
+   * Returns a group's display name.
+   * @param {number} groupID
+   * @returns {string}
+   */
+  getDeviceGroupName(groupID) {
+    const group = database.prepare("SELECT name FROM devices_groups WHERE groupID = ? LIMIT 1").get(groupID);
+    return group?.name || "";
   }
 
   /**
@@ -290,7 +303,7 @@ class AlertsEngine {
     const activeTimeWindow = this.getActiveTimeWindow(rule);
     if (activeTimeWindow && !this.isTimestampInActiveTimeWindow(currentTimestamp, activeTimeWindow)) {
       // An alert is only meaningful while its configured observation window is active.
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.sourceProperty });
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.property });
       return;
     }
 
@@ -300,16 +313,16 @@ class AlertsEngine {
       .sort((entryA, entryB) => Number(entryB.reading.dateTimeAsNumeric) - Number(entryA.reading.dateTimeAsNumeric));
 
     if (readings.length === 0) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.sourceProperty });
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.property });
       return;
     }
 
     const latest = readings[0];
-    const durationMilliseconds = Number(rule.inactivityDurationMinutes) * 60 * 1000;
+    const durationMilliseconds = rule.inactivityMinutes * 60 * 1000;
     const inactivityMilliseconds = Math.max(0, currentTimestamp - Number(latest.reading.dateTimeAsNumeric));
 
     if (inactivityMilliseconds < durationMilliseconds) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.sourceProperty });
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.property });
       return;
     }
 
@@ -321,16 +334,16 @@ class AlertsEngine {
       device: latest.device,
       scopeLabel: scope.label
     };
-    const alert = this.upsertAlert({
+    const alert = this.openOrUpdateAlert({
       ruleID:           rule.ruleID,
-      type:             rule.aggregationType,
+      type:             rule.type,
       score:            Math.min(1, inactivityMilliseconds / durationMilliseconds),
       title:            this.buildRuleTitle(rule, latest.device),
       summary:          this.buildInactivitySummary(rule, context, latest.reading, inactivityMilliseconds),
       explanation:      this.buildInactivityExplanation(rule, latest.reading, inactivityMilliseconds),
       recommendation:   rule.recommendation || this.translate("alertRecommendationDefault"),
       deviceID:         context.deviceID,
-      property:         rule.sourceProperty,
+      property:         rule.property,
       individualID:     context.individualID,
       roomID:           context.roomID,
       source:           "alerts_rule"
@@ -339,7 +352,7 @@ class AlertsEngine {
     readings.forEach((entry) => {
       this.insertSignal(alert.alertID, {
         deviceID:       entry.device.deviceID,
-        property:       rule.sourceProperty,
+        property:       rule.property,
         value:          String(entry.reading.value),
         valueAsNumeric: entry.reading.valueAsNumeric,
         weight:         entry.device.deviceID === latest.device.deviceID ? 1 : 0
@@ -358,49 +371,38 @@ class AlertsEngine {
   getLastActiveReading(deviceID, rule) {
     const readings = database.prepare(
       "SELECT value, valueAsNumeric, dateTimeAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC"
-    ).all(deviceID, rule.sourceProperty);
+    ).all(deviceID, rule.property);
 
     return readings.find((reading) => this.isRuleValueActive(rule, reading)) || null;
   }
 
   /**
-  * Determines whether one sensor reading represents activity for an inactivity rule.
-  * Supported operators are truthy, falsy, equals, and not_equals.
+   * Determines whether one sensor reading represents activity for an inactivity rule.
+   * Supported operators are truthy, falsy, equals, and not_equals.
    * @param {Object} rule
    * @param {Object} reading
    * @returns {boolean}
    */
   isRuleValueActive(rule, reading) {
-    const operator = String(rule.activityOperator || "truthy").trim().toLowerCase();
+    const operator = rule.operator;
     const value = reading.value;
     const numericValue = Number(reading.valueAsNumeric);
     const expectedValue = rule.activityValue;
+    const expectedNumericValue = Number(expectedValue);
+    const numericComparison = Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue);
 
-    if (operator === "truthy") {
-      return this.isTruthySensorValue(value, numericValue);
+    switch (operator) {
+      case "truthy":
+        return this.isTruthySensorValue(value, numericValue);
+      case "falsy":
+        return !this.isTruthySensorValue(value, numericValue);
+      case "equals":
+        return numericComparison ? numericValue === expectedNumericValue : String(value) === String(expectedValue);
+      case "not_equals":
+        return numericComparison ? numericValue !== expectedNumericValue : String(value) !== String(expectedValue);
+      default:
+        return false;
     }
-
-    if (operator === "falsy") {
-      return !this.isTruthySensorValue(value, numericValue);
-    }
-
-    if (operator === "equals") {
-      const numericValue = Number(reading.valueAsNumeric);
-      const expectedNumericValue = Number(expectedValue);
-      return Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue)
-        ? numericValue === expectedNumericValue
-        : String(value) === String(expectedValue);
-    }
-
-    if (operator === "not_equals") {
-      const numericValue = Number(reading.valueAsNumeric);
-      const expectedNumericValue = Number(expectedValue);
-      return Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue)
-        ? numericValue !== expectedNumericValue
-        : String(value) !== String(expectedValue);
-    }
-
-    return false;
   }
 
   /**
@@ -488,50 +490,82 @@ class AlertsEngine {
         return;
       }
 
-      if (rule.aggregationType === "AnomalyDetection") {
-        this.evaluateAnomalyRule(rule, data, property, valueData, context);
-        return;
-      }
+      switch (rule.type) {
+        case "AnomalyDetection":
+          this.evaluateAnomalyRule(rule, data, property, valueData, context);
+          break;
 
-      if (rule.aggregationType === "NoActivityForDuration") {
-        // Absence needs the clock-driven evaluation below, not the incoming value event.
-        return;
-      }
+        case "SumBelowThreshold":
+          this.evaluateSumBelow(rule, property, valueData, context);
+          break;
 
-      const aggregation = this.getRuleAggregation(rule, context, property);
-      const minReadings = Number(rule.minReadings) || 1;
+        case "SumAboveThreshold":
+          this.evaluateSumAbove(rule, property, valueData, context);
+          break;
 
-      if (!aggregation || aggregation.readings < minReadings) {
-        return;
+        case "NoActivityForDuration":
+          // Absence needs the clock-driven evaluation below, not the incoming value event.
+          break;
       }
+    });
+  }
 
-      if (this.ruleThresholdReached(rule, aggregation) !== true) {
-        this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: property });
-      }
-      else {
-        const alert = this.upsertAlert({
-          ruleID:           rule.ruleID,
-          type:             rule.aggregationType,
-          score:            this.ruleScore(rule, aggregation),
-          title:            this.buildRuleTitle(rule, context.device),
-          summary:          this.buildRuleSummary(rule, aggregation, context),
-          explanation:      this.buildRuleExplanation(rule, aggregation),
-          recommendation:   rule.recommendation || this.translate("alertRecommendationDefault"),
-          deviceID:         context.deviceID,
-          property:         property,
-          individualID:     context.individualID,
-          roomID:           context.roomID,
-          source:           "alerts_rule"
-        });
+  /**
+   * Evaluates a sum-below rule.
+   */
+  evaluateSumBelow(rule, property, valueData, context) {
+    this.evaluateSumRule(rule, property, valueData, context, "below");
+  }
 
-        this.insertSignal(alert.alertID, {
-          deviceID:       context.deviceID,
-          property:       property,
-          value:          String(valueData.value ?? valueData.valueAsNumeric ?? ""),
-          valueAsNumeric: valueData.valueAsNumeric ?? null,
-          weight:         aggregation.total
-        });
-      }
+  /**
+   * Evaluates a sum-above rule.
+   */
+  evaluateSumAbove(rule, property, valueData, context) {
+    this.evaluateSumRule(rule, property, valueData, context, "above");
+  }
+
+  /**
+   * Evaluates either threshold-based sum rule.
+   * @param {Object} rule
+   * @param {string} property
+   * @param {Object} valueData
+   * @param {Object} context
+   * @param {string} comparison
+   */
+  evaluateSumRule(rule, property, valueData, context, comparison) {
+    const aggregation = this.sumRecentValues(rule, context, property);
+    const minimumReadings = rule.minimumReadings;
+
+    if (!aggregation || aggregation.readings < minimumReadings) {
+      return;
+    }
+
+    if (!this.sumThresholdReached(rule, aggregation, comparison)) {
+      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property });
+      return;
+    }
+
+    const alert = this.openOrUpdateAlert({
+      ruleID:         rule.ruleID,
+      type:           rule.type,
+      score:          this.calculateSumSeverity(rule, aggregation, comparison),
+      title:          this.buildRuleTitle(rule, context.device),
+      summary:        this.buildRuleSummary(rule, aggregation, context),
+      explanation:    this.buildRuleExplanation(rule, aggregation),
+      recommendation: rule.recommendation || this.translate("alertRecommendationDefault"),
+      deviceID:       context.deviceID,
+      property,
+      individualID:   context.individualID,
+      roomID:         context.roomID,
+      source:         "alerts_rule"
+    });
+
+    this.insertSignal(alert.alertID, {
+      deviceID:       context.deviceID,
+      property,
+      value:          String(valueData.value ?? valueData.valueAsNumeric ?? ""),
+      valueAsNumeric: valueData.valueAsNumeric ?? null,
+      weight:         aggregation.total
     });
   }
 
@@ -553,14 +587,14 @@ class AlertsEngine {
       return;
     }
 
-    const threshold = Number(rule.anomalyThreshold) || appConfig.CONF_alertsAnomalyThreshold;
+    const threshold = rule.anomalyScoreThreshold || appConfig.CONF_alertsAnomalyThreshold;
 
     if (deviation.score < threshold) {
       this.resolveOpenAlerts({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: context.deviceID, property: property });
       return;
     }
 
-    const alert = this.upsertAlert({
+    const alert = this.openOrUpdateAlert({
       ruleID:           rule.ruleID,
       type:             "AnomalyDetection",
       score:            deviation.score,
@@ -590,7 +624,34 @@ class AlertsEngine {
    * @returns {Array}
    */
   getMatchingRules(property) {
-    return database.prepare("SELECT * FROM alert_rules WHERE sourceProperty = ? ORDER BY ruleID ASC").all(property);
+    return database.prepare("SELECT * FROM alert_rules WHERE sourceProperty = ? ORDER BY ruleID ASC")
+      .all(property)
+      .map((rule) => this.normalizeRule(rule));
+  }
+
+  /**
+   * Normalizes values read from SQLite before rule evaluation.
+   * @param {Object} rule
+   * @returns {Object}
+   */
+  normalizeRule(rule) {
+    return {
+      ...rule,
+      type: String(rule.aggregationType || ""),
+      property: String(rule.sourceProperty || "").trim(),
+      minimumSum: Number(rule.thresholdMin) || 0,
+      maximumSum: Number(rule.thresholdMax) || 0,
+      anomalyScoreThreshold: Number(rule.anomalyThreshold) || 0,
+      minimumReadings: Math.max(1, Number(rule.minReadings) || 1),
+      inactivityMinutes: Number(rule.inactivityDurationMinutes) || 0,
+      groupID: Number(rule.scopeGroupID) || 0,
+      individualID: Number(rule.scopeIndividualID) || 0,
+      roomID: Number(rule.scopeRoomID) || 0,
+      operator: String(rule.activityOperator || "truthy").trim().toLowerCase(),
+      windowHours: Math.max(1, Number(rule.aggregationWindowHours) || 24),
+      activeFrom: String(rule.activeTimeStart || "").trim(),
+      activeUntil: String(rule.activeTimeEnd || "").trim()
+    };
   }
 
   /**
@@ -630,7 +691,7 @@ class AlertsEngine {
       return false;
     }
 
-    const hasProperty = (rule.sourceProperty !== undefined) && (String(rule.sourceProperty).trim() !== "");
+    const hasProperty = rule.property !== "";
     const hasDeviceID = (context.deviceID !== null) && (context.deviceID !== undefined);
     const hasBridge   = (context.bridge !== undefined) && (String(context.bridge).trim() !== "");
 
@@ -648,8 +709,8 @@ class AlertsEngine {
    * @param {string} property
    * @returns {Object|null}
    */
-  getRuleAggregation(rule, context, property) {
-    const aggregationWindowHours  = Math.max(1, Number(rule.aggregationWindowHours) || 24);
+  sumRecentValues(rule, context, property) {
+    const aggregationWindowHours  = rule.windowHours;
     const thresholdTimestamp      = Date.now() - (aggregationWindowHours * 60 * 60 * 1000);
     const activeTimeWindow        = this.getActiveTimeWindow(rule);
     const conditions              = ["deviceID = ?", "property = ?", "dateTimeAsNumeric >= ?"];
@@ -683,12 +744,12 @@ class AlertsEngine {
    * @returns {{start:string,end:string}|null}
    */
   getActiveTimeWindow(rule) {
-    if (rule.aggregationType !== "NoActivityForDuration") {
+    if (rule.type !== "NoActivityForDuration") {
       return null;
     }
 
-    const start       = String(rule.activeTimeStart || "").trim();
-    const end         = String(rule.activeTimeEnd || "").trim();
+    const start       = rule.activeFrom;
+    const end         = rule.activeUntil;
     const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
     return timePattern.test(start) && timePattern.test(end) ? { start, end } : null;
@@ -728,46 +789,42 @@ class AlertsEngine {
 
   /**
    * Evaluates whether a rule threshold is currently reached.
-   * @param {Object} rule
-   * @param {Object} aggregation
+  * @param {Object} rule
+  * @param {Object} aggregation
+  * @param {string} comparison
    * @returns {boolean}
    */
-  ruleThresholdReached(rule, aggregation) {
-    if (rule.aggregationType === "SumBelowThreshold") {
-      return aggregation.total < Number(rule.thresholdMin || 0);
+  sumThresholdReached(rule, aggregation, comparison) {
+    if (comparison === "below") {
+      return aggregation.total < rule.minimumSum;
     }
 
-    if (rule.aggregationType === "SumAboveThreshold") {
-      return aggregation.total > Number(rule.thresholdMax || 0);
+    if (comparison === "above") {
+      return aggregation.total > rule.maximumSum;
     }
 
     return false;
   }
 
   /**
-   * Calculates a normalized score (0..1) for a triggered rule.
+   * Calculates a normalized score (0..1) for a triggered sum rule.
    * @param {Object} rule
    * @param {Object} aggregation
+   * @param {string} comparison
    * @returns {number}
    */
-  ruleScore(rule, aggregation) {
-    if (rule.aggregationType === "SumBelowThreshold") {
-      const threshold = Number(rule.thresholdMin || 0);
-      if (threshold <= 0) {
-        return 0;
-      }
-      return Math.max(0, Math.min(1, (threshold - aggregation.total) / threshold));
+  calculateSumSeverity(rule, aggregation, comparison) {
+    const threshold = comparison === "below" ? rule.minimumSum : rule.maximumSum;
+
+    if (threshold <= 0) {
+      return 0;
     }
 
-    if (rule.aggregationType === "SumAboveThreshold") {
-      const threshold = Number(rule.thresholdMax || 0);
-      if (threshold <= 0) {
-        return 0;
-      }
-      return Math.max(0, Math.min(1, (aggregation.total - threshold) / threshold));
-    }
+    const difference = comparison === "below"
+      ? threshold - aggregation.total
+      : aggregation.total - threshold;
 
-    return 0;
+    return Math.max(0, Math.min(1, difference / threshold));
   }
 
   /**
@@ -824,7 +881,7 @@ class AlertsEngine {
    * @param {Object} payload
    * @returns {Object}
    */
-  upsertAlert(payload) {
+  openOrUpdateAlert(payload) {
    const existing = database.prepare(
       "SELECT * FROM alerts WHERE ifnull(ruleID, 0) = ifnull(?, 0) AND type = ? AND ifnull(deviceID, 0) = ifnull(?, 0) AND ifnull(property, '') = ifnull(?, '') AND ifnull(scenarioID, 0) = ifnull(?, 0) AND status IN ('open', 'acknowledged') ORDER BY alertID DESC LIMIT 1"
     ).get(payload.ruleID || 0, payload.type, payload.deviceID || 0, payload.property || "", payload.scenarioID || 0);
@@ -891,7 +948,7 @@ class AlertsEngine {
    * @returns {Object}
    */
   createScenarioAlert(scenario, action) {
-    return this.upsertAlert({
+    return this.openOrUpdateAlert({
       ruleID:         0,
       scenarioID:     scenario.scenarioID,
       type:           "ScenarioEvent",
@@ -966,11 +1023,11 @@ class AlertsEngine {
   buildRuleSummary(rule, aggregation, context) {
     const label = this.buildRuleContextLabel(context);
 
-    if (rule.aggregationType === "SumBelowThreshold") {
-      return this.translate("alertSummarySumBelow", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMin || 0));
+    if (rule.type === "SumBelowThreshold") {
+      return this.translate("alertSummarySumBelow", label, this.translateProperty(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.minimumSum);
     }
-    else if (rule.aggregationType === "SumAboveThreshold") {
-      return this.translate("alertSummarySumAbove", label, this.translateProperty(rule.sourceProperty), aggregation.aggregationWindowHours, aggregation.total, Number(rule.thresholdMax || 0));
+    else if (rule.type === "SumAboveThreshold") {
+      return this.translate("alertSummarySumAbove", label, this.translateProperty(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.maximumSum);
     }
     else {
       return this.translate("alertSummaryRuleMatched", label);
@@ -988,7 +1045,7 @@ class AlertsEngine {
   buildInactivitySummary(rule, context, lastActiveReading, inactivityMilliseconds) {
     const inactiveMinutes = Math.floor(inactivityMilliseconds / 60000);
     const lastActiveAt = new Date(lastActiveReading.dateTimeAsNumeric).toLocaleString(appConfig.CONF_alertsLanguage || "en");
-    return this.translate("alertSummaryNoActivity", this.buildRuleContextLabel(context), this.translateProperty(rule.sourceProperty), inactiveMinutes, lastActiveAt);
+    return this.translate("alertSummaryNoActivity", this.buildRuleContextLabel(context), this.translateProperty(rule.property), inactiveMinutes, lastActiveAt);
   }
 
   /**
@@ -999,9 +1056,9 @@ class AlertsEngine {
    * @returns {string}
    */
   buildInactivityExplanation(rule, lastActiveReading, inactivityMilliseconds) {
-    const configuredMinutes = Number(rule.inactivityDurationMinutes);
+    const configuredMinutes = rule.inactivityMinutes;
     const inactiveMinutes = Math.floor(inactivityMilliseconds / 60000);
-    return this.translate("alertExplanationNoActivity", this.translateProperty(rule.sourceProperty), String(rule.activityOperator || "truthy"), inactiveMinutes, configuredMinutes);
+    return this.translate("alertExplanationNoActivity", this.translateProperty(rule.property), rule.operator, inactiveMinutes, configuredMinutes);
   }
 
   /**
@@ -1011,11 +1068,11 @@ class AlertsEngine {
    * @returns {string}
    */
   buildRuleExplanation(rule, aggregation) {
-    if (rule.aggregationType === "SumBelowThreshold") {
-      return this.translate("alertExplanationSumBelow", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+    if (rule.type === "SumBelowThreshold") {
+      return this.translate("alertExplanationSumBelow", this.translateProperty(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
-    else if (rule.aggregationType === "SumAboveThreshold") {
-      return this.translate("alertExplanationSumAbove", this.translateProperty(rule.sourceProperty), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+    else if (rule.type === "SumAboveThreshold") {
+      return this.translate("alertExplanationSumAbove", this.translateProperty(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {
       return this.translate("alertExplanationRuleActive");
@@ -1039,9 +1096,7 @@ class AlertsEngine {
         return individual.firstname + " " + individual.lastname;
       }
     }
-    else {
-      return this.getDeviceName(context.device);
-    }
+    return this.getDeviceName(context.device);
   }
 
   /**
