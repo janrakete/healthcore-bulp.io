@@ -2,6 +2,16 @@
  * =============================================================================================
  * Alerts Engine
  * =============
+ *
+ * The engine follows one simple flow:
+ * 1. Read a device value or status update.
+ * 2. Find the matching alert rules and normalize their database values.
+ * 3. Evaluate the rule type: sum below, sum above, anomaly, or inactivity.
+ * 4. Open, update, or resolve the corresponding alert and store its signal.
+ *
+ * Rules describe when an alert should occur. Alerts are the user-facing events;
+ * signals are the concrete device readings that support an alert. Inactivity
+ * rules are evaluated by the scheduler because their trigger is missing activity.
  */
 
 const appConfig    = require("../../config");
@@ -14,6 +24,12 @@ class AlertsEngine {
    */
   constructor() {
   }
+
+  /**
+   * =============================================================================================
+   * Main functions: device events and rule evaluation
+   * =================================================
+   */
 
   /**
    * Returns a translated string from i18n.json for the configured language.
@@ -212,6 +228,12 @@ class AlertsEngine {
       weight:         Math.min(1, inactivityMilliseconds / durationMilliseconds)
     });
   }
+
+  /**
+   * =============================================================================================
+   * Helper functions: inactivity scope and activity values
+   * ======================================================
+   */
 
   /**
    * Resolves device scope from alert rule configuration.
@@ -475,6 +497,12 @@ class AlertsEngine {
   }
 
   /**
+   * =============================================================================================
+   * Main functions: configured value rules
+   * ======================================
+   */
+
+  /**
    * Evaluates configured alert rules for one incoming value.
    * @param {Object} data
    * @param {string} property
@@ -617,6 +645,12 @@ class AlertsEngine {
       weight:         deviation.score
     });
   }
+
+  /**
+   * =============================================================================================
+   * Helper functions: rule normalization and sum/time calculations
+   * ==============================================================
+   */
 
   /**
    * Returns all active rules matching a property.
@@ -828,6 +862,12 @@ class AlertsEngine {
   }
 
   /**
+   * =============================================================================================
+   * Helper functions: alert persistence and scenario integration
+   * ============================================================
+   */
+
+  /**
    * Resolves all currently open alerts matching the provided filters.
    * @param {Object} filters
    * @returns {void}
@@ -987,6 +1027,12 @@ class AlertsEngine {
       "DELETE FROM alert_signals WHERE alertID = ? AND signalID NOT IN (SELECT signalID FROM alert_signals WHERE alertID = ? ORDER BY signalID DESC LIMIT ?)"
     ).run(alertID, alertID, maxSignals);
   }
+
+  /**
+   * =============================================================================================
+   * Helper functions: labels, translations, and numeric utilities
+   * =============================================================
+   */
 
   /**
    * Loads a device from the database.
