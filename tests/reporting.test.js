@@ -22,7 +22,7 @@ jest.mock("../config", () => ({
   CONF_reportingEngineModel:             "",
   CONF_reportingEnabled:                 false,
   CONF_reportingCron:                    "5 0 * * *",
-  CONF_reportingLanguage:                "de",
+  CONF_language:                "de",
   CONF_reportingLanguageSupported:       ["de", "en"],
 }));
 

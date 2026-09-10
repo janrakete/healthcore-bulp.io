@@ -62,7 +62,7 @@ class ReportingEngine {
         try {
             const context   = await this.model.createContext();
             const session   = new this.LlamaChatSession({ contextSequence: context.getSequence() });
-            const language  = reportingEngineLanguage.reportLanguageNormalize(options.language || appConfig.CONF_reportingLanguage);
+            const language  = reportingEngineLanguage.reportLanguageNormalize(options.language || appConfig.CONF_language);
             const prompt    = this.buildReportPrompt(facts || {}, language);
             const report    = await session.prompt(prompt, { temperature: appConfig.CONF_reportingEngineTemperature, maxTokens: appConfig.CONF_reportingEngineMaxTokens });
             return String(report || "").trim();

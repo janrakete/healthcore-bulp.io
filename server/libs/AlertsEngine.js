@@ -39,11 +39,18 @@ class AlertsEngine {
    * @returns {string}
    */
   translate(key, ...args) {
-    const lang  = appConfig.CONF_alertsLanguage;
+    const lang  = appConfig.CONF_language;
     const entry = translations[key];
-    let text    = (entry && entry[lang]) ? entry[lang] : (entry && entry["en"]) ? entry["en"] : key;
+    let text    = key;
 
-    args.forEach((arg, index) => {
+    if (entry && entry[lang]) {
+      text = entry[lang];
+    }
+    else if (entry && entry.en) {
+      text = entry.en;
+    }
+
+    args.forEach((arg, index) => { // Replace placeholders with corresponding arguments
       text = text.replace("{" + index + "}", arg);
     });
 
@@ -54,14 +61,14 @@ class AlertsEngine {
    * Handles device values and evaluates configured alert rules.
    * @param {Object} data
    */
-  handleDeviceValues(data) {
+  deviceValuesHandle(data) {
     try {
       if (appConfig.CONF_alertsActive !== true || !data || !data.values) { // Skip all processing when Alerts are disabled or payload is incomplete
         return;
       }
 
-      Object.entries(data.values).forEach(([property, valueData]) => {
-        this.evaluateConfiguredRules(data, property, valueData);
+      Object.entries(data.values).forEach(([property, valueData]) => { // Iterate over each device property and its corresponding value data
+        this.configuredRulesEvaluate(data, property, valueData); // Evaluate the alert rules configured for this device property and its value data
       });
     }
     catch (error) {
@@ -73,22 +80,22 @@ class AlertsEngine {
    * Handles device online and offline status updates.
    * @param {Object} data
    */
-  handleDeviceStatus(data) {
+  deviceStatusHandle(data) {
     try {
       if (appConfig.CONF_alertsActive !== true || !data || !data.uuid || !data.bridge || !data.status) { // Device status alerts require device identity and a status value
         return;
       }
 
-      const device    = this.getDevice(data.uuid, data.bridge);
+      const device    = this.deviceGet(data.uuid, data.bridge);
       const deviceID  = device?.deviceID || null;
 
       if (data.status === "offline") { // "offline" opens or updates a connectivity risk alert
-        const alert = this.openOrUpdateAlert({
+        const alert = this.alertOpenUpdate({
           ruleID:         0,
           type:           "device_connectivity_risk",
           score:          0.9,
           title:          this.translate("alertTitleDeviceOffline"),
-          summary:        this.buildConnectivitySummary(device),
+          summary:        this.connectivitySummaryBuild(device),
           explanation:    this.translate("alertExplanationDeviceOffline"),
           recommendation: this.translate("alertRecommendationDeviceOffline"),
           deviceID:       deviceID,
@@ -98,7 +105,7 @@ class AlertsEngine {
           source:         "alerts"
         });
 
-        this.insertSignal(alert.alertID, {
+        this.signalInsert(alert.alertID, {
           deviceID:       deviceID,
           property:       "status",
           value:          "offline",
@@ -109,7 +116,7 @@ class AlertsEngine {
       }
 
       if (data.status === "online") { // "online" resolves open connectivity risks for the same device
-        this.resolveOpenAlerts({ type: "device_connectivity_risk", deviceID: deviceID });
+        this.alertsOpenResolve({ type: "device_connectivity_risk", deviceID: deviceID });
       }
     }
     catch (error) {
@@ -132,17 +139,15 @@ class AlertsEngine {
         return;
       }
 
-      const rules = database.prepare(
-        "SELECT * FROM alert_rules WHERE aggregationType = 'NoActivityForDuration' ORDER BY ruleID ASC"
-      ).all().map((rule) => this.normalizeRule(rule));
+      const rules = database.prepare("SELECT * FROM alert_rules WHERE aggregationType = 'NoActivityForDuration' ORDER BY ruleID ASC").all().map((rule) => this.ruleNormalize(rule));
 
-      rules.forEach((rule) => {
+      rules.forEach((rule) => { // Evaluate each inactivity rule individually
         if (rule.inactivityMinutes <= 0) {
           common.conLog("Alerts: Inactivity rule " + rule.ruleID + " has no valid inactivityDurationMinutes", "yel");
           return;
         }
 
-        const scope = this.resolveInactivityRuleScope(rule);
+        const scope = this.inactivityRuleScopeResolve(rule); // Determine the scope of devices affected by this inactivity rule
         if (scope.devices.length === 0) {
           return;
         }
@@ -150,11 +155,11 @@ class AlertsEngine {
         // groupID=0 means all devices (evaluate per-device), else evaluate as shared group scope
         if (rule.groupID === 0) {
           scope.devices.forEach((device) => {
-            this.evaluateInactivityRuleForDevice(rule, device, currentTimestamp);
+            this.inactivityRuleForDeviceEvaluate(rule, device, currentTimestamp);
           });
         }
         else {
-          this.evaluateInactivityRuleForScope(rule, scope, currentTimestamp);
+          this.inactivityRuleForScopeEvaluate(rule, scope, currentTimestamp);
         }
       });
     }
@@ -170,7 +175,7 @@ class AlertsEngine {
    * @param {number} currentTimestamp
    * @returns {void}
    */
-  evaluateInactivityRuleForDevice(rule, device, currentTimestamp) {
+  inactivityRuleForDeviceEvaluate(rule, device, currentTimestamp) {
     const context = {
       deviceID:     device.deviceID,
       uuid:         device.uuid,
@@ -180,20 +185,19 @@ class AlertsEngine {
       device:       device
     };
 
-    if (!this.isValidRuleContext(rule, context)) {
+    if (!this.ruleContextIsValid(rule, context)) {
       return;
     }
 
-    const activeTimeWindow = this.getActiveTimeWindow(rule);
-    if (activeTimeWindow && !this.isTimestampInActiveTimeWindow(currentTimestamp, activeTimeWindow)) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property });
+    const activeTimeWindow = this.activeTimeWindowGet(rule); // Get the active time window for this rule, i.e. the period during which the rule should be evaluated
+    if (activeTimeWindow && !this.timestampIsInActiveTimeWindow(currentTimestamp, activeTimeWindow)) {
+      this.alertsOpenResolve({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property }); // Resolve any open alerts for this device and rule since it is outside the active time window
       return;
     }
 
-    const lastActiveReading = this.getLastActiveReading(context.deviceID, rule);
+    const lastActiveReading = this.lastActiveReadingGet(context.deviceID, rule); // Get the last active reading for this device and rule
     if (!lastActiveReading) {
-      // A changed rule may no longer match the historical activity that opened an alert.
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property });
+      this.alertsOpenResolve({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property }); // Resolve any open alerts for this device and rule since there is no last active reading
       return;
     }
 
@@ -201,17 +205,17 @@ class AlertsEngine {
     const inactivityMilliseconds = Math.max(0, currentTimestamp - Number(lastActiveReading.dateTimeAsNumeric));
 
     if (inactivityMilliseconds < durationMilliseconds) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property });
+      this.alertsOpenResolve({ ruleID: rule.ruleID, deviceID: context.deviceID, property: rule.property }); // Resolve any open alerts for this device and rule since the inactivity duration has not been reached
       return;
     }
 
-    const alert = this.openOrUpdateAlert({
+    const alert = this.alertOpenUpdate({ // Create or update an alert for this device and rule based on the inactivity duration
       ruleID:           rule.ruleID,
       type:             rule.type,
       score:            Math.min(1, inactivityMilliseconds / durationMilliseconds),
-      title:            this.buildRuleTitle(rule, context.device),
-      summary:          this.buildInactivitySummary(rule, context, lastActiveReading, inactivityMilliseconds),
-      explanation:      this.buildInactivityExplanation(rule, lastActiveReading, inactivityMilliseconds),
+      title:            this.ruleTitleBuild(rule, context.device),
+      summary:          this.inactivitySummaryBuild(rule, context, lastActiveReading, inactivityMilliseconds),
+      explanation:      this.inactivityExplanationBuild(rule, lastActiveReading, inactivityMilliseconds),
       recommendation:   rule.recommendation || this.translate("alertRecommendationDefault"),
       deviceID:         context.deviceID,
       property:         rule.property,
@@ -220,7 +224,7 @@ class AlertsEngine {
       source:           "alerts_rule"
     });
 
-    this.insertSignal(alert.alertID, {
+    this.signalInsert(alert.alertID, { // Insert a signal associated with this alert, representing the last active reading and its weight
       deviceID:       context.deviceID,
       property:       rule.property,
       value:          String(lastActiveReading.value),
@@ -237,34 +241,34 @@ class AlertsEngine {
 
   /**
    * Resolves device scope from alert rule configuration.
-  * Unified model: scopeGroupID = 0 means all devices, >0 means a specific device group.
-  * scopeIndividualID and scopeRoomID are optional context filters; they do not replace
-  * the device group and do not change the independent meaning of a device's room.
+   * Unified model: scopeGroupID = 0 means all devices, >0 means a specific device group.
+   * scopeIndividualID and scopeRoomID are optional context filters; they do not replace
+   * the device group and do not change the independent meaning of a device's room.
    * @param {Object} rule - Alert rule from database
    * @returns {{devices:Array<Object>, label:string, individualID:number, roomID:number}}
    */
-  resolveInactivityRuleScope(rule) {
+  inactivityRuleScopeResolve(rule) {
     const groupID = rule.groupID;
     const individualID = rule.individualID;
     const roomID       = rule.roomID;
 
-    if (groupID === 0) {
+    if (groupID === 0) { // All devices, no specific group
       return {
-        devices: this.getDevicesWithProperty(rule.property),
-        label: "",
+        devices:  this.devicesWithPropertyGet(rule.property),
+        label:    "",
         individualID,
         roomID
       };
     }
 
-    const deviceIDs = this.getDeviceIDsInGroup(groupID);
-    if (deviceIDs.length === 0) {
+    const deviceIDs = this.deviceIDsInGroupGet(groupID);
+    if (deviceIDs.length === 0) { // No devices found in the specified group
       return { devices: [], label: "", individualID, roomID };
     }
 
     return {
-      devices: this.getDevicesWithProperty(rule.property, deviceIDs),
-      label: this.getDeviceGroupName(groupID),
+      devices: this.devicesWithPropertyGet(rule.property, deviceIDs),
+      label: this.deviceGroupNameGet(groupID),
       individualID,
       roomID
     };
@@ -275,7 +279,7 @@ class AlertsEngine {
    * @param {number} groupID
    * @returns {Array<number>}
    */
-  getDeviceIDsInGroup(groupID) {
+  deviceIDsInGroupGet(groupID) {
     return database.prepare("SELECT deviceID FROM devices_group_members WHERE groupID = ? ORDER BY deviceID")
       .all(groupID)
       .map((row) => Number(row.deviceID))
@@ -287,7 +291,7 @@ class AlertsEngine {
    * @param {number} groupID
    * @returns {string}
    */
-  getDeviceGroupName(groupID) {
+  deviceGroupNameGet(groupID) {
     const group = database.prepare("SELECT name FROM devices_groups WHERE groupID = ? LIMIT 1").get(groupID);
     return group?.name || "";
   }
@@ -299,7 +303,7 @@ class AlertsEngine {
    * @param {Array<number>} [deviceIDs]
    * @returns {Array<Object>}
    */
-  getDevicesWithProperty(property, deviceIDs = []) {
+  devicesWithPropertyGet(property, deviceIDs = []) {
     const conditions = ["mdv.property = ?"];
     const parameters = [property];
 
@@ -321,48 +325,57 @@ class AlertsEngine {
    * @param {number} currentTimestamp
    * @returns {void}
    */
-  evaluateInactivityRuleForScope(rule, scope, currentTimestamp) {
-    const activeTimeWindow = this.getActiveTimeWindow(rule);
-    if (activeTimeWindow && !this.isTimestampInActiveTimeWindow(currentTimestamp, activeTimeWindow)) {
-      // An alert is only meaningful while its configured observation window is active.
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.property });
+  inactivityRuleForScopeEvaluate(rule, scope, currentTimestamp) {
+    const activeTimeWindow = this.activeTimeWindowGet(rule);
+    if (activeTimeWindow && !this.timestampIsInActiveTimeWindow(currentTimestamp, activeTimeWindow)) { // Outside the active time window, resolve any open alerts and exit.
+      this.alertsOpenResolve({ ruleID: rule.ruleID, property: rule.property });
       return;
     }
 
-    const readings = scope.devices
-      .map((device) => ({ device, reading: this.getLastActiveReading(device.deviceID, rule) }))
-      .filter((entry) => entry.reading !== null)
-      .sort((entryA, entryB) => Number(entryB.reading.dateTimeAsNumeric) - Number(entryA.reading.dateTimeAsNumeric));
+    const readingsByDevice = scope.devices.map((device) => { // Get the last active reading for each device in the scope.
+      return {
+        device:  device,
+        reading: this.lastActiveReadingGet(device.deviceID, rule)
+      };
+    });
 
-    if (readings.length === 0) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.property });
+    const readingsWithActivity = readingsByDevice.filter((entry) => { // Keep only devices that have an active reading.
+      return entry.reading !== null;
+    });
+
+    const readings = readingsWithActivity.sort((left, right) => { // Sort the readings by recency, newest first.
+      return Number(right.reading.dateTimeAsNumeric) - Number(left.reading.dateTimeAsNumeric);
+    });
+
+    if (readings.length === 0) { // No active readings found, resolve any open alerts and exit.
+      this.alertsOpenResolve({ ruleID: rule.ruleID, property: rule.property });
       return;
     }
 
-    const latest = readings[0];
-    const durationMilliseconds = rule.inactivityMinutes * 60 * 1000;
-    const inactivityMilliseconds = Math.max(0, currentTimestamp - Number(latest.reading.dateTimeAsNumeric));
+    const latest                  = readings[0];
+    const durationMilliseconds    = rule.inactivityMinutes * 60 * 1000;
+    const inactivityMilliseconds  = Math.max(0, currentTimestamp - Number(latest.reading.dateTimeAsNumeric));
 
     if (inactivityMilliseconds < durationMilliseconds) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, property: rule.property });
+      this.alertsOpenResolve({ ruleID: rule.ruleID, property: rule.property });
       return;
     }
 
     const context = {
       // A shared scope must have one stable alert, regardless of which member was active last.
-      deviceID: null,
-      individualID: scope.individualID,
-      roomID: scope.roomID,
-      device: latest.device,
-      scopeLabel: scope.label
+      deviceID:       null,
+      individualID:   scope.individualID,
+      roomID:         scope.roomID,
+      device:         latest.device,
+      scopeLabel:     scope.label
     };
-    const alert = this.openOrUpdateAlert({
+    const alert = this.alertOpenUpdate({
       ruleID:           rule.ruleID,
       type:             rule.type,
       score:            Math.min(1, inactivityMilliseconds / durationMilliseconds),
-      title:            this.buildRuleTitle(rule, latest.device),
-      summary:          this.buildInactivitySummary(rule, context, latest.reading, inactivityMilliseconds),
-      explanation:      this.buildInactivityExplanation(rule, latest.reading, inactivityMilliseconds),
+      title:            this.ruleTitleBuild(rule, latest.device),
+      summary:          this.inactivitySummaryBuild(rule, context, latest.reading, inactivityMilliseconds),
+      explanation:      this.inactivityExplanationBuild(rule, latest.reading, inactivityMilliseconds),
       recommendation:   rule.recommendation || this.translate("alertRecommendationDefault"),
       deviceID:         context.deviceID,
       property:         rule.property,
@@ -372,7 +385,7 @@ class AlertsEngine {
     });
 
     readings.forEach((entry) => {
-      this.insertSignal(alert.alertID, {
+      this.signalInsert(alert.alertID, {
         deviceID:       entry.device.deviceID,
         property:       rule.property,
         value:          String(entry.reading.value),
@@ -390,12 +403,12 @@ class AlertsEngine {
    * @param {Object} rule
    * @returns {Object|null}
    */
-  getLastActiveReading(deviceID, rule) {
+  lastActiveReadingGet(deviceID, rule) {
     const readings = database.prepare(
       "SELECT value, valueAsNumeric, dateTimeAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC"
     ).all(deviceID, rule.property);
 
-    return readings.find((reading) => this.isRuleValueActive(rule, reading)) || null;
+    return readings.find((reading) => this.ruleValueIsActive(rule, reading)) || null;
   }
 
   /**
@@ -405,19 +418,19 @@ class AlertsEngine {
    * @param {Object} reading
    * @returns {boolean}
    */
-  isRuleValueActive(rule, reading) {
-    const operator = rule.operator;
-    const value = reading.value;
-    const numericValue = Number(reading.valueAsNumeric);
-    const expectedValue = rule.activityValue;
-    const expectedNumericValue = Number(expectedValue);
-    const numericComparison = Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue);
+  ruleValueIsActive(rule, reading) {
+    const operator              = rule.operator;
+    const value                 = reading.value;
+    const numericValue          = Number(reading.valueAsNumeric);
+    const expectedValue         = rule.activityValue;
+    const expectedNumericValue  = Number(expectedValue);
+    const numericComparison     = Number.isFinite(numericValue) && Number.isFinite(expectedNumericValue);
 
     switch (operator) {
       case "truthy":
-        return this.isTruthySensorValue(value, numericValue);
+        return this.truthySensorValueIs(value, numericValue);
       case "falsy":
-        return !this.isTruthySensorValue(value, numericValue);
+        return !this.truthySensorValueIs(value, numericValue);
       case "equals":
         return numericComparison ? numericValue === expectedNumericValue : String(value) === String(expectedValue);
       case "not_equals":
@@ -433,7 +446,7 @@ class AlertsEngine {
    * @param {number} numericValue
    * @returns {boolean}
    */
-  isTruthySensorValue(value, numericValue) {
+  truthySensorValueIs(value, numericValue) {
     if (Number.isFinite(numericValue) && numericValue !== 0) {
       return true;
     }
@@ -447,7 +460,7 @@ class AlertsEngine {
    * @param {string} property
    * @returns {Object|null}
    */
-  getDeviationScore(deviceID, property) {
+  deviationScoreGet(deviceID, property) {
     const history = database.prepare( // Load recent history in descending order; newest reading is at index 0
       "SELECT valueAsNumeric FROM mqtt_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT ?"
     ).all(deviceID, property, appConfig.CONF_alertsHistorySize);
@@ -456,9 +469,7 @@ class AlertsEngine {
       return null;
     }
 
-    const values = history
-      .map((entry) => Number(entry.valueAsNumeric))
-      .filter((entry) => Number.isFinite(entry));
+    const values = history.map((entry) => Number(entry.valueAsNumeric)).filter((entry) => Number.isFinite(entry));
 
     if (values.length < appConfig.CONF_alertsMinHistoryEntries) {
       return null;
@@ -466,9 +477,9 @@ class AlertsEngine {
 
     const latest      = values[0];
     const baseline    = values.slice(1);
-    const median      = this.median(baseline);
+    const median      = this.valuesMedian(baseline);
     const deviations  = baseline.map((entry) => Math.abs(entry - median));
-    const mad         = this.median(deviations);
+    const mad         = this.valuesMedian(deviations);
 
     let normalizedDeviation;
 
@@ -508,11 +519,11 @@ class AlertsEngine {
    * @param {string} property
    * @param {Object} valueData
    */
-  evaluateConfiguredRules(data, property, valueData) {
-    const rules = this.getMatchingRules(property);
+  configuredRulesEvaluate(data, property, valueData) {
+    const rules = this.matchingRulesGet(property);
 
     rules.forEach((rule) => {
-      const context = this.buildRuleContext(rule, data.uuid, data.bridge);
+      const context = this.ruleContextBuild(rule, data.uuid, data.bridge);
 
       if (!context) {
         return;
@@ -520,15 +531,15 @@ class AlertsEngine {
 
       switch (rule.type) {
         case "AnomalyDetection":
-          this.evaluateAnomalyRule(rule, data, property, valueData, context);
+          this.anomalyRuleEvaluate(rule, property, valueData, context);
           break;
 
         case "SumBelowThreshold":
-          this.evaluateSumBelow(rule, property, valueData, context);
+          this.sumRuleEvaluate(rule, property, valueData, context, "below");
           break;
 
         case "SumAboveThreshold":
-          this.evaluateSumAbove(rule, property, valueData, context);
+          this.sumRuleEvaluate(rule, property, valueData, context, "above");
           break;
 
         case "NoActivityForDuration":
@@ -539,20 +550,6 @@ class AlertsEngine {
   }
 
   /**
-   * Evaluates a sum-below rule.
-   */
-  evaluateSumBelow(rule, property, valueData, context) {
-    this.evaluateSumRule(rule, property, valueData, context, "below");
-  }
-
-  /**
-   * Evaluates a sum-above rule.
-   */
-  evaluateSumAbove(rule, property, valueData, context) {
-    this.evaluateSumRule(rule, property, valueData, context, "above");
-  }
-
-  /**
    * Evaluates either threshold-based sum rule.
    * @param {Object} rule
    * @param {string} property
@@ -560,26 +557,26 @@ class AlertsEngine {
    * @param {Object} context
    * @param {string} comparison
    */
-  evaluateSumRule(rule, property, valueData, context, comparison) {
-    const aggregation = this.sumRecentValues(rule, context, property);
+  sumRuleEvaluate(rule, property, valueData, context, comparison) {
+    const aggregation     = this.recentValuesSum(rule, context, property);
     const minimumReadings = rule.minimumReadings;
 
     if (!aggregation || aggregation.readings < minimumReadings) {
       return;
     }
 
-    if (!this.sumThresholdReached(rule, aggregation, comparison)) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, deviceID: context.deviceID, property });
+    if (!this.sumThresholdIsReached(rule, aggregation, comparison)) {
+      this.alertsOpenResolve({ ruleID: rule.ruleID, deviceID: context.deviceID, property });
       return;
     }
 
-    const alert = this.openOrUpdateAlert({
+    const alert = this.alertOpenUpdate({
       ruleID:         rule.ruleID,
       type:           rule.type,
-      score:          this.calculateSumSeverity(rule, aggregation, comparison),
-      title:          this.buildRuleTitle(rule, context.device),
-      summary:        this.buildRuleSummary(rule, aggregation, context),
-      explanation:    this.buildRuleExplanation(rule, aggregation),
+      score:          this.sumSeverityCalculate(rule, aggregation, comparison),
+      title:          this.ruleTitleBuild(rule, context.device),
+      summary:        this.ruleSummaryBuild(rule, aggregation, context),
+      explanation:    this.ruleExplanationBuild(rule, aggregation),
       recommendation: rule.recommendation || this.translate("alertRecommendationDefault"),
       deviceID:       context.deviceID,
       property,
@@ -588,7 +585,7 @@ class AlertsEngine {
       source:         "alerts_rule"
     });
 
-    this.insertSignal(alert.alertID, {
+    this.signalInsert(alert.alertID, {
       deviceID:       context.deviceID,
       property,
       value:          String(valueData.value ?? valueData.valueAsNumeric ?? ""),
@@ -600,17 +597,16 @@ class AlertsEngine {
   /**
    * Evaluates an anomaly detection rule for one incoming value.
    * @param {Object} rule
-   * @param {Object} data
    * @param {string} property
    * @param {Object} valueData
    * @param {Object} context
    */
-  evaluateAnomalyRule(rule, data, property, valueData, context) {
-    if (!this.isNumericValue(valueData)) {
+  anomalyRuleEvaluate(rule, property, valueData, context) {
+    if (!this.numericReadingIsValid(valueData)) {
       return;
     }
 
-    const deviation = this.getDeviationScore(context.deviceID, property);
+    const deviation = this.deviationScoreGet(context.deviceID, property);
     if (!deviation) {
       return;
     }
@@ -618,17 +614,17 @@ class AlertsEngine {
     const threshold = rule.anomalyScoreThreshold || appConfig.CONF_alertsAnomalyThreshold;
 
     if (deviation.score < threshold) {
-      this.resolveOpenAlerts({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: context.deviceID, property: property });
+      this.alertsOpenResolve({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: context.deviceID, property: property });
       return;
     }
 
-    const alert = this.openOrUpdateAlert({
+    const alert = this.alertOpenUpdate({
       ruleID:           rule.ruleID,
       type:             "AnomalyDetection",
       score:            deviation.score,
-      title:            this.buildRuleTitle(rule, context.device),
-      summary:          this.buildNumericSummary(context.device, property, valueData.value),
-      explanation:      this.buildNumericExplanation(property, valueData.value, deviation),
+      title:            this.ruleTitleBuild(rule, context.device),
+      summary:          this.numericSummaryBuild(context.device, property, valueData.value),
+      explanation:      this.numericExplanationBuild(property, valueData.value, deviation),
       recommendation:   rule.recommendation || this.translate("alertRecommendationAnomaly"),
       deviceID:         context.deviceID,
       property:         property,
@@ -637,7 +633,7 @@ class AlertsEngine {
       source:           "alerts_rule"
     });
 
-    this.insertSignal(alert.alertID, {
+    this.signalInsert(alert.alertID, {
       deviceID:       context.deviceID,
       property:       property,
       value:          String(valueData.value),
@@ -657,10 +653,10 @@ class AlertsEngine {
    * @param {string} property
    * @returns {Array}
    */
-  getMatchingRules(property) {
+  matchingRulesGet(property) {
     return database.prepare("SELECT * FROM alert_rules WHERE sourceProperty = ? ORDER BY ruleID ASC")
       .all(property)
-      .map((rule) => this.normalizeRule(rule));
+      .map((rule) => this.ruleNormalize(rule));
   }
 
   /**
@@ -668,23 +664,23 @@ class AlertsEngine {
    * @param {Object} rule
    * @returns {Object}
    */
-  normalizeRule(rule) {
+  ruleNormalize(rule) {
     return {
       ...rule,
-      type: String(rule.aggregationType || ""),
-      property: String(rule.sourceProperty || "").trim(),
-      minimumSum: Number(rule.thresholdMin) || 0,
-      maximumSum: Number(rule.thresholdMax) || 0,
-      anomalyScoreThreshold: Number(rule.anomalyThreshold) || 0,
-      minimumReadings: Math.max(1, Number(rule.minReadings) || 1),
-      inactivityMinutes: Number(rule.inactivityDurationMinutes) || 0,
-      groupID: Number(rule.scopeGroupID) || 0,
-      individualID: Number(rule.scopeIndividualID) || 0,
-      roomID: Number(rule.scopeRoomID) || 0,
-      operator: String(rule.activityOperator || "truthy").trim().toLowerCase(),
-      windowHours: Math.max(1, Number(rule.aggregationWindowHours) || 24),
-      activeFrom: String(rule.activeTimeStart || "").trim(),
-      activeUntil: String(rule.activeTimeEnd || "").trim()
+      type:                   String(rule.aggregationType || ""),
+      property:               String(rule.sourceProperty || "").trim(),
+      minimumSum:             Number(rule.thresholdMin) || 0,
+      maximumSum:             Number(rule.thresholdMax) || 0,
+      anomalyScoreThreshold:  Number(rule.anomalyThreshold) || 0,
+      minimumReadings:        Math.max(1, Number(rule.minReadings) || 1),
+      inactivityMinutes:      Number(rule.inactivityDurationMinutes) || 0,
+      groupID:                Number(rule.scopeGroupID) || 0,
+      individualID:           Number(rule.scopeIndividualID) || 0,
+      roomID:                 Number(rule.scopeRoomID) || 0,
+      operator:               String(rule.activityOperator || "truthy").trim().toLowerCase(),
+      windowHours:            Math.max(1, Number(rule.aggregationWindowHours) || 24),
+      activeFrom:             String(rule.activeTimeStart || "").trim(),
+      activeUntil:            String(rule.activeTimeEnd || "").trim()
     };
   }
 
@@ -695,8 +691,8 @@ class AlertsEngine {
    * @param {string} bridge
    * @returns {Object|null}
    */
-  buildRuleContext(rule, uuid, bridge) {
-    const device = this.getDevice(uuid, bridge);
+  ruleContextBuild(rule, uuid, bridge) {
+    const device = this.deviceGet(uuid, bridge);
 
     const context = {
       deviceID:     device?.deviceID || null,
@@ -707,7 +703,7 @@ class AlertsEngine {
       device:       device,
     };
 
-    if (!this.isValidRuleContext(rule, context)) {
+    if (!this.ruleContextIsValid(rule, context)) {
       return null;
     }
 
@@ -720,16 +716,16 @@ class AlertsEngine {
    * @param {Object} context
    * @returns {boolean}
    */
-  isValidRuleContext(rule, context) {
-    if (!rule) { // A rule can only be evaluated when it has a property and a concrete device target
+  ruleContextIsValid(rule, context) {
+    if (!rule || rule.property === "") {
       return false;
     }
 
-    const hasProperty = rule.property !== "";
-    const hasDeviceID = (context.deviceID !== null) && (context.deviceID !== undefined);
-    const hasBridge   = (context.bridge !== undefined) && (String(context.bridge).trim() !== "");
+    if (context.deviceID === null || context.deviceID === undefined) {
+      return false;
+    }
 
-    if (!hasProperty || !hasDeviceID || !hasBridge) {
+    if (context.bridge === undefined || String(context.bridge).trim() === "") {
       return false;
     }
 
@@ -743,16 +739,16 @@ class AlertsEngine {
    * @param {string} property
    * @returns {Object|null}
    */
-  sumRecentValues(rule, context, property) {
+  recentValuesSum(rule, context, property) {
     const aggregationWindowHours  = rule.windowHours;
     const thresholdTimestamp      = Date.now() - (aggregationWindowHours * 60 * 60 * 1000);
-    const activeTimeWindow        = this.getActiveTimeWindow(rule);
+    const activeTimeWindow        = this.activeTimeWindowGet(rule);
     const conditions              = ["deviceID = ?", "property = ?", "dateTimeAsNumeric >= ?"];
     const parameters              = [context.deviceID, property, thresholdTimestamp];
 
     if (activeTimeWindow) {
       conditions.push("valueAsNumeric > 0");
-      conditions.push(this.buildActiveTimeWindowSql(activeTimeWindow));
+      conditions.push(this.activeTimeWindowSqlBuild(activeTimeWindow));
       parameters.push(activeTimeWindow.start, activeTimeWindow.end);
     }
 
@@ -777,7 +773,7 @@ class AlertsEngine {
    * @param {Object} rule
    * @returns {{start:string,end:string}|null}
    */
-  getActiveTimeWindow(rule) {
+  activeTimeWindowGet(rule) {
     if (rule.type !== "NoActivityForDuration") {
       return null;
     }
@@ -795,7 +791,7 @@ class AlertsEngine {
    * @param {{start:string,end:string}} activeTimeWindow
    * @returns {boolean}
    */
-  isTimestampInActiveTimeWindow(timestamp, activeTimeWindow) {
+  timestampIsInActiveTimeWindow(timestamp, activeTimeWindow) {
     const date = new Date(timestamp);
     const time = String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
 
@@ -811,7 +807,7 @@ class AlertsEngine {
    * @param {{start:string,end:string}} activeTimeWindow
    * @returns {string}
    */
-  buildActiveTimeWindowSql(activeTimeWindow) {
+  activeTimeWindowSqlBuild(activeTimeWindow) {
     const timeColumn = "strftime('%H:%M', dateTimeAsNumeric / 1000, 'unixepoch', 'localtime')";
 
     if (activeTimeWindow.start <= activeTimeWindow.end) {
@@ -828,7 +824,7 @@ class AlertsEngine {
   * @param {string} comparison
    * @returns {boolean}
    */
-  sumThresholdReached(rule, aggregation, comparison) {
+  sumThresholdIsReached(rule, aggregation, comparison) {
     if (comparison === "below") {
       return aggregation.total < rule.minimumSum;
     }
@@ -847,7 +843,7 @@ class AlertsEngine {
    * @param {string} comparison
    * @returns {number}
    */
-  calculateSumSeverity(rule, aggregation, comparison) {
+  sumSeverityCalculate(rule, aggregation, comparison) {
     const threshold = comparison === "below" ? rule.minimumSum : rule.maximumSum;
 
     if (threshold <= 0) {
@@ -872,7 +868,7 @@ class AlertsEngine {
    * @param {Object} filters
    * @returns {void}
    */
-  resolveOpenAlerts(filters) {
+  alertsOpenResolve(filters) {
     const conditions = ["status IN ('open', 'acknowledged')"]; // Start with open/acknowledged entries and narrow down via provided filters
     const params = [];
 
@@ -921,7 +917,7 @@ class AlertsEngine {
    * @param {Object} payload
    * @returns {Object}
    */
-  openOrUpdateAlert(payload) {
+  alertOpenUpdate(payload) {
    const existing = database.prepare(
       "SELECT * FROM alerts WHERE ifnull(ruleID, 0) = ifnull(?, 0) AND type = ? AND ifnull(deviceID, 0) = ifnull(?, 0) AND ifnull(property, '') = ifnull(?, '') AND ifnull(scenarioID, 0) = ifnull(?, 0) AND status IN ('open', 'acknowledged') ORDER BY alertID DESC LIMIT 1"
     ).get(payload.ruleID || 0, payload.type, payload.deviceID || 0, payload.property || "", payload.scenarioID || 0);
@@ -987,8 +983,8 @@ class AlertsEngine {
    * @param {Object} action
    * @returns {Object}
    */
-  createScenarioAlert(scenario, action) {
-    return this.openOrUpdateAlert({
+  scenarioAlertCreate(scenario, action) {
+    return this.alertOpenUpdate({
       ruleID:         0,
       scenarioID:     scenario.scenarioID,
       type:           "ScenarioEvent",
@@ -1011,7 +1007,7 @@ class AlertsEngine {
    * @param {number} alertID
    * @param {Object} signal
    */
-  insertSignal(alertID, signal) {
+  signalInsert(alertID, signal) {
     const signalDeviceID        = signal.deviceID || null;
     const signalProperty        = signal.property || null;
     const signalValue           = signal.value || null;
@@ -1040,7 +1036,7 @@ class AlertsEngine {
    * @param {string} bridge
    * @returns {Object|null}
    */
-  getDevice(uuid, bridge) {
+  deviceGet(uuid, bridge) {
     return common.deviceGetByUUID(uuid, bridge);
   }
 
@@ -1050,12 +1046,12 @@ class AlertsEngine {
    * @param {Object|null} device
    * @returns {string}
    */
-  buildRuleTitle(rule, device) {
+  ruleTitleBuild(rule, device) {
     if ((rule.title !== undefined) && (String(rule.title).trim() !== "")) {
       return String(rule.title).trim();
     }
     else {
-      return this.translate("alertTitleFallback", this.getDeviceName(device));
+      return this.translate("alertTitleFallback", this.deviceNameGet(device));
     }
   }
 
@@ -1066,14 +1062,14 @@ class AlertsEngine {
    * @param {Object} context
    * @returns {string}
    */
-  buildRuleSummary(rule, aggregation, context) {
-    const label = this.buildRuleContextLabel(context);
+  ruleSummaryBuild(rule, aggregation, context) {
+    const label = this.ruleContextLabelBuild(context);
 
     if (rule.type === "SumBelowThreshold") {
-      return this.translate("alertSummarySumBelow", label, this.translateProperty(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.minimumSum);
+      return this.translate("alertSummarySumBelow", label, this.propertyTranslate(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.minimumSum);
     }
     else if (rule.type === "SumAboveThreshold") {
-      return this.translate("alertSummarySumAbove", label, this.translateProperty(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.maximumSum);
+      return this.translate("alertSummarySumAbove", label, this.propertyTranslate(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.maximumSum);
     }
     else {
       return this.translate("alertSummaryRuleMatched", label);
@@ -1088,10 +1084,10 @@ class AlertsEngine {
    * @param {number} inactivityMilliseconds
    * @returns {string}
    */
-  buildInactivitySummary(rule, context, lastActiveReading, inactivityMilliseconds) {
-    const inactiveMinutes = Math.floor(inactivityMilliseconds / 60000);
-    const lastActiveAt = new Date(lastActiveReading.dateTimeAsNumeric).toLocaleString(appConfig.CONF_alertsLanguage || "en");
-    return this.translate("alertSummaryNoActivity", this.buildRuleContextLabel(context), this.translateProperty(rule.property), inactiveMinutes, lastActiveAt);
+  inactivitySummaryBuild(rule, context, lastActiveReading, inactivityMilliseconds) {
+    const inactiveMinutes   = Math.floor(inactivityMilliseconds / 60000);
+    const lastActiveAt      = new Date(lastActiveReading.dateTimeAsNumeric).toLocaleString(appConfig.CONF_language || "en");
+    return this.translate("alertSummaryNoActivity", this.ruleContextLabelBuild(context), this.propertyTranslate(rule.property), inactiveMinutes, lastActiveAt);
   }
 
   /**
@@ -1101,10 +1097,10 @@ class AlertsEngine {
    * @param {number} inactivityMilliseconds
    * @returns {string}
    */
-  buildInactivityExplanation(rule, lastActiveReading, inactivityMilliseconds) {
+  inactivityExplanationBuild(rule, lastActiveReading, inactivityMilliseconds) {
     const configuredMinutes = rule.inactivityMinutes;
-    const inactiveMinutes = Math.floor(inactivityMilliseconds / 60000);
-    return this.translate("alertExplanationNoActivity", this.translateProperty(rule.property), rule.operator, inactiveMinutes, configuredMinutes);
+    const inactiveMinutes   = Math.floor(inactivityMilliseconds / 60000);
+    return this.translate("alertExplanationNoActivity", this.propertyTranslate(rule.property), rule.operator, inactiveMinutes, configuredMinutes);
   }
 
   /**
@@ -1113,12 +1109,12 @@ class AlertsEngine {
    * @param {Object} aggregation
    * @returns {string}
    */
-  buildRuleExplanation(rule, aggregation) {
+  ruleExplanationBuild(rule, aggregation) {
     if (rule.type === "SumBelowThreshold") {
-      return this.translate("alertExplanationSumBelow", this.translateProperty(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+      return this.translate("alertExplanationSumBelow", this.propertyTranslate(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else if (rule.type === "SumAboveThreshold") {
-      return this.translate("alertExplanationSumAbove", this.translateProperty(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
+      return this.translate("alertExplanationSumAbove", this.propertyTranslate(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {
       return this.translate("alertExplanationRuleActive");
@@ -1130,7 +1126,7 @@ class AlertsEngine {
    * @param {Object} context
    * @returns {string}
    */
-  buildRuleContextLabel(context) {
+  ruleContextLabelBuild(context) {
     if (context.scopeLabel) {
       return context.scopeLabel;
     }
@@ -1142,7 +1138,7 @@ class AlertsEngine {
         return individual.firstname + " " + individual.lastname;
       }
     }
-    return this.getDeviceName(context.device);
+    return this.deviceNameGet(context.device);
   }
 
   /**
@@ -1207,9 +1203,9 @@ class AlertsEngine {
    * @param {string|number} value
    * @returns {string}
    */
-  buildNumericSummary(device, property, value) {
-    const deviceName = this.getDeviceName(device);
-    return this.translate("alertSummaryAnomaly", deviceName, this.translateProperty(property), value);
+  numericSummaryBuild(device, property, value) {
+    const deviceName = this.deviceNameGet(device);
+    return this.translate("alertSummaryAnomaly", deviceName, this.propertyTranslate(property), value);
   }
 
   /**
@@ -1219,8 +1215,8 @@ class AlertsEngine {
    * @param {Object} deviation
    * @returns {string}
    */
-  buildNumericExplanation(property, value, deviation) {
-    return this.translate("alertExplanationAnomaly", this.translateProperty(property), value, deviation.median, deviation.normalizedDeviation.toFixed(2));
+  numericExplanationBuild(property, value, deviation) {
+    return this.translate("alertExplanationAnomaly", this.propertyTranslate(property), value, deviation.median, deviation.normalizedDeviation.toFixed(2));
   }
 
   /**
@@ -1228,8 +1224,8 @@ class AlertsEngine {
    * @param {Object|null} device
    * @returns {string}
    */
-  buildConnectivitySummary(device) {
-    const deviceName = this.getDeviceName(device);
+  connectivitySummaryBuild(device) {
+    const deviceName = this.deviceNameGet(device);
     return this.translate("alertSummaryDeviceOffline", deviceName);
   }
 
@@ -1238,7 +1234,7 @@ class AlertsEngine {
    * @param {Object|null} device
    * @returns {string}
    */
-  getDeviceName(device) {
+  deviceNameGet(device) {
     if ((device !== null) && (device !== undefined)) {
       if ((device.name !== undefined) && (device.name !== "")) {
         return device.name;
@@ -1257,8 +1253,8 @@ class AlertsEngine {
    * @param {string} property
    * @returns {string}
    */
-  translateProperty(property) {
-    const lang = appConfig.CONF_alertsLanguage;
+  propertyTranslate(property) {
+    const lang = appConfig.CONF_language;
     const key  = translations[property];
 
     if (key && key[lang]) {
@@ -1274,7 +1270,7 @@ class AlertsEngine {
    * @param {Object} valueData
    * @returns {boolean}
    */
-  isNumericValue(valueData) {
+  numericReadingIsValid(valueData) {
     if (!valueData) {
       return false;
     }
@@ -1289,11 +1285,11 @@ class AlertsEngine {
   }
 
   /**
-   * Calculates the median for a list of numeric values.
+   * Calculates the median (middle value) for a list of numeric values.
    * @param {number[]} values
    * @returns {number}
    */
-  median(values) {
+  valuesMedian(values) {
     if (!values || values.length === 0) {
       return 0;
     }

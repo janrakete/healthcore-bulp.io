@@ -27,7 +27,7 @@ class ReportingService {
     async generateAndStoreReports(reportDate, options = {}) {
         const range             = this.resolveRange(options.startDateTime, options.endDateTime);
         const targetDate        = reportDate || this.toDateString(range.startUnix);
-        const requestedLanguage = options.language || appConfig.CONF_reportingLanguage;
+        const requestedLanguage = options.language || appConfig.CONF_language;
         const reportLanguage    = reportingEngineLanguage.reportLanguageNormalize(requestedLanguage);
         const individuals       = database.prepare("SELECT individualID, firstname, lastname, roomID FROM individuals ORDER BY individualID ASC").all();
 
@@ -596,7 +596,7 @@ class ReportingService {
 
         const factsJson = JSON.stringify(facts);
         const resolvedModelName = modelName || null;
-        const resolvedReportLanguage = reportLanguage || appConfig.CONF_reportingLanguage;
+        const resolvedReportLanguage = reportLanguage || appConfig.CONF_language;
 
         const existing = database.prepare( // Check if a report already exists for this individual and date
             "SELECT reportID FROM reporting_reports WHERE individualID = ? AND reportDate = ? LIMIT 1"

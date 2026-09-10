@@ -18,7 +18,7 @@ jest.mock("../config", () => ({
   CONF_alertsHistorySize:                20,
   CONF_alertsMinHistoryEntries:          10,
   CONF_alertsMaxSignalsPerAlert:         5,
-  CONF_alertsLanguage:                   "de",
+  CONF_language:                   "de",
   CONF_language:                         "de",
 }));
 
@@ -92,7 +92,7 @@ describe("Alerts engine", () => {
 
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -121,7 +121,7 @@ describe("Alerts engine", () => {
 
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -138,7 +138,7 @@ describe("Alerts engine", () => {
   });
 
   test("creates and resolves connectivity alert", () => {
-    alerts.handleDeviceStatus({
+    alerts.deviceStatusHandle({
       uuid:   "care_device_001",
       bridge: "http",
       status: "offline"
@@ -150,7 +150,7 @@ describe("Alerts engine", () => {
     expect(alert.individualID).toBeGreaterThan(0);
     expect(alert.roomID).toBeGreaterThan(0);
 
-    alerts.handleDeviceStatus({
+    alerts.deviceStatusHandle({
       uuid:   "care_device_001",
       bridge: "http",
       status: "online"
@@ -166,7 +166,7 @@ describe("Alerts engine", () => {
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
@@ -178,7 +178,7 @@ describe("Alerts engine", () => {
 
     db.prepare("DELETE FROM mqtt_devices_values").run();
     seedValues([71, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "71", valueAsNumeric: 71 } }
@@ -196,7 +196,7 @@ describe("Alerts engine", () => {
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
 
     for (let i = 0; i < 8; i++) {
-      alerts.handleDeviceValues({
+      alerts.deviceValuesHandle({
         uuid:   "care_device_001",
         bridge: "http",
         values: { heartrate: { value: String(240 + i), valueAsNumeric: 240 + i } }
@@ -220,7 +220,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -249,7 +249,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "steps", String(value), value, now - index);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -493,7 +493,7 @@ describe("Alerts engine", () => {
     ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { motion: { value: "no", valueAsNumeric: 0 } }
@@ -546,7 +546,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "motion", entry.value, entry.numeric, entry.timestamp);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid: "care_device_001",
       bridge: "http",
       values: { motion: { value: "yes", valueAsNumeric: 1 } }
@@ -560,7 +560,7 @@ describe("Alerts engine", () => {
 
   test("scenario 'notification' action creates a ScenarioEvent alert and does NOT fire alert_opened scenario event (loop guard)", async () => {
     // Build a scenario that fires on alert_opened and has a notification action.
-    // Without the guard, createScenarioAlert would emit alert_opened, which would
+    // Without the guard, scenarioAlertCreate would emit alert_opened, which would
     // re-execute this scenario, creating a recursive execution chain. The dedup
     // in upsertAlert keeps the alert row count at 1, so we cannot rely on that
     // alone — we also check scenarios_executions, which is append-only.
@@ -579,10 +579,10 @@ describe("Alerts engine", () => {
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
     ).run(scenarioID, "notification", "Loop test alert title", 0);
 
-    // Manually call createScenarioAlert as the ScenarioEngine would
+    // Manually call scenarioAlertCreate as the ScenarioEngine would
     const scenario = db.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
     const action   = { type: "notification", value: "Direct scenario alert", property: "Test summary" };
-    alerts.createScenarioAlert(scenario, action);
+    alerts.scenarioAlertCreate(scenario, action);
 
     await new Promise((r) => setTimeout(r, 100)); // let any async event handlers settle
 
@@ -630,7 +630,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -658,7 +658,7 @@ describe("Alerts API", () => {
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -687,7 +687,7 @@ describe("Alerts API", () => {
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
@@ -705,7 +705,7 @@ describe("Alerts API", () => {
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
@@ -723,7 +723,7 @@ describe("Alerts API", () => {
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -749,7 +749,7 @@ describe("Alerts API", () => {
   });
 
   test("PATCH /alerts/:id updates status", async () => {
-    alerts.handleDeviceStatus({
+    alerts.deviceStatusHandle({
       uuid:   "care_device_001",
       bridge: "http",
       status: "offline"

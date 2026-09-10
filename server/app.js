@@ -222,7 +222,7 @@ async function startServer() {
 
   /**
    * Inactivity alerts need a clock-driven evaluation because a missing sensor
-   * event cannot invoke AlertsEngine.handleDeviceValues().
+  * event cannot invoke AlertsEngine.deviceValuesHandle().
    */
   cron.schedule("* * * * *", function () { // runs every minute to evaluate inactivity rules
     try {
@@ -602,7 +602,7 @@ async function startServer() {
               }
             });
 
-            await global.alerts.handleDeviceValues(data); // handle alerts based on device values
+            await global.alerts.deviceValuesHandle(data); // handle alerts based on device values
           }
         }
         else {
@@ -752,7 +752,7 @@ async function startServer() {
               bridge: data.bridge
             });
 
-            global.alerts.handleDeviceStatus(data); // handle alerts based on device status
+            global.alerts.deviceStatusHandle(data); // handle alerts based on device status
           }
           else {
             common.conLog("Server: Device with UUID " + data.uuid + " is not registered", "red");
