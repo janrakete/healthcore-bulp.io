@@ -498,13 +498,23 @@ describe("Alerts API", () => {
     });
 
     const alert = db.prepare("SELECT * FROM alerts LIMIT 1").get();
-    const res   = await request(app)
+    const resolvedResponse = await request(app)
+      .patch("/alerts/" + alert.alertID)
+      .send({ status: "resolved" });
+
+    expect(resolvedResponse.status).toBe(200);
+    const resolvedAlert = db.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alert.alertID);
+    expect(resolvedAlert.status).toBe("resolved");
+    expect(resolvedAlert.dateTimeResolved).toBeTruthy();
+
+    const res = await request(app)
       .patch("/alerts/" + alert.alertID)
       .send({ status: "acknowledged" });
 
     expect(res.status).toBe(200);
     const updated = db.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alert.alertID);
     expect(updated.status).toBe("acknowledged");
+    expect(updated.dateTimeResolved).toBeNull();
   });
 
   test("GET /alerts/stats returns correct counts", async () => {

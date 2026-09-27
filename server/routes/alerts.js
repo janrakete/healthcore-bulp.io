@@ -577,7 +577,7 @@ router.patch("/:alertID", async function (request, response) {
             if (alert) {
                 const previousStatus = alert.status;
 
-                database.prepare("UPDATE alerts SET status = ?, dateTimeResolved = CASE WHEN ? = 'resolved' THEN datetime('now', 'localtime') ELSE dateTimeResolved END, dateTimeUpdated = datetime('now', 'localtime') WHERE alertID = ?").run(nextStatus, nextStatus, alertID);
+                database.prepare("UPDATE alerts SET status = ?, dateTimeResolved = CASE WHEN ? = 'resolved' THEN CASE WHEN status = 'resolved' THEN dateTimeResolved ELSE datetime('now', 'localtime') END ELSE NULL END, dateTimeUpdated = datetime('now', 'localtime') WHERE alertID = ?").run(nextStatus, nextStatus, alertID);
 
                 const updatedAlert = database.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alertID);
                 if (previousStatus !== nextStatus) {

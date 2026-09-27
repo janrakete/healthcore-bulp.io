@@ -300,7 +300,7 @@ router.post("/:bridge/scan", async function (request, response) {
             const bridge = payload.bridge.trim();
 
             let message         = {};
-            message.duration    = (payload.body.duration !== undefined) ? payload.body.duration : appConfig.CONF_scanTimeDefaultSeconds;
+            message.duration    = (payload.body?.duration !== undefined) ? payload.body.duration : appConfig.CONF_scanTimeDefaultSeconds;
             message.callID      = common.randomHash(); // create a unique call ID to identify the request
             message.bridge      = bridge;
 

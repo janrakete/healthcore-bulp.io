@@ -408,6 +408,36 @@ describe("ScenarioEngine", () => {
     expect(publishedMsg.values.state).toBe("on");
   });
 
+  test("handleEvent — applies device assignment context to the event", async () => {
+    db.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE deviceID = ?")
+      .run(1, 1, sensor001ID);
+
+    const scenarioResult = db.prepare(
+      "INSERT INTO scenarios (name, enabled, priority, icon, individualID, roomID) VALUES (?, 1, 1, ?, ?, ?)"
+    ).run("Context-bound scenario", "heart", 1, 1);
+    const contextScenarioID = scenarioResult.lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(contextScenarioID, "device_value", sensor001ID, "heartrate", "greater", "50", "Numeric");
+    db.prepare("INSERT INTO scenarios_actions (scenarioID, type, value) VALUES (?, ?, ?)")
+      .run(contextScenarioID, "notification", "Context scenario fired");
+
+    await global.scenarios.handleEvent("device_value", {
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const alert = db.prepare("SELECT * FROM alerts WHERE scenarioID = ?").get(contextScenarioID);
+    expect(alert).toBeDefined();
+
+    db.prepare("DELETE FROM alerts WHERE scenarioID = ?").run(contextScenarioID);
+    db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(contextScenarioID);
+    db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(contextScenarioID);
+    db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(contextScenarioID);
+    db.prepare("UPDATE devices SET individualID = 0, roomID = 0 WHERE deviceID = ?").run(sensor001ID);
+  });
+
   test("handleEvent — does NOT trigger when value ≤ 50", async () => {
     global.mqttClient.publish.mockClear();
     global.scenarios.executionCooldowns.clear();

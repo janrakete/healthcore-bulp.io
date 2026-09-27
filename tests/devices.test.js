@@ -214,6 +214,14 @@ describe("POST /devices/:bridge/scan", () => {
     const message  = JSON.parse(lastCall[1]);
     expect(message.duration).toBe(30); // CONF_scanTimeDefaultSeconds
   });
+
+  test("scan without a request body uses the default duration", async () => {
+    const res = await request(app).post("/devices/zigbee/scan");
+
+    expect(res.status).toBe(200);
+    const lastCall = global.mqttClient.publish.mock.calls[global.mqttClient.publish.mock.calls.length - 1];
+    expect(JSON.parse(lastCall[1]).duration).toBe(30);
+  });
 });
 
 // ─── GET /devices/:bridge/scan/info ─────────────────────────────────────────

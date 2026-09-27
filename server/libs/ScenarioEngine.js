@@ -44,8 +44,13 @@ class ScenarioEngine {
         ).all(eventType);
       }
       else {
-        if (eventData.uuid && eventData.bridge && !eventData.deviceID) { // if deviceID is not provided but UUID and bridge are available, look up deviceID (for backward compatibility with older event sources that don't provide deviceID)
-          eventData.deviceID = common.deviceGetIDByUUID(eventData.uuid, eventData.bridge);
+        if (eventData.uuid && eventData.bridge) { // look up device ID and assignment context for device-based events
+          const device = common.deviceGetByUUID(eventData.uuid, eventData.bridge);
+          if (device) {
+            eventData.deviceID     = eventData.deviceID || device.deviceID;
+            eventData.individualID = eventData.individualID ?? device.individualID;
+            eventData.roomID       = eventData.roomID ?? device.roomID;
+          }
         }
 
         if (!eventData.deviceID) { // cannot evaluate device-based triggers without deviceID

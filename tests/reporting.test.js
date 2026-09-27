@@ -160,6 +160,24 @@ describe("Reporting generation", () => {
     expect(range.startUnix).toBeLessThan(range.endUnix);
   });
 
+  test("formats report dates in the local timezone", () => {
+    const service = new ReportingService(null);
+    const originalTimezone = process.env.TZ;
+
+    try {
+      process.env.TZ = "Asia/Tokyo";
+      expect(service.toDateString(Date.UTC(2026, 0, 1, 23, 30))).toBe("2026-01-02");
+    }
+    finally {
+      if (originalTimezone === undefined) {
+        delete process.env.TZ;
+      }
+      else {
+        process.env.TZ = originalTimezone;
+      }
+    }
+  });
+
   test("reads generated reports via API route", async () => {
     db.prepare(
       "INSERT INTO reporting_reports (individualID, reportDate, factsJson, summaryText, modelName, reportLanguage, status) VALUES (?, ?, ?, ?, ?, ?, ?)"
