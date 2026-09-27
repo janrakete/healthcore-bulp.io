@@ -138,10 +138,10 @@ function devicePropertiesToArray(properties) {
         const rootProperty = properties[key];
         let propertiesToProcess = [];
 
-        if (rootProperty.name) { // single property
+        if (rootProperty.name && rootProperty.name !== "several") { // single property
             propertiesToProcess.push(rootProperty);
         }
-        else if (rootProperty.name === "several" && rootProperty.subproperties) { // NOTE: this branch is currently unreachable — rootProperty.name === "several" is truthy and will have been caught by the first `if (rootProperty.name)` branch above
+        else if (rootProperty.name === "several" && rootProperty.subproperties) {
             propertiesToProcess = Object.values(rootProperty.subproperties);
         }
         else if (typeof rootProperty === "object" && rootProperty !== null) { // multiple properties without a name key

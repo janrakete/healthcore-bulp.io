@@ -79,8 +79,10 @@ async function startServer() {
       let data    = {};
       data.status = "error";
       data.error  = "JSON in request is invalid";
-      response.json(data);
+      return response.status(400).json(data);
     }
+
+    next(error);
   });
 
   /**
