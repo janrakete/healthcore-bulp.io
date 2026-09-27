@@ -175,10 +175,6 @@
         "de": "{0} hat die konfigurierte Summe für '{1}' in den letzten {2} Stunden überschritten (aktuelle Summe: {3}, erwartetes Maximum: {4}).",
         "en": "{0} exceeded the configured total for '{1}' in the last {2} hours (current total: {3}, expected maximum: {4})."
     },
-    "alertSummarySumAboveTimeWindow": {
-        "de": "{0} hat die konfigurierte Summe für '{1}' zwischen {2} und {3} Uhr überschritten (aktuelle Summe: {4}, erwartetes Maximum: {5}).",
-        "en": "{0} exceeded the configured total for '{1}' between {2} and {3} (current total: {4}, expected maximum: {5})."
-    },
     "alertSummaryRuleMatched": {
         "de": "{0} hat die konfigurierte Regel ausgelöst.",
         "en": "{0} matched the configured rule."
@@ -191,13 +187,17 @@
         "de": "Die rollierende Summe für '{0}' über {1} Daten beträgt {2} innerhalb der letzten {3} Stunden und überschreitet das Maximum.",
         "en": "The rolling sum for '{0}' across {1} data points is {2} within the last {3} hours, exceeding the maximum."
     },
-    "alertExplanationSumAboveTimeWindow": {
-        "de": "Für '{0}' wurden zwischen {3} und {4} Uhr {1} aktive Ereignisse mit einer Summe von {2} erfasst. Dies überschreitet das konfigurierte Maximum.",
-        "en": "For '{0}', {1} active events with a total of {2} were recorded between {3} and {4}. This exceeds the configured maximum."
-    },
     "alertExplanationRuleActive": {
         "de": "Eine konfigurierte Regel wurde aktiv.",
         "en": "A configured rule became active."
+    },
+    "alertSummaryNoActivity": {
+        "de": "{0}: Seit {2} Minuten wurde kein aktiver Wert für '{1}' erfasst. Letzte Aktivität: {3}.",
+        "en": "{0}: No active '{1}' reading was recorded for {2} minutes. Last activity: {3}."
+    },
+    "alertExplanationNoActivity": {
+        "de": "Der letzte Wert für '{0}', der der Bedingung '{1}' entspricht, liegt {2} Minuten zurück. Die konfigurierte Inaktivitätsdauer beträgt {3} Minuten.",
+        "en": "The last '{0}' reading matching '{1}' was {2} minutes ago. The configured inactivity duration is {3} minutes."
     },
     "alertRecommendationDefault": {
         "de": "Aktuelle Daten prüfen und entscheiden, ob eine Intervention erforderlich ist.",
@@ -218,9 +218,5 @@
     "alertDeviceFallback": {
         "de": "Gerät",
         "en": "Device"
-    },
-    "alertTitleScenarioEvent": {
-        "de": "Szenario-Ereignis",
-        "en": "Scenario event"
     }
 }

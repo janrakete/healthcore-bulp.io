@@ -26,8 +26,8 @@ function createTestDatabase() {
       name TEXT,
       description TEXT,
       strength INTEGER,
-      individualID INTEGER DEFAULT 0,
-      roomID INTEGER DEFAULT 0,
+      individualID INTEGER REFERENCES individuals(individualID) ON DELETE SET NULL,
+      roomID INTEGER REFERENCES rooms(roomID) ON DELETE SET NULL,
       dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(uuid, bridge)
     );
@@ -38,7 +38,7 @@ function createTestDatabase() {
       individualID INTEGER PRIMARY KEY AUTOINCREMENT,
       firstname TEXT NOT NULL,
       lastname TEXT NOT NULL,
-      roomID INTEGER DEFAULT 0
+      roomID INTEGER REFERENCES rooms(roomID) ON DELETE SET NULL
     );
 
     CREATE TABLE rooms (
@@ -176,6 +176,20 @@ function createTestDatabase() {
       dateTimeObserved TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE devices_groups (
+      groupID INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      dateTimeAdded TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE devices_group_members (
+      groupMemberID INTEGER PRIMARY KEY AUTOINCREMENT,
+      groupID INTEGER NOT NULL REFERENCES devices_groups(groupID) ON DELETE CASCADE,
+      deviceID INTEGER NOT NULL REFERENCES devices(deviceID) ON DELETE CASCADE,
+      UNIQUE(groupID, deviceID)
+    );
+
     CREATE TABLE alert_rules (
       ruleID INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -186,7 +200,15 @@ function createTestDatabase() {
       activeTimeEnd TEXT,
       thresholdMin NUMERIC,
       thresholdMax NUMERIC,
+      anomalyThreshold NUMERIC,
       minReadings INTEGER DEFAULT 1,
+      inactivityDurationMinutes NUMERIC,
+      activityOperator TEXT,
+      activityValue TEXT,
+      scopeType TEXT,
+      scopeGroupID INTEGER,
+      scopeIndividualID INTEGER,
+      scopeRoomID INTEGER,
       recommendation TEXT,
       dateTimeAdded TEXT DEFAULT (datetime('now')),
       dateTimeUpdated TEXT DEFAULT (datetime('now'))
@@ -300,12 +322,14 @@ function createTestApp() {
   const routesData     = require("../server/routes/data");
   const routesScenarios = require("../server/routes/scenarios");
   const routesDevices  = require("../server/routes/devices");
+  const routesDevicesGroups = require("../server/routes/devices-groups");
   const routesAlerts = require("../server/routes/alerts");
   const routesReports = require("../server/routes/reports");
 
   app.use("/data",      apiKeyAuth, routesData);
   app.use("/scenarios", apiKeyAuth, routesScenarios);
   app.use("/devices",   apiKeyAuth, routesDevices);
+  app.use("/devices-groups", apiKeyAuth, routesDevicesGroups);
   app.use("/alerts",    apiKeyAuth, routesAlerts);
   app.use("/reports",   apiKeyAuth, routesReports);
 
@@ -326,8 +350,8 @@ function insertTestDevice(db, overrides = {}) {
     properties:   JSON.stringify([{ name: "temperature", dataType: "Numeric", access: "r" }]),
     name:         "Test Device",
     description:  "A test device",
-    individualID: 0,
-    roomID:       0,
+    individualID: null,
+    roomID:       null,
     ...overrides,
   };
 

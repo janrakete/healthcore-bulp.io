@@ -43,7 +43,7 @@ function handlePendingMqttResponse(callID, response) {
 }
 
 /**
- * Enriches a device object with individual and room details based on its individualID and roomID.
+ * Enriches a device object with independent person and physical-room assignments.
  * @param {Object} device - The device object (must have individualID and roomID fields).
  */
 function enrichDeviceWithAssignment(device) {
@@ -51,7 +51,7 @@ function enrichDeviceWithAssignment(device) {
         return;
     }
 
-    if (Number(device.individualID) > 0) {
+    if (device.individualID !== null && Number(device.individualID) > 0) {
         const individual = getIndividual(device.individualID);
         if (individual) {
             device.individual = {
@@ -62,7 +62,7 @@ function enrichDeviceWithAssignment(device) {
         }
     }
 
-    if (Number(device.roomID) > 0) {
+    if (device.roomID !== null && Number(device.roomID) > 0) {
         const room = getRoom(device.roomID);
         if (room) {
             device.room = {
@@ -980,16 +980,16 @@ router.patch("/:bridge/:uuid", async function (request, response) {
                         return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
                     }
 
-                    const individualID = (payload.body.individualID !== undefined) ? (Number(payload.body.individualID) || 0) : device.individualID;
-                    const roomID       = (payload.body.roomID !== undefined) ? (Number(payload.body.roomID) || 0) : device.roomID;
+                    const individualID = (payload.body.individualID !== undefined) ? (Number(payload.body.individualID) || null) : device.individualID;
+                    const roomID       = (payload.body.roomID !== undefined) ? (Number(payload.body.roomID) || null) : device.roomID;
 
-                    if (individualID > 0 && getIndividual(individualID) === undefined) {
+                    if (individualID !== null && getIndividual(individualID) === undefined) {
                         data.status = "error";
                         data.error  = "Individual not found";
                         return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
                     }
 
-                    if (roomID > 0 && getRoom(roomID) === undefined) {
+                    if (roomID !== null && getRoom(roomID) === undefined) {
                         data.status = "error";
                         data.error  = "Room not found";
                         return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");

@@ -18,6 +18,7 @@ jest.mock("../config", () => ({
   CONF_alertsHistorySize:                20,
   CONF_alertsMinHistoryEntries:          10,
   CONF_alertsMaxSignalsPerAlert:         5,
+  CONF_language:                   "de",
   CONF_language:                         "de",
 }));
 
@@ -86,12 +87,12 @@ function seedValues(values) {
 describe("Alerts engine", () => {
   test("creates Anomaly Detection alert", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -115,12 +116,12 @@ describe("Alerts engine", () => {
 
   test("detects anomaly when baseline is constant but latest value differs", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -137,7 +138,7 @@ describe("Alerts engine", () => {
   });
 
   test("creates and resolves connectivity alert", () => {
-    alerts.handleDeviceStatus({
+    alerts.deviceStatusHandle({
       uuid:   "care_device_001",
       bridge: "http",
       status: "offline"
@@ -149,7 +150,7 @@ describe("Alerts engine", () => {
     expect(alert.individualID).toBeGreaterThan(0);
     expect(alert.roomID).toBeGreaterThan(0);
 
-    alerts.handleDeviceStatus({
+    alerts.deviceStatusHandle({
       uuid:   "care_device_001",
       bridge: "http",
       status: "online"
@@ -161,11 +162,11 @@ describe("Alerts engine", () => {
 
   test("auto-resolves Anomaly Detection alert when values normalize", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
@@ -177,7 +178,7 @@ describe("Alerts engine", () => {
 
     db.prepare("DELETE FROM mqtt_devices_values").run();
     seedValues([71, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "71", valueAsNumeric: 71 } }
@@ -189,13 +190,13 @@ describe("Alerts engine", () => {
 
   test("limits signals per alert to configured maximum", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
 
     for (let i = 0; i < 8; i++) {
-      alerts.handleDeviceValues({
+      alerts.deviceValuesHandle({
         uuid:   "care_device_001",
         bridge: "http",
         values: { heartrate: { value: String(240 + i), valueAsNumeric: 240 + i } }
@@ -219,7 +220,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -248,7 +249,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "steps", String(value), value, now - index);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -264,45 +265,302 @@ describe("Alerts engine", () => {
     expect(alert.score).toBeGreaterThan(0);
   });
 
-  test("counts only active values within a configured time window", () => {
+  test("creates and resolves a dynamic inactivity alert for boolean sensor values", () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, activeTimeStart, activeTimeEnd, thresholdMax, minReadings) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    ).run("Night bathroom activity", "motion", "SumAboveThreshold", 24, "00:00", "00:01", 0, 1);
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, recommendation) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("No room activity", "motion", "NoActivityForDuration", 3, "truthy", "Check on the person in the room.");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+
+    let alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
+    expect(alert).toBeDefined();
+    expect(alert.status).toBe("open");
+    expect(alert.individualID).toBeGreaterThan(0);
+    expect(alert.roomID).toBeGreaterThan(0);
+    expect(alert.summary).toContain("Seit 5 Minuten");
+    expect(alert.explanation).toContain("konfigurierte Inaktivitätsdauer");
+
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+
+    alert = db.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alert.alertID);
+    expect(alert.status).toBe("resolved");
+  });
+
+  test("uses device group membership from the devices_groups tables", () => {
+    const secondDevice = insertTestDevice(db, {
+      uuid: "care_device_004",
+      bridge: "http",
+      name: "Door Sensor",
+      individualID: null,
+      roomID: null
+    });
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care sensors", "Active monitoring group");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, secondDevice.deviceID);
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("No group activity from table", "motion", "NoActivityForDuration", 3, "truthy", "device_group", group.lastInsertRowid);
+
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(secondDevice.deviceID, "motion", "yes", 1, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity from table")).toBeUndefined();
+
+    alerts.inactivityRulesEvaluate(now + (3 * 60 * 1000));
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity from table");
+    expect(alert).toBeDefined();
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("uses a configured equality comparison for numeric sensor values", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "equals", "100");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", "100", 100, now - (10 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    expect(db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get()).toBeDefined();
+
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", "100", 100, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
+    expect(alert.status).toBe("resolved");
+  });
+
+  test("uses the latest activity from an explicit sensor group", () => {
+    const secondDevice = insertTestDevice(db, {
+      uuid: "care_device_002",
+      bridge: "http",
+      name: "Hallway Sensor",
+      individualID: null,
+      roomID: null
+    });
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care group", "Active monitoring group");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, secondDevice.deviceID);
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("No group activity", "motion", "NoActivityForDuration", 3, "truthy", "device_group", group.lastInsertRowid);
+    const insertReading = db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    );
+    insertReading.run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+    insertReading.run(secondDevice.deviceID, "motion", "yes", 1, now - (60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity")).toBeUndefined();
+
+    alerts.inactivityRulesEvaluate(now + (3 * 60 * 1000));
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No group activity");
+    expect(alert).toBeDefined();
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("preserves optional person and room context for an explicit sensor group", () => {
+    const room = db.prepare("SELECT * FROM rooms WHERE name = ?").get("Care Room");
+    const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ?").get("Mia");
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Mia group", "Mia scoped sensors");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID, scopeIndividualID, scopeRoomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Mia group inactivity", "motion", "NoActivityForDuration", 3, "truthy", "device_group", group.lastInsertRowid, individual.individualID, room.roomID);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Mia group inactivity");
+    expect(alert.individualID).toBe(individual.individualID);
+    expect(alert.roomID).toBe(room.roomID);
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("does not keep a sensor group inactivity alert open outside its time window", () => {
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Night group", "Night queue");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+    const nowTimestamp = now.getTime();
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activeTimeStart, activeTimeEnd, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("Night group inactivity", "motion", "NoActivityForDuration", 3, "truthy", "00:00", "01:00", "device_group", group.lastInsertRowid);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, nowTimestamp - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(nowTimestamp);
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("Night group inactivity")).toBeUndefined();
+  });
+
+  test("does not evaluate an explicit sensor group without configured devices", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeType, scopeGroupID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("Empty sensor group", "motion", "NoActivityForDuration", 3, "truthy", "device_group", 999999);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, Date.now() - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate();
+    expect(db.prepare("SELECT * FROM alerts WHERE title = ?").get("Empty sensor group")).toBeUndefined();
+  });
+
+  test("uses all matching devices assigned to an individual scope", () => {
+    const room = db.prepare("SELECT * FROM rooms WHERE name = ?").get("Care Room");
+    const individual = db.prepare("SELECT * FROM individuals WHERE firstname = ?").get("Mia");
+    const roomDevice = insertTestDevice(db, {
+      uuid: "care_device_003",
+      bridge: "http",
+      name: "Room Sensor",
+      individualID: null,
+      roomID: room.roomID
+    });
+    // Create a device group for Mia's sensors with context
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Mia's sensors", "Sensors assigned to Mia");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, roomDevice.deviceID);
+    
+    const now = Date.now();
+    // Use new unified model: scopeGroupID with optional individualID/roomID context
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeGroupID, scopeIndividualID, scopeRoomID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run("No activity for Mia", "motion", "NoActivityForDuration", 3, "truthy", group.lastInsertRowid, individual.individualID, room.roomID);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(roomDevice.deviceID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No activity for Mia");
+    expect(alert).toBeDefined();
+    expect(alert.individualID).toBe(individual.individualID);
+    expect(alert.roomID).toBe(room.roomID);
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("uses all matching devices in a room scope", () => {
+    const room = db.prepare("SELECT * FROM rooms WHERE name = ?").get("Care Room");
+    // Create a device group for room sensors with room context
+    const group = db.prepare("INSERT INTO devices_groups (name, description) VALUES (?, ?)").run("Care room sensors", "Sensors in the care room");
+    db.prepare("INSERT INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(group.lastInsertRowid, careDevice001ID);
+    
+    const now = Date.now();
+    // Use new unified model: scopeGroupID with optional roomID context
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, scopeGroupID, scopeRoomID) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run("No activity in care room", "motion", "NoActivityForDuration", 3, "truthy", group.lastInsertRowid, room.roomID);
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("No activity in care room");
+    expect(alert).toBeDefined();
+    expect(alert.roomID).toBe(room.roomID);
+    expect(alert.deviceID).toBeNull();
+  });
+
+  test("does not resolve an inactivity alert while a new device value is processed", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator) VALUES (?, ?, ?, ?, ?)"
+    ).run("No room activity", "motion", "NoActivityForDuration", 3, "truthy");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "motion", "yes", 1, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    alerts.deviceValuesHandle({
+      uuid:   "care_device_001",
+      bridge: "http",
+      values: { motion: { value: "no", valueAsNumeric: 0 } }
+    });
+
+    const alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
+    expect(alert.status).toBe("open");
+  });
+
+  test("resolves an inactivity alert when an updated rule has no matching activity", () => {
+    const ruleResult = db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "equals", "100");
+
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
+    ).run(careDevice001ID, "heartrate", "100", 100, now - (5 * 60 * 1000));
+
+    alerts.inactivityRulesEvaluate(now);
+    const alert = db.prepare("SELECT * FROM alerts WHERE ruleID = ?").get(ruleResult.lastInsertRowid);
+    expect(alert.status).toBe("open");
+
+    db.prepare("UPDATE alert_rules SET activityValue = ? WHERE ruleID = ?").run("200", ruleResult.lastInsertRowid);
+    alerts.inactivityRulesEvaluate(now);
+
+    expect(db.prepare("SELECT status FROM alerts WHERE alertID = ?").get(alert.alertID).status).toBe("resolved");
+  });
+
+  test("aggregates all values within the configured hours window", () => {
+    db.prepare(
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, aggregationWindowHours, thresholdMax, minReadings) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run("Bathroom activity", "motion", "SumAboveThreshold", 24, 1, 1);
 
     const today = new Date();
-    const activeInWindow = new Date(today);
-    activeInWindow.setHours(0, 0, 0, 0);
-    const inactiveInWindow = new Date(activeInWindow);
-    inactiveInWindow.setSeconds(30);
-    const activeOutsideWindow = new Date(today);
-    activeOutsideWindow.setHours(12, 0, 0, 0);
+    const firstReading = new Date(today);
+    firstReading.setHours(0, 0, 0, 0);
+    const secondReading = new Date(firstReading);
+    secondReading.setSeconds(30);
+    const thirdReading = new Date(today);
+    thirdReading.setHours(12, 0, 0, 0);
 
     [
-      { value: "yes", numeric: 1, timestamp: activeInWindow.getTime() },
-      { value: "no", numeric: 0, timestamp: inactiveInWindow.getTime() },
-      { value: "yes", numeric: 1, timestamp: activeOutsideWindow.getTime() }
+      { value: "yes", numeric: 1, timestamp: firstReading.getTime() },
+      { value: "no", numeric: 0, timestamp: secondReading.getTime() },
+      { value: "yes", numeric: 1, timestamp: thirdReading.getTime() }
     ].forEach((entry) => {
       db.prepare(
         "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
       ).run(careDevice001ID, "motion", entry.value, entry.numeric, entry.timestamp);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid: "care_device_001",
       bridge: "http",
       values: { motion: { value: "yes", valueAsNumeric: 1 } }
     });
 
-    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Night bathroom activity");
+    const alert = db.prepare("SELECT * FROM alerts WHERE title = ?").get("Bathroom activity");
     expect(alert).toBeDefined();
-    expect(alert.summary).toContain("00:00");
-    expect(alert.summary).toContain("1");
-    expect(alert.explanation).toContain("1");
+    expect(alert.summary).toContain("2");
+    expect(alert.explanation).toContain("2");
   });
 
   test("scenario 'notification' action creates a ScenarioEvent alert and does NOT fire alert_opened scenario event (loop guard)", async () => {
     // Build a scenario that fires on alert_opened and has a notification action.
-    // Without the guard, createScenarioAlert would emit alert_opened, which would
+    // Without the guard, scenarioAlertCreate would emit alert_opened, which would
     // re-execute this scenario, creating a recursive execution chain. The dedup
     // in upsertAlert keeps the alert row count at 1, so we cannot rely on that
     // alone — we also check scenarios_executions, which is append-only.
@@ -321,10 +579,10 @@ describe("Alerts engine", () => {
       "INSERT INTO scenarios_actions (scenarioID, type, value, delay) VALUES (?, ?, ?, ?)"
     ).run(scenarioID, "notification", "Loop test alert title", 0);
 
-    // Manually call createScenarioAlert as the ScenarioEngine would
+    // Manually call scenarioAlertCreate as the ScenarioEngine would
     const scenario = db.prepare("SELECT * FROM scenarios WHERE scenarioID = ?").get(scenarioID);
     const action   = { type: "notification", value: "Direct scenario alert", property: "Test summary" };
-    alerts.createScenarioAlert(scenario, action);
+    alerts.scenarioAlertCreate(scenario, action);
 
     await new Promise((r) => setTimeout(r, 100)); // let any async event handlers settle
 
@@ -372,7 +630,7 @@ describe("Alerts engine", () => {
       ).run(careDevice001ID, "drink_ml", String(value), value, now - index);
     });
 
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -396,11 +654,11 @@ describe("Alerts engine", () => {
 describe("Alerts API", () => {
   test("GET /alerts returns created alerts", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -425,11 +683,11 @@ describe("Alerts API", () => {
 
   test("GET /alerts caps limit at CONF_tablesMaxEntriesReturned", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
@@ -443,11 +701,11 @@ describe("Alerts API", () => {
 
   test("GET /alerts applies default limit without query param", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: { heartrate: { value: "240", valueAsNumeric: 240 } }
@@ -461,11 +719,11 @@ describe("Alerts API", () => {
 
   test("GET /alerts/:id returns alert with signals", async () => {
     db.prepare(
-      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, thresholdMin) VALUES (?, ?, ?, ?)"
+      "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
     ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);
-    alerts.handleDeviceValues({
+    alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
@@ -491,7 +749,7 @@ describe("Alerts API", () => {
   });
 
   test("PATCH /alerts/:id updates status", async () => {
-    alerts.handleDeviceStatus({
+    alerts.deviceStatusHandle({
       uuid:   "care_device_001",
       bridge: "http",
       status: "offline"

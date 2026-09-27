@@ -41,6 +41,38 @@ afterAll(() => {
 
 // ─── GET /devices/all ────────────────────────────────────────────────────────
 
+describe("Device groups API", () => {
+
+  test("creates a device group and adds a device membership", async () => {
+    const device = insertTestDevice(db, {
+      uuid: "dev_group_001",
+      bridge: "http",
+      productName: "Group Test Sensor",
+    });
+
+    const createRes = await request(app)
+      .post("/devices-groups")
+      .send({ name: "Care Group", description: "Group for monitoring" });
+
+    expect(createRes.status).toBe(200);
+    expect(createRes.body.status).toBe("ok");
+    expect(createRes.body.ID).toBeDefined();
+
+    const groupID = createRes.body.ID;
+    const addRes = await request(app)
+      .post(`/devices-groups/${groupID}/devices`)
+      .send({ deviceID: device.deviceID });
+
+    expect(addRes.status).toBe(200);
+    expect(addRes.body.status).toBe("ok");
+
+    const detailRes = await request(app).get(`/devices-groups/${groupID}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.status).toBe("ok");
+    expect(detailRes.body.result.members.some((member) => member.deviceID === device.deviceID)).toBe(true);
+  });
+});
+
 describe("GET /devices/all", () => {
 
   beforeAll(() => {
@@ -133,8 +165,8 @@ describe("PATCH /devices/:bridge/:deviceID (assignment)", () => {
     expect(res.body.status).toBe("ok");
 
     const row = db.prepare("SELECT * FROM devices WHERE uuid = ? AND bridge = ?").get("dev_bt_001", "bluetooth");
-    expect(row.individualID).toBe(0);
-    expect(row.roomID).toBe(0);
+    expect(row.individualID).toBeNull();
+    expect(row.roomID).toBeNull();
   });
 
   test("PATCH with non-existent individualID → error", async () => {

@@ -36,13 +36,13 @@ function isValidIsoDateTime(value) {
  * @returns {string}
  */
 function reportLanguageNormalize(value) {
-    const normalizedLanguage = String(value || appConfig.CONF_reportingLanguage).trim().toLowerCase();
+    const normalizedLanguage = String(value || appConfig.CONF_language).trim().toLowerCase();
 
     if (appConfig.CONF_reportingLanguageSupported.includes(normalizedLanguage)) {
         return (normalizedLanguage);
     }
     else {
-        return (appConfig.CONF_reportingLanguage);
+        return (appConfig.CONF_language);
     }
 }
 

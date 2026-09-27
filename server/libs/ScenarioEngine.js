@@ -462,14 +462,14 @@ class ScenarioEngine {
             this.pushEngine.sendAll(action.value || scenario.name, action.property || scenario.description || "");
           }
           if (global.alerts) {
-            global.alerts.createScenarioAlert(scenario, action);
+            global.alerts.scenarioAlertCreate(scenario, action);
           }
           common.conLog("Scenario Engine: Action push_notification - " + (action.value || scenario.name), "yel");
           break;
 
         case "notification":
           if (global.alerts) {
-            global.alerts.createScenarioAlert(scenario, action);
+            global.alerts.scenarioAlertCreate(scenario, action);
           }
           common.conLog("Scenario Engine: Action notification - " + (action.value || scenario.name), "yel");
           break;

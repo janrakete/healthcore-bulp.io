@@ -101,7 +101,6 @@ const appConfig = {
   CONF_alertsHistorySize                              : toInt(process.env.CONF_alertsHistorySize),
   CONF_alertsMinHistoryEntries                        : toInt(process.env.CONF_alertsMinHistoryEntries),
   CONF_alertsMaxSignalsPerAlert                       : toInt(process.env.CONF_alertsMaxSignalsPerAlert),
-  CONF_alertsLanguage                                 : process.env.CONF_alertsLanguage,
   CONF_integrationsServiceSyncIntervalMs              : toInt(process.env.CONF_integrationsServiceSyncIntervalMs),
   CONF_integrationsServiceRpcTimeoutMs                : toInt(process.env.CONF_integrationsServiceRpcTimeoutMs),
   CONF_tablesAllowedForAPI                            : (process.env.CONF_tablesAllowedForAPI || "").split(",").map(table => table.trim()).filter(Boolean),
@@ -140,7 +139,6 @@ const appConfig = {
   CONF_reportingEngineModel                           : process.env.CONF_reportingEngineModel,
   CONF_reportingEnabled                               : toBool(process.env.CONF_reportingEnabled),
   CONF_reportingCron                                  : process.env.CONF_reportingCron,
-  CONF_reportingLanguage                              : process.env.CONF_reportingLanguage,
   CONF_reportingLanguageSupported                     : (process.env.CONF_reportingLanguageSupported || "").split(",").map(lang => lang.trim()).filter(Boolean),  
   CONF_reportingEngineTemperature                     : toFloat(process.env.CONF_reportingEngineTemperature),
   CONF_reportingEngineMaxTokens                       : toInt(process.env.CONF_reportingEngineMaxTokens),
@@ -155,7 +153,8 @@ const appConfig = {
   CONF_plexusHeartbeatIntervalSeconds                 : toInt(process.env.CONF_plexusHeartbeatIntervalSeconds),
   CONF_plexusHeartbeatTimeoutSeconds                  : toInt(process.env.CONF_plexusHeartbeatTimeoutSeconds),
   CONF_plexusJwtExpire                                : process.env.CONF_plexusJwtExpire,
-  CONF_plexusJwtSecret                                : process.env.CONF_plexusJwtSecret
+  CONF_plexusJwtSecret                                : process.env.CONF_plexusJwtSecret,
+  CONF_language                                       : process.env.CONF_language,
 };
 
 module.exports = appConfig;

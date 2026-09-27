@@ -32,7 +32,9 @@ database.pragma("foreign_keys = ON");
  * Database migration, if needed
  */
 const databaseMigrationEngine = require("./libs/DatabaseMigrationEngine");
+database.pragma("foreign_keys = OFF"); // migrations may rebuild tables referenced by existing foreign keys
 databaseMigrationEngine.runMigrations();
+database.pragma("foreign_keys = ON");
 
 /**
  * Start server
@@ -94,6 +96,9 @@ async function startServer() {
 
   const routesDevices = require("./routes/devices"); // import routes for devices manipulation
   app.use("/devices", apiKeyAuth, routesDevices);
+
+  const routesDevicesGroups = require("./routes/devices-groups"); // import routes for device groups
+  app.use("/devices-groups", apiKeyAuth, routesDevicesGroups);
 
   const routesScenarios = require("./routes/scenarios"); // import routes for scenarios manipulation
   app.use("/scenarios", apiKeyAuth, routesScenarios);
@@ -203,7 +208,7 @@ async function startServer() {
    * Time-based scenario scheduler (fires once per minute via node-cron)
    */
   const cron = require("node-cron");
-  cron.schedule("* * * * *", async () => {
+  cron.schedule("* * * * *", async function () { // runs every minute to handle time-based scenarios
     const now     = new Date();
     const hours   = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -212,6 +217,19 @@ async function startServer() {
     }
     catch (error) {
       common.conLog("Scenarios: Error in time-based scheduler: " + error.message, "red");
+    }
+  });
+
+  /**
+   * Inactivity alerts need a clock-driven evaluation because a missing sensor
+  * event cannot invoke AlertsEngine.deviceValuesHandle().
+   */
+  cron.schedule("* * * * *", function () { // runs every minute to evaluate inactivity rules
+    try {
+      global.alerts.inactivityRulesEvaluate();
+    }
+    catch (error) {
+      common.conLog("Alerts: Error in inactivity scheduler: " + error.message, "red");
     }
   });
 
@@ -584,7 +602,7 @@ async function startServer() {
               }
             });
 
-            await global.alerts.handleDeviceValues(data); // handle alerts based on device values
+            await global.alerts.deviceValuesHandle(data); // handle alerts based on device values
           }
         }
         else {
@@ -734,7 +752,7 @@ async function startServer() {
               bridge: data.bridge
             });
 
-            global.alerts.handleDeviceStatus(data); // handle alerts based on device status
+            global.alerts.deviceStatusHandle(data); // handle alerts based on device status
           }
           else {
             common.conLog("Server: Device with UUID " + data.uuid + " is not registered", "red");

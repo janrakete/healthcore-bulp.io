@@ -62,7 +62,7 @@ class ReportingEngine {
         try {
             const context   = await this.model.createContext();
             const session   = new this.LlamaChatSession({ contextSequence: context.getSequence() });
-            const language  = reportingEngineLanguage.reportLanguageNormalize(options.language || appConfig.CONF_reportingLanguage);
+            const language  = reportingEngineLanguage.reportLanguageNormalize(options.language || appConfig.CONF_language);
             const prompt    = this.buildReportPrompt(facts || {}, language);
             const report    = await session.prompt(prompt, { temperature: appConfig.CONF_reportingEngineTemperature, maxTokens: appConfig.CONF_reportingEngineMaxTokens });
             return String(report || "").trim();
@@ -92,6 +92,10 @@ class ReportingEngine {
             "If there is no report-relevant property activity, say so briefly and do not invent patterns.",
             "Do not mention generic phrases like 'all activity happened in the hallway' or similar room-total summaries.",
             "Keep the report concrete and short; avoid filler sentences about normal or unspecified activity.",
+            "Use facts.inactivityFindings as the authoritative source for inactivity-related findings.",
+            "For every inactivity finding, state the affected device or room, the alert time, and the recommendation when available.",
+            "For a device_group finding, name the scopeDevices that were jointly evaluated when this clarifies the finding.",
+            "Do not infer inactivity from missing readings when facts.inactivityFindings is empty.",
             "Use facts.propertySpikeFindings as the main source for notable findings.",
             "If propertySpikeFindings has entries, mention each spike with property name and day-over-day comparison.",
             "If propertySpikeFindings is empty, say that no report-relevant property exceeded previous daily maxima.",
