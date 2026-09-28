@@ -394,7 +394,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                 example: "Turn on emergency light when heartrate > 100"
  *               enabled:
  *                 type: boolean
- *                 default: false
+ *                 default: true
  *               priority:
  *                 type: integer
  *                 default: 0
@@ -514,7 +514,7 @@ router.post("/", async function (request, response) {
                     const result = insertScenario.run( // Insert scenario
                         payload.name,
                         payload.description || "",
-                        payload.enabled === true ? 1 : 0,
+                        (payload.enabled === undefined || payload.enabled === true) ? 1 : 0,
                         payload.priority || 0,
                         payload.icon || "",
                         payload.roomID || null,

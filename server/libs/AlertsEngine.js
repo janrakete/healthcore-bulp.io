@@ -125,6 +125,67 @@ class AlertsEngine {
   }
 
   /**
+   * Handles device alerts emitted by hardware bridges.
+   * @param {Object} data - Bridge alert payload with uuid, bridge, type, and type-specific values.
+   */
+  deviceBridgeAlertHandle(data) {
+    try {
+      if (appConfig.CONF_alertsActive !== true || !data || !data.uuid || !data.bridge) {
+        return;
+      }
+
+      const device = this.deviceGet(data.uuid, data.bridge);
+      if (!device) {
+        common.conLog("Alerts: Bridge alert received for an unregistered device " + data.uuid, "yel");
+        return;
+      }
+
+      if (data.type === "unresponsive") {
+        this.deviceStatusHandle({ uuid: data.uuid, bridge: data.bridge, status: "offline" });
+        return;
+      }
+
+      if (data.type !== "low_battery") {
+        common.conLog("Alerts: Unsupported bridge alert type " + data.type, "yel");
+        return;
+      }
+
+      const batteryLevel = Number(data.value);
+      const threshold    = Number(data.threshold);
+      if (!Number.isFinite(batteryLevel) || !Number.isFinite(threshold)) {
+        common.conLog("Alerts: Invalid low-battery alert payload for device " + data.uuid, "yel");
+        return;
+      }
+
+      const alert = this.alertOpenUpdate({
+        ruleID:         0,
+        type:           "device_low_battery",
+        score:          0.9,
+        title:          this.translate("alertTitleLowBattery"),
+        summary:        this.translate("alertSummaryLowBattery", this.deviceNameGet(device), batteryLevel, threshold),
+        explanation:    null,
+        recommendation: this.translate("alertRecommendationLowBattery"),
+        deviceID:       device.deviceID,
+        property:       "battery",
+        individualID:   Number(device.individualID) || 0,
+        roomID:         Number(device.roomID) || 0,
+        source:         "bridge"
+      });
+
+      this.signalInsert(alert.alertID, {
+        deviceID:       device.deviceID,
+        property:       "battery",
+        value:          String(data.value),
+        valueAsNumeric: batteryLevel,
+        weight:         0.9
+      });
+    }
+    catch (error) {
+      common.conLog("Alerts: Error while processing bridge alert: " + error.message, "red");
+    }
+  }
+
+  /**
    * Evaluates all inactivity rules against the latest qualifying reading for every
    * device that has supplied the configured property. Unlike value-based rules,
    * this method is intended to be called by a scheduler because no new event is

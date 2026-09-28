@@ -413,6 +413,9 @@ async function startServer() {
         case "server/devices/status":
           await mqttDevicesStatus(data);
           break;
+        case "server/devices/alert":
+          await mqttDevicesAlert(data);
+          break;
         case "server/integrations/accounts/list":
           await mqttIntegrationsAccountsList(data);
           break;
@@ -785,6 +788,14 @@ async function startServer() {
       message.error   = "Bridge missing";
     }
     mqttClient.publish(data.bridge + "/devices/status/response", JSON.stringify(message));
+  }
+
+  /**
+   * Handles alerts from the device bridge.
+   * @param {*} data - Alert data from the device bridge
+   */
+  async function mqttDevicesAlert(data) {
+    global.alerts.deviceBridgeAlertHandle(data);
   }
 
   /**

@@ -65,11 +65,21 @@ describe("Device groups API", () => {
 
     expect(addRes.status).toBe(200);
     expect(addRes.body.status).toBe("ok");
+    expect(addRes.body.ID).toBeDefined();
+
+    const duplicateAddRes = await request(app)
+      .post(`/devices-groups/${groupID}/devices`)
+      .send({ deviceID: device.deviceID });
+
+    expect(duplicateAddRes.status).toBe(200);
+    expect(duplicateAddRes.body.status).toBe("ok");
+    expect(duplicateAddRes.body.ID).toBe(addRes.body.ID);
 
     const detailRes = await request(app).get(`/devices-groups/${groupID}`);
     expect(detailRes.status).toBe(200);
     expect(detailRes.body.status).toBe("ok");
     expect(detailRes.body.result.members.some((member) => member.deviceID === device.deviceID)).toBe(true);
+    expect(detailRes.body.result.members.filter((member) => member.deviceID === device.deviceID)).toHaveLength(1);
   });
 });
 

@@ -304,7 +304,12 @@ router.post("/:groupID/devices", function (request, response) {
             const result = database.prepare("INSERT OR IGNORE INTO devices_group_members (groupID, deviceID) VALUES (?, ?)").run(groupID, deviceID);
 
             data.status  = "ok";
-            data.ID      = result.lastInsertRowid;
+            if (result.changes === 0) { // The device was already a member of the group ...
+                data.ID = database.prepare("SELECT groupMemberID FROM devices_group_members WHERE groupID = ? AND deviceID = ?").get(groupID, deviceID).groupMemberID;
+            }
+            else { // ... or the device was successfully added to the group
+                data.ID = result.lastInsertRowid;
+            }
         }
         catch (error) {
             data.status = "error";

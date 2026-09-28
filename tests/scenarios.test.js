@@ -61,7 +61,6 @@ describe("Scenario CRUD", () => {
       .send({
         name:             "High Heartrate Alert",
         description:      "Alert when heartrate exceeds 100",
-        enabled:          true,
         priority:         1,
         icon:             "heart",
         triggers: [{

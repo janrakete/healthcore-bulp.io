@@ -151,6 +151,18 @@
         "de": "Gerät offline",
         "en": "Device offline"
     },
+    "alertTitleLowBattery": {
+        "de": "Niedriger Batteriestand",
+        "en": "Low battery"
+    },
+    "alertSummaryLowBattery": {
+        "de": "{0} hat einen niedrigen Batteriestand ({1} %, Grenzwert: {2} %).",
+        "en": "{0} has a low battery level ({1}%, threshold: {2}%)."
+    },
+    "alertRecommendationLowBattery": {
+        "de": "Batterie ersetzen oder aufladen.",
+        "en": "Replace or recharge the battery."
+    },
     "alertExplanationDeviceOffline": {
         "de": "Ein Gerät ist offline und liefert möglicherweise keine relevanten Daten mehr.",
         "en": "A device went offline and may currently stop delivering relevant data."

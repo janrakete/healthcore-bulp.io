@@ -160,6 +160,42 @@ describe("Alerts engine", () => {
     expect(alert.status).toBe("resolved");
   });
 
+  test("processes bridge unresponsive alerts as connectivity alerts", () => {
+    alerts.deviceBridgeAlertHandle({
+      uuid:   "care_device_001",
+      bridge: "http",
+      type:   "unresponsive"
+    });
+
+    let alert = db.prepare("SELECT * FROM alerts WHERE type = 'device_connectivity_risk'").get();
+    expect(alert).toBeDefined();
+    expect(alert.status).toBe("open");
+
+    alerts.deviceStatusHandle({ uuid: "care_device_001", bridge: "http", status: "online" });
+
+    alert = db.prepare("SELECT * FROM alerts WHERE type = 'device_connectivity_risk'").get();
+    expect(alert.status).toBe("resolved");
+  });
+
+  test("creates a battery alert and signal from a bridge alert", () => {
+    alerts.deviceBridgeAlertHandle({
+      uuid:      "care_device_001",
+      bridge:    "http",
+      type:      "low_battery",
+      value:     12,
+      threshold: 20
+    });
+
+    const alert = db.prepare("SELECT * FROM alerts WHERE type = 'device_low_battery'").get();
+    expect(alert).toBeDefined();
+    expect(alert.status).toBe("open");
+    expect(alert.deviceID).toBe(careDevice001ID);
+    expect(alert.property).toBe("battery");
+
+    const signal = db.prepare("SELECT * FROM alert_signals WHERE alertID = ?").get(alert.alertID);
+    expect(signal.valueAsNumeric).toBe(12);
+  });
+
   test("auto-resolves Anomaly Detection alert when values normalize", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
