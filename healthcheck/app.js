@@ -39,8 +39,9 @@ async function startHealthcheck() {
       const data = {};
       data.status        = "error";
       data.errorMessage  = "JSON in request is invalid";
-      response.json(data);
+      return response.status(400).json(data);
     }
+    next(error);
   });
 
   /**

@@ -313,7 +313,7 @@ function createTestApp() {
   // JSON error handler (same as server/app.js)
   app.use(function (error, request, response, next) {
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
-      return response.json({ status: "error", error: "JSON in request is invalid" });
+      return response.status(400).json({ status: "error", error: "JSON in request is invalid" });
     }
     next(error);
   });

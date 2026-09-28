@@ -33,6 +33,16 @@ afterAll(() => {
 });
 
 describe("API Key Authentication", () => {
+  test("invalid JSON returns HTTP 400", async () => {
+    const res = await request(app)
+      .post("/data/sos")
+      .set("x-api-key", "test-secret-key-12345")
+      .set("Content-Type", "application/json")
+      .send("{");
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("JSON in request is invalid");
+  });
 
   describe("Protected routes require x-api-key header", () => {
 
