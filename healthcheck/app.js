@@ -50,8 +50,8 @@ async function startHealthcheck() {
    */
 
   /**
-   * This route returns the runtime configuration needed by the browser-based dashboard.
-   * The Healthcore server base URL and optional API key are injected here so the frontend never has to hard-code connection details.
+    * Returns runtime settings for the browser-based dashboard.
+    * The server URL uses the request hostname, the configured server port, and the HTTP scheme.
    * @route GET /api/config
    * @returns {Object} config - An object with serverBaseUrl and apiKey fields
    */

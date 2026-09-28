@@ -31,8 +31,8 @@ class ScenarioEngine {
 
   /**
    * Central entry point for all events
-   * @param {string} eventType - Type of event (device_value, device_connected, device_disconnected, battery_low, time)
-   * @param {Object} eventData - { deviceID, bridge, property?, value?, valueType? }
+    * @param {string} eventType - Device event (device_value, device_connected, device_disconnected, battery_low) or alert event (alert_opened, alert_updated, alert_resolved).
+    * @param {Object} eventData - Device fields (deviceID, uuid, bridge, property, value, valueType) or alert fields (ruleID, deviceID, property, individualID, roomID).
    */
   async handleEvent(eventType, eventData) {
     try {
@@ -303,7 +303,6 @@ class ScenarioEngine {
   /**
    * Gets current device value from database
    * @param {string} deviceID - Device ID
-   * @param {string} bridge - Bridge name
    * @param {string} property - Property name
    * @returns {any|null} - Current value or null if not found
    */
@@ -311,7 +310,7 @@ class ScenarioEngine {
     try {
       const result = database.prepare("SELECT valueAsNumeric, value FROM mqtt_devices_values WHERE deviceID = ? AND property = ? ORDER BY dateTimeAsNumeric DESC LIMIT 1").get(deviceID, property);
 
-      if (!result) { // no row found for this device/bridge/property
+      if (!result) { // no row found for this device/property
         return null;
       }
 

@@ -12,8 +12,8 @@
  * Encryption note:
  *   Access tokens and refresh tokens are stored AES-256-GCM encrypted.
  *   The encryption key is derived from CONF_credentialEngineSecret in .env.local.
- *   If the secret is not configured the engine falls back to plain text with a warning
- *   (this matches development usage patterns in the rest of the project).
+ *   If the secret is not configured the engine falls back to plain text; callers must
+ *   configure the secret before using this engine in production. No warning is emitted.
  */
 
 const crypto = require("crypto");

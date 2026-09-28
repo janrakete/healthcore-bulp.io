@@ -394,7 +394,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                 example: "Turn on emergency light when heartrate > 100"
  *               enabled:
  *                 type: boolean
- *                 default: true
+ *                 default: false
  *               priority:
  *                 type: integer
  *                 default: 0

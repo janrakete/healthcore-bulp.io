@@ -18,8 +18,8 @@ const extractZip      = require("extract-zip");
  */
 
 /**
- * A helper function to run a command as a child process and return a promise that resolves when the
- * process exits successfully or rejects if it fails.
+ * Runs a command as a child process and resolves only when it exits with code 0.
+ * Rejects if spawning fails or the process exits with a non-zero code.
  * @param {string} command 
  * @param {string[]} args 
  * @param {object} options 
@@ -29,7 +29,7 @@ function runProcess(command, args, options = {}) {
     return new Promise((resolve, reject) => {
         const process = spawn(command, args, options);
         process.on("error", reject);
-        process.on("close", (code) => { // Ignore non-zero exit codes if stdio is ignored, as some commands may return non-zero codes even on success when output is not captured.
+        process.on("close", (code) => {
             if (code !== 0) {
                 reject(new Error(command + " failed with exit code " + code));
                 return;

@@ -13,9 +13,9 @@ const router        = require("express").Router();
  */
 
 /**
- * Validates if a given value is a valid date string in the format YYYY-MM-DD.
- * @param {string} value - The value to validate.
- * @returns {boolean} - Returns true if the value is a valid date string, otherwise false.
+ * Checks whether a value has the YYYY-MM-DD shape; it does not validate calendar dates.
+ * @param {string} value - The value to check.
+ * @returns {boolean} True when the value matches the date format, otherwise false.
  */
 function isValidDate(value) {
     return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);

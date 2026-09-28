@@ -125,9 +125,9 @@ function createHashFromString(input, algo = "sha256", length = 64) {
 }
 
 /**
- * Converts device properties object to an array including subproperties.
- * @param {Array} properties 
- * @returns {Array} A clean array of device properties including subproperties.
+ * Flattens a converter's property map into an array, including subproperties and translated labels.
+ * @param {Object<string, Object>} properties - Property definitions keyed by UUID or subproperty key.
+ * @returns {Object[]} Flattened device property definitions.
  */
 function devicePropertiesToArray(properties) {
     const result = [];
