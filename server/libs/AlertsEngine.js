@@ -18,6 +18,15 @@ const appConfig    = require("../../config");
 const translations = require("../../i18n.json");
 const common       = require("../../common");
 
+const RULE_TYPE_ANOMALY_DETECTION         = "AnomalyDetection"; // Rule type for detecting anomalies based on statistical deviations
+const RULE_TYPE_SUM_BELOW_THRESHOLD       = "SumBelowThreshold"; // Rule type for triggering alerts when the sum of values falls below a specified threshold
+const RULE_TYPE_SUM_ABOVE_THRESHOLD       = "SumAboveThreshold"; // Rule type for triggering alerts when the sum of values exceeds a specified threshold
+const RULE_TYPE_NO_ACTIVITY_FOR_DURATION  = "NoActivityForDuration"; // Rule type for triggering alerts when no activity is detected for a specified duration
+const INACTIVE_SENSOR_VALUES              = new Set(["", "0", "false", "off", "no", "inactive", "undetected", "closed", "idle"]); // values treated as "no activity" by truthy/falsy inactivity rules
+const DEVICE_ALERT_SEVERITY_SCORE         = 0.9; // fixed severity for device-reported alerts (offline/low battery), which have no rule threshold to derive a score from
+const MAD_TO_STDDEV_SCALE_FACTOR          = 1.4826; // scales median absolute deviation to be comparable to a standard deviation, assuming a normal distribution
+const MAX_NORMALIZED_DEVIATION            = 6; // deviation (in "standard deviations") considered maximally severe; caps/normalizes the anomaly score
+
 class AlertsEngine {
   /**
    * Creates a new Alerts engine instance
@@ -93,7 +102,7 @@ class AlertsEngine {
         const alert = this.alertOpenUpdate({
           ruleID:         0,
           type:           "device_connectivity_risk",
-          score:          0.9,
+          score:          DEVICE_ALERT_SEVERITY_SCORE,
           title:          this.translate("alertTitleDeviceOffline"),
           summary:        this.connectivitySummaryBuild(device),
           explanation:    this.translate("alertExplanationDeviceOffline"),
@@ -110,7 +119,7 @@ class AlertsEngine {
           property:       "status",
           value:          "offline",
           valueAsNumeric: 0,
-          weight:         0.9
+          weight:         DEVICE_ALERT_SEVERITY_SCORE
         });
         return;
       }
@@ -160,7 +169,7 @@ class AlertsEngine {
       const alert = this.alertOpenUpdate({
         ruleID:         0,
         type:           "device_low_battery",
-        score:          0.9,
+        score:          DEVICE_ALERT_SEVERITY_SCORE,
         title:          this.translate("alertTitleLowBattery"),
         summary:        this.translate("alertSummaryLowBattery", this.deviceNameGet(device), batteryLevel, threshold),
         explanation:    null,
@@ -177,7 +186,7 @@ class AlertsEngine {
         property:       "battery",
         value:          String(data.value),
         valueAsNumeric: batteryLevel,
-        weight:         0.9
+        weight:         DEVICE_ALERT_SEVERITY_SCORE
       });
     }
     catch (error) {
@@ -200,7 +209,7 @@ class AlertsEngine {
         return;
       }
 
-      const rules = database.prepare("SELECT * FROM alert_rules WHERE aggregationType = 'NoActivityForDuration' ORDER BY ruleID ASC").all().map((rule) => this.ruleNormalize(rule));
+      const rules = database.prepare("SELECT * FROM alert_rules WHERE aggregationType = ? ORDER BY ruleID ASC").all(RULE_TYPE_NO_ACTIVITY_FOR_DURATION).map((rule) => this.ruleNormalize(rule));
 
       rules.forEach((rule) => { // Evaluate each inactivity rule individually
         if (rule.inactivityMinutes <= 0) {
@@ -273,7 +282,7 @@ class AlertsEngine {
     const alert = this.alertOpenUpdate({ // Create or update an alert for this device and rule based on the inactivity duration
       ruleID:           rule.ruleID,
       type:             rule.type,
-      score:            Math.min(1, inactivityMilliseconds / durationMilliseconds),
+      score:            this.inactivityScoreCalculate(inactivityMilliseconds, durationMilliseconds),
       title:            this.ruleTitleBuild(rule, context.device),
       summary:          this.inactivitySummaryBuild(rule, context, lastActiveReading, inactivityMilliseconds),
       explanation:      this.inactivityExplanationBuild(rule, lastActiveReading, inactivityMilliseconds),
@@ -290,7 +299,7 @@ class AlertsEngine {
       property:       rule.property,
       value:          String(lastActiveReading.value),
       valueAsNumeric: lastActiveReading.valueAsNumeric,
-      weight:         Math.min(1, inactivityMilliseconds / durationMilliseconds)
+      weight:         this.inactivityScoreCalculate(inactivityMilliseconds, durationMilliseconds)
     });
   }
 
@@ -433,7 +442,7 @@ class AlertsEngine {
     const alert = this.alertOpenUpdate({
       ruleID:           rule.ruleID,
       type:             rule.type,
-      score:            Math.min(1, inactivityMilliseconds / durationMilliseconds),
+      score:            this.inactivityScoreCalculate(inactivityMilliseconds, durationMilliseconds),
       title:            this.ruleTitleBuild(rule, latest.device),
       summary:          this.inactivitySummaryBuild(rule, context, latest.reading, inactivityMilliseconds),
       explanation:      this.inactivityExplanationBuild(rule, latest.reading, inactivityMilliseconds),
@@ -454,6 +463,18 @@ class AlertsEngine {
         weight:         entry.device.deviceID === latest.device.deviceID ? 1 : 0
       });
     });
+  }
+
+  /**
+   * Calculates the severity score (0..1) for a triggered inactivity alert.
+   * Note: this is only called once inactivityMilliseconds has already reached
+   * durationMilliseconds, so today it always evaluates to exactly 1.
+   * @param {number} inactivityMilliseconds
+   * @param {number} durationMilliseconds
+   * @returns {number}
+   */
+  inactivityScoreCalculate(inactivityMilliseconds, durationMilliseconds) {
+    return Math.min(1, inactivityMilliseconds / durationMilliseconds);
   }
 
   /**
@@ -512,7 +533,7 @@ class AlertsEngine {
       return true;
     }
 
-    return !["", "0", "false", "off", "no", "inactive", "undetected", "closed", "idle"].includes(String(value || "").trim().toLowerCase());
+    return !INACTIVE_SENSOR_VALUES.has(String(value || "").trim().toLowerCase());
   }
 
   /**
@@ -545,7 +566,7 @@ class AlertsEngine {
     let normalizedDeviation;
 
     if (mad > 0) { // Robust variant: median absolute deviation scaled to approximately standard deviation
-      normalizedDeviation = Math.abs(latest - median) / (mad * 1.4826);
+      normalizedDeviation = Math.abs(latest - median) / (mad * MAD_TO_STDDEV_SCALE_FACTOR);
     }
     else { // Fallback for perfectly flat baseline where MAD is zero
       const mean      = baseline.reduce((sum, entry) => sum + entry, 0) / baseline.length;
@@ -553,7 +574,7 @@ class AlertsEngine {
       const stdDev    = Math.sqrt(variance);
 
       if (stdDev === 0) {
-        normalizedDeviation = (latest !== median) ? 6 : 0;
+        normalizedDeviation = (latest !== median) ? MAX_NORMALIZED_DEVIATION : 0;
       }
       else {
         normalizedDeviation = Math.abs(latest - mean) / stdDev;
@@ -561,7 +582,7 @@ class AlertsEngine {
     }
 
     return {
-      score:                Math.max(0, Math.min(1, normalizedDeviation / 6)),
+      score:                Math.max(0, Math.min(1, normalizedDeviation / MAX_NORMALIZED_DEVIATION)),
       latest:               latest,
       median:               median,
       normalizedDeviation:  normalizedDeviation
@@ -591,19 +612,19 @@ class AlertsEngine {
       }
 
       switch (rule.type) {
-        case "AnomalyDetection":
+        case RULE_TYPE_ANOMALY_DETECTION:
           this.anomalyRuleEvaluate(rule, property, valueData, context);
           break;
 
-        case "SumBelowThreshold":
+        case RULE_TYPE_SUM_BELOW_THRESHOLD:
           this.sumRuleEvaluate(rule, property, valueData, context, "below");
           break;
 
-        case "SumAboveThreshold":
+        case RULE_TYPE_SUM_ABOVE_THRESHOLD:
           this.sumRuleEvaluate(rule, property, valueData, context, "above");
           break;
 
-        case "NoActivityForDuration":
+        case RULE_TYPE_NO_ACTIVITY_FOR_DURATION:
           // Absence needs the clock-driven evaluation below, not the incoming value event.
           break;
       }
@@ -675,13 +696,13 @@ class AlertsEngine {
     const threshold = rule.anomalyScoreThreshold || appConfig.CONF_alertsAnomalyThreshold;
 
     if (deviation.score < threshold) {
-      this.alertsOpenResolve({ ruleID: rule.ruleID, type: "AnomalyDetection", deviceID: context.deviceID, property: property });
+      this.alertsOpenResolve({ ruleID: rule.ruleID, type: RULE_TYPE_ANOMALY_DETECTION, deviceID: context.deviceID, property: property });
       return;
     }
 
     const alert = this.alertOpenUpdate({
       ruleID:           rule.ruleID,
-      type:             "AnomalyDetection",
+      type:             RULE_TYPE_ANOMALY_DETECTION,
       score:            deviation.score,
       title:            this.ruleTitleBuild(rule, context.device),
       summary:          this.numericSummaryBuild(context.device, property, valueData.value),
@@ -835,7 +856,7 @@ class AlertsEngine {
    * @returns {{start:string,end:string}|null}
    */
   activeTimeWindowGet(rule) {
-    if (rule.type !== "NoActivityForDuration") {
+    if (rule.type !== RULE_TYPE_NO_ACTIVITY_FOR_DURATION) {
       return null;
     }
 
@@ -979,7 +1000,7 @@ class AlertsEngine {
    * @returns {Object}
    */
   alertOpenUpdate(payload) {
-   const existing = database.prepare(
+    const existing = database.prepare(
       "SELECT * FROM alerts WHERE ifnull(ruleID, 0) = ifnull(?, 0) AND type = ? AND ifnull(deviceID, 0) = ifnull(?, 0) AND ifnull(property, '') = ifnull(?, '') AND ifnull(scenarioID, 0) = ifnull(?, 0) AND status IN ('open', 'acknowledged') ORDER BY alertID DESC LIMIT 1"
     ).get(payload.ruleID || 0, payload.type, payload.deviceID || 0, payload.property || "", payload.scenarioID || 0);
 
@@ -999,7 +1020,18 @@ class AlertsEngine {
 
       database.prepare(
         "UPDATE alerts SET ruleID = ?, score = ?, title = ?, summary = ?, explanation = ?, recommendation = ?, individualID = ?, roomID = ?, source = ?, dateTimeUpdated = datetime('now', 'localtime') WHERE alertID = ?"
-      ).run(payload.ruleID || 0, payload.score, payload.title, payload.summary, payload.explanation, payload.recommendation, payload.individualID || 0, payload.roomID || 0, payload.source, existing.alertID);
+      ).run(
+        payload.ruleID || 0,
+        payload.score,
+        payload.title,
+        payload.summary,
+        payload.explanation,
+        payload.recommendation,
+        payload.individualID || 0,
+        payload.roomID || 0,
+        payload.source,
+        existing.alertID
+      );
 
       alertID   = existing.alertID;
       eventType = hasChanged ? "alert_updated" : "";
@@ -1126,10 +1158,10 @@ class AlertsEngine {
   ruleSummaryBuild(rule, aggregation, context) {
     const label = this.ruleContextLabelBuild(context);
 
-    if (rule.type === "SumBelowThreshold") {
+    if (rule.type === RULE_TYPE_SUM_BELOW_THRESHOLD) {
       return this.translate("alertSummarySumBelow", label, this.propertyTranslate(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.minimumSum);
     }
-    else if (rule.type === "SumAboveThreshold") {
+    else if (rule.type === RULE_TYPE_SUM_ABOVE_THRESHOLD) {
       return this.translate("alertSummarySumAbove", label, this.propertyTranslate(rule.property), aggregation.aggregationWindowHours, aggregation.total, rule.maximumSum);
     }
     else {
@@ -1171,10 +1203,10 @@ class AlertsEngine {
    * @returns {string}
    */
   ruleExplanationBuild(rule, aggregation) {
-    if (rule.type === "SumBelowThreshold") {
+    if (rule.type === RULE_TYPE_SUM_BELOW_THRESHOLD) {
       return this.translate("alertExplanationSumBelow", this.propertyTranslate(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
-    else if (rule.type === "SumAboveThreshold") {
+    else if (rule.type === RULE_TYPE_SUM_ABOVE_THRESHOLD) {
       return this.translate("alertExplanationSumAbove", this.propertyTranslate(rule.property), aggregation.readings, aggregation.total, aggregation.aggregationWindowHours);
     }
     else {
