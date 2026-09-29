@@ -3,10 +3,9 @@
  * Routes for Data (= tables)
  * ==========================
  */
-const appConfig       = require("../../config");
-const router          = require("express").Router();
-
-const { buildSqlMutationFragment, buildWhereClause } = require("./_sqlQueryBuilders");
+const appConfig         = require("../../config");
+const router            = require("express").Router();
+const SQLQueryBuilders  = require("./_sqlQueryBuilders");
 
 const tablesAllowed   = appConfig.CONF_tablesAllowedForAPI; // defines, which tables are allowed
 
@@ -70,7 +69,7 @@ router.post("/:table", async function (request, response) {
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
 
-         const statement = await buildSqlMutationFragment(table, payload, "INSERT");
+         const statement = await SQLQueryBuilders.buildSqlMutationFragment(table, payload, "INSERT");
          if (statement.status === "ok") {
             const sql = "INSERT INTO " + table + statement.statement;
             common.conLog("Server route 'Data': POST Request: access table '" + table + "'", "gre");
@@ -179,7 +178,7 @@ router.get("/:table", async function (request, response) {
       try {
          data.status = "ok";
 
-         const condition = await buildWhereClause(table, payload);
+         const condition = await SQLQueryBuilders.buildWhereClause(table, payload);
          if (condition.status === "ok") {
             let sql = "SELECT * FROM " + table + condition.condition;
 
@@ -271,7 +270,7 @@ router.delete("/:table", async function (request, response) {
 
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
-         const condition = await buildWhereClause(table, payload);
+         const condition = await SQLQueryBuilders.buildWhereClause(table, payload);
          if (condition.status === "ok") {
             if (condition.condition && condition.condition.trim() !== "") {
                const sql = "DELETE FROM " + table + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
@@ -382,11 +381,11 @@ router.patch("/:table", async function (request, response) {
    if (tablesAllowed.includes(table)) {  // check, if table name is in allowed list
       try {
 
-         const condition = await buildWhereClause(table, query);
+         const condition = await SQLQueryBuilders.buildWhereClause(table, query);
          if (condition.status === "ok") {
             if (condition.condition && condition.condition.trim() !== "") {
 
-               const statement = await buildSqlMutationFragment(table, payload, "UPDATE");
+               const statement = await SQLQueryBuilders.buildSqlMutationFragment(table, payload, "UPDATE");
                if (statement.status === "ok") {
                   const sql = "UPDATE " + table + " SET " + statement.statement + " WHERE rowid IN (SELECT rowid FROM " + table + condition.condition + " LIMIT 1)";
                   common.conLog("Server route 'Data': PATCH Request: access table '" + table + "'", "gre");

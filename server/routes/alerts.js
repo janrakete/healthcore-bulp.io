@@ -3,11 +3,10 @@
  * Routes for Alerts
  * =============================================================================================
  */
-const appConfig    = require("../../config");
-const router       = require("express").Router();
-const AlertsEngine = require("../libs/AlertsEngine");
-
-const { buildWhereClause } = require("./_sqlQueryBuilders");
+const appConfig         = require("../../config");
+const router            = require("express").Router();
+const AlertsEngine      = require("../libs/AlertsEngine");
+const SQLQueryBuilders  = require("./_sqlQueryBuilders");
 
 const STATUSES_ALLOWED = ["open", "acknowledged", "resolved", "critical"];
 
@@ -192,7 +191,7 @@ router.get("/", async function (request, response) {
     try {
         data.status = "ok";
 
-        const condition = await buildWhereClause("alerts", request.query);
+        const condition = await SQLQueryBuilders.buildWhereClause("alerts", request.query);
         if (condition.status === "ok") {
             let sql = "SELECT * FROM alerts" + condition.condition;
 
