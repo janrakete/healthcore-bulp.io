@@ -1,14 +1,9 @@
 /**
  * =============================================================================================
- * MQTT Device & Integration Handlers
- * ===================================
- * Business logic for MQTT topics published by bridges (device lifecycle, values, status,
- * integration RPCs). Extracted from server/app.js so that topic handling isn't buried in the
- * server bootstrap file. Relies on the same process-wide globals as the rest of the server
- * (database, scenarios, alerts, credentialEngine, mqttClient) - see server/app.js for where
- * those are assigned to `global.*` during startup.
+ * MQTT Device and integration handlers
+ * ====================================
  */
-const common = require("../../common");
+const common = require("../common");
 
 /**
  *  Check if a device is registered in the database

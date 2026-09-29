@@ -348,11 +348,7 @@ async function startServer() {
   global.mqttPendingResponses = {}; // store pending MQTT responses (used for API calls, that wait for an MQTT response)
   global.mqttBridgeStatus     = {}; // in-memory bridge status map (keyed by bridge name); populated via MQTT LWT / online messages
 
-  /**
-   * MQTT device & integration topic handlers (device CRUD, values, status, integration RPCs)
-   * live in their own module so this file only deals with server bootstrap and wiring.
-   */
-  const mqttDeviceHandlers = require("./libs/MqttDeviceHandlers");
+  const mqttDeviceHandlers = require("./appMQTTDeviceHandlers");
 
   /**
    * Process incoming MQTT messages
