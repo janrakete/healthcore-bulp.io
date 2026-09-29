@@ -15,7 +15,7 @@
  * the device row in the devices table without any further mapping.
  */
 
-const googleHealth = require("./Converter_GoogleHealth");
+const googleHealth = require("./ConverterGoogleHealth");
 
 const registry = {
   GoogleHealth: googleHealth

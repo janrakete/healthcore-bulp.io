@@ -564,7 +564,7 @@ async function startBridgeAndServer() {
       const lastAlert = bridgeStatus.batteryAlertsSent.get(uuid); // check when the last alert for this device was sent to prevent alert spam
       const now       = Date.now();
 
-      if (lastAlert && (now - lastAlert) < appConfig.CONF_devicesBluetoothBatteryAlertCooldownHours * 60 * 60 * 1000) {
+      if (lastAlert && (now - lastAlert) < appConfig.CONF_devicesBluetoothBatteryAlertCooldownHours * 60 * 60 * 1000) { // config value is in hours, converted to ms here
         common.conLog("Bluetooth: Low battery alert for " + uuid + " suppressed (cooldown active)", "std", false);
         return;
       }

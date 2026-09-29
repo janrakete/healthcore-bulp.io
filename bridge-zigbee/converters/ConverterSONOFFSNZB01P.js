@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_SONOFFSNZB01P extends ConverterStandard {
+class ConverterSONOFFSNZB01P extends ConverterStandard {
     static productName = "SNZB-01P";
 
     constructor() {
@@ -57,4 +57,4 @@ class Converter_SONOFFSNZB01P extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_SONOFFSNZB01P };
+module.exports = { ConverterSONOFFSNZB01P };

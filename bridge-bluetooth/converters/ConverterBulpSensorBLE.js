@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BulpSensorBLE extends ConverterStandard {
+class ConverterBulpSensorBLE extends ConverterStandard {
     static productName = "bulp - Sensor BLE";
 
     constructor() {
@@ -129,4 +129,4 @@ class Converter_BulpSensorBLE extends ConverterStandard {
      }
 }
 
-module.exports = { Converter_BulpSensorBLE };
+module.exports = { ConverterBulpSensorBLE };

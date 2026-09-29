@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
+class ConverterSONOFFS26R2ZBTPF extends ConverterStandard {
     static productName = "S26R2ZB";
 
     constructor() {
@@ -82,4 +82,4 @@ class Converter_SONOFFS26R2ZBTPF extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_SONOFFS26R2ZBTPF };
+module.exports = { ConverterSONOFFS26R2ZBTPF };

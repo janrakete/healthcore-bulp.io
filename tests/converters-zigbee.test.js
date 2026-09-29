@@ -126,19 +126,19 @@ describe("ZigBee ConverterStandard", () => {
 });
 
 // =====================================================================
-// Converter_BULPIOBULPTOP1
+// ConverterBULPIOBULPTOP1
 // =====================================================================
-const { Converter_BULPIOBULPTOP1 } = require("../bridge-zigbee/converters/Converter_BULPIOBULPTOP1");
+const { ConverterBULPIOBULPTOP1 } = require("../bridge-zigbee/converters/ConverterBULPIOBULPTOP1");
 
-describe("Converter_BULPIOBULPTOP1", () => {
+describe("ConverterBULPIOBULPTOP1", () => {
   let converter;
 
   beforeEach(() => {
-    converter = new Converter_BULPIOBULPTOP1();
+    converter = new ConverterBULPIOBULPTOP1();
   });
 
   test("productName matches firmware ZIGBEE_MODEL", () => {
-    expect(Converter_BULPIOBULPTOP1.productName).toBe("bulp.top 1");
+    expect(ConverterBULPIOBULPTOP1.productName).toBe("bulp.top 1");
   });
 
   test("powerType is MAINS", () => {

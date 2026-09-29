@@ -149,16 +149,16 @@ describe("BLE ConverterStandard", () => {
 });
 
 // =====================================================================
-// Converter_BangleJS2BLE
+// ConverterBangleJS2BLE
 // =====================================================================
-const { Converter_BangleJS2BLE } = require("../bridge-bluetooth/converters/Converter_BangleJS2BLE");
-const { Converter_BulpSensorBLE } = require("../bridge-bluetooth/converters/Converter_BulpSensorBLE");
+const { ConverterBangleJS2BLE } = require("../bridge-bluetooth/converters/ConverterBangleJS2BLE");
+const { ConverterBulpSensorBLE } = require("../bridge-bluetooth/converters/ConverterBulpSensorBLE");
 
-describe("Converter_BangleJS2BLE", () => {
+describe("ConverterBangleJS2BLE", () => {
   let converter;
 
   beforeEach(() => {
-    converter = new Converter_BangleJS2BLE();
+    converter = new ConverterBangleJS2BLE();
   });
 
   test("should have Nordic UART TX characteristic defined", () => {
@@ -240,11 +240,11 @@ describe("Converter_BangleJS2BLE", () => {
   });
 });
 
-describe("Converter_BulpSensorBLE", () => {
+describe("ConverterBulpSensorBLE", () => {
   let converter;
 
   beforeEach(() => {
-    converter = new Converter_BulpSensorBLE();
+    converter = new ConverterBulpSensorBLE();
   });
 
   test("should only include custom properties plus requested standard battery", () => {

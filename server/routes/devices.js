@@ -405,25 +405,31 @@ router.get("/:bridge/scan/info", async function (request, response) {
     let data       = {};
 
     if (payload.callID !== undefined) {
-        const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
-        const results       = await database.prepare(statement).all("server/devices/discover", payload.callID); // ... query the database for discovered devices
+        try {
+            const statement     = "SELECT * FROM mqtt_history WHERE topic = ? AND callID = ? ORDER BY dateTime DESC"; 
+            const results       = await database.prepare(statement).all("server/devices/discover", payload.callID); // ... query the database for discovered devices
 
-        const devices       = results.map(row => JSON.parse(row.message));
-        
-        const uniqueDevices = {};
-        devices.forEach(device => {
-            delete device.callID; // remove duplicates based on UUID, keep only the first occurrence and remove callID from the device info
-            if (device.uuid && !uniqueDevices[device.uuid]) {
-                uniqueDevices[device.uuid] = device;
-            }
-        });
-        
-        data.data           = {};
-        data.data.devices   = Object.values(uniqueDevices);
-        data.data.callID    = payload.callID;
+            const devices       = results.map(row => JSON.parse(row.message));
+            
+            const uniqueDevices = {};
+            devices.forEach(device => {
+                delete device.callID; // remove duplicates based on UUID, keep only the first occurrence and remove callID from the device info
+                if (device.uuid && !uniqueDevices[device.uuid]) {
+                    uniqueDevices[device.uuid] = device;
+                }
+            });
+            
+            data.data           = {};
+            data.data.devices   = Object.values(uniqueDevices);
+            data.data.callID    = payload.callID;
 
-        data.status = "ok";
-        common.conLog("Server route 'Devices': GET request for device scan info", "gre");
+            data.status = "ok";
+            common.conLog("Server route 'Devices': GET request for device scan info", "gre");
+        }
+        catch (error) {
+            data.status = "error";
+            data.error  = error.message;
+        }
     }
     else {
         data.status = "error";
@@ -995,8 +1001,15 @@ router.patch("/:bridge/:uuid", async function (request, response) {
                         return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
                     }
 
-                    database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE uuid = ? AND bridge = ?").run(individualID, roomID, uuid, bridge);
-                    common.conLog("Server route 'Devices': PATCH request for device assignment update via UUID " + uuid + " successful", "gre");
+                    try {
+                        database.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE uuid = ? AND bridge = ?").run(individualID, roomID, uuid, bridge);
+                        common.conLog("Server route 'Devices': PATCH request for device assignment update via UUID " + uuid + " successful", "gre");
+                    }
+                    catch (error) {
+                        data.status = "error";
+                        data.error  = error.message;
+                        return common.sendResponse(response, data, "Server route 'Devices'", "PATCH request for device update");
+                    }
                 }
 
                 
@@ -1138,15 +1151,22 @@ router.get("/:bridge/:uuid/values", async function (request, response) {
                     return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device values");
                 }
 
-                handlePendingMqttResponse(message.callID, response);
+                try {
+                    const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_devices_values WHERE deviceID = ? GROUP BY property ORDER BY property ASC");
+                    const results   = statement.all(deviceID);
 
-                const statement = database.prepare("SELECT property, value, valueAsNumeric, MAX(dateTimeAsNumeric) as latest_time FROM mqtt_devices_values WHERE deviceID = ? GROUP BY property ORDER BY property ASC");
-                const results   = statement.all(deviceID);
-
-                for (const result of results) {
-                    message.values[result.property] = { value: result.value, valueAsNumeric: result.valueAsNumeric };
+                    for (const result of results) {
+                        message.values[result.property] = { value: result.value, valueAsNumeric: result.valueAsNumeric };
+                    }
                 }
-                mqttPendingResponses[message.callID](message);
+                catch (error) { // query failed - respond with the standard error shape instead of registering a pending MQTT response that would never resolve
+                    data.status = "error";
+                    data.error  = error.message;
+                    return common.sendResponse(response, data, "Server route 'Devices'", "GET request for device values");
+                }
+
+                handlePendingMqttResponse(message.callID, response);
+                mqttPendingResponses[message.callID](message); // resolve immediately, since the values were already read from the database above
             }
         }
         else {

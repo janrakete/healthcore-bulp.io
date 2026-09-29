@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_EWELINKMS01 extends ConverterStandard {
+class ConverterEWELINKMS01 extends ConverterStandard {
     static productName = "MS01";
 
     constructor() {
@@ -129,4 +129,4 @@ class Converter_EWELINKMS01 extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_EWELINKMS01 };
+module.exports = { ConverterEWELINKMS01 };

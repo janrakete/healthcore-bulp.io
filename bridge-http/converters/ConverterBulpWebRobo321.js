@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BulpWebRobo321 extends ConverterStandard {
+class ConverterBulpWebRobo321 extends ConverterStandard {
     static productName = "Bulp Web-Robo 321";
 
     constructor() {
@@ -64,4 +64,4 @@ class Converter_BulpWebRobo321 extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_BulpWebRobo321 };
+module.exports = { ConverterBulpWebRobo321 };

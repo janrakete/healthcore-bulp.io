@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
+class ConverterIKEATRADFRIBULBE27WW806LM extends ConverterStandard {
     static productName = "TRADFRI bulb E27 WW 806lm";
 
     constructor() {
@@ -84,4 +84,4 @@ class Converter_IKEATRADFRIBULBE27WW806LM extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_IKEATRADFRIBULBE27WW806LM };
+module.exports = { ConverterIKEATRADFRIBULBE27WW806LM };

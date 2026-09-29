@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_Paulmann29150 extends ConverterStandard {
+class ConverterPaulmann29150 extends ConverterStandard {
     static productName = "RGBWW";
 
     constructor() {
@@ -129,4 +129,4 @@ class Converter_Paulmann29150 extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_Paulmann29150 };
+module.exports = { ConverterPaulmann29150 };

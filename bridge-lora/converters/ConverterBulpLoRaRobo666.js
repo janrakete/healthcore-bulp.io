@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BulpLoRaRobo666 extends ConverterStandard {
+class ConverterBulpLoRaRobo666 extends ConverterStandard {
     static productName = "Bulp LoRa-Robo 666";
 
     constructor() {
@@ -41,7 +41,9 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
         let propertiesAndValues             = [];
         let propertiesAndValuesConverted    = {};
 
-        // split the input string into an array of property-value pairs
+        // "values" is the decoded LoRa payload with the 16-char device UUID already stripped
+        // (see bridge-lora/app.js). This demo device packs exactly 2 more ASCII digits:
+        // offset 0 = heart rate digit, offset 1 = color code (mapped to red/green/yellow below).
         propertiesAndValues.push({ "heartRate": values.substring(0, 1) });
         propertiesAndValues.push({ "color": values.substring(1, 2) });
 
@@ -85,4 +87,4 @@ class Converter_BulpLoRaRobo666 extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_BulpLoRaRobo666 };
+module.exports = { ConverterBulpLoRaRobo666 };

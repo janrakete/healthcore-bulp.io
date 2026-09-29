@@ -5,7 +5,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BangleJS2BLE extends ConverterStandard {
+class ConverterBangleJS2BLE extends ConverterStandard {
     static productName  = "Bangle.js 5f2c";
 
     constructor() {
@@ -112,4 +112,4 @@ class Converter_BangleJS2BLE extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_BangleJS2BLE };
+module.exports = { ConverterBangleJS2BLE };

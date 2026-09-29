@@ -11,7 +11,7 @@
  */
 const { ConverterStandard } = require("./ConverterStandard.js");
 
-class Converter_BULPIOBULPTOP1 extends ConverterStandard {
+class ConverterBULPIOBULPTOP1 extends ConverterStandard {
     static productName = "bulp.top 1"; // must match ZIGBEE_MODEL in the firmware config.h
 
     constructor() {
@@ -225,4 +225,4 @@ class Converter_BULPIOBULPTOP1 extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_BULPIOBULPTOP1 };
+module.exports = { ConverterBULPIOBULPTOP1 };

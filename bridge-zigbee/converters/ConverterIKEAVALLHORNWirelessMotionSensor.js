@@ -8,7 +8,7 @@ const { ConverterStandard } = require("./ConverterStandard.js");
 
 const MANU_CODE = 0x117C; // IKEA Manufacturer Code
 
-class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
+class ConverterIKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
     static productName = "VALLHORN Wireless Motion Sensor";
 
     constructor() {
@@ -194,4 +194,4 @@ class Converter_IKEAVALLHORNWirelessMotionSensor extends ConverterStandard {
     }
 }
 
-module.exports = { Converter_IKEAVALLHORNWirelessMotionSensor };
+module.exports = { ConverterIKEAVALLHORNWirelessMotionSensor };

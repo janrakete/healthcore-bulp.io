@@ -25,7 +25,7 @@ const common    = require("../../common");
 
 class ScenarioEngine {
   constructor() {
-    this.executionCooldowns = new Map(); // prevent rapid re-execution
+    this.executionCooldowns = new Map(); // last-executed timestamp per "scenario+device+property" key; never pruned, so it grows for the process lifetime (bounded by the combinations actually triggered)
     this.pushEngine         = null; // push notifications engine    
   }
 
@@ -98,11 +98,13 @@ class ScenarioEngine {
    */
   async evaluateScenario(scenario, eventType, eventData) {
     try {
-      const cooldownKey   = scenario.scenarioID + "-" + (eventData.uuid || eventData.deviceID || "time") + "-" + (eventData.property || eventType); // check cooldown to prevent rapid re-execution
+      const cooldownKey   = scenario.scenarioID + "-" + (eventData.uuid || eventData.deviceID || "time") + "-" + (eventData.property || eventType); // scoped per scenario+device+property, so unrelated scenarios/devices never block each other
       const lastExecution = this.executionCooldowns.get(cooldownKey);
       const now           = Date.now();
 
-      if (lastExecution && (now - lastExecution) < appConfig.CONF_scenarioCooldownMilliseconds) { // scenario was executed recently for this device/property – skip to prevent rapid re-execution
+      // Without this, a scenario action like set_device_value can raise a new device_value event that
+      // matches this very same scenario's trigger again, causing it to re-execute in a tight loop.
+      if (lastExecution && (now - lastExecution) < appConfig.CONF_scenarioCooldownMilliseconds) {
         return;
       }
 

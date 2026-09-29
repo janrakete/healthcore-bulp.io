@@ -85,7 +85,7 @@ Adapter type depends on your hardware/chipset (examples: `zstack`, `ezsp`, `deco
    Extend ConverterStandard, set static productName exactly to the model name,
    and include occupancy, battery, and tamper properties where supported.
    ```
-3. Save the generated file in `bridge-zigbee/converters/`, for example `Converter_MyMotionSensor.js`.
+3. Save the generated file in `bridge-zigbee/converters/`, for example `ConverterMyMotionSensor.js`.
 4. Verify `static productName` matches the model name reported by ZigBee exactly.
 
 If your sensor is already supported, you can skip this step.
@@ -370,15 +370,15 @@ The **own converters** subsystem lets you transform raw device data (e.g., binar
 
 Below is a detailed Bluetooth device example:
 
-1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `Converter_MyConverter.js`).
+1. **Create** a new JS file in the bridge’s `converters/` folder (e.g. `ConverterMyConverter.js`).
 2. **Extend** `ConverterStandard`:
 
-   In `Converter_MyConverter.js`, import the base and declare your class:  
+   In `ConverterMyConverter.js`, import the base and declare your class:  
 
    ```js
    const { ConverterStandard } = require("./ConverterStandard.js");
 
-   class Converter_MyConverter extends ConverterStandard {
+   class ConverterMyConverter extends ConverterStandard {
       static productName = "bulp-AZ-123"; // Must match the product name that is reported by the device.
 
       constructor() {
@@ -466,7 +466,7 @@ Below is a detailed Bluetooth device example:
       }
    }
 
-   module.exports = { Converter_MyConverter };
+   module.exports = { ConverterMyConverter };
     ```
 3. **Auto-load**: `Converters.js` dynamically requires all files in `converters/` (excluding `ConverterStandard.js`), detects the static `productName`, and registers your class.
 
