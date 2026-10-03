@@ -1,84 +1,85 @@
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+# AGENTS.md
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+Guidelines for AI agents working on this repository.
 
-## 1. Think Before Coding
+## 1. Understand Before Changing
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+- Understand the existing code and conventions before making changes.
+- Do not guess when an important requirement is unclear. State assumptions or ask for clarification.
+- If there are multiple reasonable approaches, choose the simplest one and briefly explain the trade-off.
+- Do not introduce features, abstractions, or configuration that are not required.
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+## 2. Keep Changes Small
 
-## 2. Simplicity First
+- Make the smallest change that correctly solves the task.
+- Match the existing architecture, coding style, and patterns.
+- Do not refactor unrelated code.
+- Do not change existing behavior unless required by the task.
+- Remove only unused code that your own changes made obsolete.
+- Leave pre-existing dead code or unrelated issues untouched.
 
-**Minimum code that solves the problem. Nothing speculative.**
+## 3. Healthcore Architecture
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+- Respect the existing separation between the Healthcore server, bridges, devices, and integrations.
+- Prefer existing Healthcore patterns and utilities over introducing new frameworks or architectural patterns.
+- Keep device-specific logic inside the appropriate bridge or converter.
+- Do not move functionality between components unless the task requires it.
+- Preserve existing MQTT topic structures, payload formats, and event names unless a breaking change is explicitly intended.
+- Consider local/offline operation a core requirement. Do not introduce unnecessary dependencies on external services.
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+## 4. APIs and Compatibility
 
-## 3. Surgical Changes
+- Treat existing REST endpoints, MQTT interfaces, events, and data formats as public interfaces.
+- Do not rename, remove, or change existing API behavior without explicitly considering backwards compatibility.
+- When changing an API, update its documentation and relevant tests.
+- Preserve existing authentication, authorization, CORS, and security behavior unless the task explicitly changes it.
+- Never hard-code API keys, passwords, tokens, or other secrets.
+- Do not commit `.env` files or credentials.
 
-**Touch only what you must. Clean up only your own mess.**
+## 5. Database and Data
 
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+- Treat existing database schemas and stored data as persistent user data.
+- Do not change or remove database columns, tables, or stored data without considering existing installations.
+- Prefer migrations or backwards-compatible changes when a schema change is necessary.
+- Do not delete or recreate a database simply to make development or tests easier.
+- Keep database access consistent with the existing database layer and conventions.
 
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
+## 6. Bridges, Devices and Integrations
 
-The test: Every changed line should trace directly to the user's request.
+- Existing device integrations must continue to work unless the task explicitly changes them.
+- Do not assume that all devices behave according to the specification; account for established device-specific behavior where necessary.
+- Keep converters and integration-specific workarounds localized to the relevant integration.
+- Avoid introducing dependencies on vendor-specific libraries when the existing implementation can solve the problem without them.
+- When changing an integration, test both the changed behavior and existing functionality where practical.
 
-## 4. Goal-Driven Execution
+## 7. Tests and Verification
 
-**Define success criteria. Loop until verified.**
+- Run the relevant existing tests before and after significant changes when practical.
+- Add or update tests for new or changed behavior.
+- For bug fixes, add a regression test whenever practical.
+- Verify the actual result rather than assuming the implementation works.
+- Use `/tests/setup.js` to run the test suite.
+- Update `/tests/MANUAL.md` when manual testing is required.
 
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+## 8. Code Quality
 
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
+- Keep new code readable and consistent with the existing codebase.
+- Prefer clear, explicit code over clever or overly abbreviated code.
+- Avoid unnecessary abstractions and duplication.
+- Add comments only where they explain non-obvious reasoning or behavior; do not comment obvious code.
+- Keep error handling appropriate to the actual failure modes. Do not add speculative error handling.
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+## 9. Documentation
 
-## 5. Code style and tests
+- Update documentation when public behavior, configuration, APIs, installation, or user-visible functionality changes.
+- Keep README and API documentation consistent with the actual implementation.
+- Do not document functionality that does not exist.
+- Prefer concise examples that can actually be executed or followed.
 
-**Keep the code style and don't forget tests.**
+## 10. Before Finishing
 
-- Please style new code to match the existing code
-- Write code in a detailed manner rather than abbreviating it to the point of being incomprehensible
-- Add comments at relevant points in the code
-- Use /tests/setup.js to run tests
-- Add tests when you create new features
-- Update /tests/MANUAL.md if things need to be tested manually
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
-
-
-
-
-
-
-
-
-
-
+- Review the final diff.
+- Check for unintended changes, unused imports, debug code, secrets, and accidental behavior changes.
+- Check that tests and documentation affected by the change are updated.
+- Confirm that existing interfaces remain compatible unless a breaking change was intentional.
+- Briefly report what changed and how it was verified.
