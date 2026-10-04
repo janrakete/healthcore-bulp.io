@@ -125,7 +125,8 @@ class PlexusEngine {
                                             }, appConfig.CONF_plexusHeartbeatTimeoutSeconds * 1000);
                                         }
                                         catch (error) {
-                                            common.conLog("Plexus Engine: Heartbeat failed: " + error.toString(), "red");
+                                            common.conLog("Plexus Engine: Heartbeat failed:", "red");
+                                            common.conLog(error, "std", false); // log raw error object so AggregateError.errors details are not lost
                                             this.handleConnectionLoss(connection);
                                         }
                                     }, appConfig.CONF_plexusHeartbeatIntervalSeconds * 1000);
@@ -328,7 +329,8 @@ class PlexusEngine {
                     });
 
                     connection.on("error", (error) => {
-                        common.conLog("Plexus Engine: Connection error: " + error.toString(), "red");
+                        common.conLog("Plexus Engine: Connection error:", "red");
+                        common.conLog(error, "std", false); // log raw error object so AggregateError.errors details are not lost
                         this.handleConnectionLoss(connection);
                     });
 
@@ -339,7 +341,8 @@ class PlexusEngine {
                 });
 
                 this.webserviceClient.on("connectFailed", (error) => {
-                    common.conLog("Plexus Engine: Connection failed: " + error.toString(), "red");
+                    common.conLog("Plexus Engine: Connection failed:", "red");
+                    common.conLog(error, "std", false); // log raw error object so AggregateError.errors details are not lost
                     this.handleConnectionLoss();
                 });
 
