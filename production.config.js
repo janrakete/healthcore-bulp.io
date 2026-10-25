@@ -61,6 +61,21 @@ module.exports = {
       log_date_format: "YYYY-MM-DD HH:mm:ss"      
     },
     {
+      name: "bridge-matter",
+      script: "app.js",
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      env: {
+        NODE_ENV: "production",
+        PORT: process.env.CONF_portBridgeMatter
+      },
+      cwd: "./bridge-matter",
+      error_file: "../logs/bridge-matter - errors.log",
+      out_file: "../logs/bridge-matter - output.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss"
+    },
+    {
       name: "bridge-integrations",
       script: "app.js",
       instances: 1,

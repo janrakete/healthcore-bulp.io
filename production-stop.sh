@@ -153,6 +153,7 @@ SERVICE_PORTS=(
   "$CONF_portBridgeHTTP"
   "$CONF_portBridgeBluetooth"
   "$CONF_portBridgeLoRa"
+  "$CONF_portBridgeMatter"
   "$CONF_portHealthcheck"
 )
 

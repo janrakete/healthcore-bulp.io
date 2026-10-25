@@ -308,6 +308,15 @@ describe("MQTT pending responses (connect/disconnect)", () => {
     expect(res.body.error).toContain("No response from broker");
   }, 5000);
 
+  test("POST Matter connect publishes the shared connect command", async () => {
+    await request(app).post("/devices/matter/dev_matter_001/connect");
+
+    expect(global.mqttClient.publish).toHaveBeenCalledWith(
+      "matter/devices/connect",
+      expect.stringContaining('"uuid":"dev_matter_001"')
+    );
+  }, 5000);
+
   test("POST disconnect — times out when no MQTT response", async () => {
     const res = await request(app)
       .post("/devices/bluetooth/dev_bt_001/disconnect")
@@ -315,6 +324,15 @@ describe("MQTT pending responses (connect/disconnect)", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain("No response from broker");
+  }, 5000);
+
+  test("POST Matter disconnect publishes the shared disconnect command", async () => {
+    await request(app).post("/devices/matter/dev_matter_001/disconnect");
+
+    expect(global.mqttClient.publish).toHaveBeenCalledWith(
+      "matter/devices/disconnect",
+      expect.stringContaining('"uuid":"dev_matter_001"')
+    );
   }, 5000);
 });
 
@@ -349,6 +367,15 @@ describe("GET /devices/:bridge/:deviceID/values", () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toContain("No response from broker");
   }, 5000);
+
+  test("Matter bridge — requests live values via MQTT", async () => {
+    await request(app).get("/devices/matter/dev_matter_001/values");
+
+    expect(global.mqttClient.publish).toHaveBeenCalledWith(
+      "matter/devices/values/get",
+      expect.stringContaining('"uuid":"dev_matter_001"')
+    );
+  }, 5000);
 });
 
 // ─── POST /devices/:bridge/:deviceID/values (set) ──────────────────────────
@@ -369,6 +396,17 @@ describe("POST /devices/:bridge/:deviceID/values (set)", () => {
       expect.any(String)
     );
   }, 5000);
+
+  test("Matter bridge — publishes set values via the shared API route", async () => {
+    await request(app)
+      .post("/devices/matter/dev_matter_001/values")
+      .send({ brightness: 60, hue: 120 });
+
+    const setCall = global.mqttClient.publish.mock.calls
+      .filter(([topic]) => topic === "matter/devices/values/set")
+      .at(-1);
+    expect(JSON.parse(setCall[1]).values).toEqual({ brightness: 60, hue: 120 });
+  }, 5000);
 });
 
 // ─── DELETE /devices/:bridge/:deviceID ──────────────────────────────────────
@@ -379,5 +417,14 @@ describe("DELETE /devices/:bridge/:deviceID", () => {
     const res = await request(app).delete("/devices/bluetooth/dev_bt_001");
     expect(res.status).toBe(400);
     expect(res.body.error).toContain("No response from broker");
+  }, 5000);
+
+  test("forwards force=true only with the device removal command", async () => {
+    await request(app).delete("/devices/matter/dev_matter_001?force=true");
+
+    const removeCall = global.mqttClient.publish.mock.calls
+      .filter(([topic]) => topic === "matter/devices/remove")
+      .at(-1);
+    expect(JSON.parse(removeCall[1]).force).toBe(true);
   }, 5000);
 });

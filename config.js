@@ -76,6 +76,7 @@ const appConfig = {
   CONF_portBridgeBluetooth                            : toInt(process.env.CONF_portBridgeBluetooth),
   CONF_portBridgeLoRa                                 : toInt(process.env.CONF_portBridgeLoRa),
   CONF_portBridgeThread                               : toInt(process.env.CONF_portBridgeThread),
+  CONF_portBridgeMatter                               : toInt(process.env.CONF_portBridgeMatter || 9992),
   CONF_brokerAddress                                  : process.env.CONF_brokerAddress,
   CONF_brokerUsername                                 : process.env.CONF_brokerUsername,
   CONF_brokerPassword                                 : process.env.CONF_brokerPassword,

@@ -233,7 +233,7 @@ router.get("/all", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/scan:
  *     post:
- *       summary: Scan for devices (only Bluetooth and ZigBee)
+ *       summary: Scan for devices
  *       description: This endpoint allows you to initiate a scan for devices connected to a specific bridge.
  *       tags:
  *         - Devices
@@ -328,7 +328,7 @@ router.post("/:bridge/scan", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/scan/info:
  *     get:
- *       summary: Get information about scanned devices (only Bluetooth and ZigBee)
+ *       summary: Get information about scanned devices
  *       description: This endpoint allows you to retrieve information about devices that were discovered during a scan.
  *       tags:
  *         - Devices
@@ -443,7 +443,7 @@ router.get("/:bridge/scan/info", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/{uuid}/connect:
  *     post:
- *       summary: Connect a device via ID (only Bluetooth and ZigBee - but only with powerType = "mains")
+ *       summary: Connect a device via ID
  *       description: This endpoint allows you to connect a device using its ID.
  *       tags:
  *         - Devices
@@ -555,7 +555,7 @@ router.post("/:bridge/:uuid/connect", async function (request, response) {
  * @swagger
  *   /devices/{bridge}/{uuid}/disconnect:
  *     post:
- *       summary: Disconnect a device (only Bluetooth)
+ *       summary: Disconnect a device
  *       description: This endpoint allows you to disconnect a device using its ID.
  *       tags:
  *         - Devices
@@ -670,6 +670,13 @@ router.post("/:bridge/:uuid/disconnect", async function (request, response) {
  *          schema:
  *            type: string
  *            example: 12345
+ *        - in: query
+ *          name: force
+ *          required: false
+ *          description: For Matter only, remove local controller state without contacting the device. A factory reset may be required before pairing again.
+ *          schema:
+ *            type: boolean
+ *            example: true
  *      responses:
  *        "200":
  *          description: Device removed successfully
@@ -722,6 +729,9 @@ router.delete("/:bridge/:uuid", async function (request, response) {
             message.uuid    = payload.uuid.trim();
             message.callID  = common.randomHash(); // create a unique call ID to identify the request
             message.bridge  = bridge;
+            if (request.query.force === "true") {
+                message.force = true;
+            }
 
             mqttClient.publish(bridge + "/devices/remove", JSON.stringify(message)); // ... publish to MQTT broker
             common.conLog("Server route 'Devices': DELETE request for device remove via UUID " + message.uuid + " forwarded via MQTT", "gre");
@@ -1138,7 +1148,7 @@ router.get("/:bridge/:uuid/values", async function (request, response) {
             message.bridge  = bridge;
             message.values  = {};
 
-            if (message.bridge === "bluetooth" || message.bridge === "zigbee") { // Request latest values from the device via MQTT, i.e. Bluetooth or Zigbee
+            if (["bluetooth", "zigbee", "matter"].includes(message.bridge)) { // Request latest values from the device via MQTT
                 handlePendingMqttResponse(message.callID, response);
                 mqttClient.publish(bridge + "/devices/values/get", JSON.stringify(message)); // ... publish to MQTT broker
                 common.conLog("Server route 'Devices': GET request for device values via UUID " + message.uuid + " forwarded via MQTT", "gre");
@@ -1189,7 +1199,7 @@ router.get("/:bridge/:uuid/values", async function (request, response) {
  * @swagger
  * /devices/{bridge}/{uuid}/values:
  *   post:
- *     summary: Set device values (only Bluetooth and ZigBee)
+ *     summary: Set device values
  *     description: This endpoint sets new values for a connected device.
  *     tags:
  *       - Devices

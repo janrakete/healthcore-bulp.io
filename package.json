@@ -11,6 +11,8 @@
   "dependencies": {
     "@abandonware/noble": "^1.9.2-26",
     "aedes": "^0.51.3",
+    "@matter/main": "^0.18.0",
+    "@matter/nodejs-ble": "^0.18.0",
     "async": "^3.2.6",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.2.0",
