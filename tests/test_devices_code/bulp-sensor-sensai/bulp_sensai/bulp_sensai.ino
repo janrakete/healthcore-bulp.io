@@ -239,6 +239,7 @@ void loop() {
   if (taskUpdate(&taskSensorLog)) { // Log the latest sensor snapshot.
     const bool hasValues      = sensorsGetValues(&currentValues);
     const bool valuesFresh    = hasValues && sensorsValuesAreFresh(&currentValues);
+    const bool isFallAlarm    = hasValues && currentValues.fallDetected;
 
     if (!hasValues) {
       Serial.println("[Sensors] Sensor values unavailable.");
@@ -284,7 +285,7 @@ void loop() {
     }
 
     if (connectionMode == CONNECTION_MODE_ZIGBEE) {
-      const bool publishOk = zigbeeSendData(&currentValues, false); // We can consider it an alarm if the fall sensor is triggered, even if the values are stale, to prioritize safety.
+      const bool publishOk = zigbeeSendData(&currentValues, isFallAlarm); // Preserve a fall alarm even if the rest of the snapshot is stale.
       if (!publishOk && zigbeeIsJoined()) {
         if (zigbeeConsecutivePublishFailures < 255) {
           zigbeeConsecutivePublishFailures++;

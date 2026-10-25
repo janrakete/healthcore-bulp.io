@@ -170,8 +170,8 @@ bool zigbeeSendData(const SensorValues* values, bool isAlarm) {
     Serial.printf("[ZigBee] Lux=%.0f (ZB=%d)\n", values->illuminance, luxZb);
   }
 
-  if (values->sensorRadarValid) {
-    bool alarm = values->fallDetected || isAlarm;
+  if (values->sensorRadarValid || isAlarm) {
+    bool alarm = (values->sensorRadarValid && values->fallDetected) || isAlarm; // Trigger alarm if fall detected or external alarm flag is set
     ok &= zbFall.setAnalogInput(alarm ? 1.0f : 0.0f);
     Serial.printf("[ZigBee] Fall: %s\n", alarm ? "ALARM" : "NO");
   }
