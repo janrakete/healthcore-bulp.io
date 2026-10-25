@@ -60,14 +60,14 @@ describe("Scenario CRUD", () => {
       .post("/scenarios")
       .send({
         name:             "High Heartrate Alert",
-        description:      "Alert when heartrate exceeds 100",
+        description:      "Alert when heartRate exceeds 100",
         priority:         1,
         icon:             "heart",
         triggers: [{
           type:      "device_value",
           uuid:      "sensor_001",
           bridge:    "bluetooth",
-          property:  "heartrate",
+          property:  "heartRate",
           operator:  "greater",
           value:     "100",
           valueType: "Numeric",
@@ -254,7 +254,7 @@ describe("Scenario CRUD", () => {
       .post("/scenarios")
       .send({
         name: "ToDelete", icon: "trash",
-        triggers: [{ type: "device_value", uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", operator: "equals", value: "0" }],
+        triggers: [{ type: "device_value", uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", operator: "equals", value: "0" }],
         actions:  [{ type: "set_device_value", uuid: "light_001", bridge: "zigbee", property: "state", value: "off" }],
       });
     const deleteID = Number(create.body.ID);
@@ -288,7 +288,7 @@ describe("ScenarioEngine", () => {
   let scenarioID;
 
   beforeAll(() => {
-    // Create a scenario in DB: heartrate > 50 → turn on light
+    // Create a scenario in DB: heartRate > 50 → turn on light
     // sensor001ID and light001ID were set in "Scenario CRUD" beforeAll above
     const result = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 1, ?)"
@@ -297,7 +297,7 @@ describe("ScenarioEngine", () => {
 
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(scenarioID, "device_value", sensor001ID, "heartrate", "greater", "50", "Numeric");
+    ).run(scenarioID, "device_value", sensor001ID, "heartRate", "greater", "50", "Numeric");
 
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, deviceID, property, value, valueType, delay) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -389,7 +389,7 @@ describe("ScenarioEngine", () => {
     await global.scenarios.handleEvent("device_value", {
       uuid:     "sensor_001",
       bridge:   "bluetooth",
-      property: "heartrate",
+      property: "heartRate",
       value:    "80",
     });
 
@@ -408,22 +408,26 @@ describe("ScenarioEngine", () => {
   });
 
   test("handleEvent — applies device assignment context to the event", async () => {
+    const roomID = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Scenario Room").lastInsertRowid;
+    const individualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)")
+      .run("Scenario", "Tester", roomID).lastInsertRowid;
+
     db.prepare("UPDATE devices SET individualID = ?, roomID = ? WHERE deviceID = ?")
-      .run(1, 1, sensor001ID);
+      .run(individualID, roomID, sensor001ID);
 
     const scenarioResult = db.prepare(
       "INSERT INTO scenarios (name, enabled, priority, icon, individualID, roomID) VALUES (?, 1, 1, ?, ?, ?)"
-    ).run("Context-bound scenario", "heart", 1, 1);
+    ).run("Context-bound scenario", "heart", individualID, roomID);
     const contextScenarioID = scenarioResult.lastInsertRowid;
 
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(contextScenarioID, "device_value", sensor001ID, "heartrate", "greater", "50", "Numeric");
+    ).run(contextScenarioID, "device_value", sensor001ID, "heartRate", "greater", "50", "Numeric");
     db.prepare("INSERT INTO scenarios_actions (scenarioID, type, value) VALUES (?, ?, ?)")
       .run(contextScenarioID, "notification", "Context scenario fired");
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
     await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -434,7 +438,9 @@ describe("ScenarioEngine", () => {
     db.prepare("DELETE FROM scenarios_actions WHERE scenarioID = ?").run(contextScenarioID);
     db.prepare("DELETE FROM scenarios_triggers WHERE scenarioID = ?").run(contextScenarioID);
     db.prepare("DELETE FROM scenarios WHERE scenarioID = ?").run(contextScenarioID);
-    db.prepare("UPDATE devices SET individualID = 0, roomID = 0 WHERE deviceID = ?").run(sensor001ID);
+    db.prepare("UPDATE devices SET individualID = NULL, roomID = NULL WHERE deviceID = ?").run(sensor001ID);
+    db.prepare("DELETE FROM individuals WHERE individualID = ?").run(individualID);
+    db.prepare("DELETE FROM rooms WHERE roomID = ?").run(roomID);
   });
 
   test("handleEvent — does NOT trigger when value ≤ 50", async () => {
@@ -444,7 +450,7 @@ describe("ScenarioEngine", () => {
     await global.scenarios.handleEvent("device_value", {
       uuid:     "sensor_001",
       bridge:   "bluetooth",
-      property: "heartrate",
+      property: "heartRate",
       value:    "30",
     });
 
@@ -460,12 +466,12 @@ describe("ScenarioEngine", () => {
 
     // First trigger
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     // Second trigger immediately
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "90",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "90",
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -480,7 +486,7 @@ describe("ScenarioEngine", () => {
 
     // First trigger
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     // Wait for cooldown to expire (CONF_scenarioCooldownMilliseconds = 500)
@@ -489,7 +495,7 @@ describe("ScenarioEngine", () => {
 
     // Second trigger after cooldown
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "90",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "90",
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -504,7 +510,7 @@ describe("ScenarioEngine", () => {
     global.scenarios.executionCooldowns.clear();
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -523,12 +529,12 @@ describe("ScenarioEngine", () => {
   test("getCurrentDeviceValue — returns latest value from DB", async () => {
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(sensor001ID, "heartrate", "75", 75, Date.now() - 1000);
+    ).run(sensor001ID, "heartRate", "75", 75, Date.now() - 1000);
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(sensor001ID, "heartrate", "80", 80, Date.now());
+    ).run(sensor001ID, "heartRate", "80", 80, Date.now());
 
-    const val = await global.scenarios.getCurrentDeviceValue(sensor001ID, "heartrate");
+    const val = await global.scenarios.getCurrentDeviceValue(sensor001ID, "heartRate");
     expect(val).toBe(80);
   });
 
@@ -536,7 +542,7 @@ describe("ScenarioEngine", () => {
     global.scenarios.executionCooldowns.clear();
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     const executions = db.prepare("SELECT * FROM scenarios_executions WHERE scenarioID = ?").all(scenarioID);
@@ -554,7 +560,7 @@ describe("ScenarioEngine", () => {
     global.scenarios.executionCooldowns.clear();
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -597,7 +603,7 @@ describe("Multi-Trigger Scenarios", () => {
   let multiScenarioID;
 
   beforeAll(() => {
-    // Scenario: heartrate > 50 AND motion = yes → turn on light
+    // Scenario: heartRate > 50 AND motion = yes → turn on light
     const result = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon) VALUES (?, ?, 1, 2, ?)"
     ).run("Multi Trigger", "Both conditions must be met", "alert");
@@ -605,7 +611,7 @@ describe("Multi-Trigger Scenarios", () => {
 
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(multiScenarioID, "device_value", sensor001ID, "heartrate", "greater", "50", "Numeric");
+    ).run(multiScenarioID, "device_value", sensor001ID, "heartRate", "greater", "50", "Numeric");
 
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -628,7 +634,7 @@ describe("Multi-Trigger Scenarios", () => {
     ).run(sensor001ID, "motion", "yes", 0, Date.now());
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -650,7 +656,7 @@ describe("Multi-Trigger Scenarios", () => {
     ).run(sensor001ID, "motion", "no", 0, Date.now());
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -670,11 +676,13 @@ describe("Alert Trigger Scenarios", () => {
 
   let careScenarioID;
   let careRuleID;
+  let careRoomID;
+  let careIndividualID;
   let glass001ID; // numeric PK for glass_001 device
 
   beforeAll(() => {
-    const roomID       = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Hydration Room").lastInsertRowid;
-    const individualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Lea", "Example", roomID).lastInsertRowid;
+    careRoomID       = db.prepare("INSERT INTO rooms (name) VALUES (?)").run("Hydration Room").lastInsertRowid;
+    careIndividualID = db.prepare("INSERT INTO individuals (firstname, lastname, roomID) VALUES (?, ?, ?)").run("Lea", "Example", careRoomID).lastInsertRowid;
 
     // Insert glass_001 device so it can be used as a numeric FK in triggers
     const glass001 = insertTestDevice(db, { uuid: "glass_001", bridge: "http", productName: "DrinkSensor" });
@@ -686,7 +694,7 @@ describe("Alert Trigger Scenarios", () => {
 
     const scenarioResult = db.prepare(
       "INSERT INTO scenarios (name, description, enabled, priority, icon, roomID, individualID) VALUES (?, ?, 1, 3, ?, ?, ?)"
-    ).run("Hydration Alert", "React to hydration alerts", "water", roomID, individualID);
+    ).run("Hydration Alert", "React to hydration alerts", "water", careRoomID, careIndividualID);
     careScenarioID = scenarioResult.lastInsertRowid;
 
     db.prepare(
@@ -710,8 +718,8 @@ describe("Alert Trigger Scenarios", () => {
       alertType: "SumBelowThreshold",
       score:     0.8,
       deviceID:  glass001ID, // numeric FK from AlertsEngine
-      individualID: 1,
-      roomID:    1
+      individualID: careIndividualID,
+      roomID:    careRoomID
     });
 
     await new Promise((r) => setTimeout(r, 100));
@@ -919,7 +927,7 @@ describe("Event-Based Triggers", () => {
 
     db.prepare(
       "INSERT INTO scenarios_triggers (scenarioID, type, deviceID, property, operator, value, valueType) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(sid, "device_value", sensor001ID, "heartrate", "greater", "50", "Numeric");
+    ).run(sid, "device_value", sensor001ID, "heartRate", "greater", "50", "Numeric");
 
     db.prepare(
       "INSERT INTO scenarios_actions (scenarioID, type, value, property) VALUES (?, ?, ?, ?)"
@@ -930,7 +938,7 @@ describe("Event-Based Triggers", () => {
     global.scenarios.pushEngine = mockPushEngine;
 
     await global.scenarios.handleEvent("device_value", {
-      uuid: "sensor_001", bridge: "bluetooth", property: "heartrate", value: "80",
+      uuid: "sensor_001", bridge: "bluetooth", property: "heartRate", value: "80",
     });
 
     await new Promise((r) => setTimeout(r, 100));

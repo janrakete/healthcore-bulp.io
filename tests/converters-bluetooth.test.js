@@ -175,10 +175,10 @@ describe("ConverterBangleJS2BLE", () => {
       property = converter.getPropertyByUUID("6e400003b5a3f393e0a9e50e24dcca9e");
     });
 
-    test("should parse heartrate message", () => {
+    test("should parse heartRate message", () => {
       const result = converter.getSubproperty(property, Buffer.from('{"t":"h","v":72}'));
       expect(result).toBeDefined();
-      expect(result.name).toBe("heartrate");
+      expect(result.name).toBe("heartRate");
       expect(result.value).toBe(72);
       expect(result.valueAsNumeric).toBe(72);
     });
@@ -234,7 +234,7 @@ describe("ConverterBangleJS2BLE", () => {
 
       const result = converter.getSubproperty(property, Buffer.from(completedLines[0].trim()));
       expect(result).toBeDefined();
-      expect(result.name).toBe("heartrate");
+      expect(result.name).toBe("heartRate");
       expect(result.value).toBe(98);
     });
   });

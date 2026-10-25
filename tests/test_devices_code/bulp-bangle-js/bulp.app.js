@@ -56,7 +56,7 @@
   }
 
   // ===================================================
-  // Demo: Simulated high heartrate
+  // Demo: Simulated high heartRate
   // ===================================================
   function sendDemoHighHeartrate() {
     const DEMO_BPM = 155;

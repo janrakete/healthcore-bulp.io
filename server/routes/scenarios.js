@@ -73,7 +73,7 @@ function scenarioActionsValidateAndNormalize(actions) {
  *           example: "High Heartrate Alert"
  *         description:
  *           type: string
- *           example: "Turn on emergency light when heartrate > 100"
+ *           example: "Turn on emergency light when heartRate > 100"
  *         enabled:
  *           type: boolean
  *           example: true
@@ -114,7 +114,7 @@ function scenarioActionsValidateAndNormalize(actions) {
  *                 example: "bluetooth"
  *               property:
  *                 type: string
- *                 example: "heartrate"
+ *                 example: "heartRate"
  *               operator:
  *                 type: string
  *                 enum: ["equals", "greater", "less", "between", "contains"]
@@ -391,7 +391,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                 example: "High Heartrate Alert"
  *               description:
  *                 type: string
- *                 example: "Turn on emergency light when heartrate > 100"
+ *                 example: "Turn on emergency light when heartRate > 100"
  *               enabled:
  *                 type: boolean
  *                 default: true
@@ -423,7 +423,7 @@ router.get("/:scenarioID", async function (request, response) {
  *                       example: "bluetooth"
  *                     property:
  *                       type: string
- *                       example: "heartrate"
+ *                       example: "heartRate"
  *                     operator:
  *                       type: string
  *                       enum: ["equals", "greater", "less", "between", "contains"]
@@ -642,7 +642,7 @@ router.post("/", async function (request, response) {
  *                       example: "bluetooth"
  *                     property:
  *                       type: string
- *                       example: "heartrate"
+ *                       example: "heartRate"
  *                     operator:
  *                       type: string 
  *                       enum: ["equals", "greater", "less", "between", "contains"]

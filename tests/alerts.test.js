@@ -78,7 +78,7 @@ function seedValues(values) {
   values.forEach((value, index) => {
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", String(value), value, now - index);
+    ).run(careDevice001ID, "heartRate", String(value), value, now - index);
   });
 }
 
@@ -88,7 +88,7 @@ describe("Alerts engine", () => {
   test("creates Anomaly Detection alert", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([250, 71, 72, 70, 69, 71, 70, 70, 71, 69, 72]);
 
@@ -96,7 +96,7 @@ describe("Alerts engine", () => {
       uuid:   "care_device_001",
       bridge: "http",
       values: {
-        heartrate: {
+        heartRate: {
           value:          "250",
           valueAsNumeric: 250,
         }
@@ -111,13 +111,13 @@ describe("Alerts engine", () => {
 
     const signal = db.prepare("SELECT * FROM alert_signals WHERE alertID = ?").get(alert.alertID);
     expect(signal).toBeDefined();
-    expect(signal.property).toBe("heartrate");
+    expect(signal.property).toBe("heartRate");
   });
 
   test("detects anomaly when baseline is constant but latest value differs", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([200, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70]);
 
@@ -125,7 +125,7 @@ describe("Alerts engine", () => {
       uuid:   "care_device_001",
       bridge: "http",
       values: {
-        heartrate: {
+        heartRate: {
           value:          "200",
           valueAsNumeric: 200,
         }
@@ -199,13 +199,13 @@ describe("Alerts engine", () => {
   test("auto-resolves Anomaly Detection alert when values normalize", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
-      values: { heartrate: { value: "240", valueAsNumeric: 240 } }
+      values: { heartRate: { value: "240", valueAsNumeric: 240 } }
     });
 
     let alert = db.prepare("SELECT * FROM alerts WHERE type = 'AnomalyDetection'").get();
@@ -217,7 +217,7 @@ describe("Alerts engine", () => {
     alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
-      values: { heartrate: { value: "71", valueAsNumeric: 71 } }
+      values: { heartRate: { value: "71", valueAsNumeric: 71 } }
     });
 
     alert = db.prepare("SELECT * FROM alerts WHERE alertID = ?").get(alert.alertID);
@@ -227,7 +227,7 @@ describe("Alerts engine", () => {
   test("limits signals per alert to configured maximum", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
 
@@ -235,7 +235,7 @@ describe("Alerts engine", () => {
       alerts.deviceValuesHandle({
         uuid:   "care_device_001",
         bridge: "http",
-        values: { heartrate: { value: String(240 + i), valueAsNumeric: 240 + i } }
+        values: { heartRate: { value: String(240 + i), valueAsNumeric: 240 + i } }
       });
     }
 
@@ -367,19 +367,19 @@ describe("Alerts engine", () => {
   test("uses a configured equality comparison for numeric sensor values", () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "equals", "100");
+    ).run("No elevated heart rate", "heartRate", "NoActivityForDuration", 3, "equals", "100");
 
     const now = Date.now();
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", "100", 100, now - (10 * 60 * 1000));
+    ).run(careDevice001ID, "heartRate", "100", 100, now - (10 * 60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
     expect(db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get()).toBeDefined();
 
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", "100", 100, now - (60 * 1000));
+    ).run(careDevice001ID, "heartRate", "100", 100, now - (60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
     const alert = db.prepare("SELECT * FROM alerts WHERE type = 'NoActivityForDuration'").get();
@@ -542,12 +542,12 @@ describe("Alerts engine", () => {
   test("resolves an inactivity alert when an updated rule has no matching activity", () => {
     const ruleResult = db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, inactivityDurationMinutes, activityOperator, activityValue) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run("No elevated heart rate", "heartrate", "NoActivityForDuration", 3, "equals", "100");
+    ).run("No elevated heart rate", "heartRate", "NoActivityForDuration", 3, "equals", "100");
 
     const now = Date.now();
     db.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(careDevice001ID, "heartrate", "100", 100, now - (5 * 60 * 1000));
+    ).run(careDevice001ID, "heartRate", "100", 100, now - (5 * 60 * 1000));
 
     alerts.inactivityRulesEvaluate(now);
     const alert = db.prepare("SELECT * FROM alerts WHERE ruleID = ?").get(ruleResult.lastInsertRowid);
@@ -691,14 +691,14 @@ describe("Alerts API", () => {
   test("GET /alerts returns created alerts", async () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
-        heartrate: {
+        heartRate: {
           value:          "240",
           valueAsNumeric: 240,
         }
@@ -720,13 +720,13 @@ describe("Alerts API", () => {
   test("GET /alerts caps limit at CONF_tablesMaxEntriesReturned", async () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
-      values: { heartrate: { value: "240", valueAsNumeric: 240 } }
+      values: { heartRate: { value: "240", valueAsNumeric: 240 } }
     });
 
     const res = await request(app).get("/alerts?limit=99999");
@@ -738,13 +738,13 @@ describe("Alerts API", () => {
   test("GET /alerts applies default limit without query param", async () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([240, 70, 69, 71, 70, 72, 71, 70, 69, 71, 72]);
     alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
-      values: { heartrate: { value: "240", valueAsNumeric: 240 } }
+      values: { heartRate: { value: "240", valueAsNumeric: 240 } }
     });
 
     const res = await request(app).get("/alerts");
@@ -756,14 +756,14 @@ describe("Alerts API", () => {
   test("GET /alerts/:id returns alert with signals", async () => {
     db.prepare(
       "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold) VALUES (?, ?, ?, ?)"
-    ).run("Unusual reading detected", "heartrate", "AnomalyDetection", 0.6);
+    ).run("Unusual reading detected", "heartRate", "AnomalyDetection", 0.6);
 
     seedValues([230, 70, 71, 69, 70, 72, 70, 71, 69, 70, 72]);
     alerts.deviceValuesHandle({
       uuid:   "care_device_001",
       bridge: "http",
       values: {
-        heartrate: {
+        heartRate: {
           value:          "230",
           valueAsNumeric: 230,
         }

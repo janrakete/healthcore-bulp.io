@@ -103,7 +103,7 @@ describe("GET /devices/all", () => {
       individualID:  individualResult.lastInsertRowid,
       roomID:        roomResult.lastInsertRowid,
       properties:    JSON.stringify([
-        { name: "heartrate", dataType: "Numeric", access: "r" },
+        { name: "heartRate", dataType: "Numeric", access: "r" },
         { name: "light", dataType: "Boolean", access: "rw" },
       ]),
     });
@@ -128,7 +128,7 @@ describe("GET /devices/all", () => {
     const btDevice = res.body.results.find((d) => d.uuid === "dev_bt_001");
     expect(btDevice).toBeDefined();
     expect(Array.isArray(btDevice.properties)).toBe(true);
-    expect(btDevice.properties[0].name).toBe("heartrate");
+    expect(btDevice.properties[0].name).toBe("heartRate");
   });
 
   test("returns correct bridge info per device", async () => {

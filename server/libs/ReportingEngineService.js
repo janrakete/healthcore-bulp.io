@@ -197,7 +197,7 @@ class ReportingService {
 
     /**
      * Computes min/max/avg/count for every property that has numeric readings.
-     * Completely sensor-agnostic: works for heartrate, temperature, SpO2, etc.
+     * Completely sensor-agnostic: works for heartRate, temperature, SpO2, etc.
      * @param {Array<Object>} readings
      * @returns {Object} - keys are property names, values are {min, max, avg, count}
      */

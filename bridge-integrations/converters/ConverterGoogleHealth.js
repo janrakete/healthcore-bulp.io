@@ -269,6 +269,10 @@ function httpsRequest(method, url, opts = {}) {
           return reject(new Error("Integrations (Google Health): server error " + response.statusCode + " from API"));
         }
 
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          return reject(new Error("Integrations (Google Health): API returned HTTP " + response.statusCode));
+        }
+
         try {
           resolve(JSON.parse(responseBody));
         }
@@ -335,12 +339,13 @@ async function ensureAccessToken(context) {
  * One request per data type per sync cycle; one latest numeric value per type.
  *
  * @param {Object} context - Account context including a valid accessToken.
- * @returns {Promise<{events: Object[], nextCursor: string, hasMore: boolean}>}
+ * @returns {Promise<{events: Object[], nextCursor: string, hasMore: boolean, errors: string[]}>}
  */
 async function pullChanges(context) {
 
   const endMs   = Date.now();
   const events  = [];
+  const errors  = [];
 
   for (const dataType of GOOGLE_DATA_TYPES) {
     const url = GOOGLE_HEALTH_BASE_URL + "/users/me/dataTypes/" + dataType.id + "/dataPoints?pageSize=1";
@@ -351,6 +356,7 @@ async function pullChanges(context) {
     }
     catch (error) {
       common.conLog("Integrations (Google Health): fetch error for " + dataType.id + ": " + error.message, "red");
+      errors.push(dataType.id + ": " + error.message);
       continue;
     }
 
@@ -370,7 +376,7 @@ async function pullChanges(context) {
   }
 
   const nextCursor = new Date(endMs).toISOString();
-  return { events, nextCursor, hasMore: false };
+  return { events, nextCursor, hasMore: false, errors };
 }
 
 /**

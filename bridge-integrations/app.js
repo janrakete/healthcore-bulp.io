@@ -302,6 +302,11 @@ async function startBridge() {
           message.values = { [event.property]: { value: event.value, valueAsNumeric: Number(event.value), valueType: event.valueType } };
           mqttClient.publish("server/devices/values/get", JSON.stringify(message));
         }
+
+        if (Array.isArray(pullResult.errors) && pullResult.errors.length > 0) {
+          syncError = "Provider fetch failed: " + pullResult.errors.join("; ");
+          common.conLog("Integrations: Partial sync failure for device " + deviceUUID + ": " + syncError, "red");
+        }
       }
       catch (error) {
         syncError = error.message;

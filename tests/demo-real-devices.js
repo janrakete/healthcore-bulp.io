@@ -175,7 +175,7 @@ function resetDemo(database, bangleDeviceID, sonoffDeviceID, paulmannDeviceID, b
   // 6. Remove synthetic Bangle.js baseline (if left over from a previous demo run)
   if (bangleDeviceID) {
     const deletedBaseline = database.prepare(
-      "DELETE FROM mqtt_devices_values WHERE deviceID = ? AND property = 'heartrate'"
+      "DELETE FROM mqtt_devices_values WHERE deviceID = ? AND property = 'heartRate'"
     ).run(bangleDeviceID);
     if (deletedBaseline.changes > 0) {
       log("Synthetische Bangle.js-Baseline entfernt: " + deletedBaseline.changes + " Einträge", "✓");
@@ -194,7 +194,7 @@ function ensureBangleBaseline(database, deviceID) {
   logSection("BANGLE.JS 2: Puls-Baseline prüfen");
 
   const existingCount = database.prepare(
-    "SELECT COUNT(*) AS cnt FROM mqtt_devices_values WHERE deviceID = ? AND property = 'heartrate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
+    "SELECT COUNT(*) AS cnt FROM mqtt_devices_values WHERE deviceID = ? AND property = 'heartRate' ORDER BY dateTimeAsNumeric DESC LIMIT ?"
   ).get(deviceID, HISTORY_SIZE).cnt;
 
   log("Vorhandene Puls-Einträge in History: " + existingCount, "📊");
@@ -215,7 +215,7 @@ function ensureBangleBaseline(database, deviceID) {
     const timestamp = now - (90 - index * (80 / missing)) * 60 * 1000;
     database.prepare(
       "INSERT INTO mqtt_devices_values (deviceID, property, value, valueAsNumeric, dateTimeAsNumeric) VALUES (?, ?, ?, ?, ?)"
-    ).run(deviceID, "heartrate", String(bpm), bpm, timestamp);
+    ).run(deviceID, "heartRate", String(bpm), bpm, timestamp);
   });
 
   log("Synthetische Baseline gesät: " + missing + " Einträge (68–74 bpm)", "✓");
@@ -227,7 +227,7 @@ function ensureBangleBaseline(database, deviceID) {
  *
  * Separation of concerns:
  *   - An Alert rule is device-agnostic: it only listens to a property
- *     (e.g. "heartrate") and fires for any device that sends this property.
+ *     (e.g. "heartRate") and fires for any device that sends this property.
  *   - Device binding is done exclusively in the scenario trigger via deviceID and bridge:
  *     The scenario only reacts when the rule was triggered for the specific target device.
  *
@@ -259,12 +259,12 @@ function setupDemo(database, bangle, sonoff, paulmann, bulp) {
   // Rules are device-agnostic and only listen to a single property. Which
   // device ultimately triggers the rule is determined solely by the scenario trigger.
 
-  // Rule 1: Heart rate anomaly (fires for any device that sends "heartrate")
+  // Rule 1: Heart rate anomaly (fires for any device that sends "heartRate")
   const bangleRule = database.prepare(
     "INSERT INTO alert_rules (title, sourceProperty, aggregationType, anomalyThreshold, minReadings, recommendation) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(
     DEMO_PREFIX + "Ungewöhnlicher Puls",
-    "heartrate",
+    "heartRate",
     "AnomalyDetection",
     ANOMALY_THRESHOLD,
     MIN_HISTORY_ENTRIES,
