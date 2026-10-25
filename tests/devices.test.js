@@ -427,4 +427,15 @@ describe("DELETE /devices/:bridge/:deviceID", () => {
       .at(-1);
     expect(JSON.parse(removeCall[1]).force).toBe(true);
   }, 5000);
+
+  test("forwards force=true from the JSON request body", async () => {
+    await request(app)
+      .delete("/devices/matter/dev_matter_001")
+      .send({ force: true });
+
+    const removeCall = global.mqttClient.publish.mock.calls
+      .filter(([topic]) => topic === "matter/devices/remove")
+      .at(-1);
+    expect(JSON.parse(removeCall[1]).force).toBe(true);
+  }, 5000);
 });

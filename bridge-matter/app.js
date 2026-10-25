@@ -97,17 +97,23 @@ class MatterBridgeCore {
           return;
         }
 
-        const converted = converter.getAttribute(path.clusterId, path.attributeName, value, path.endpointId);
-        if (converted === undefined) {
+        const property = converter.getPropertyByAttribute(path.clusterId, path.attributeName);
+        if (!property) {
           return;
         }
 
+        const endpointId = path.endpointId || 1;
+        const converted = converter.get(property, value, { endpointId });
+        if (converted === undefined) {
+          return;
+        }
+        const propertyName = endpointId > 1 ? property.name + "_endpoint_" + endpointId : property.name;
         const values = this.bridgeStatus.lastKnownValues.get(uuid) || {};
-        values[converted.property] = {
+        values[propertyName] = {
           value: converted.value,
           valueAsNumeric: converted.valueAsNumeric,
           valueType: converted.valueType,
-          endpointId: converted.endpointId,
+          endpointId,
         };
         this.bridgeStatus.lastKnownValues.set(uuid, values);
         this.mqttClient.publish(
@@ -115,7 +121,7 @@ class MatterBridgeCore {
           JSON.stringify({
             uuid,
             bridge: BRIDGE_PREFIX,
-            values: { [converted.property]: values[converted.property] },
+            values: { [propertyName]: values[propertyName] },
           }),
         );
       });
@@ -171,7 +177,12 @@ class MatterBridgeCore {
       const value = requestedValue && typeof requestedValue === "object" ? requestedValue.value : requestedValue;
       const propertyName = match[1];
       const endpointId = Number(match[2] || requestedValue?.endpointId || 1);
-      const writeCommand = converter.getWriteCommand(propertyName, value);
+      const propertyMetadata = converter.getPropertyByName(propertyName);
+      if (!propertyMetadata) {
+        throw new Error("Matter property is not writable: " + property);
+      }
+
+      const writeCommand = converter.set(propertyMetadata, value);
       if (!writeCommand) {
         throw new Error("Matter property is not writable: " + property);
       }
@@ -186,22 +197,20 @@ class MatterBridgeCore {
         throw new Error("Matter client is unavailable: " + writeCommand.client);
       }
 
-      return { property, endpoint, endpointId, writeCommand, client };
+      return { property, propertyMetadata, endpoint, endpointId, writeCommand, client };
     });
 
     const updates = {};
-    for (const { property, endpoint, endpointId, writeCommand, client } of commands) {
+    for (const { property, propertyMetadata, endpoint, endpointId, writeCommand, client } of commands) {
       const command = endpoint.commandsOf(client)[writeCommand.commandName];
       if (typeof command !== "function") {
         throw new Error("Matter command is not supported: " + writeCommand.commandName);
       }
       await command(...writeCommand.args);
-      const converted = converter.getAttribute(
-        writeCommand.clusterId,
-        writeCommand.attributeName,
-        writeCommand.attributeValue,
-        endpointId,
-      );
+      const converted = converter.get(propertyMetadata, writeCommand.attributeValue, { endpointId });
+      if (!converted) {
+        throw new Error("Matter property cannot be read after write: " + property);
+      }
       updates[property] = {
         value: converted.value,
         valueAsNumeric: converted.valueAsNumeric,
@@ -250,13 +259,18 @@ class MatterBridgeCore {
 
           try {
             const state = await endpoint.getStateOf(behavior, [attributeName]);
-            const converted = converter.getAttribute(clusterId, attributeName, state[attributeName], endpoint.number);
+            const property = converter.getPropertyByAttribute(clusterId, attributeName);
+            if (!property) {
+              continue;
+            }
+            const converted = converter.get(property, state[attributeName], { endpointId: endpoint.number });
             if (converted) {
-              values[converted.property] = {
+              const propertyName = endpoint.number > 1 ? property.name + "_endpoint_" + endpoint.number : property.name;
+              values[propertyName] = {
                 value: converted.value,
                 valueAsNumeric: converted.valueAsNumeric,
                 valueType: converted.valueType,
-                endpointId: converted.endpointId,
+                endpointId: endpoint.number,
               };
             }
           }

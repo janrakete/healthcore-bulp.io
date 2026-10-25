@@ -670,13 +670,17 @@ router.post("/:bridge/:uuid/disconnect", async function (request, response) {
  *          schema:
  *            type: string
  *            example: 12345
- *        - in: query
- *          name: force
- *          required: false
- *          description: For Matter only, remove local controller state without contacting the device. A factory reset may be required before pairing again.
- *          schema:
- *            type: boolean
- *            example: true
+ *      requestBody:
+ *        required: false
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                force:
+ *                  type: boolean
+ *                  description: For Matter only, remove local controller state without contacting the device. A factory reset may be required before pairing again.
+ *                  example: true
  *      responses:
  *        "200":
  *          description: Device removed successfully
@@ -729,7 +733,7 @@ router.delete("/:bridge/:uuid", async function (request, response) {
             message.uuid    = payload.uuid.trim();
             message.callID  = common.randomHash(); // create a unique call ID to identify the request
             message.bridge  = bridge;
-            if (request.query.force === "true") {
+            if ((request.body && request.body.force === true) || request.query.force === "true") { // check if force flag is set
                 message.force = true;
             }
 

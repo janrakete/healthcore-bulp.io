@@ -1,5 +1,5 @@
 const { ConverterStandard } = require("../bridge-matter/converters/ConverterStandard");
-const { ConverterExampleColorLamp } = require("../bridge-matter/converters/ConverterExampleColorLamp");
+const { ConverterBulpColorLamp } = require("../bridge-matter/converters/ConverterBulpColorLamp");
 const { Converters } = require("../bridge-matter/converters");
 
 test("converter manager returns the standard Matter converter", () => {
@@ -9,7 +9,7 @@ test("converter manager returns the standard Matter converter", () => {
   expect(converters.find("unknown product")).toBeUndefined();
 });
 
-test("converter manager detects the example lamp by its Matter clusters", () => {
+test("converter manager detects the Bulp lamp by its Matter clusters", () => {
   const converters = new Converters();
   const node = {
     endpoints: [{
@@ -23,7 +23,7 @@ test("converter manager detects the example lamp by its Matter clusters", () => 
     }]
   };
 
-  expect(converters.findForNode(node)).toBeInstanceOf(ConverterExampleColorLamp);
+  expect(converters.findForNode(node)).toBeInstanceOf(ConverterBulpColorLamp);
   expect(converters.findForNode({ endpoints: [] })).toBeInstanceOf(ConverterStandard);
 });
 
@@ -31,8 +31,8 @@ describe("Matter ConverterStandard", () => {
   const converter = new ConverterStandard();
 
   test("converts Matter temperature values from centidegrees", () => {
-    expect(converter.getAttribute(1026, "measuredValue", 2345)).toEqual({
-      property: "temperature",
+    const property = converter.getPropertyByAttribute(1026, "measuredValue");
+    expect(converter.get(property, 2345)).toEqual({
       value: 23.45,
       valueAsNumeric: 23.45,
       valueType: "number",
@@ -41,44 +41,60 @@ describe("Matter ConverterStandard", () => {
   });
 
   test("converts humidity and pressure values to standard units", () => {
-    expect(converter.getAttribute(1029, "measuredValue", 4567).value).toBe(45.67);
-    expect(converter.getAttribute(1027, "measuredValue", 1003).value).toBe(100.3);
+    expect(converter.get(converter.getPropertyByAttribute(1029, "measuredValue"), 4567).value).toBe(45.67);
+    expect(converter.get(converter.getPropertyByAttribute(1027, "measuredValue"), 1003).value).toBe(100.3);
   });
 
   test("converts occupancy, power, and battery attributes", () => {
-    expect(converter.getAttribute(1030, "occupancy", 1).value).toBe("occupied");
-    expect(converter.getAttribute(6, "onOff", false).value).toBe("off");
-    expect(converter.getAttribute(47, "batPercentRemaining", 150).value).toBe(75);
+    expect(converter.get(converter.getPropertyByAttribute(1030, "occupancy"), 1).value).toBe("occupied");
+    expect(converter.get(converter.getPropertyByAttribute(6, "onOff"), false).value).toBe("off");
+    expect(converter.get(converter.getPropertyByAttribute(47, "batPercentRemaining"), 150).value).toBe(75);
   });
 
   test("ignores unsupported Matter attributes", () => {
-    expect(converter.getAttribute(1026, "unknownAttribute", 5)).toBeUndefined();
+    expect(converter.getPropertyByAttribute(1026, "unknownAttribute")).toBeUndefined();
   });
 
   test("keeps attribute values distinct across Matter endpoints", () => {
-    expect(converter.getAttribute(1026, "measuredValue", 2345, 2).property).toBe("temperature_endpoint_2");
-    expect(converter.propertiesForEndpoints([1, 2]).temperature_endpoint_2.name).toBe("temperature_endpoint_2");
+    const property = converter.getPropertyByAttribute(1026, "measuredValue");
+    expect(converter.get(property, 2345, { endpointId: 2 }).endpointId).toBe(2);
+    expect(
+      converter.propertiesForEndpoints([1, 2]).temperatureMeasurement.measuredValue_endpoint_2.name
+    ).toBe("temperature_endpoint_2");
   });
 });
 
-describe("Matter example color lamp converter", () => {
-  const converter = new ConverterExampleColorLamp();
+describe("Matter Bulp color lamp converter", () => {
+  const converter = new ConverterBulpColorLamp();
 
   test("converts brightness, hue, saturation, and color temperature", () => {
-    expect(converter.getAttribute(8, "currentLevel", 127).value).toBe(50);
-    expect(converter.getAttribute(768, "currentHue", 127).value).toBe(180);
-    expect(converter.getAttribute(768, "currentSaturation", 127).value).toBe(50);
-    expect(converter.getAttribute(768, "colorTemperatureMireds", 250).value).toBe(4000);
+    expect(converter.get(converter.getPropertyByAttribute(8, "currentLevel"), 127).value).toBe(50);
+    expect(converter.get(converter.getPropertyByAttribute(768, "currentHue"), 127).value).toBe(180);
+    expect(converter.get(converter.getPropertyByAttribute(768, "currentSaturation"), 127).value).toBe(50);
+    expect(converter.get(converter.getPropertyByAttribute(768, "colorTemperatureMireds"), 250).value).toBe(4000);
   });
 
   test("declares brightness and color controls as readable and writable", () => {
-    expect(converter.properties.brightness).toMatchObject({ read: true, write: true });
-    expect(converter.properties.hue).toMatchObject({ read: true, write: true });
-    expect(converter.properties.saturation).toMatchObject({ read: true, write: true });
-    expect(converter.properties.colorTemperature).toMatchObject({ read: true });
+    expect(converter.properties.levelControl.currentLevel).toMatchObject({ read: true, write: true });
+    expect(converter.properties.colorControl.currentHue).toMatchObject({ read: true, write: true });
+    expect(converter.properties.colorControl.currentSaturation).toMatchObject({ read: true, write: true });
+    expect(converter.properties.colorControl.colorTemperatureMireds).toMatchObject({ read: true, write: false });
   });
 
   test("rejects brightness values outside the supported range", () => {
-    expect(() => converter.getWriteCommand("brightness", 101)).toThrow("between 0 and 100");
+    expect(() => converter.set(converter.getPropertyByName("brightness"), 101)).toThrow("between 0 and 100");
+  });
+
+  test.each([
+    ["brightness", 50, 8, "currentLevel", 127],
+    ["hue", 180, 768, "currentHue", 127],
+    ["saturation", 50, 768, "currentSaturation", 127]
+  ])("uses matching Matter read and write scales for %s", (property, value, clusterId, attributeName, rawValue) => {
+    const metadata = converter.getPropertyByName(property);
+    const command = converter.set(metadata, value);
+    expect(command.attributeValue).toBe(rawValue);
+    expect(
+      converter.get(converter.getPropertyByAttribute(clusterId, attributeName), command.attributeValue).value
+    ).toBe(value);
   });
 });

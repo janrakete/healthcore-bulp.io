@@ -158,20 +158,6 @@ In the middle — that’s the Healthcore. The Healthcore consists of several No
 - External APIs (Google Health, Garmin Health, …)
 - Matter (Wi-Fi, Ethernet, and Thread devices; requires a Thread Border Router for Thread devices)
 
-### Matter controller bridge
-Add `Matter` to the comma-separated `CONF_bridges` setting and set `CONF_portBridgeMatter=9992` in `.env.local`. The controller discovers commissionable Matter devices over IP and BLE. Commission a device with its manual or QR pairing code:
-
-```bash
-curl -X POST http://localhost:9992/commission \
-   -H "Content-Type: application/json" \
-   -H "x-api-key: YOUR_API_KEY" \
-   -d '{"pairingCode":"12345678901"}'
-```
-
-The API key header is required when `CONF_apiKey` is configured. To provision a device that is not already connected to Wi-Fi or Thread, add `wifiNetwork` (`wifiSsid`, `wifiCredentials`) or `threadNetwork` (`networkName`, hexadecimal `operationalDataset`) to the JSON body. Network credentials are accepted only when `CONF_apiKey` is configured; send them only over a trusted local network. Thread devices need an available Thread Border Router. Matter controller credentials are stored locally under `~/.matter/healthcore-matter`. The standard converter currently maps temperature, humidity, pressure, occupancy, on/off, and battery attributes; values from endpoints above 1 are stored with an `_endpoint_{id}` suffix. Writable on/off values can be sent with `POST /devices/matter/{uuid}/values` and `{"power":"on"}`, `{"power":"off"}`, or an endpoint-specific property such as `{"power_endpoint_2":"off"}`.
-
-To force-remove a device that cannot be reached for Matter decommissioning, use `DELETE /devices/matter/{uuid}?force=true`. This drops the controller's local fabric state; the device may need a factory reset before it can be paired again.
-
 And now the best part: you can **add your own devices to the Healthcore**! Each bridge includes a list of classes for devices. So you can handle the data transformation with simple JavaScript in a class for your device (= very cool). 
 
 On the left, you can see how various interfaces communicate bi-directionally with the Healthcore via a standardized API and visualize the data, for example. Just **bring your own interface**.
@@ -360,7 +346,42 @@ await fetch(API + "/devices/zigbee/" + foundDevice.uuid + "/values", {
 });
 ```
 
-If a value write does not change anything, check the converter of your device in `bridge-zigbee/converters/` and verify that the property is writable.
+### Example for using Matter device:
+```js
+// Base URLs: server API and Matter bridge
+const API           = "http://localhost:9998";
+const MATTER_BRIDGE = "http://localhost:9992";
+
+// 1) Commission the device with its manual or QR pairing code
+const commissionResponse = await fetch(MATTER_BRIDGE + "/commission", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": "YOUR_API_KEY" },
+    body: JSON.stringify({ pairingCode: "12345678901", name: "Living room lamp" })
+});
+const commissionData    = await commissionResponse.json();
+const uuid              = commissionData.uuid;
+
+// 2) Get current values
+const valuesResponse    = await fetch(API + "/devices/matter/" + uuid + "/values");
+const valuesData        = await valuesResponse.json();
+console.log(valuesData);
+
+// 3) Set value(s) (only works for writable properties)
+await fetch(API + "/devices/matter/" + uuid + "/values", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ power: "on", brightness: 50, hue: 180 })
+});
+
+// 4) Remove the device (add force: true if it cannot be reached)
+await fetch(API + "/devices/matter/" + uuid, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ force: false })
+});
+```
+
+---
 
 If you need to find the IP address of the server on the local network: The Healthcore server uses a Bonjour service to make itself known on the network. The default identifier is “healthcore”, but it can be customized in the `.env` file with `CONF_serverIDBonjour`.
 

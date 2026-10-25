@@ -4,17 +4,25 @@
  * =====================
  */
 
-const fs = require("fs");
-const path = require("path");
-const common = require("../common.js");
+const fs                    = require("fs");
+const path                  = require("path");
+const common                = require("../common.js");
 const { ConverterStandard } = require("./converters/ConverterStandard.js");
 
+/**
+ * Converters class manages a collection of device converters.
+ * It allows finding a specific converter by product name and instantiating it.
+ * @class Converters
+ */
 class Converters {
     constructor() {
         this.converterMap = new Map();
         this.loadConverters();
     }
 
+    /**
+     * Dynamically loads all converter classes from the converters folder
+     */    
     loadConverters() {
         const convertersDir = path.join(__dirname, "converters");
 
@@ -47,6 +55,11 @@ class Converters {
         }
     }
 
+    /**
+     * Finds a converter by product name and returns an instance of it.
+     * @param {string} productName - The name of the product to find the converter for.
+     * @returns {ConverterStandard|undefined} An instance of the converter if found, otherwise undefined.
+     */    
     find(productName) {
         if (productName === ConverterStandard.productName) {
             return new ConverterStandard();
@@ -55,7 +68,11 @@ class Converters {
         const ConverterClass = this.converterMap.get(productName);
         return ConverterClass ? new ConverterClass() : undefined;
     }
-
+    /**
+     * Finds a converter that supports the given node and returns an instance of it.
+     * @param {object} node - The node to find the converter for.
+     * @returns {ConverterStandard|undefined} An instance of the converter if found, otherwise the standard converter.
+     */
     findForNode(node) {
         for (const ConverterClass of this.converterMap.values()) {
             if (typeof ConverterClass.supportsNode === "function" && ConverterClass.supportsNode(node)) {

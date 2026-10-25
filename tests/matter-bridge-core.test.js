@@ -1,6 +1,6 @@
 const { MatterBridgeCore } = require("../bridge-matter/app");
 const { ConverterStandard } = require("../bridge-matter/converters/ConverterStandard");
-const { ConverterExampleColorLamp } = require("../bridge-matter/converters/ConverterExampleColorLamp");
+const { ConverterBulpColorLamp } = require("../bridge-matter/converters/ConverterBulpColorLamp");
 const { Converters } = require("../bridge-matter/converters");
 
 function createFixture({ connected = true, converter = new ConverterStandard(), converters } = {}) {
@@ -58,7 +58,7 @@ describe("MatterBridgeCore", () => {
     expect(bridgeStatus.devicesConnected.size).toBe(0);
   });
 
-  test("selects the example lamp converter when commissioning a matching Matter node", async () => {
+  test("selects the Bulp lamp converter when commissioning a matching Matter node", async () => {
     const { core, bridgeStatus, node } = createFixture({ converters: new Converters() });
     const colorAttributes = new Set(["currentHue", "currentSaturation", "colorTemperatureMireds"]);
     const colorCommands = new Set(["moveToHue", "moveToSaturation"]);
@@ -74,8 +74,8 @@ describe("MatterBridgeCore", () => {
       productName: converter.constructor.productName
     }));
 
-    expect(core.getConverter("lamp-1")).toBeInstanceOf(ConverterExampleColorLamp);
-    expect(bridgeStatus.devicesRegisteredAtServer.get("lamp-1").productName).toBe("Matter example color lamp");
+    expect(core.getConverter("lamp-1")).toBeInstanceOf(ConverterBulpColorLamp);
+    expect(bridgeStatus.devicesRegisteredAtServer.get("lamp-1").productName).toBe("bulp - Color Lamp");
   });
 
   test("re-enables restored peers and publishes connection transitions", async () => {
@@ -154,7 +154,7 @@ describe("MatterBridgeCore", () => {
   });
 
   test("sets lamp brightness, hue, and saturation with Matter cluster commands", async () => {
-    const { core, node } = createFixture({ converter: new ConverterExampleColorLamp() });
+    const { core, node } = createFixture({ converter: new ConverterBulpColorLamp() });
     const setLevel = jest.fn().mockResolvedValue(undefined);
     const setHue = jest.fn().mockResolvedValue(undefined);
     const setSaturation = jest.fn().mockResolvedValue(undefined);
@@ -184,7 +184,7 @@ describe("MatterBridgeCore", () => {
   });
 
   test("reads current Matter lamp values from supported endpoint attributes", async () => {
-    const { core, bridgeStatus, node } = createFixture({ converter: new ConverterExampleColorLamp() });
+    const { core, bridgeStatus, node } = createFixture({ converter: new ConverterBulpColorLamp() });
     const clusterValues = {
       6: { onOff: true },
       8: { currentLevel: 127 },
