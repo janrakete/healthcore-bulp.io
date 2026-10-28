@@ -63,6 +63,7 @@ async function startBridgeAndServer() {
       retain:  true,
     },
   };
+  
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
       const fs                       = require("fs");

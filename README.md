@@ -348,18 +348,17 @@ await fetch(API + "/devices/zigbee/" + foundDevice.uuid + "/values", {
 
 ### Example for using Matter device:
 ```js
-// Base URLs: server API and Matter bridge
+// Base URL of the server API (commissioning is forwarded by the server to the Matter bridge)
 const API           = "http://localhost:9998";
-const MATTER_BRIDGE = "http://localhost:9992";
 
 // 1) Commission the device with its manual or QR pairing code
-const commissionResponse = await fetch(MATTER_BRIDGE + "/commission", {
+const commissionResponse = await fetch(API + "/devices/matter/commission", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": "YOUR_API_KEY" },
     body: JSON.stringify({ pairingCode: "12345678901", name: "Living room lamp" })
 });
 const commissionData    = await commissionResponse.json();
-const uuid              = commissionData.uuid;
+const uuid              = commissionData.data.uuid;
 
 // 2) Get current values
 const valuesResponse    = await fetch(API + "/devices/matter/" + uuid + "/values");

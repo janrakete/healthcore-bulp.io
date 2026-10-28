@@ -441,6 +441,144 @@ router.get("/:bridge/scan/info", async function (request, response) {
 
 /**
  * @swagger
+ *   /devices/matter/commission:
+ *     post:
+ *       summary: Commission a Matter device
+ *       description: >
+ *         Pairs a new Matter device with its manual or QR pairing code. The request is forwarded via HTTP
+ *         (not via MQTT) to the Matter bridge, so Wi-Fi/Thread credentials never pass through the MQTT broker.
+ *         Commissioning can take up to a minute. Network credentials are only accepted if an API key is configured.
+ *       tags:
+ *         - Devices
+ *       requestBody:
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - pairingCode
+ *               properties:
+ *                 pairingCode:
+ *                   type: string
+ *                   description: The manual or QR pairing code of the device.
+ *                   example: "12345678901"
+ *                 name:
+ *                   type: string
+ *                   example: "Living room lamp"
+ *                 description:
+ *                   type: string
+ *                   example: "Lamp next to the sofa"
+ *                 wifiNetwork:
+ *                   type: object
+ *                   description: Wi-Fi credentials, if the device must join a Wi-Fi network.
+ *                   properties:
+ *                     wifiSsid:
+ *                       type: string
+ *                     wifiCredentials:
+ *                       type: string
+ *                 threadNetwork:
+ *                   type: object
+ *                   description: Thread credentials, if the device must join a Thread network.
+ *                   properties:
+ *                     networkName:
+ *                       type: string
+ *                       description: Optional, derived from the dataset if omitted.
+ *                     operationalDataset:
+ *                       type: string
+ *                       description: Hexadecimal operational dataset (required).
+ *       responses:
+ *         "200":
+ *           description: Successfully commissioned the device.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "ok"
+ *                   data:
+ *                     type: object
+ *                     properties:
+ *                       uuid:
+ *                         type: string
+ *                         example: "0b3c0e9e-5a0f-4a54-9a0b-0f0f0f0f0f0f"
+ *         "400":
+ *           description: Bad request or commissioning failed.
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status:
+ *                     type: string
+ *                     example: "error"
+ *                   error:
+ *                     type: string
+ *                     example: "A Matter pairingCode is required"
+ */
+// This route is registered BEFORE "/:bridge/:uuid", otherwise "matter/commission" would be handled as bridge "matter" with uuid "commission"
+router.post("/matter/commission", async function (request, response) {
+    let data = {};
+
+    // Only forward known fields, everything else in the request body is dropped
+    const payload = {};
+    for (const field of ["pairingCode", "name", "description", "wifiNetwork", "threadNetwork"]) {
+        if (request.body?.[field] !== undefined) {
+            payload[field] = request.body[field];
+        }
+    }
+
+    // The client is already authenticated by the server (apiKeyAuth), so the server authenticates itself at the bridge with the same API key
+    const headers = { "Content-Type": "application/json" };
+    if (appConfig.CONF_apiKey) {
+        headers["x-api-key"] = appConfig.CONF_apiKey;
+    }
+
+    // Commissioning takes much longer than a normal API call, so it has its own timeout
+    const timeoutMilliseconds = appConfig.CONF_devicesMatterCommissionTimeoutSeconds * 1000;
+    const controller          = new AbortController();
+    const timeoutID           = setTimeout(() => controller.abort(), timeoutMilliseconds);
+
+    try {
+        const answer = await fetch(appConfig.CONF_baseURL + ":" + appConfig.CONF_portBridgeMatter + "/commission", {
+            method:  "POST",
+            headers: headers,
+            body:    JSON.stringify(payload),
+            signal:  controller.signal, // allows aborting the request if it takes too long
+        });
+        const answerData = await answer.json().catch(() => ({})); // bridge answers with JSON, but do not fail on an unexpected body
+
+        if (answer.ok && answerData.status === "ok" && answerData.uuid) { // success: pass only the UUID of the new device back to the client
+            data.status      = "ok";
+            data.data        = {};
+            data.data.uuid   = answerData.uuid;
+            common.conLog("Server route 'Devices': POST request for Matter commissioning forwarded to bridge", "gre");
+        }
+        else { // error: pass the error of the bridge back to the client
+            data.status = "error";
+            data.error  = answerData.error;
+        }
+    }
+    catch (error) {
+        data.status = "error";
+        if (error.name === "AbortError") {
+            data.error = "No response from Matter bridge in " + (timeoutMilliseconds / 1000) + "s";
+        }
+        else {
+            data.error = "Matter bridge not reachable: " + error.message;
+        }
+    }
+    finally {
+        clearTimeout(timeoutID);
+    }
+
+    return common.sendResponse(response, data, "Server route 'Devices'", "POST request for Matter commissioning");
+});
+
+/**
+ * @swagger
  *   /devices/{bridge}/{uuid}/connect:
  *     post:
  *       summary: Connect a device via ID

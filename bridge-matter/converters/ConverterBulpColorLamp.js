@@ -14,7 +14,7 @@ class ConverterBulpColorLamp extends ConverterStandard {
      * @returns {boolean} - True if the node is supported, false otherwise.
      */
     static supportsNode(node) {
-        return node.endpoints.some(endpoint => {
+        return [...node.endpoints].some(endpoint => { // matter.js node.endpoints is an iterable collection without .some(), so convert it to an array first
             const behaviors     = endpoint.behaviors;
             const hasOnOff      = behaviors.forCluster(6);
             const levelControl  = behaviors.forCluster(8);

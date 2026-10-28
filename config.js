@@ -96,6 +96,7 @@ const appConfig = {
   CONF_portHealthcheck                                : toInt(process.env.CONF_portHealthcheck),
   CONF_baseURL                                        : process.env.CONF_baseURL,
   CONF_scanTimeDefaultSeconds                         : toInt(process.env.CONF_scanTimeDefaultSeconds),
+  CONF_devicesMatterCommissionTimeoutSeconds          : toInt(process.env.CONF_devicesMatterCommissionTimeoutSeconds),
   CONF_alertsActive                                   : toBool(process.env.CONF_alertsActive, true),
   CONF_alertsAnomalyThreshold                         : toFloat(process.env.CONF_alertsAnomalyThreshold),
   CONF_alertsHistorySize                              : toInt(process.env.CONF_alertsHistorySize),

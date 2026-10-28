@@ -30,6 +30,33 @@ test("converter manager detects the Bulp lamp by its Matter clusters", () => {
 describe("Matter ConverterStandard", () => {
   const converter = new ConverterStandard();
 
+  test("derives the readable attributes from its properties", () => {
+    expect(converter.readableAttributes()).toEqual(expect.arrayContaining([
+      [6, ["onOff"]],
+      [47, ["batPercentRemaining"]],
+      [1026, ["measuredValue"]],
+      [1027, ["measuredValue"]],
+      [1029, ["measuredValue"]],
+      [1030, ["occupancy"]]
+    ]));
+    expect(converter.readableAttributes()).toHaveLength(6);
+  });
+
+  test("includes the attributes added by a specific converter and skips unreadable or unknown ones", () => {
+    const lamp = new ConverterBulpColorLamp();
+    expect(lamp.readableAttributes()).toEqual(expect.arrayContaining([
+      [8, ["currentLevel"]],
+      [768, ["currentHue", "currentSaturation", "colorTemperatureMireds"]]
+    ]));
+
+    const custom = new ConverterStandard();
+    custom.properties["onOff"]["onOff"].read = false;
+    custom.properties["unknownCluster"] = { someAttribute: { name: "some", read: true } };
+    const clusterIds = custom.readableAttributes().map(([clusterId]) => clusterId);
+    expect(clusterIds).not.toContain(6);
+    expect(clusterIds).toHaveLength(5);
+  });
+
   test("converts Matter temperature values from centidegrees", () => {
     const property = converter.getPropertyByAttribute(1026, "measuredValue");
     expect(converter.get(property, 2345)).toEqual({

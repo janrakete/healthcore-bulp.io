@@ -63,6 +63,7 @@ async function startBridgeAndServer() {
       retain:  true,
     },
   };
+  
   if (appConfig.CONF_tlsPath) { // if TLS path is configured, try to load CA cert for secure connection (if cert not found, will log warning and continue without CA cert)
     try {
       const fs                       = require("fs");
@@ -75,7 +76,6 @@ async function startBridgeAndServer() {
     }
   }
   const mqttClient = mqtt.connect(appConfig.CONF_brokerAddress, mqttOptions); // connect to broker ...
-
 
   /**
    * Connects the MQTT client and subscribes to ZigBee-related topics.

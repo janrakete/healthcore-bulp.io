@@ -1,4 +1,4 @@
-const { MatterBridgeCore } = require("../bridge-matter/app");
+const { MatterBridgeCore, matterClientModule } = require("../bridge-matter/MatterBridgeCore");
 const { ConverterStandard } = require("../bridge-matter/converters/ConverterStandard");
 const { ConverterBulpColorLamp } = require("../bridge-matter/converters/ConverterBulpColorLamp");
 const { Converters } = require("../bridge-matter/converters");
@@ -8,12 +8,11 @@ function createFixture({ connected = true, converter = new ConverterStandard(), 
   const bridgeStatus = {
     devicesConnected: new Map(),
     devicesRegisteredAtServer: new Map(),
-    scannedDevices: new Map(),
     lastKnownValues: new Map()
   };
   const listeners = { attributes: undefined, connection: undefined };
   const node = {
-    events: { attributeChanged: { on: handler => { listeners.attributes = handler; } } },
+    endpoints: [],
     lifecycle: {
       isConnected: connected,
       connectionStateChanged: { on: handler => { listeners.connection = handler; } }
@@ -37,13 +36,15 @@ function createFixture({ connected = true, converter = new ConverterStandard(), 
 describe("MatterBridgeCore", () => {
   test("registers a commissioned peer and forwards endpoint-specific values", async () => {
     const { core, bridgeStatus, mqttClient, node, listeners } = createFixture();
+    node.endpoints = [{ // endpoint 2 with a temperature cluster, like matter.js: the change event is "<attribute>$Changed" of the cluster behavior
+      number: 2,
+      behaviors: { forCluster: clusterId => clusterId === 1026 ? { clusterId } : undefined },
+      eventsOf: () => ({ "measuredValue$Changed": { on: handler => { listeners.attributes = handler; } } })
+    }];
     const controller = { peers: { commission: jest.fn().mockResolvedValue(node) } };
 
     await core.commission(controller, { id: "device-1", pairingCode: "12345678901" }, { productName: "Matter device" });
-    listeners.attributes({
-      path: { clusterId: 1026, attributeName: "measuredValue", endpointId: 2 },
-      value: 2345
-    });
+    listeners.attributes(2345, 2000);
 
     expect(controller.peers.commission).toHaveBeenCalledWith({ id: "device-1", pairingCode: "12345678901" });
     expect(bridgeStatus.devicesConnected.get("device-1")).toBe(node);
@@ -66,7 +67,8 @@ describe("MatterBridgeCore", () => {
       behaviors: {
         forCluster: clusterId => [6, 8, 768].includes(clusterId) ? {} : undefined,
         elementsOf: () => ({ attributes: colorAttributes, commands: colorCommands })
-      }
+      },
+      eventsOf: () => ({})
     }];
     const controller = { peers: { commission: jest.fn().mockResolvedValue(node) } };
 
@@ -144,13 +146,35 @@ describe("MatterBridgeCore", () => {
     node.parts.get.mockReturnValue(endpoint);
     core.registerNode(node, "device-1");
 
-    const updates = await core.setValues("device-1", { power_endpoint_2: "off" }, { onOff: onOffClient });
+    const updates = await core.setValues("device-1", { power_endpoint_2: "off" }, async name => ({ onOff: onOffClient })[name]);
 
     expect(node.parts.get).toHaveBeenCalledWith(2);
     expect(endpoint.commandsOf).toHaveBeenCalledWith(onOffClient);
     expect(turnOff).toHaveBeenCalledTimes(1);
     expect(updates.power_endpoint_2).toMatchObject({ value: "off", endpointId: 2 });
     expect(bridgeStatus.lastKnownValues.get("device-1").power_endpoint_2.value).toBe("off");
+  });
+
+  test("does not send any command if a Matter client is unavailable", async () => {
+    const { core, node } = createFixture({ converter: new ConverterBulpColorLamp() });
+    const setLevel = jest.fn().mockResolvedValue(undefined);
+    const levelControlClient = { id: "level-control" };
+    const endpoint = { commandsOf: jest.fn(() => ({ moveToLevelWithOnOff: setLevel })) };
+    node.parts.get.mockReturnValue(endpoint);
+    core.registerNode(node, "lamp-1");
+
+    await expect(
+      core.setValues("lamp-1", { brightness: 50, hue: 180 }, async name => ({ levelControl: levelControlClient })[name])
+    ).rejects.toThrow("Matter client is unavailable: colorControl");
+    expect(setLevel).not.toHaveBeenCalled();
+  });
+
+  test("derives the Matter client module from the cluster name", () => {
+    expect(matterClientModule("onOff")).toEqual({ path: "@matter/main/behaviors/on-off", exportName: "OnOffClient" });
+    expect(matterClientModule("levelControl")).toEqual({ path: "@matter/main/behaviors/level-control", exportName: "LevelControlClient" });
+    expect(matterClientModule("windowCovering")).toEqual({ path: "@matter/main/behaviors/window-covering", exportName: "WindowCoveringClient" });
+    expect(matterClientModule("../evil")).toBeUndefined();
+    expect(matterClientModule(undefined)).toBeUndefined();
   });
 
   test("sets lamp brightness, hue, and saturation with Matter cluster commands", async () => {
@@ -168,10 +192,10 @@ describe("MatterBridgeCore", () => {
     node.parts.get.mockReturnValue(endpoint);
     core.registerNode(node, "lamp-1");
 
-    const updates = await core.setValues("lamp-1", { brightness: 50, hue: 180, saturation: 75 }, {
+    const updates = await core.setValues("lamp-1", { brightness: 50, hue: 180, saturation: 75 }, async name => ({
       levelControl: levelControlClient,
       colorControl: colorControlClient
-    });
+    })[name]);
 
     expect(setLevel).toHaveBeenCalledWith({ level: 127, transitionTime: 0, optionsMask: 0, optionsOverride: 0 });
     expect(setHue).toHaveBeenCalledWith({ hue: 127, direction: 0, transitionTime: 0, optionsMask: 0, optionsOverride: 0 });
@@ -198,7 +222,8 @@ describe("MatterBridgeCore", () => {
       },
       getStateOf: jest.fn(async (behavior, attributes) => ({
         [attributes[0]]: clusterValues[behavior.clusterId][attributes[0]]
-      }))
+      })),
+      eventsOf: () => ({})
     };
     node.endpoints = [endpoint];
     core.registerNode(node, "lamp-1");

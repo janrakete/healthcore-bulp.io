@@ -138,6 +138,30 @@ class ConverterStandard {
         return properties;
     }
 
+    /**
+     * Gets all readable attributes of this converter, grouped by Matter cluster ID.
+     * Derived from the properties (and the cluster names), so a new property or a new converter
+     * is read automatically and no separate list needs to be maintained.
+     * @returns {Array<[number, string[]]>} An array of [clusterId, attributeNames].
+     */
+    readableAttributes() {
+        const result = [];
+
+        for (const [clusterName, attributes] of Object.entries(this.properties)) {
+            const clusterId = Object.keys(this.clusterNamesById).find(id => this.clusterNamesById[id] === clusterName);
+            if (clusterId === undefined) { // cluster is not registered in clusterNamesById, so it cannot be mapped to a Matter cluster ID
+                continue;
+            }
+
+            const attributeNames = Object.entries(attributes).filter(([attributeName, property]) => property.read !== false).map(([attributeName, property]) => attributeName);
+            if (attributeNames.length > 0) {
+                result.push([Number(clusterId), attributeNames]);
+            }
+        }
+
+        return result;
+    }
+
     getPropertyByAttribute(clusterId, attributeName) {
         const clusterName = this.clusterNamesById[clusterId];
         const attributes = this.properties[clusterName];
@@ -198,6 +222,14 @@ class ConverterStandard {
         };
     }
 
+    /**
+     * Converts a value to a Matter write command. A converter for a new device overrides this method for its writable properties.
+     * @param {object} property - The property to write.
+     * @param {*} anyValue - The requested value.
+     * @returns {{client: string, commandName: string, args: Array, clusterId: number, attributeName: string, attributeValue: *}|undefined}
+     *   The command to send (`client` is the cluster name from `clusterNamesById`, e.g. "onOff", whose Matter client the bridge loads automatically),
+     *   or `undefined` if the property is not writable.
+     */
     set(property, anyValue) {
         if (!property || property.write !== true || property.name.replace(/_endpoint_\d+$/, "") !== "power") {
             return undefined;
